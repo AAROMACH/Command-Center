@@ -1,4 +1,7 @@
+'use client';
+
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Avatar,
   AvatarFallback,
@@ -18,6 +21,7 @@ import {
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function UserNav() {
+  const router = useRouter();
   const userAvatar = PlaceHolderImages.find(image => image.id === 'user-avatar-1');
 
   return (
@@ -43,15 +47,15 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/admin/profile')}>
             Profile
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
             Billing
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/admin/settings')}>
             Settings
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>

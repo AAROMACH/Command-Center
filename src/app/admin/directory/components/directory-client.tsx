@@ -243,10 +243,9 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 </div>
                             </div>
                             <div className="relative aspect-video w-full bg-bg-primary rounded-md overflow-hidden border border-border-subtle">
-                                <Image src="https://picsum.photos/seed/michigan/1200/800" alt="Map of Michigan" layout="fill" objectFit="cover" data-ai-hint="map michigan" />
+                                <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d2519879.5136364023!2d-84.46712132853324!3d42.82164695836222!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1777314459553!5m2!1sen!2sus" width="100%" height="100%" style={{ border: 0 }} allowFullScreen={true} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute top-0 left-0 w-full h-full"></iframe>
                             </div>
-                            <p className="text-xs text-text-muted text-center">In a full implementation, this would be an interactive map using a library like Mapbox or Google Maps. You could toggle layers and click on technicians to see their operational radius.</p>
-                            </div>
+                        </div>
                     </TabsContent>
                 </div>
             </Tabs>

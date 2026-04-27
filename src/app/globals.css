@@ -333,17 +333,17 @@
   .doc-btn svg { @apply h-3.5 w-3.5; }
 
   .ts-card { @apply mb-2 overflow-hidden rounded-md border border-border-default bg-bg-secondary; }
-  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-2.5; }
+  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-2; }
   .ts-tech-avatar { @apply flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-bg-tertiary text-xs font-bold; }
   .ts-tech-name { @apply text-sm font-bold text-text-primary; }
   .ts-tech-date { @apply text-xs text-text-muted; }
   .ts-badge-wrap { @apply ml-auto flex items-center gap-2; }
-  .ts-body { @apply p-3; }
-  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-3 mb-3; }
+  .ts-body { @apply p-2; }
+  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-2 mb-2; }
   .ts-field-label { @apply mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted; }
   .ts-field-val { @apply text-sm font-semibold text-text-primary; }
   .ts-log-label { @apply mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted; }
-  .ts-log-summary { @apply text-sm leading-relaxed text-text-secondary; }
+  .ts-log-summary { @apply text-sm leading-normal text-text-secondary; }
   .ts-log-tasks { @apply mt-2.5 flex flex-wrap gap-1.5; }
   .ts-task-pill { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold; }
   .ts-task-pill.done { @apply border-green-border bg-green-dim text-text-green; }
@@ -360,4 +360,5 @@
 }
 
     
+
 

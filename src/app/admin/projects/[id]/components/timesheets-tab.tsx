@@ -99,13 +99,13 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
                     </div>
                 </div>
                 
-                <div className="border-t border-border-subtle pt-3 mt-3">
+                <div className="border-t border-border-subtle pt-2 mt-2">
                     <button className="flex w-full items-center justify-between rounded-md p-2 text-xs font-bold uppercase tracking-wider text-text-muted transition-colors hover:bg-bg-tertiary hover:text-text-primary" onClick={() => setIsExpanded(!isExpanded)}>
                         <span>{isExpanded ? 'Hide' : 'Show'} Daily Work Log</span>
                         <ChevronsUpDown className={`h-4 w-4 text-text-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
                     {isExpanded && (
-                        <div className="pt-3">
+                        <div className="pt-2">
                              <TimesheetLogDetails log={log} />
                         </div>
                     )}

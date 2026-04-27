@@ -165,7 +165,7 @@ export const projects: Project[] = [
         phaseNumber: 1,
         name: 'Deinstallation',
         tasks: [
-          { id: 't1-1', name: 'Remove existing cabling', isCompleted: false, requiresPhoto: true },
+          { id: 't1-1', name: 'Remove existing cabling', isCompleted: true, requiresPhoto: true },
         ],
       },
       {
@@ -186,6 +186,7 @@ export const projectDocuments: ProjectDocument[] = [
   { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: 'Apr 18, 2026', size: '2.4 MB' },
   { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Photo', uploader: 'Corey Williams', uploadDate: 'Apr 18, 2026', size: '1.1 MB' },
   { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: 'Apr 17, 2026', size: '340 KB' },
+  { id: 'doc-4', name: 'Deinstallation_Signoff.pdf', type: 'pdf', label: 'Sign-off', uploader: 'David Smith', uploadDate: 'Apr 19, 2026', size: '800 KB' },
 ];
 
 export const timesheetLogs: TimesheetLog[] = [
@@ -201,5 +202,31 @@ export const timesheetLogs: TimesheetLog[] = [
     completedTasks: ['Box items'],
     inProgressTasks: ['Remove existing cabling'],
     photos: [getImageUrl('site-photo-1'), getImageUrl('site-photo-2')],
+  },
+   {
+    id: 'ts-2',
+    technicianId: 'tech-001', // Alex Johnson
+    date: 'Saturday, April 18, 2026',
+    checkInTime: '8:01 AM',
+    checkOutTime: '5:05 PM',
+    totalHours: '9h 04m',
+    totalMinutes: 544,
+    logSummary: 'Assisted with deinstallation and started running new CAT6A cabling for the refresh. All old patch panels have been removed. Coordinated with David on server room access.',
+    completedTasks: ['Remove existing cabling'],
+    inProgressTasks: ['Run new cabling'],
+    photos: [],
+  },
+  {
+    id: 'ts-3',
+    technicianId: 'tech-003', // David Smith
+    date: 'Sunday, April 19, 2026',
+    checkInTime: '8:30 AM',
+    checkOutTime: '4:45 PM',
+    totalHours: '8h 15m',
+    totalMinutes: 495,
+    logSummary: 'Finished boxing all old equipment and added return labels. All pallets are staged for pickup. Completed photo documentation of packed items.',
+    completedTasks: ['Add return labels', 'Take pictures of packed items'],
+    inProgressTasks: [],
+    photos: [getImageUrl('site-photo-1')],
   }
 ];

@@ -29,6 +29,7 @@
     --border-red: #5a1000;
     --gold-border: #4a3500;
     --green-border: #0f3a1a;
+    --green-dim: #0a1f0f;
 
 
     /* Status Colors */
@@ -319,7 +320,7 @@
   .doc-row:last-child { @apply border-none; }
   .doc-icon { @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md; }
   .doc-icon.pdf { @apply border border-[#5a1010] bg-[#2a0808] text-[#FF6644]; }
-  .doc-icon.img { @apply border border-[#1a4a1a] bg-[#0a1f0a] text-[#44CC88]; }
+  .doc-icon.img { @apply border border-green-border bg-green-dim text-text-green; }
   .doc-icon.doc { @apply border border-[#1a2a4a] bg-[#0a1020] text-[#4488DD]; }
   .doc-icon svg { @apply h-4 w-4; }
   .doc-info { @apply min-w-0 flex-1; }
@@ -331,26 +332,32 @@
   .doc-btn { @apply inline-flex h-7 items-center gap-1.5 rounded-md border border-border-default bg-bg-tertiary px-2 text-xs font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
   .doc-btn svg { @apply h-3.5 w-3.5; }
 
-  .ts-card { @apply mb-2.5 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
-  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-3.5; }
+  .ts-card { @apply mb-2 overflow-hidden rounded-md border border-border-default bg-bg-secondary; }
+  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-2.5; }
   .ts-tech-avatar { @apply flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-bg-tertiary text-xs font-bold; }
   .ts-tech-name { @apply text-sm font-bold text-text-primary; }
   .ts-tech-date { @apply text-xs text-text-muted; }
   .ts-badge-wrap { @apply ml-auto flex items-center gap-2; }
-  .ts-body { @apply p-3.5; }
-  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-3.5 mb-3.5; }
+  .ts-body { @apply p-3; }
+  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-3 mb-3; }
   .ts-field-label { @apply mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted; }
   .ts-field-val { @apply text-sm font-semibold text-text-primary; }
   .ts-log-label { @apply mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted; }
   .ts-log-summary { @apply text-sm leading-relaxed text-text-secondary; }
   .ts-log-tasks { @apply mt-2.5 flex flex-wrap gap-1.5; }
   .ts-task-pill { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold; }
-  .ts-task-pill.done { @apply border-[var(--green-border)] bg-green-dim text-text-green; }
-  .ts-task-pill.progress { @apply border-[var(--gold-border)] bg-accent-gold-dim text-accent-gold; }
+  .ts-task-pill.done { @apply border-green-border bg-green-dim text-text-green; }
+  .ts-task-pill.progress { @apply border-gold-border bg-accent-gold-dim text-accent-gold; }
   .ts-task-pill svg { @apply h-3 w-3; }
   .ts-photos { @apply mt-3 flex flex-wrap gap-2; }
   .ts-photo { @apply h-16 w-16 cursor-pointer rounded-md border border-border-default bg-bg-tertiary p-1; }
   .ts-photo:hover { @apply border-brand-red; }
+
+  /* Accordion styles for timesheets */
+  .accordion-item { @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .accordion-trigger { @apply flex w-full items-center justify-between p-3 text-sm font-bold text-text-primary transition-colors hover:bg-bg-tertiary; }
+  .accordion-content { @apply p-3 pt-0; }
 }
 
     
+

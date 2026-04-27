@@ -52,9 +52,10 @@ export type Project = {
   onsiteContact?: string;
   siteAccessInstructions?: string;
   siteHazardNotes: { id: string, text: string, type: 'info' | 'danger' }[];
-  specialInstructions?: string;
   projectBudget?: number;
   estimatedHours?: number;
+  actualBudget?: number;
+  actualHours?: number;
 };
 
 export type Phase = {

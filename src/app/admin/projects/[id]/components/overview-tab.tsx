@@ -3,7 +3,6 @@ import type { Project, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { FileText, DollarSign, AlertTriangle, Info, Plus, Users } from 'lucide-react';
 import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -20,6 +19,14 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
+
+    const budgetProgress = project.projectBudget && project.actualBudget ? (project.actualBudget / project.projectBudget) * 100 : 0;
+    const hoursProgress = project.estimatedHours && project.actualHours ? (project.actualHours / project.estimatedHours) * 100 : 0;
+
+    const formatCurrency = (value?: number) => {
+        if (value === undefined) return '$0.00';
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    }
     
     return (
         <>
@@ -40,7 +47,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         </div>
                         
                         <div className="field-row">
-                            <label className="field-label">Site Access Instructions &amp; Hazard Notes</label>
+                            <label className="field-label">Site Instructions &amp; Notes</label>
                             <div className="note-chips">
                                 {project.siteHazardNotes.map(note => (
                                     <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
@@ -52,25 +59,28 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             </div>
                             <Textarea className="field-textarea mt-2" placeholder="Parking, entry codes, badge requirements..." defaultValue={project.siteAccessInstructions}></Textarea>
                         </div>
-
-                        <Separator className="my-5 bg-border-subtle" />
-
-                        <div className="field-row">
-                            <h3 className="field-group-title !mb-2"><Info/> Admin Notes / Critical Notes</h3>
-                            <Textarea className="field-textarea !min-h-[100px]" placeholder="Internal notes for techs..." defaultValue={project.specialInstructions}></Textarea>
-                        </div>
                     </div>
 
                      <div className="field-group">
                         <h3 className="field-group-title"><DollarSign/> Project Economics</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                            <div className="field-row">
-                                <label className="field-label">Project Budget</label>
-                                <Input className="field-input" placeholder="$0.00" defaultValue={project.projectBudget ? `$${project.projectBudget.toFixed(2)}` : ''} />
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between items-end mb-1">
+                                    <label className="field-label !mb-0">Budget</label>
+                                    <p className="text-sm font-mono"><span className="font-bold text-text-primary">{formatCurrency(project.actualBudget)}</span> / <span className="text-text-muted">{formatCurrency(project.projectBudget)}</span></p>
+                                </div>
+                                <div className="progress-wrap">
+                                    <div className="progress-track !h-[6px]"><div className="progress-fill" style={{ width: `${budgetProgress}%` }}></div></div>
+                                </div>
                             </div>
-                            <div className="field-row">
-                                <label className="field-label">Estimated Hours</label>
-                                <Input className="field-input" placeholder="0" defaultValue={project.estimatedHours || ''} />
+                             <div>
+                                <div className="flex justify-between items-end mb-1">
+                                    <label className="field-label !mb-0">Hours</label>
+                                     <p className="text-sm font-mono"><span className="font-bold text-text-primary">{project.actualHours || 0}h</span> / <span className="text-text-muted">{project.estimatedHours || 0}h</span></p>
+                                </div>
+                                <div className="progress-wrap">
+                                    <div className="progress-track !h-[6px]"><div className="progress-fill gold" style={{ width: `${hoursProgress}%` }}></div></div>
+                                </div>
                             </div>
                         </div>
                     </div>

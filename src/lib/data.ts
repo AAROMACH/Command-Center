@@ -155,9 +155,10 @@ export const projects: Project[] = [
       { id: 'h1', text: 'Forklift On-Site', type: 'danger'},
       { id: 'h2', text: 'Active Warehouse', type: 'info'},
     ],
-    specialInstructions: 'Client requires all work to be completed after their business hours (after 5 PM).',
     projectBudget: 15000,
     estimatedHours: 80,
+    actualBudget: 5500,
+    actualHours: 32,
     phases: [
       {
         id: 'phase-1',

@@ -97,7 +97,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                     <p className="text-xs text-text-muted">On-Time Score</p>
                                 </div>
                                 <div className="p-4 rounded-md bg-bg-secondary border border-border-subtle">
-                                    <h4 className="field-label flex items-center gap-1.5"><BarChart size={14}/> Workload</h3>
+                                    <h4 className="field-label flex items-center gap-1.5"><BarChart size={14}/> Workload</h4>
                                     <p className="text-3xl font-bold text-text-primary">{person.currentWorkload}</p>
                                     <p className="text-xs text-text-muted">Active Assignments</p>
                                 </div>

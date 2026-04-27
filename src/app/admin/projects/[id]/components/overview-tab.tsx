@@ -24,7 +24,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Main Content: Briefing */}
+                {/* Main Content: Briefing & Economics */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="field-group">
                         <h3 className="field-group-title"><FileText/> Pre-Site Briefing</h3>
@@ -34,28 +34,23 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             <Textarea className="field-textarea" defaultValue={project.scope}></Textarea>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                            <div className="field-row">
-                                <label className="field-label">Onsite Contact</label>
-                                <Input className="field-input" placeholder="Name + phone number..." defaultValue={project.onsiteContact} />
-                            </div>
-                             <div className="field-row">
-                                <label className="field-label">Site Hazard Notes</label>
-                                <div className="note-chips">
-                                    {project.siteHazardNotes.map(note => (
-                                        <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
-                                            {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
-                                            {note.text}
-                                        </div>
-                                    ))}
-                                    <button className="note-chip-add"><Plus size={13}/> Add Note</button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="field-row">
-                            <label className="field-label">Site Access Instructions</label>
-                            <Textarea className="field-textarea" placeholder="Parking, entry codes..." defaultValue={project.siteAccessInstructions}></Textarea>
+                            <label className="field-label">Onsite Contact</label>
+                            <Input className="field-input" placeholder="Name + phone number..." defaultValue={project.onsiteContact} />
+                        </div>
+                        
+                        <div className="field-row">
+                            <label className="field-label">Site Access Instructions &amp; Hazard Notes</label>
+                            <div className="note-chips">
+                                {project.siteHazardNotes.map(note => (
+                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
+                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
+                                        {note.text}
+                                    </div>
+                                ))}
+                                <button className="note-chip-add"><Plus size={13}/> Add Note</button>
+                            </div>
+                            <Textarea className="field-textarea mt-2" placeholder="Parking, entry codes, badge requirements..." defaultValue={project.siteAccessInstructions}></Textarea>
                         </div>
 
                         <Separator className="my-5 bg-border-subtle" />
@@ -65,9 +60,23 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             <Textarea className="field-textarea !min-h-[100px]" placeholder="Internal notes for techs..." defaultValue={project.specialInstructions}></Textarea>
                         </div>
                     </div>
+
+                     <div className="field-group">
+                        <h3 className="field-group-title"><DollarSign/> Project Economics</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                            <div className="field-row">
+                                <label className="field-label">Project Budget</label>
+                                <Input className="field-input" placeholder="$0.00" defaultValue={project.projectBudget ? `$${project.projectBudget.toFixed(2)}` : ''} />
+                            </div>
+                            <div className="field-row">
+                                <label className="field-label">Estimated Hours</label>
+                                <Input className="field-input" placeholder="0" defaultValue={project.estimatedHours || ''} />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Sidebar Content: Team & Vitals */}
+                {/* Sidebar Content: Team */}
                 <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
@@ -92,18 +101,6 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                     </div>
                                 )
                             })}
-                        </div>
-                    </div>
-
-                    <div className="field-group">
-                        <h3 className="field-group-title"><DollarSign/> Project Vitals</h3>
-                        <div className="field-row">
-                            <label className="field-label">Project Budget</label>
-                            <Input className="field-input" placeholder="$0.00" defaultValue={project.projectBudget ? `$${project.projectBudget.toFixed(2)}` : ''} />
-                        </div>
-                        <div className="field-row">
-                            <label className="field-label">Estimated Hours</label>
-                            <Input className="field-input" placeholder="0" defaultValue={project.estimatedHours || ''} />
                         </div>
                     </div>
                 </div>

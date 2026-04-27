@@ -18,6 +18,13 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function WorkloadChart({ data }: WorkloadChartProps) {
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-[250px] w-full text-sm text-text-muted">
+                No data available for chart
+            </div>
+        )
+    }
     return (
         <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <BarChart accessibilityLayer data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>

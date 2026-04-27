@@ -1,17 +1,11 @@
 'use client';
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
-import { Wrench, FolderKanban, Users, AlertTriangle, TrendingUp, DollarSign, TrendingDown, FileText } from 'lucide-react';
+import { Clock, Users, TrendingUp } from 'lucide-react';
 
 const icons = {
-    Wrench,
-    FolderKanban,
+    Clock,
     Users,
-    AlertTriangle,
     TrendingUp,
-    DollarSign,
-    TrendingDown,
-    FileText
 };
 
 export type IconName = keyof typeof icons;
@@ -20,7 +14,7 @@ type StatCardProps = {
     label: string;
     value: string;
     delta: string;
-    deltaType: 'positive' | 'negative' | 'warning' | 'neutral';
+    deltaType: 'up' | 'down' | 'flat';
     icon: IconName;
 }
 
@@ -32,29 +26,22 @@ export function StatCard({ label, value, delta, deltaType, icon }: StatCardProps
     }
 
     return (
-        <div className={cn("bg-bg-secondary p-6 flex flex-col justify-between h-full", {
-            'border-l-4 border-brand-red': deltaType === 'negative',
-            'border-l-4 border-accent-gold': deltaType === 'warning',
-        })}>
-            <div className="flex justify-between items-start">
-                <p className="stat-label">{label}</p>
-                <Icon className={cn("h-6 w-6 shrink-0", {
-                    "text-text-red": deltaType === 'negative',
-                    "text-accent-gold": deltaType === 'warning',
-                    "text-text-muted": deltaType === 'neutral',
-                    "text-text-green": deltaType === 'positive',
-                })} />
-            </div>
-            <div>
-                <p className="stat-value">{value}</p>
-                <p className={cn("body-text !text-xs", {
-                    "text-text-red": deltaType === 'negative',
-                    "text-accent-gold": deltaType === 'warning',
-                    "text-text-muted": deltaType === 'neutral',
-                    "text-text-green": deltaType === 'positive',
+        <div className="bg-bg-secondary p-4 rounded-lg border border-border-default">
+            <div className="flex justify-between items-start mb-2">
+                <div className="p-2 bg-bg-tertiary rounded-md">
+                    <Icon className="h-5 w-5 text-text-muted" />
+                </div>
+                <div className={cn("text-sm font-bold", {
+                    "text-text-green": deltaType === 'up',
+                    "text-text-red": deltaType === 'down',
+                    "text-text-muted": deltaType === 'flat',
                 })}>
                     {delta}
-                </p>
+                </div>
+            </div>
+            <div>
+                <p className="text-3xl font-bold text-text-primary">{value}</p>
+                <p className="text-sm text-text-muted">{label}</p>
             </div>
         </div>
     )

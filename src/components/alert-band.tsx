@@ -1,23 +1,33 @@
 'use client';
 
-import { AlertTriangle, Info, Bell } from "lucide-react";
+import { AlertTriangle, Clock, CopyX, FileCheck2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const alerts = [
   {
     type: 'critical',
-    text: '3 Technicians Offline',
+    text: '4 Unassigned Jobs — Next 24h',
     icon: AlertTriangle,
   },
   {
     type: 'warning',
-    text: '5 Parts Pending Order',
-    icon: Info,
+    text: '2 Jobs Starting Soon — No Tech',
+    icon: Clock,
+  },
+  {
+    type: 'warning',
+    text: '1 Late Check-In',
+    icon: Clock,
   },
   {
     type: 'info',
-    text: 'System Update Scheduled: 0400 UTC',
-    icon: Bell,
+    text: '3 Revisits Required',
+    icon: CopyX,
+  },
+  {
+    type: 'info',
+    text: '2 Manifests Pending Audit',
+    icon: FileCheck2,
   },
 ];
 
@@ -31,8 +41,8 @@ export function AlertBand() {
             'flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-opacity hover:opacity-80',
             {
               'border border-border-red bg-brand-red-dim text-text-red': alert.type === 'critical',
-              'border border-[#4a3500] bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
-              'border border-[#0f2540] bg-[#0a1220] text-[#4499DD]': alert.type === 'info',
+              'border border-gold-border bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
+              'border border-border-default bg-bg-tertiary text-text-secondary': alert.type === 'info',
             }
           )}
         >

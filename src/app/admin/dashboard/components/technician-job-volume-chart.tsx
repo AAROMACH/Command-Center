@@ -5,9 +5,10 @@ import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    type ChartConfig
   } from "@/components/ui/chart"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bar, BarChart, XAxis, YAxis } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const chartData = [
@@ -19,6 +20,14 @@ const chartData = [
   { month: "Jun", jobs: 214 },
 ]
 
+const chartConfig = {
+  jobs: {
+    label: "Jobs",
+    color: "hsl(var(--accent))",
+  },
+} satisfies ChartConfig;
+
+
 export function TechnicianJobVolumeChart() {
     return (
         <Card>
@@ -28,8 +37,8 @@ export function TechnicianJobVolumeChart() {
           </CardHeader>
           <CardContent>
             <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+              <ChartContainer config={chartConfig} className="w-full h-full">
+                <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} stroke="var(--text-muted)" fontSize={12} />
                     <YAxis tickLine={false} axisLine={false} tickMargin={8} stroke="var(--text-muted)" fontSize={12} />
                     <ChartTooltip 
@@ -39,9 +48,9 @@ export function TechnicianJobVolumeChart() {
                             labelClassName="font-bold text-text-primary"
                         />} 
                     />
-                    <Bar dataKey="jobs" radius={4} fill="var(--accent-gold)" />
+                    <Bar dataKey="jobs" radius={4} fill="var(--color-jobs)" />
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>

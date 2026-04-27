@@ -26,12 +26,18 @@ const defaultState = {
     fullName: '',
     email: '',
     phone: '',
+    address: '',
     role: '',
     company: '',
     permissions: {
         dispatch: false,
         billing: false,
         admin: false,
+    },
+    emergencyContact: {
+        name: '',
+        relation: '',
+        phone: ''
     }
 };
 
@@ -48,6 +54,17 @@ export function AddPersonnelDialog({ isOpen, setIsOpen }: AddPersonnelDialogProp
     setIsOpen(false);
     setFormData(defaultState);
   };
+  
+  const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+            ...prev.emergencyContact,
+            [name]: value,
+        }
+    }));
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -73,7 +90,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen }: AddPersonnelDialogProp
               <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
             </div>
           </div>
-          <div className="space-y-2">
+           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
             <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
                 <SelectTrigger id="role">
@@ -86,6 +103,33 @@ export function AddPersonnelDialog({ isOpen, setIsOpen }: AddPersonnelDialogProp
                 </SelectContent>
             </Select>
           </div>
+
+          {(formData.role === 'technician' || formData.role === 'staff') && (
+            <>
+                <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input id="address" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
+                </div>
+                <div className="p-4 rounded-md border border-border-subtle bg-bg-primary">
+                    <Label className="font-bold">Emergency Contact</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="emergencyContactName" className="text-xs">Full Name</Label>
+                            <Input id="emergencyContactName" value={formData.emergencyContact.name} onChange={handleEmergencyContactChange} name="name" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="emergencyContactRelation" className="text-xs">Relation</Label>
+                            <Input id="emergencyContactRelation" value={formData.emergencyContact.relation} onChange={handleEmergencyContactChange} name="relation" />
+                        </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                        <Label htmlFor="emergencyContactPhone" className="text-xs">Phone Number</Label>
+                        <Input id="emergencyContactPhone" type="tel" value={formData.emergencyContact.phone} onChange={handleEmergencyContactChange} name="phone" />
+                    </div>
+                </div>
+            </>
+          )}
+
           {formData.role === 'staff' && (
             <div className="p-4 rounded-md border border-border-subtle bg-bg-primary">
                 <Label className="font-bold">Staff Permissions</Label>

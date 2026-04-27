@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Mail, Phone, Wrench, BarChart, Shield, Building, Calendar, Briefcase, DollarSign, Folder, StickyNote, User } from 'lucide-react';
+import { Mail, Phone, Wrench, BarChart, Shield, Building, Calendar, Briefcase, DollarSign, Folder, StickyNote, User, Home, HeartPulse } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -75,17 +75,30 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
             
             <TabsContent value="overview">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
-                    <div className="field-group !p-0 !bg-transparent !border-none">
-                        <h3 className="field-group-title">Core Identity</h3>
-                        <div className="space-y-1 text-sm">
-                            <p><strong className="text-text-muted w-24 inline-block">User ID:</strong> <span className="font-mono text-text-primary">{person.id}</span></p>
-                            <p><strong className="text-text-muted w-24 inline-block">Role:</strong> <span className="text-text-primary">{person.role}</span></p>
-                            <p><strong className="text-text-muted w-24 inline-block">Email:</strong> <span className="text-text-primary">{person.email}</span></p>
-                            <p><strong className="text-text-muted w-24 inline-block">Phone:</strong> <span className="text-text-primary">{person.phone}</span></p>
-                            {isClient && person.clientCompany && (
-                                <p><strong className="text-text-muted w-24 inline-block">Company:</strong> <span className="text-text-primary">{person.clientCompany}</span></p>
-                            )}
+                    <div className="space-y-6">
+                        <div className="field-group !p-0 !bg-transparent !border-none">
+                            <h3 className="field-group-title">Core Identity</h3>
+                            <div className="space-y-1 text-sm">
+                                <p><strong className="text-text-muted w-24 inline-block">User ID:</strong> <span className="font-mono text-text-primary">{person.id}</span></p>
+                                <p><strong className="text-text-muted w-24 inline-block">Role:</strong> <span className="text-text-primary">{person.role}</span></p>
+                                <p><strong className="text-text-muted w-24 inline-block">Email:</strong> <span className="text-text-primary">{person.email}</span></p>
+                                <p><strong className="text-text-muted w-24 inline-block">Phone:</strong> <span className="text-text-primary">{person.phone}</span></p>
+                                {person.address && <p><strong className="text-text-muted w-24 inline-block">Address:</strong> <span className="text-text-primary">{person.address}</span></p>}
+                                {isClient && person.clientCompany && (
+                                    <p><strong className="text-text-muted w-24 inline-block">Company:</strong> <span className="text-text-primary">{person.clientCompany}</span></p>
+                                )}
+                            </div>
                         </div>
+                         {(isTechnician || isStaff) && person.emergencyContact && (
+                             <div className="field-group !p-0 !bg-transparent !border-none">
+                                <h3 className="field-group-title flex items-center gap-2"><HeartPulse size={14}/>Emergency Contact</h3>
+                                <div className="space-y-1 text-sm p-3 rounded-md bg-bg-secondary border border-border-subtle">
+                                    <p><strong className="text-text-muted w-24 inline-block">Name:</strong> <span className="text-text-primary">{person.emergencyContact.name}</span></p>
+                                    <p><strong className="text-text-muted w-24 inline-block">Relation:</strong> <span className="text-text-primary">{person.emergencyContact.relation}</span></p>
+                                    <p><strong className="text-text-muted w-24 inline-block">Phone:</strong> <span className="text-text-primary">{person.emergencyContact.phone}</span></p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                      {isTechnician && (
                         <div className="field-group !p-0 !bg-transparent !border-none">

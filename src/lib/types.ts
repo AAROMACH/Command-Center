@@ -19,6 +19,12 @@ export type Technician = {
   role: string;
   email: string;
   phone: string;
+  address?: string;
+  emergencyContact?: {
+    name: string;
+    relation: string;
+    phone: string;
+  };
   currentLocation: string;
   reliabilityScore: number;
   currentWorkload: number;

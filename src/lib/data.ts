@@ -11,6 +11,12 @@ export const technicians: Technician[] = [
     role: 'Lead Field Technician',
     email: 'alex.j@aaromach.com',
     phone: '555-111-2222',
+    address: '123 Beacon St, Boston, MA 02108',
+    emergencyContact: {
+      name: 'Sarah Johnson',
+      relation: 'Spouse',
+      phone: '555-111-9999'
+    },
     currentLocation: 'New York, NY',
     reliabilityScore: 95,
     currentWorkload: 3,
@@ -32,6 +38,12 @@ export const technicians: Technician[] = [
     role: 'Appliance Specialist',
     email: 'maria.g@aaromach.com',
     phone: '555-222-3333',
+    address: '456 Oak Ave, Brooklyn, NY 11201',
+    emergencyContact: {
+      name: 'Luis Garcia',
+      relation: 'Brother',
+      phone: '555-222-8888'
+    },
     currentLocation: 'Brooklyn, NY',
     reliabilityScore: 98,
     currentWorkload: 2,

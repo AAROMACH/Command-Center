@@ -3,7 +3,7 @@ import { WorkOrdersClient } from "./components/work-orders-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SlidersHorizontal } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default async function AssignmentsPage() {
   const allWorkOrders = workOrders;

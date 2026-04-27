@@ -35,11 +35,19 @@ const revenueChartConfig = {
 } satisfies ChartConfig;
 
 const expenseData = [
-  { name: 'Labor', value: 450000, color: '#CC2200' },
-  { name: 'Materials', value: 180000, color: '#C89B3C' },
-  { name: 'Overhead', value: 90000, color: '#444444' },
-  { name: 'Subcontractors', value: 30000, color: '#666666' },
+  { name: 'Labor', value: 450000 },
+  { name: 'Materials', value: 180000 },
+  { name: 'Overhead', value: 90000 },
+  { name: 'Subcontractors', value: 30000 },
 ];
+
+const expenseChartConfig = {
+    Labor: { label: 'Labor', color: '#CC2200' },
+    Materials: { label: 'Materials', color: '#C89B3C' },
+    Overhead: { label: 'Overhead', color: '#444444' },
+    Subcontractors: { label: 'Subcontractors', color: '#666666' },
+} satisfies ChartConfig;
+
 
 const profitabilityData = [
     { id: 'proj-001', name: 'Ki9 Refresh', client: 'Ki9', budget: 15000, actual: 7500, profit: 7500, margin: 50.0 },
@@ -115,24 +123,26 @@ export default function FinancialsPage() {
                     </CardHeader>
                      <CardContent>
                         <div className="h-[250px] w-full">
-                             <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                                        const RADIAN = Math.PI / 180;
-                                        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                                        return (
-                                          <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">{`(${(percent * 100).toFixed(0)}%)`}</text>
-                                        );
-                                      }}>
-                                        {expenseData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} stroke={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <ChartTooltip cursor={{fill: 'var(--bg-tertiary)'}} content={<ChartTooltipContent className="bg-elevated border-border-default" />} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <ChartContainer config={expenseChartConfig} className="w-full h-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                                            const RADIAN = Math.PI / 180;
+                                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                            return (
+                                            <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">{`(${(percent * 100).toFixed(0)}%)`}</text>
+                                            );
+                                        }}>
+                                            {expenseData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={`var(--color-${entry.name})`} stroke={`var(--color-${entry.name})`} />
+                                            ))}
+                                        </Pie>
+                                        <ChartTooltip cursor={{fill: 'var(--bg-tertiary)'}} content={<ChartTooltipContent className="bg-elevated border-border-default" />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </ChartContainer>
                         </div>
                     </CardContent>
                 </Card>

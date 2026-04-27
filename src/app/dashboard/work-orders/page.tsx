@@ -1,6 +1,0 @@
-import { redirect } from 'next/navigation';
-
-export default function WorkOrdersPage() {
-  redirect('/admin/assignments');
-  return null;
-}

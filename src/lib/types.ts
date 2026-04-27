@@ -53,6 +53,8 @@ export type Project = {
   siteAccessInstructions?: string;
   siteHazardNotes: { id: string, text: string, type: 'info' | 'danger' }[];
   specialInstructions?: string;
+  projectBudget?: number;
+  estimatedHours?: number;
 };
 
 export type Phase = {

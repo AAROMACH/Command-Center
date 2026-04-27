@@ -1,4 +1,4 @@
-import { projects } from "@/lib/data";
+import { projects, technicians } from "@/lib/data";
 import { ProjectsClient } from "./components/projects-client";
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus, Search, SlidersHorizontal } from "lucide-react";
@@ -50,13 +50,13 @@ export default function ProjectsPage() {
         </TabsList>
         
         <TabsContent value="active" className="mt-0">
-          <ProjectsClient projects={activeProjects} />
+          <ProjectsClient projects={activeProjects} technicians={technicians} />
         </TabsContent>
         <TabsContent value="on-hold" className="mt-0">
-          <ProjectsClient projects={onHoldProjects} />
+          <ProjectsClient projects={onHoldProjects} technicians={technicians} />
         </TabsContent>
         <TabsContent value="completed" className="mt-0">
-          <ProjectsClient projects={completedProjects} />
+          <ProjectsClient projects={completedProjects} technicians={technicians} />
         </TabsContent>
       </Tabs>
     </div>

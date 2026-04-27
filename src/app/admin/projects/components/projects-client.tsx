@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { Project } from '@/lib/types';
+import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, Timer } from 'lucide-react';
+import { MapPin, Calendar, Clock, Timer, User } from 'lucide-react';
 
 type ProjectsClientProps = {
     projects: Project[];
+    technicians: Technician[];
 };
 
 function getProgress(project: Project): number {
@@ -26,7 +27,7 @@ function getTotalTasksCount(project: Project): number {
     return project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
 }
 
-export function ProjectsClient({ projects }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     const router = useRouter();
     
     if (projects.length === 0) {
@@ -57,6 +58,8 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                         const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
                         const completedTasks = getCompletedTasksCount(project);
                         const totalTasks = getTotalTasksCount(project);
+                        const leadMember = project.team.find(m => m.role === 'Project Lead');
+                        const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
@@ -67,6 +70,12 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                                 <td>
                                     <div className="cell-desc-title !normal-case">{project.name}</div>
                                     <div className="font-semibold text-text-primary text-sm">{project.client}</div>
+                                     {lead && (
+                                        <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
+                                            <User className="h-3.5 w-3.5" />
+                                            <span>Lead: {lead.name}</span>
+                                        </div>
+                                    )}
                                 </td>
                                 <td>
                                     <div className="flex items-center gap-1.5 text-sm text-text-secondary">

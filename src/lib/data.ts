@@ -147,7 +147,7 @@ export const projects: Project[] = [
     startTime: '9:00 AM EDT',
     estimatedDuration: '2 weeks',
     assignedTechnicianIds: ['tech-003'],
-    team: [{ technicianId: 'tech-003', role: 'Lead Tech' }],
+    team: [{ technicianId: 'tech-003', role: 'Project Lead' }],
     scope: 'All PCs — full hardware refresh across site.',
     onsiteContact: 'John Doe - 555-123-4567',
     siteAccessInstructions: 'Check in at front desk, badge required. Parking in Lot B.',
@@ -156,6 +156,8 @@ export const projects: Project[] = [
       { id: 'h2', text: 'Active Warehouse', type: 'info'},
     ],
     specialInstructions: 'Client requires all work to be completed after their business hours (after 5 PM).',
+    projectBudget: 15000,
+    estimatedHours: 80,
     phases: [
       {
         id: 'phase-1',

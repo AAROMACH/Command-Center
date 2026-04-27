@@ -1,5 +1,5 @@
 'use client';
-import type { Technician, TimeOffRequest } from '@/lib/types';
+import type { Technician, TimeOffRequest, WorkOrder } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,10 @@ import { useToast } from '@/hooks/use-toast';
 type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
+    workOrders: WorkOrder[];
 };
 
-export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: initialTimeOffRequests }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
@@ -78,6 +79,9 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
             req.status.toLowerCase().includes(lowercasedQuery)
         );
     });
+
+    const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
+    const personTimeOffRequests = selectedPerson ? initialTimeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
 
     return (
@@ -262,7 +266,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                 </div>
             </Tabs>
             <AddPersonnelDialog isOpen={isAddPersonnelOpen} setIsOpen={setIsAddPersonnelOpen} />
-            <PersonnelDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} person={selectedPerson} />
+            <PersonnelDetailDialog 
+                isOpen={isDetailOpen} 
+                setIsOpen={setIsDetailOpen} 
+                person={selectedPerson}
+                workOrders={personWorkOrders}
+                timeOffRequests={personTimeOffRequests}
+            />
         </>
     );
 }

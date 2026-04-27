@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { Project } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin } from 'lucide-react';
+import { MapPin, Calendar, Clock, Timer } from 'lucide-react';
 
 type ProjectsClientProps = {
     projects: Project[];
@@ -75,7 +75,22 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                                     </div>
                                 </td>
                                 <td>
-                                     <div className="text-sm text-text-secondary">{project.startDate}</div>
+                                    <div className="cell-sched">
+                                        <div className="cell-sched-date">
+                                            <Calendar />
+                                            <span>{project.startDate}</span>
+                                        </div>
+                                        {project.startTime && (
+                                            <div className="cell-sched-time">
+                                                <Clock />
+                                                <span>{project.startTime}</span>
+                                            </div>
+                                        )}
+                                        <div className="cell-sched-time">
+                                            <Timer />
+                                            <span>{project.estimatedDuration}</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div className="progress-wrap">

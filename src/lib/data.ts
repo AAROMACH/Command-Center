@@ -144,6 +144,7 @@ export const projects: Project[] = [
     location: 'Detroit, MI',
     status: 'active',
     startDate: '2026-04-18',
+    startTime: '9:00 AM EDT',
     estimatedDuration: '2 weeks',
     assignedTechnicianIds: ['tech-003'],
     team: [{ technicianId: 'tech-003', role: 'Lead Tech' }],

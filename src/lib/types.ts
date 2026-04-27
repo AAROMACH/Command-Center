@@ -42,6 +42,7 @@ export type Project = {
   location: string;
   status: 'active' | 'on-hold' | 'completed';
   startDate: string;
+  startTime?: string;
   estimatedDuration: string;
   assignedTechnicianIds: string[]; // Keep for compatibility, use team instead
   team: ProjectTeamMember[];

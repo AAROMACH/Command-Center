@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -7,46 +7,61 @@ export const technicians: Technician[] = [
   {
     id: 'tech-001',
     name: 'Alex Johnson',
+    role: 'Lead Field Technician',
+    email: 'alex.j@aaromach.com',
+    phone: '555-111-2222',
     currentLocation: 'New York, NY',
     reliabilityScore: 95,
     currentWorkload: 3,
-    skills: ['HVAC', 'Plumbing', 'Electrical'],
+    skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
     avatarUrl: getImageUrl('technician-1'),
   },
   {
     id: 'tech-002',
     name: 'Maria Garcia',
+    role: 'Appliance Specialist',
+    email: 'maria.g@aaromach.com',
+    phone: '555-222-3333',
     currentLocation: 'Brooklyn, NY',
     reliabilityScore: 98,
     currentWorkload: 2,
-    skills: ['Electrical', 'Appliance Repair'],
+    skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
     avatarUrl: getImageUrl('technician-2'),
   },
   {
     id: 'tech-003',
     name: 'David Smith',
+    role: 'Senior Technician',
+    email: 'david.s@aaromach.com',
+    phone: '555-333-4444',
     currentLocation: 'Queens, NY',
     reliabilityScore: 88,
     currentWorkload: 5,
-    skills: ['Plumbing', 'Carpentry'],
+    skills: ['Plumbing', 'Carpentry', 'Welding'],
     avatarUrl: getImageUrl('technician-3'),
   },
   {
     id: 'tech-004',
     name: 'Sarah Chen',
+    role: 'Smart Home Integrator',
+    email: 'sarah.c@aaromach.com',
+    phone: '555-444-5555',
     currentLocation: 'New York, NY',
     reliabilityScore: 92,
     currentWorkload: 1,
-    skills: ['HVAC', 'Electrical', 'Smart Home'],
+    skills: ['HVAC', 'Electrical', 'Smart Home', 'Networking'],
     avatarUrl: getImageUrl('technician-4'),
   },
    {
     id: 'tech-005',
     name: 'Ben Carter',
+    role: 'Junior Technician',
+    email: 'ben.c@aaromach.com',
+    phone: '555-555-6666',
     currentLocation: 'Jersey City, NJ',
     reliabilityScore: 85,
     currentWorkload: 4,
-    skills: ['Appliance Repair', 'Plumbing'],
+    skills: ['Appliance Repair', 'Plumbing', 'Cabling'],
     avatarUrl: getImageUrl('technician-5'),
   },
 ];
@@ -255,4 +270,12 @@ export const timesheetLogs: TimesheetLog[] = [
     inProgressTasks: [],
     photos: [getImageUrl('site-photo-1')],
   }
+];
+
+export const serviceRequests: ServiceRequest[] = [
+    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'New Install', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '2024-07-22' },
+    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'quoted', submittedDate: '2024-07-21' },
+    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Inspection', description: 'Annual fire alarm system inspection.', status: 'scheduled', submittedDate: '2024-07-20' },
+    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Quote', description: 'Quote for new POS system installation.', status: 'new', submittedDate: '2024-07-22' },
+    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '2024-07-19' },
 ];

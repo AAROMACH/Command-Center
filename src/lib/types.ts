@@ -16,6 +16,9 @@ export type WorkOrder = {
 export type Technician = {
   id: string;
   name: string;
+  role: string;
+  email: string;
+  phone: string;
   currentLocation: string;
   reliabilityScore: number;
   currentWorkload: number;
@@ -99,4 +102,14 @@ export type TimesheetLog = {
   completedTasks: string[];
   inProgressTasks: string[];
   photos: string[];
+};
+
+export type ServiceRequest = {
+  id: string;
+  clientName: string;
+  location: string;
+  requestType: 'New Install' | 'Repair' | 'Inspection' | 'Quote';
+  description: string;
+  status: 'new' | 'quoted' | 'scheduled' | 'closed';
+  submittedDate: string;
 };

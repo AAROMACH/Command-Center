@@ -75,113 +75,123 @@ export default function Dashboard() {
       <h1 className="font-headline text-2xl font-bold tracking-tight">
           Admin Dashboard
       </h1>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Work Orders
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeWorkOrders}</div>
-            <p className="text-xs text-muted-foreground">
-              +12.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Technicians Online
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{techniciansOnline}</div>
-            <p className="text-xs text-muted-foreground">
-              +5 since last hour
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{pendingApprovals}</div>
-            <p className="text-xs text-muted-foreground">
-              Manifests & reimbursements
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/50 bg-primary/10">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              New Service Requests
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{newServiceRequests}</div>
-            <p className="text-xs text-primary/80">
-              Require immediate assignment
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-         <Card>
-          <CardHeader>
-            <CardTitle>Recent Assignments</CardTitle>
-            <CardDescription>
-              A view of recently assigned and in-progress tasks.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Technician</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Priority</TableHead>
-                  <TableHead className="text-right">Work Order</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentAssignments.map(order => {
-                    const tech = technicians.find(t => t.id === order.assignedTechnicianId);
-                    return (
-                        <TableRow key={order.id}>
-                            <TableCell>
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="hidden h-9 w-9 sm:flex">
-                                        <AvatarImage asChild src={tech?.avatarUrl || ''} alt="Avatar">
-                                            <Image src={tech?.avatarUrl || ''} alt={tech?.name || 'Technician'} width={36} height={36} />
-                                        </AvatarImage>
-                                        <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="font-medium">{tech?.name}</div>
-                                </div>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                                <Badge className="text-xs" variant={order.status === 'in-progress' ? "secondary" : "outline"}>
-                                {order.status}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                                 <Badge variant={order.priority === 'high' || order.priority === 'critical' ? 'destructive' : 'default'} className="capitalize">{order.priority}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{order.id.toUpperCase()}</TableCell>
-                        </TableRow>
-                    )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <WorkOrderChart chartData={chartData} chartConfig={chartConfig} />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-4 lg:gap-8">
+        
+        {/* Left Column */}
+        <div className="lg:col-span-1 flex flex-col gap-4">
+            <Card className="border-primary/50 bg-primary/10">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  New Service Requests
+                </CardTitle>
+                <AlertTriangle className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{newServiceRequests}</div>
+                <p className="text-xs text-primary/80">
+                  Require immediate assignment
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+{pendingApprovals}</div>
+                <p className="text-xs text-muted-foreground">
+                  Manifests & reimbursements
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Active Work Orders
+                </CardTitle>
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeWorkOrders}</div>
+                <p className="text-xs text-muted-foreground">
+                  +12.1% from last month
+                </p>
+              </CardContent>
+            </Card>
+        </div>
+
+        {/* Middle Column */}
+        <div className="lg:col-span-2 flex flex-col gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Assignments</CardTitle>
+                <CardDescription>
+                  A view of recently assigned and in-progress tasks.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Technician</TableHead>
+                      <TableHead className="hidden sm:table-cell">Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Priority</TableHead>
+                      <TableHead className="text-right">Work Order</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentAssignments.map(order => {
+                        const tech = technicians.find(t => t.id === order.assignedTechnicianId);
+                        return (
+                            <TableRow key={order.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="hidden h-9 w-9 sm:flex">
+                                            <AvatarImage asChild src={tech?.avatarUrl || ''} alt="Avatar">
+                                                <Image src={tech?.avatarUrl || ''} alt={tech?.name || 'Technician'} width={36} height={36} />
+                                            </AvatarImage>
+                                            <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="font-medium">{tech?.name}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell">
+                                    <Badge className="text-xs" variant={order.status === 'in-progress' ? "secondary" : "outline"}>
+                                    {order.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                     <Badge variant={order.priority === 'high' || order.priority === 'critical' ? 'destructive' : 'default'} className="capitalize">{order.priority}</Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{order.id.toUpperCase()}</TableCell>
+                            </TableRow>
+                        )
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="lg:col-span-1 flex flex-col gap-4">
+            <WorkOrderChart chartData={chartData} chartConfig={chartConfig} />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Technicians Online
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{techniciansOnline}</div>
+                <p className="text-xs text-muted-foreground">
+                  +5 since last hour
+                </p>
+              </CardContent>
+            </Card>
+        </div>
       </div>
     </div>
   )

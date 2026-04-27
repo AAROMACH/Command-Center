@@ -16,7 +16,7 @@ const alerts = [
   },
   {
     type: 'warning',
-    text: '1 Late Check-In',
+    text: '1 Late / Missed Check-In',
     icon: Clock,
   },
   {

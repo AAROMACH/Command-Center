@@ -38,7 +38,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
          <Link href="/admin/assignments">
             <StatCard 
                 label="Active Assignments" 
@@ -55,24 +55,6 @@ export default function DashboardPage() {
                 delta="2 ongoing" 
                 deltaType="neutral"
                 icon="FolderKanban"
-            />
-        </Link>
-        <Link href="/admin/directory">
-            <StatCard 
-                label="Total Technicians" 
-                value={technicians.length.toString()} 
-                delta={`${technicians.filter(t => t.currentWorkload === 0).length} available`}
-                deltaType="neutral"
-                icon="Users"
-            />
-        </Link>
-        <Link href="/admin/assignments">
-            <StatCard 
-                label="Critical Alerts" 
-                value={highPriorityJobs.length.toString()} 
-                delta="Action required" 
-                deltaType="negative"
-                icon="TriangleAlert"
             />
         </Link>
         <Link href="/admin/assignments">

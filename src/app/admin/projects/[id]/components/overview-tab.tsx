@@ -3,11 +3,12 @@ import type { Project, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, User, Trash2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { FileText, DollarSign, AlertTriangle, Info, Plus, Users } from 'lucide-react';
 import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { ManageTeamDialog } from './manage-team-dialog';
 import { Badge } from '@/components/ui/badge';
+import { ManageTeamDialog } from './manage-team-dialog';
 
 type OverviewTabProps = {
     project: Project;
@@ -22,39 +23,54 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     
     return (
         <>
-            <div className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2 field-group">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Main Content: Briefing */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="field-group">
                         <h3 className="field-group-title"><FileText/> Pre-Site Briefing</h3>
                         
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
                             <Textarea className="field-textarea" defaultValue={project.scope}></Textarea>
                         </div>
-                        <div className="field-row">
-                            <label className="field-label">Onsite Contact</label>
-                            <Input className="field-input" placeholder="Name + phone number..." defaultValue={project.onsiteContact} />
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                            <div className="field-row">
+                                <label className="field-label">Onsite Contact</label>
+                                <Input className="field-input" placeholder="Name + phone number..." defaultValue={project.onsiteContact} />
+                            </div>
+                             <div className="field-row">
+                                <label className="field-label">Site Hazard Notes</label>
+                                <div className="note-chips">
+                                    {project.siteHazardNotes.map(note => (
+                                        <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
+                                            {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
+                                            {note.text}
+                                        </div>
+                                    ))}
+                                    <button className="note-chip-add"><Plus size={13}/> Add Note</button>
+                                </div>
+                            </div>
                         </div>
+
                         <div className="field-row">
                             <label className="field-label">Site Access Instructions</label>
                             <Textarea className="field-textarea" placeholder="Parking, entry codes..." defaultValue={project.siteAccessInstructions}></Textarea>
                         </div>
+
+                        <Separator className="my-5 bg-border-subtle" />
+
                         <div className="field-row">
-                            <label className="field-label">Site Hazard Notes</label>
-                            <div className="note-chips">
-                                {project.siteHazardNotes.map(note => (
-                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
-                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
-                                        {note.text}
-                                    </div>
-                                ))}
-                                <button className="note-chip-add"><Plus size={13}/> Add Note</button>
-                            </div>
+                            <h3 className="field-group-title !mb-2"><Info/> Admin Notes / Critical Notes</h3>
+                            <Textarea className="field-textarea !min-h-[100px]" placeholder="Internal notes for techs..." defaultValue={project.specialInstructions}></Textarea>
                         </div>
                     </div>
+                </div>
 
+                {/* Sidebar Content: Team & Vitals */}
+                <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
-                        <div className="flex justify-between items-center mb-4">
+                         <div className="flex justify-between items-center mb-4">
                             <h3 className="field-group-title !mb-0"><Users/> Project Team</h3>
                             <Button variant="outline" size="sm" onClick={() => setIsTeamDialogOpen(true)}>Manage Team</Button>
                         </div>
@@ -78,13 +94,6 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             })}
                         </div>
                     </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2 field-group">
-                        <h3 className="field-group-title"><Info/> Admin Notes / Critical Notes</h3>
-                        <Textarea className="field-textarea !min-h-[100px]" placeholder="Internal notes for techs..." defaultValue={project.specialInstructions}></Textarea>
-                    </div>
 
                     <div className="field-group">
                         <h3 className="field-group-title"><DollarSign/> Project Vitals</h3>
@@ -99,7 +108,6 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                     </div>
                 </div>
             </div>
-
 
             <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" size="sm">Cancel</Button>

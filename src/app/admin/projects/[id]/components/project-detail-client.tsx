@@ -63,15 +63,14 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         </div>
                     </div>
                     <div className="pdh-actions">
-                        <Button variant="outline" size="sm"><Plus size={12} /> Add Tech</Button>
-                        <Button variant="default" size="sm"><Plus size={12} /> New Assignment</Button>
+                        {/* Buttons removed as per request */}
                     </div>
                 </div>
                 <div className="pdh-progress">
                     <div className="pdh-progress-label">Overall Progress</div>
                     <div className="progress-wrap !flex-1">
-                        <div className="progress-track !h-[7px]"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
-                        <div className={`progress-pct !text-base !text-${progressColor}`}>{Math.round(progress)}%</div>
+                        <div className="progress-track !h-[10px]"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
+                        <div className={`progress-pct !text-lg !text-${progressColor}`}>{Math.round(progress)}%</div>
                     </div>
                 </div>
             </div>

@@ -11,16 +11,20 @@ const buttonVariants = cva(
       variant: {
         default: "bg-brand-red text-white hover:bg-brand-red-hover uppercase tracking-wider font-bold text-xs",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        "destructive-outline": "border border-border-red bg-transparent text-text-red hover:bg-brand-red-dim",
         outline: "border border-border-default bg-transparent hover:bg-bg-tertiary hover:text-text-primary uppercase tracking-wider text-xs",
         secondary: "bg-transparent border border-accent-gold text-accent-gold hover:bg-accent-gold-dim uppercase tracking-wider font-bold text-xs",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        folder: "inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white",
+        dashed: "flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-default py-4 text-sm font-semibold uppercase tracking-wider text-text-muted transition-colors hover:border-brand-red hover:text-brand-red"
       },
       size: {
         default: "h-10 px-5 py-2.5",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        "icon-sm": "h-7 w-7",
       },
     },
     defaultVariants: {
@@ -51,3 +55,5 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+
+    

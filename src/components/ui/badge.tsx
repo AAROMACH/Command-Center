@@ -12,15 +12,18 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         destructive: "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
-        // New variants from spec
+        // Project Status
+        active: "border-green-border bg-green-dim text-text-green",
+        onhold: "border-gold-border bg-accent-gold-dim text-accent-gold",
+        completed: "border-[#2a3a5a] bg-[#1a1a2a] text-[#6688CC]",
+        // Assignment Status
         high: "bg-brand-red-dim text-text-red",
         medium: "bg-accent-gold-dim text-accent-gold",
         low: "bg-[#1f1f1f] text-[#888]",
         scheduled: "border-[#333] bg-[#1f1f1f] text-[#888]",
-        inprogress: "border-[#4a3500] bg-accent-gold-dim text-accent-gold",
-        completed: "border-[#0f3a1a] bg-[#0a1f0f] text-text-green",
+        inprogress: "border-accent-gold/50 bg-accent-gold-dim text-accent-gold",
         missed: "border-border-red bg-brand-red-dim text-text-red",
-        pending: "border-[#3a2e00] bg-[#1a1500] text-accent-gold",
+        pending: "border-accent-gold/50 bg-accent-gold-dim text-accent-gold",
       },
     },
     defaultVariants: {

@@ -35,6 +35,18 @@
       "description": "Technician avatar",
       "imageUrl": "https://picsum.photos/seed/tech5/40/40",
       "imageHint": "person smiling"
+    },
+    {
+      "id": "site-photo-1",
+      "description": "A photo of a worksite",
+      "imageUrl": "https://picsum.photos/seed/site1/100/100",
+      "imageHint": "construction site"
+    },
+    {
+      "id": "site-photo-2",
+      "description": "A photo of a worksite",
+      "imageUrl": "https://picsum.photos/seed/site2/100/100",
+      "imageHint": "server room"
     }
   ]
 }

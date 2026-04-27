@@ -1,0 +1,140 @@
+'use client';
+
+import { useState } from 'react';
+import type { Project, Technician, ProjectTeamMember } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Plus, Trash2, UserPlus } from 'lucide-react';
+import Image from 'next/image';
+
+type ManageTeamDialogProps = {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    project: Project;
+    setProject: React.Dispatch<React.SetStateAction<Project>>;
+    allTechnicians: Technician[];
+};
+
+const ROLES = [
+    'Project Manager',
+    'Project Lead',
+    'Assist Tech',
+    'Cabling Tech',
+    'Fiber Tech',
+    'Network Tech',
+    'Apprentice',
+];
+
+export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTechnicians }: ManageTeamDialogProps) {
+    const [team, setTeam] = useState(project.team);
+    const [newTechId, setNewTechId] = useState('');
+    const [newTechRole, setNewTechRole] = useState('');
+
+    const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
+
+    const availableTechnicians = allTechnicians.filter(
+        (tech) => !team.some((member) => member.technicianId === tech.id)
+    );
+
+    const handleRoleChange = (technicianId: string, newRole: string) => {
+        setTeam(currentTeam => 
+            currentTeam.map(member => 
+                member.technicianId === technicianId ? { ...member, role: newRole } : member
+            )
+        );
+    };
+
+    const handleRemoveTech = (technicianId: string) => {
+        setTeam(currentTeam => 
+            currentTeam.filter(member => member.technicianId !== technicianId)
+        );
+    };
+
+    const handleAddTech = () => {
+        if (newTechId && newTechRole) {
+            setTeam(currentTeam => [...currentTeam, { technicianId: newTechId, role: newTechRole }]);
+            setNewTechId('');
+            setNewTechRole('');
+        }
+    };
+
+    const handleSaveChanges = () => {
+        setProject(currentProject => ({ ...currentProject, team }));
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
+                <DialogHeader>
+                    <DialogTitle className="page-title text-xl">Manage Project Team</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-6">
+                    <div>
+                        <h3 className="field-label mb-2">Current Team</h3>
+                        <div className="space-y-2">
+                            {team.map(member => {
+                                const tech = getTechnician(member.technicianId);
+                                if (!tech) return null;
+                                return (
+                                    <div key={member.technicianId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary">
+                                        <Avatar className="h-8 w-8"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="flex-1 font-semibold text-sm text-text-primary">{tech.name}</div>
+                                        <Select value={member.role} onValueChange={(value) => handleRoleChange(member.technicianId, value)}>
+                                            <SelectTrigger className="w-[150px] bg-bg-secondary border-border-subtle h-8 text-xs">
+                                                <SelectValue placeholder="Select role" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs">{role}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleRemoveTech(member.technicianId)}>
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                     <div>
+                        <h3 className="field-label mb-2">Add Technician</h3>
+                        <div className="flex items-center gap-2">
+                             <Select value={newTechId} onValueChange={setNewTechId}>
+                                <SelectTrigger className="flex-1 bg-bg-secondary border-border-subtle h-9">
+                                    <SelectValue placeholder="Select a technician..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableTechnicians.map(tech => (
+                                        <SelectItem key={tech.id} value={tech.id}>
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback></Avatar>
+                                                <span>{tech.name}</span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                             <Select value={newTechRole} onValueChange={setNewTechRole}>
+                                <SelectTrigger className="w-[150px] bg-bg-secondary border-border-subtle h-9 text-sm">
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-sm">{role}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Button size="icon" className="h-9 w-9 shrink-0" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
+                                <Plus size={16} />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="pt-4">
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveChanges}>Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}

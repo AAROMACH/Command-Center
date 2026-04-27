@@ -27,6 +27,9 @@
     --border-default: #2a2a2a;
     --border-subtle: #1f1f1f;
     --border-red: #5a1000;
+    --gold-border: #4a3500;
+    --green-border: #0f3a1a;
+
 
     /* Status Colors */
     --status-scheduled: #888888;
@@ -216,4 +219,121 @@
     @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-default hover:bg-bg-tertiary hover:text-accent-gold;
   }
   .btn-edit svg { @apply h-4 w-4; }
+
+  /* Project Page Styles */
+  .tech-stack { @apply flex items-center; }
+  .tech-avatar { @apply flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-bg-secondary bg-bg-tertiary text-[9px] font-bold text-text-secondary; }
+  .tech-avatar:not(:first-child) { @apply -ml-1.5; }
+
+  .btn-folder { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
+  .btn-folder svg { @apply h-3 w-3; }
+
+  .progress-wrap { @apply flex items-center gap-2.5; }
+  .progress-track { @apply h-[5px] flex-1 overflow-hidden rounded-full bg-border-default; }
+  .progress-fill { @apply h-full rounded-full bg-brand-red; }
+  .progress-fill.gold { @apply bg-accent-gold; }
+  .progress-fill.green { @apply bg-text-green; }
+  .progress-pct { @apply text-xs font-bold text-text-secondary; }
+  
+  .detail-nav { @apply mb-5 flex items-center gap-2 border-b border-border-default pb-4; }
+  .detail-back { @apply flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text-primary; }
+  .detail-breadcrumb { @apply text-sm text-text-muted; }
+  .detail-breadcrumb span { @apply font-semibold text-text-primary; }
+
+  .detail-tabs { @apply mb-6 flex border-b border-border-default; }
+  .detail-tab { @apply -mb-px cursor-pointer border-b-2 border-transparent px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary; }
+  .detail-tab.active { @apply border-brand-red text-text-primary; }
+
+  .project-detail-header { @apply mb-5 rounded-lg border border-border-default bg-bg-secondary p-5; }
+  .pdh-top { @apply mb-4 flex items-start justify-between; }
+  .pdh-title { @apply mb-1 text-xl font-bold uppercase tracking-wider text-text-primary; }
+  .pdh-meta { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary; }
+  .pdh-meta-item { @apply flex items-center gap-1.5; }
+  .pdh-meta-item svg { @apply h-3.5 w-3.5 text-text-muted; }
+  .pdh-actions { @apply flex items-center gap-2; }
+  .pdh-progress { @apply flex items-center gap-3; }
+  .pdh-progress-label { @apply text-xs font-semibold uppercase tracking-wider text-text-muted; }
+
+  .overview-grid { @apply grid grid-cols-1 gap-4 lg:grid-cols-2; }
+  .field-group { @apply rounded-lg border border-border-default bg-bg-secondary p-5; }
+  .field-group-title { @apply mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-muted; }
+  .field-group-title svg { @apply h-3.5 w-3.5 text-brand-red; }
+  .field-row { @apply mb-3; }
+  .field-row:last-child { @apply mb-0; }
+  .field-label { @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-muted; }
+  .field-input, .field-textarea { @apply w-full rounded-md border-border-subtle bg-bg-primary p-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0; }
+  
+  .note-chips { @apply mt-2 flex flex-wrap gap-2; }
+  .note-chip { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold; }
+  .note-chip.danger { @apply border-border-red bg-brand-red-dim text-text-red; }
+  .note-chip.info { @apply border-accent/50 bg-accent-gold-dim text-accent-gold; }
+  .note-chip-add { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border-default px-2.5 py-1 text-xs font-semibold text-text-muted transition-colors hover:border-text-secondary hover:text-text-secondary; }
+  .note-chip svg { @apply h-3 w-3; }
+  
+  .phase-block { @apply mb-3 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .phase-header { @apply flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-bg-tertiary; }
+  .phase-num { @apply flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-red text-xs font-bold text-white; }
+  .phase-name { @apply flex-1 text-sm font-bold text-text-primary; }
+  .phase-meta { @apply flex items-center gap-3 text-xs text-text-muted; }
+  .phase-chevron { @apply text-text-muted transition-transform; }
+  .phase-chevron.open { @apply rotate-180; }
+  .phase-progress { @apply px-4 pb-2; }
+  .tasks-list { @apply border-t border-border-default; }
+  .task-row { @apply flex items-center gap-3 border-b border-border-subtle p-3 transition-colors hover:bg-bg-tertiary; }
+  .task-row:last-child { @apply border-none; }
+  .task-check { @apply h-4 w-4 shrink-0; }
+  .task-name { @apply flex-1 text-sm text-text-primary; }
+  .task-name.done { @apply text-text-muted line-through; }
+  .task-photo-req { @apply flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted; }
+  .task-photo-req svg { @apply h-3.5 w-3.5; }
+  .task-actions { @apply flex items-center gap-1; }
+  .task-action-btn { @apply flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:bg-bg-primary hover:text-text-primary; }
+  .task-action-btn svg { @apply h-3.5 w-3.5; }
+  .add-task-row { @apply flex items-center gap-2 p-3; }
+  .add-task-input { @apply flex-1 bg-transparent text-sm text-text-muted placeholder:text-text-muted focus:text-text-primary focus:outline-none; }
+  .add-phase-btn { @apply mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-default py-4 text-sm font-semibold uppercase tracking-wider text-text-muted transition-colors hover:border-brand-red hover:text-brand-red; }
+
+  .docs-toolbar { @apply mb-4 flex items-center justify-between; }
+  .upload-zone { @apply mb-4 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border-default p-7 text-center transition-colors hover:border-brand-red hover:bg-brand-red-dim; }
+  .upload-zone-text { @apply text-sm text-text-secondary; }
+  .upload-zone-sub { @apply text-xs text-text-muted; }
+  .doc-list { @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .doc-row { @apply flex items-center gap-3.5 border-b border-border-subtle p-3.5 transition-colors hover:bg-bg-tertiary; }
+  .doc-row:last-child { @apply border-none; }
+  .doc-icon { @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md; }
+  .doc-icon.pdf { @apply border border-[#5a1010] bg-[#2a0808] text-[#FF6644]; }
+  .doc-icon.img { @apply border border-[#1a4a1a] bg-[#0a1f0a] text-[#44CC88]; }
+  .doc-icon.doc { @apply border border-[#1a2a4a] bg-[#0a1020] text-[#4488DD]; }
+  .doc-icon svg { @apply h-4 w-4; }
+  .doc-info { @apply min-w-0 flex-1; }
+  .doc-name { @apply truncate text-sm font-semibold text-text-primary; }
+  .doc-meta { @apply mt-0.5 flex items-center gap-2.5 text-xs text-text-muted; }
+  .doc-label { @apply inline-flex items-center rounded border border-border-default bg-bg-tertiary px-2 py-0.5 text-xs font-semibold text-text-secondary; }
+  .doc-size { @apply text-xs text-text-muted; }
+  .doc-actions { @apply flex items-center gap-1.5; }
+  .doc-btn { @apply inline-flex h-7 items-center gap-1.5 rounded-md border border-border-default bg-bg-tertiary px-2 text-xs font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
+  .doc-btn svg { @apply h-3.5 w-3.5; }
+
+  .ts-card { @apply mb-2.5 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-3.5; }
+  .ts-tech-avatar { @apply flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-bg-tertiary text-xs font-bold; }
+  .ts-tech-name { @apply text-sm font-bold text-text-primary; }
+  .ts-tech-date { @apply text-xs text-text-muted; }
+  .ts-badge-wrap { @apply ml-auto flex items-center gap-2; }
+  .ts-body { @apply p-3.5; }
+  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-3.5 mb-3.5; }
+  .ts-field-label { @apply mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted; }
+  .ts-field-val { @apply text-sm font-semibold text-text-primary; }
+  .ts-log-label { @apply mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted; }
+  .ts-log-summary { @apply text-sm leading-relaxed text-text-secondary; }
+  .ts-log-tasks { @apply mt-2.5 flex flex-wrap gap-1.5; }
+  .ts-task-pill { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold; }
+  .ts-task-pill.done { @apply border-[var(--green-border)] bg-green-dim text-text-green; }
+  .ts-task-pill.progress { @apply border-[var(--gold-border)] bg-accent-gold-dim text-accent-gold; }
+  .ts-task-pill svg { @apply h-3 w-3; }
+  .ts-photos { @apply mt-3 flex flex-wrap gap-2; }
+  .ts-photo { @apply h-16 w-16 cursor-pointer rounded-md border border-border-default bg-bg-tertiary p-1; }
+  .ts-photo:hover { @apply border-brand-red; }
 }
+
+    

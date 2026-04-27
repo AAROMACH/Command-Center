@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -134,4 +134,68 @@ export const workOrders: WorkOrder[] = [
     scheduleTime: '1:00 PM EST',
     pay: 750.00,
   },
+];
+
+export const projects: Project[] = [
+  {
+    id: 'proj-001',
+    name: 'Ki9 Refresh',
+    client: 'Ki9',
+    location: 'Detroit, MI',
+    status: 'active',
+    startDate: '2026-04-18',
+    estimatedDuration: '2 weeks',
+    assignedTechnicianIds: ['tech-003'],
+    team: [{ technicianId: 'tech-003', role: 'Lead Tech' }],
+    scope: 'All PCs — full hardware refresh across site.',
+    onsiteContact: 'John Doe - 555-123-4567',
+    siteAccessInstructions: 'Check in at front desk, badge required. Parking in Lot B.',
+    siteHazardNotes: [
+      { id: 'h1', text: 'Forklift On-Site', type: 'danger'},
+      { id: 'h2', text: 'Active Warehouse', type: 'info'},
+    ],
+    specialInstructions: 'Client requires all work to be completed after their business hours (after 5 PM).',
+    phases: [
+      {
+        id: 'phase-1',
+        phaseNumber: 1,
+        name: 'Deinstallation',
+        tasks: [
+          { id: 't1-1', name: 'Remove existing cabling', isCompleted: false, requiresPhoto: true },
+        ],
+      },
+      {
+        id: 'phase-2',
+        phaseNumber: 2,
+        name: 'Packing of Old Equipment',
+        tasks: [
+          { id: 't2-1', name: 'Box items', isCompleted: true, requiresPhoto: false },
+          { id: 't2-2', name: 'Add return labels', isCompleted: false, requiresPhoto: false },
+          { id: 't2-3', name: 'Take pictures of packed items', isCompleted: false, requiresPhoto: true },
+        ],
+      },
+    ],
+  },
+];
+
+export const projectDocuments: ProjectDocument[] = [
+  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: 'Apr 18, 2026', size: '2.4 MB' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Photo', uploader: 'Corey Williams', uploadDate: 'Apr 18, 2026', size: '1.1 MB' },
+  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: 'Apr 17, 2026', size: '340 KB' },
+];
+
+export const timesheetLogs: TimesheetLog[] = [
+  {
+    id: 'ts-1',
+    technicianId: 'tech-003', // David Smith
+    date: 'Saturday, April 18, 2026',
+    checkInTime: '8:04 AM',
+    checkOutTime: '12:31 PM',
+    totalHours: '4h 27m',
+    totalMinutes: 267,
+    logSummary: 'Deinstalled existing network switches in server room. Began boxing units for return shipment. Floor plan confirmed — forklift was active in loading dock area as noted.',
+    completedTasks: ['Box items'],
+    inProgressTasks: ['Remove existing cabling'],
+    photos: [getImageUrl('site-photo-1'), getImageUrl('site-photo-2')],
+  }
 ];

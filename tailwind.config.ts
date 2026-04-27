@@ -57,6 +57,7 @@ export default {
         'brand-red-dim': 'var(--brand-red-dim)',
         'accent-gold': 'var(--accent-gold)',
         'accent-gold-dim': 'var(--accent-gold-dim)',
+        'green-dim': 'var(--green-dim)',
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
         'text-muted': 'var(--text-muted)',
@@ -66,6 +67,8 @@ export default {
         'border-default': 'var(--border-default)',
         'border-subtle': 'var(--border-subtle)',
         'border-red': 'var(--border-red)',
+        'gold-border': 'var(--gold-border)',
+        'green-border': 'var(--green-border)',
       },
       borderRadius: {
         lg: 'var(--radius)',

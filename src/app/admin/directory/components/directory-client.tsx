@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Mail, Phone, ExternalLink, Plus, Map, UserCheck, Building } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -20,9 +22,10 @@ type DirectoryClientProps = {
 export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: DirectoryClientProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
+    const router = useRouter();
 
     const technicians = allPersonnel.filter(p => p.role.toLowerCase().includes('tech'));
-    const staff = allPersonnel.filter(p => !p.role.toLowerCase().includes('tech') && !p.role.toLowerCase().includes('client'));
+    const staff = allPersonnel.filter(p => p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin');
     const clients = allPersonnel.filter(p => p.role.toLowerCase().includes('client'));
 
     const lowercasedQuery = searchQuery.toLowerCase();
@@ -80,14 +83,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                 <div className="w-full mt-6">
                     <TabsContent value="technicians">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                            <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                                 <div>TECHNICIAN</div>
                                 <div>CONTACT INFORMATION</div>
                                 <div>STATUS</div>
-                                <div className="text-right">ACTIONS</div>
                             </div>
                             {filteredTechnicians.map(tech => (
-                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle">
+                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${tech.id}`)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={tech.avatarUrl} />
@@ -102,12 +104,6 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     <div>
                                         <Badge variant="active">ACTIVE</Badge>
                                     </div>
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="outline" size="sm" className="!uppercase !text-xs">COMMS</Button>
-                                        <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
-                                            <ExternalLink size={16} />
-                                        </Button>
-                                    </div>
                                 </div>
                             ))}
                             {filteredTechnicians.length === 0 && (
@@ -117,14 +113,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                     </TabsContent>
                     <TabsContent value="staff">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                             <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                                 <div>STAFF MEMBER</div>
                                 <div>CONTACT INFORMATION</div>
                                 <div>ROLE</div>
-                                <div className="text-right">ACTIONS</div>
                             </div>
                             {filteredStaff.map(s => (
-                                <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle">
+                                <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${s.id}`)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={s.avatarUrl} />
@@ -137,11 +132,6 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                         <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{s.phone}</div>
                                     </div>
                                     <div><Badge variant="secondary">{s.role}</Badge></div>
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
-                                            <ExternalLink size={16} />
-                                        </Button>
-                                    </div>
                                 </div>
                             ))}
                              {filteredStaff.length === 0 && (
@@ -151,14 +141,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                     </TabsContent>
                     <TabsContent value="clients">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                            <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                                 <div>CLIENT CONTACT</div>
                                 <div>CONTACT INFORMATION</div>
                                 <div>COMPANY</div>
-                                <div className="text-right">ACTIONS</div>
                             </div>
                             {filteredClients.map(c => (
-                                <div key={c.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle">
+                                <div key={c.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${c.id}`)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={c.avatarUrl} />
@@ -170,11 +159,6 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                         <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{c.email}</div>
                                     </div>
                                     <div className="font-semibold text-text-secondary">{c.clientCompany}</div>
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
-                                            <ExternalLink size={16} />
-                                        </Button>
-                                    </div>
                                 </div>
                             ))}
                              {filteredClients.length === 0 && (

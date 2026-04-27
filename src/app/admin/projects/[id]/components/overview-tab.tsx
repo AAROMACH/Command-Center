@@ -7,6 +7,7 @@ import { FileText, Shield, AlertTriangle, Info, Plus, Users, User, Trash2 } from
 import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ManageTeamDialog } from './manage-team-dialog';
+import { Badge } from '@/components/ui/badge';
 
 type OverviewTabProps = {
     project: Project;

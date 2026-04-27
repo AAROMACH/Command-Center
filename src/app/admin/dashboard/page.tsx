@@ -1,9 +1,6 @@
+import Link from 'next/link';
 import {
   LayoutDashboard,
-  FolderKanban,
-  Users,
-  TriangleAlert,
-  Wrench,
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -21,6 +18,10 @@ export default function DashboardPage() {
         assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
     }));
 
+    // Mock data for new cards as the data model doesn't support it yet.
+    const lateCheckIns = 1;
+    const revisitsRequired = 3;
+
 
   return (
     <div>
@@ -37,35 +38,61 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="mb-6 grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
-         <StatCard 
-            label="Active Assignments" 
-            value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress').length.toString()} 
-            delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
-            deltaType="warning" 
-            icon="Wrench"
-        />
-        <StatCard 
-            label="Active Projects" 
-            value={projects.filter(p => p.status === 'active').length.toString()} 
-            delta="2 ongoing" 
-            deltaType="neutral"
-            icon="FolderKanban"
-        />
-        <StatCard 
-            label="Total Technicians" 
-            value={technicians.length.toString()} 
-            delta={`${technicians.filter(t => t.currentWorkload === 0).length} available`}
-            deltaType="neutral"
-            icon="Users"
-        />
-        <StatCard 
-            label="Critical Alerts" 
-            value={highPriorityJobs.length.toString()} 
-            delta="Action required" 
-            deltaType="negative"
-            icon="TriangleAlert"
-        />
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+         <Link href="/admin/assignments">
+            <StatCard 
+                label="Active Assignments" 
+                value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress').length.toString()} 
+                delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
+                deltaType="warning" 
+                icon="Wrench"
+            />
+        </Link>
+        <Link href="/admin/projects">
+            <StatCard 
+                label="Active Projects" 
+                value={projects.filter(p => p.status === 'active').length.toString()} 
+                delta="2 ongoing" 
+                deltaType="neutral"
+                icon="FolderKanban"
+            />
+        </Link>
+        <Link href="/admin/directory">
+            <StatCard 
+                label="Total Technicians" 
+                value={technicians.length.toString()} 
+                delta={`${technicians.filter(t => t.currentWorkload === 0).length} available`}
+                deltaType="neutral"
+                icon="Users"
+            />
+        </Link>
+        <Link href="/admin/assignments">
+            <StatCard 
+                label="Critical Alerts" 
+                value={highPriorityJobs.length.toString()} 
+                delta="Action required" 
+                deltaType="negative"
+                icon="TriangleAlert"
+            />
+        </Link>
+        <Link href="/admin/assignments">
+            <StatCard 
+                label="Late/Missed Check-ins" 
+                value={lateCheckIns.toString()}
+                delta="1 tech affected" 
+                deltaType="negative"
+                icon="Clock"
+            />
+        </Link>
+        <Link href="/admin/assignments">
+            <StatCard 
+                label="Revisits Required" 
+                value={revisitsRequired.toString()}
+                delta="From recent jobs"
+                deltaType="warning"
+                icon="CopyX"
+            />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -28,14 +28,14 @@ export function UserNav() {
             {userAvatar && <AvatarImage asChild src={userAvatar.imageUrl} alt="@shadcn">
                 <Image src={userAvatar.imageUrl} alt="User Avatar" width={36} height={36} data-ai-hint={userAvatar.imageHint} />
             </AvatarImage>}
-            <AvatarFallback>AD</AvatarFallback>
+            <AvatarFallback>SA</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Admin</p>
+            <p className="text-sm font-medium leading-none">System Administrator</p>
             <p className="text-xs leading-none text-muted-foreground">
               admin@aaromach.com
             </p>

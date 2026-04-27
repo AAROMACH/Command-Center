@@ -4,19 +4,27 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { Briefcase, LayoutDashboard, Wrench } from 'lucide-react';
-import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Briefcase,
+  LayoutDashboard,
+  Wrench,
+  ClipboardList,
+  Users,
+  Banknote,
+} from 'lucide-react';
+import { UserNav } from '@/components/user-nav';
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
   { href: '/admin/assignments', label: 'Assignments', icon: Wrench },
+  { href: '/admin/projects', label: 'Projects', icon: Briefcase },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/directory', label: 'Directory', icon: Users },
+  { href: '/admin/financials', label: 'Financials', icon: Banknote },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const userAvatar = PlaceHolderImages.find(image => image.id === 'user-avatar-1');
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center gap-4 border-b border-border-default bg-[#0f0f0f] px-6">
@@ -40,18 +48,7 @@ export function Navbar() {
       ))}
 
       <div className="ml-auto flex items-center gap-2.5">
-        <div className="text-right">
-          <div className="text-xs font-semibold text-text-primary">Admin User</div>
-          <div className="text-[10px] uppercase tracking-[0.06em] text-text-muted">Operator</div>
-        </div>
-        {userAvatar && (
-            <Avatar className="h-8 w-8 rounded-full border border-border-default">
-                <AvatarImage asChild src={userAvatar.imageUrl} alt="User Avatar">
-                    <Image src={userAvatar.imageUrl} alt="User Avatar" width={32} height={32} data-ai-hint={userAvatar.imageHint} />
-                </AvatarImage>
-                <AvatarFallback>AD</AvatarFallback>
-            </Avatar>
-        )}
+        <UserNav />
       </div>
     </nav>
   );

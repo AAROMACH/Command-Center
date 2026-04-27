@@ -70,7 +70,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                     <p className="text-sm font-mono"><span className="font-bold text-text-primary">{formatCurrency(project.actualBudget)}</span> / <span className="text-text-muted">{formatCurrency(project.projectBudget)}</span></p>
                                 </div>
                                 <div className="progress-wrap">
-                                    <div className="progress-track !h-[6px]"><div className="progress-fill" style={{ width: `${budgetProgress}%` }}></div></div>
+                                    <div className="progress-track !h-[6px]"><div className="progress-fill green" style={{ width: `${budgetProgress}%` }}></div></div>
                                 </div>
                             </div>
                              <div>

@@ -69,7 +69,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                 <div className="pdh-progress">
                     <div className="pdh-progress-label">Overall Progress</div>
                     <div className="progress-wrap !flex-1">
-                        <div className="progress-track !h-[10px]"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
+                        <div className="progress-track !h-[10px]"><div className={`progress-fill flashy ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
                         <div className={`progress-pct !text-lg !text-${progressColor}`}>{Math.round(progress)}%</div>
                     </div>
                 </div>

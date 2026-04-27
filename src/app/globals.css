@@ -79,7 +79,7 @@
   /* Typography Classes */
   .page-eyebrow    { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-red)]; }
   .page-title      { @apply text-[28px] font-bold uppercase tracking-[0.02em] text-[var(--text-primary)]; }
-  .page-subtitle   { @apply text-[13px] italic text-[var(--text-secondary)]; }
+  .page-subtitle   { @apply text-[13px] text-[var(--text-secondary)]; }
   .section-label   { @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]; }
   .stat-value      { @apply text-[32px] font-bold text-[var(--text-primary)]; }
   .stat-label      { @apply text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-muted)]; }
@@ -104,4 +104,111 @@
   .card {
     @apply rounded-lg border border-border-default bg-bg-secondary shadow-none;
   }
+
+  /* Assignments Page Styles */
+  .search-wrap {
+    @apply relative flex items-center;
+  }
+  .search-wrap svg {
+    @apply absolute left-3 h-4 w-4 text-text-muted;
+  }
+  .search-input {
+    @apply w-[350px] rounded-md border border-border-default bg-bg-secondary py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
+  }
+  .tabs {
+    @apply mb-4 flex gap-1 p-0;
+  }
+  .tab {
+    @apply h-auto cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted transition-all;
+  }
+  .tab:hover {
+    @apply text-text-primary;
+  }
+  .tab.active {
+    @apply bg-brand-red text-white;
+  }
+  .tab-count {
+    @apply ml-1.5 opacity-80;
+  }
+  .table-wrap {
+    @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary;
+  }
+  .tbl {
+    @apply w-full text-sm;
+  }
+  .tbl thead tr {
+    @apply border-b border-border-default bg-bg-tertiary;
+  }
+  .tbl th {
+    @apply px-4 py-3 text-left table-header;
+  }
+  .tbl tbody tr {
+    @apply border-b border-border-subtle transition-colors hover:bg-bg-tertiary;
+  }
+  .tbl tbody tr:last-child {
+    @apply border-none;
+  }
+  .tbl td {
+    @apply px-4 py-4 align-top;
+  }
+  .cell-id {
+    @apply mb-1.5 id-text;
+  }
+  .cell-status-stack {
+    @apply flex flex-col items-start gap-1;
+  }
+  .cell-desc-title {
+    @apply mb-1 text-sm font-semibold uppercase tracking-wide text-text-primary;
+  }
+  .cell-desc-client {
+    @apply flex items-center gap-1.5 text-xs text-text-muted;
+  }
+  .cell-desc-client svg {
+    @apply h-3.5 w-3.5;
+  }
+  .cell-sched {
+    @apply flex flex-col gap-1.5;
+  }
+  .cell-sched-date, .cell-sched-time {
+    @apply flex items-center gap-2 text-xs text-text-secondary;
+  }
+  .cell-sched svg {
+    @apply h-4 w-4 text-text-muted;
+  }
+  .cell-pay {
+    @apply flex items-center gap-2 text-text-green;
+  }
+  .cell-pay svg {
+    @apply h-4 w-4;
+  }
+  .cell-pay-val {
+    @apply font-mono font-semibold;
+  }
+  .cell-loc {
+    @apply flex items-start gap-2 text-text-secondary;
+  }
+  .cell-loc svg {
+    @apply mt-0.5 h-4 w-4 shrink-0 text-text-muted;
+  }
+  .cell-tech-awaiting {
+    @apply flex items-center gap-2 italic text-text-muted;
+  }
+  .cell-tech-awaiting svg {
+    @apply h-4 w-4;
+  }
+  .cell-tech-assigned {
+    @apply flex items-center gap-3;
+  }
+  .cell-actions {
+    @apply flex items-center justify-end gap-2;
+  }
+  .btn-assign {
+    @apply inline-flex h-auto items-center gap-1.5 rounded-md bg-brand-red px-3 py-1 text-xs font-bold uppercase tracking-wider text-white hover:bg-brand-red-hover;
+  }
+  .btn-assign svg { @apply h-3.5 w-3.5; }
+
+  .btn-delete {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-default hover:bg-bg-tertiary hover:text-text-red;
+  }
+  .btn-delete svg { @apply h-4 w-4; }
 }

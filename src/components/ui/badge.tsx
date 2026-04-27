@@ -20,6 +20,7 @@ const badgeVariants = cva(
         inprogress: "border-[#4a3500] bg-accent-gold-dim text-accent-gold",
         completed: "border-[#0f3a1a] bg-[#0a1f0f] text-text-green",
         missed: "border-border-red bg-brand-red-dim text-text-red",
+        pending: "border-[#3a2e00] bg-[#1a1500] text-accent-gold",
       },
     },
     defaultVariants: {

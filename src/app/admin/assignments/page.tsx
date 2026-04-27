@@ -1,49 +1,62 @@
 import { workOrders, technicians } from "@/lib/data";
 import { WorkOrdersClient } from "./components/work-orders-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Upload, Search, Briefcase } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default async function AssignmentsPage() {
   const allWorkOrders = workOrders;
   const availableTechnicians = technicians;
   const unassignedCount = allWorkOrders.filter(wo => wo.status === 'unassigned').length;
-  const scheduledCount = allWorkOrders.filter(wo => wo.status === 'assigned').length;
+  const scheduledCount = allWorkOrders.filter(wo => ['assigned', 'in-progress', 'completed'].includes(wo.status)).length;
 
   return (
     <div>
         <header className="page-header">
             <div>
-            <p className="page-eyebrow">Field Service Schedule</p>
-            <h1 className="page-title">Assignments</h1>
+              <p className="page-eyebrow flex items-center gap-2">
+                <Briefcase size={12} />
+                Field Service Schedule
+              </p>
+              <h1 className="page-title">Assignments</h1>
+              <p className="page-subtitle">Master schedule management for all active technician engagements.</p>
             </div>
             <div className="page-header-right">
-                <Button variant="outline">Import Jobs (CSV)</Button>
-                <Button variant="default">New Assignment</Button>
+                <Button variant="outline" size="default">
+                  <Upload size={14} className="mr-2"/>
+                  Import Jobs (CSV)
+                </Button>
+                <Button variant="default" size="default">New Assignment</Button>
             </div>
       </header>
 
-      <div className="mb-5 flex items-center gap-4">
-        <Input placeholder="Search assignments..." className="max-w-xs bg-bg-secondary" />
+      <div className="mb-4 flex items-center justify-between">
+        <div className="search-wrap">
+          <Search />
+          <input className="search-input" placeholder="Search by ID, Project, or Client..." />
+        </div>
         <Button variant="outline" size="default"><SlidersHorizontal size={14} className="mr-2"/> Filters</Button>
       </div>
 
        <Tabs defaultValue="unassigned">
-        <TabsList className="mb-4 bg-transparent p-0">
-          <TabsTrigger value="unassigned" className="rounded-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Unassigned <span className="ml-2 opacity-80">{unassignedCount}</span></TabsTrigger>
-          <TabsTrigger value="scheduled" className="rounded-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Scheduled <span className="ml-2 opacity-80">{scheduledCount}</span></TabsTrigger>
+        <TabsList className="tabs">
+          <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+            Unassigned <span className="tab-count">({unassignedCount})</span>
+          </TabsTrigger>
+          <TabsTrigger value="scheduled" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+            Scheduled <span className="tab-count">({scheduledCount})</span>
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="unassigned">
+        <TabsContent value="unassigned" className="mt-0">
             <WorkOrdersClient
                 workOrders={allWorkOrders.filter(wo => wo.status === 'unassigned')}
                 technicians={availableTechnicians}
             />
         </TabsContent>
-        <TabsContent value="scheduled">
+        <TabsContent value="scheduled" className="mt-0">
              <WorkOrdersClient
-                workOrders={allWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress')}
+                workOrders={allWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress' || wo.status === 'completed')}
                 technicians={availableTechnicians}
             />
         </TabsContent>

@@ -6,6 +6,11 @@ export type WorkOrder = {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'in-progress' | 'completed';
   assignedTechnicianId?: string;
+  clientName: string;
+  projectType: string;
+  scheduleDate: string;
+  scheduleTime: string;
+  pay: number;
 };
 
 export type Technician = {

@@ -110,6 +110,7 @@ export type ServiceRequest = {
   location: string;
   requestType: 'New Install' | 'Repair' | 'Inspection' | 'Quote';
   description: string;
-  status: 'new' | 'quoted' | 'scheduled' | 'closed';
+  status: 'new' | 'reviewed' | 'approved' | 'rejected' | 'closed';
   submittedDate: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
 };

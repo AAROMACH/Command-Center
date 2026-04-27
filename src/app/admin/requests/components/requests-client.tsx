@@ -3,7 +3,7 @@
 import type { ServiceRequest } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Hammer, MapPin } from 'lucide-react';
+import { FileText, Hammer, MapPin, Check, X, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type RequestsClientProps = {
@@ -22,6 +22,13 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             </div>
         )
     }
+    
+    // A real app would use state management to update this
+    const handleStatusChange = (id: string, status: ServiceRequest['status']) => {
+        console.log(`Request ${id} status changed to ${status}`);
+        // In a real app, you'd update the state and make an API call.
+        alert(`Request ${id} has been ${status}.`);
+    }
 
     return (
         <div className="table-wrap">
@@ -30,9 +37,10 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     <tr>
                         <th style={{ width: "140px" }}>Request ID</th>
                         <th>Client & Location</th>
-                        <th style={{ width: "40%" }}>Description</th>
-                        <th style={{ width: "160px" }}>Request Type</th>
-                        <th style={{ width: "140px" }}>Actions</th>
+                        <th style={{ width: "35%" }}>Description</th>
+                        <th style={{ width: "130px" }}>Request Type</th>
+                        <th style={{ width: "110px" }}>Priority</th>
+                        <th style={{ width: "200px" }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,21 +64,32 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 <Badge variant="secondary" className="normal-case bg-bg-tertiary text-text-secondary">{req.requestType}</Badge>
                             </td>
                             <td>
+                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="normal-case">{req.priority}</Badge>
+                            </td>
+                            <td>
                                 <div className="cell-actions">
                                     {req.status === 'new' && (
-                                        <>
-                                        <Button variant="outline" size="sm">
-                                            <FileText size={14} className="mr-2"/> Quote
+                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange(req.id, 'reviewed')}>
+                                            <Eye size={14} className="mr-2"/> Review
                                         </Button>
-                                        <Button variant="default" size="sm">
-                                            <Hammer size={14} className="mr-2"/> Create Job
+                                    )}
+                                     {req.status === 'reviewed' && (
+                                        <>
+                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange(req.id, 'rejected')}>
+                                            <X size={14} className="mr-2"/> Reject
+                                        </Button>
+                                        <Button size="sm" onClick={() => handleStatusChange(req.id, 'approved')}>
+                                            <Check size={14} className="mr-2"/> Approve
                                         </Button>
                                         </>
                                     )}
-                                     {req.status === 'quoted' && (
-                                        <Button variant="default" size="sm">
-                                            <Hammer size={14} className="mr-2"/> Create Job
+                                     {req.status === 'approved' && (
+                                        <Button size="sm" onClick={() => router.push('/admin/assignments')}>
+                                            <Hammer size={14} className="mr-2"/> Convert to Job
                                         </Button>
+                                    )}
+                                    {(req.status === 'closed' || req.status === 'rejected') && (
+                                        <span className="text-xs italic text-text-muted">No actions</span>
                                     )}
                                 </div>
                             </td>

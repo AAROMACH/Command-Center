@@ -273,9 +273,16 @@ export const timesheetLogs: TimesheetLog[] = [
 ];
 
 export const serviceRequests: ServiceRequest[] = [
-    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'New Install', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '2024-07-22' },
-    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'quoted', submittedDate: '2024-07-21' },
-    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Inspection', description: 'Annual fire alarm system inspection.', status: 'scheduled', submittedDate: '2024-07-20' },
-    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Quote', description: 'Quote for new POS system installation.', status: 'new', submittedDate: '2024-07-22' },
-    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '2024-07-19' },
+    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'New Install', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '2024-07-22', priority: 'high' },
+    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '2024-07-21', priority: 'critical' },
+    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Inspection', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '2024-07-20', priority: 'medium' },
+    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Quote', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '2024-07-22', priority: 'medium' },
+    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '2024-07-19', priority: 'low' },
+];
+
+export const profitabilityData = [
+    { id: 'proj-001', type: 'Project', name: 'Ki9 Refresh', client: 'Ki9', revenue: 15000, laborCost: 5500, materialCost: 2000, totalCost: 7500, net: 7500, margin: 50.0 },
+    { id: 'wo-106', type: 'Job', name: 'Water heater replacement', client: 'Apartment Complex', revenue: 750, laborCost: 400, materialCost: 250, totalCost: 650, net: 100, margin: 13.3 },
+    { id: 'wo-102', type: 'Job', name: 'Repair central AC unit', client: 'Commercial Property', revenue: 350, laborCost: 200, materialCost: 50, totalCost: 250, net: 100, margin: 28.6 },
+    { id: 'wo-104', type: 'Job', name: 'Broken refrigerator', client: 'Restaurant Supply Co.', revenue: 475, laborCost: 250, materialCost: 100, totalCost: 350, net: 125, margin: 26.3 },
 ];

@@ -1,10 +1,9 @@
 'use client';
-import { Banknote, FileText, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, SlidersHorizontal, Upload } from 'lucide-react';
+import { Banknote, FileText, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, SlidersHorizontal, Upload, Briefcase, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard } from '@/app/admin/dashboard/components/stat-card';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { profitabilityData } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useState } from 'react';
@@ -20,42 +19,6 @@ const financialStats = [
     { label: "Open Invoices", value: "32", delta: "$85,230 overdue", deltaType: "negative" as const, icon: FileText },
 ];
 
-const revenueData = [
-  { month: "Jan", revenue: 45000, costs: 28000 },
-  { month: "Feb", revenue: 52000, costs: 31000 },
-  { month: "Mar", revenue: 68000, costs: 40000 },
-  { month: "Apr", revenue: 61000, costs: 38000 },
-  { month: "May", revenue: 75000, costs: 45000 },
-  { month: "Jun", revenue: 82000, costs: 48000 },
-];
-
-const revenueChartConfig = {
-  revenue: { label: "Revenue", color: "var(--text-green)" },
-  costs: { label: "Costs", color: "var(--text-red)" },
-} satisfies ChartConfig;
-
-const expenseData = [
-  { name: 'Labor', value: 450000 },
-  { name: 'Materials', value: 180000 },
-  { name: 'Overhead', value: 90000 },
-  { name: 'Subcontractors', value: 30000 },
-];
-
-const expenseChartConfig = {
-    Labor: { label: 'Labor', color: '#CC2200' },
-    Materials: { label: 'Materials', color: '#C89B3C' },
-    Overhead: { label: 'Overhead', color: '#444444' },
-    Subcontractors: { label: 'Subcontractors', color: '#666666' },
-} satisfies ChartConfig;
-
-
-const profitabilityData = [
-    { id: 'proj-001', name: 'Ki9 Refresh', client: 'Ki9', budget: 15000, actual: 7500, profit: 7500, margin: 50.0 },
-    { id: 'wo-106', name: 'Water heater replacement', client: 'Apartment Complex', budget: 750, actual: 850, profit: -100, margin: -13.3 },
-    { id: 'wo-102', name: 'Repair central AC unit', client: 'Commercial Property', budget: 350, actual: 300, profit: 50, margin: 14.3 },
-    { id: 'wo-104', name: 'Broken refrigerator', client: 'Restaurant Supply Co.', budget: 475, actual: 400, profit: 75, margin: 15.8 },
-];
-
 export default function FinancialsPage() {
     const [date, setDate] = useState<DateRange | undefined>(undefined);
 
@@ -69,8 +32,8 @@ export default function FinancialsPage() {
                     <Banknote size={12} />
                     Finance & Accounting
                   </p>
-                  <h1 className="page-title">Financial Hub</h1>
-                  <p className="page-subtitle">Analysis of revenue, costs, and profitability across all operations.</p>
+                  <h1 className="page-title">Operational Finance</h1>
+                  <p className="page-subtitle">Real-time profitability analysis of all billable work.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <Popover>
@@ -86,7 +49,7 @@ export default function FinancialsPage() {
                       </Popover>
                     <Button variant="outline" size="default">
                         <Upload size={14} className="mr-2"/>
-                        Import
+                        Export
                     </Button>
                 </div>
             </header>
@@ -97,61 +60,10 @@ export default function FinancialsPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-5 gap-4 mb-6">
-                <Card className="col-span-3">
-                  <CardHeader>
-                    <CardTitle>Revenue vs. Costs</CardTitle>
-                    <CardDescription>Last 6 months</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[250px] w-full">
-                       <ChartContainer config={revenueChartConfig} className="w-full h-full">
-                        <BarChart accessibilityLayer data={revenueData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
-                            <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} stroke="var(--text-muted)" fontSize={12} />
-                            <ChartTooltip cursor={{fill: 'var(--bg-tertiary)'}} content={<ChartTooltipContent className="bg-elevated border-border-default" labelClassName="font-bold text-text-primary" />} />
-                            <Bar dataKey="revenue" radius={4} fill="var(--color-revenue)" />
-                             <Bar dataKey="costs" radius={4} fill="var(--color-costs)" />
-                        </BarChart>
-                      </ChartContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="col-span-2">
-                    <CardHeader>
-                        <CardTitle>Expense Breakdown (Q2)</CardTitle>
-                        <CardDescription>Total costs: {formatCurrency(750000)}</CardDescription>
-                    </CardHeader>
-                     <CardContent>
-                        <div className="h-[250px] w-full">
-                            <ChartContainer config={expenseChartConfig} className="w-full h-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                                            const RADIAN = Math.PI / 180;
-                                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                                            return (
-                                            <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">{`(${(percent * 100).toFixed(0)}%)`}</text>
-                                            );
-                                        }}>
-                                            {expenseData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={`var(--color-${entry.name})`} stroke={`var(--color-${entry.name})`} />
-                                            ))}
-                                        </Pie>
-                                        <ChartTooltip cursor={{fill: 'var(--bg-tertiary)'}} content={<ChartTooltipContent className="bg-elevated border-border-default" />} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
             <Card>
                 <CardHeader>
-                    <CardTitle>Project & Job Profitability</CardTitle>
-                    <CardDescription>Financial performance of recent engagements.</CardDescription>
+                    <CardTitle>Operational Profitability</CardTitle>
+                    <CardDescription>Financial performance of all jobs and projects.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="table-wrap !rounded-none !border-x-0 !border-b-0">
@@ -160,10 +72,12 @@ export default function FinancialsPage() {
                                 <tr>
                                     <th>ID / Name</th>
                                     <th>Client</th>
-                                    <th className="text-right">Budget</th>
-                                    <th className="text-right">Actual Cost</th>
+                                    <th className="text-right">Revenue</th>
+                                    <th className="text-right">Labor Cost</th>
+                                    <th className="text-right">Material Cost</th>
+                                    <th className="text-right">Total Cost</th>
                                     <th className="text-right">Net Profit</th>
-                                    <th className="text-right">Profit Margin</th>
+                                    <th className="text-right">Margin</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -171,14 +85,19 @@ export default function FinancialsPage() {
                                     <tr key={item.id}>
                                         <td>
                                             <div className="cell-id">{item.id.toUpperCase()}</div>
-                                            <div className="font-semibold text-text-primary text-sm">{item.name}</div>
+                                            <div className="flex items-center gap-2">
+                                                {item.type === 'Project' ? <Briefcase size={14} className="text-text-muted"/> : <Wrench size={14} className="text-text-muted"/>}
+                                                <div className="font-semibold text-text-primary text-sm">{item.name}</div>
+                                            </div>
                                         </td>
                                         <td>
                                             <div className="text-sm text-text-secondary">{item.client}</div>
                                         </td>
-                                        <td className="text-right font-mono text-text-secondary">{formatCurrency(item.budget)}</td>
-                                        <td className="text-right font-mono text-text-secondary">{formatCurrency(item.actual)}</td>
-                                        <td className={`text-right font-mono font-bold ${item.profit >= 0 ? 'text-text-green' : 'text-text-red'}`}>{formatCurrency(item.profit)}</td>
+                                        <td className="text-right font-mono text-text-secondary">{formatCurrency(item.revenue)}</td>
+                                        <td className="text-right font-mono text-text-secondary">{formatCurrency(item.laborCost)}</td>
+                                        <td className="text-right font-mono text-text-secondary">{formatCurrency(item.materialCost)}</td>
+                                        <td className="text-right font-mono text-text-secondary font-bold">{formatCurrency(item.totalCost)}</td>
+                                        <td className={`text-right font-mono font-bold ${item.net >= 0 ? 'text-text-green' : 'text-text-red'}`}>{formatCurrency(item.net)}</td>
                                         <td className={`text-right font-mono font-bold ${item.margin >= 0 ? 'text-text-green' : 'text-text-red'}`}>{item.margin.toFixed(1)}%</td>
                                     </tr>
                                 ))}

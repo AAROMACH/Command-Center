@@ -3,12 +3,23 @@ import { RequestsClient } from "./components/requests-client";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import type { ServiceRequest } from '@/lib/types';
+
+const priorityOrder: Record<ServiceRequest['priority'], number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
 
 export default function RequestsPage() {
-  const newRequests = serviceRequests.filter(p => p.status === 'new');
-  const quotedRequests = serviceRequests.filter(p => p.status === 'quoted');
-  const scheduledRequests = serviceRequests.filter(p => p.status === 'scheduled');
-  const closedRequests = serviceRequests.filter(p => p.status === 'closed');
+  const newRequests = serviceRequests
+    .filter(p => p.status === 'new')
+    .sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+    
+  const reviewedRequests = serviceRequests.filter(p => p.status === 'reviewed');
+  const approvedRequests = serviceRequests.filter(p => p.status === 'approved');
+  const closedRequests = serviceRequests.filter(p => p.status === 'closed' || p.status === 'rejected');
 
   return (
     <div>
@@ -42,25 +53,25 @@ export default function RequestsPage() {
           <TabsTrigger value="new" className="tab">
             New <span className="tab-count">({newRequests.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="quoted" className="tab">
-            Quoted <span className="tab-count">({quotedRequests.length})</span>
+          <TabsTrigger value="reviewed" className="tab">
+            Reviewed <span className="tab-count">({reviewedRequests.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="scheduled" className="tab">
-            Scheduled <span className="tab-count">({scheduledRequests.length})</span>
+          <TabsTrigger value="approved" className="tab">
+            Approved <span className="tab-count">({approvedRequests.length})</span>
           </TabsTrigger>
            <TabsTrigger value="closed" className="tab">
-            Closed <span className="tab-count">({closedRequests.length})</span>
+            Closed / Rejected <span className="tab-count">({closedRequests.length})</span>
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="new" className="mt-0">
           <RequestsClient requests={newRequests} />
         </TabsContent>
-        <TabsContent value="quoted" className="mt-0">
-          <RequestsClient requests={quotedRequests} />
+        <TabsContent value="reviewed" className="mt-0">
+          <RequestsClient requests={reviewedRequests} />
         </TabsContent>
-        <TabsContent value="scheduled" className="mt-0">
-          <RequestsClient requests={scheduledRequests} />
+        <TabsContent value="approved" className="mt-0">
+          <RequestsClient requests={approvedRequests} />
         </TabsContent>
         <TabsContent value="closed" className="mt-0">
           <RequestsClient requests={closedRequests} />

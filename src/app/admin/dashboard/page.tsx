@@ -8,7 +8,7 @@ import {
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { WorkloadChart } from './components/workload-chart';
-import { workOrders, technicians } from '@/lib/data';
+import { workOrders, technicians, projects } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         />
         <StatCard 
             label="Active Projects" 
-            value={workOrders.filter(p => p.status === 'active').length.toString()} 
+            value={projects.filter(p => p.status === 'active').length.toString()} 
             delta="2 ongoing" 
             deltaType="neutral"
             icon="FolderKanban"
@@ -62,7 +62,7 @@ export default function DashboardPage() {
         <StatCard 
             label="Critical Alerts" 
             value={highPriorityJobs.length.toString()} 
-            delta="3 technicians offline" 
+            delta="Action required" 
             deltaType="negative"
             icon="TriangleAlert"
         />
@@ -103,6 +103,13 @@ export default function DashboardPage() {
                                 </TableCell>
                             </TableRow>
                         ))}
+                         {highPriorityJobs.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center h-24">
+                                    No critical jobs in the queue. Well done!
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </CardContent>

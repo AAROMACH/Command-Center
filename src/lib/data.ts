@@ -4,6 +4,7 @@ import { PlaceHolderImages } from './placeholder-images';
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
 
 export const technicians: Technician[] = [
+  // Technicians
   {
     id: 'tech-001',
     name: 'Alex Johnson',
@@ -36,7 +37,7 @@ export const technicians: Technician[] = [
     currentWorkload: 2,
     skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
     avatarUrl: getImageUrl('technician-2'),
-    availability: {
+     availability: {
       'Monday': { start: '09:00', end: '18:00' },
       'Tuesday': { start: '09:00', end: '18:00' },
       'Wednesday': { start: '09:00', end: '18:00' },
@@ -57,7 +58,7 @@ export const technicians: Technician[] = [
     currentWorkload: 5,
     skills: ['Plumbing', 'Carpentry', 'Welding'],
     avatarUrl: getImageUrl('technician-3'),
-    availability: {
+     availability: {
       'Monday': { start: '07:00', end: '16:00' },
       'Tuesday': { start: '07:00', end: '16:00' },
       'Wednesday': { start: '07:00', end: '16:00' },
@@ -78,7 +79,7 @@ export const technicians: Technician[] = [
     currentWorkload: 1,
     skills: ['HVAC', 'Electrical', 'Smart Home', 'Networking'],
     avatarUrl: getImageUrl('technician-4'),
-    availability: {
+     availability: {
       'Monday': { start: '10:00', end: '19:00' },
       'Tuesday': { start: '10:00', end: '19:00' },
       'Wednesday': { start: '10:00', end: '19:00' },
@@ -109,6 +110,8 @@ export const technicians: Technician[] = [
       'Sunday': null,
     }
   },
+
+  // Staff
   {
     id: 'staff-001',
     name: 'Eleanor Vance',
@@ -116,26 +119,55 @@ export const technicians: Technician[] = [
     email: 'eleanor.v@aaromach.com',
     phone: '555-888-1111',
     currentLocation: 'Command Center',
-    reliabilityScore: 100,
-    currentWorkload: 0,
+    reliabilityScore: 100, // N/A for staff
+    currentWorkload: 0, // N/A for staff
     skills: ['Logistics', 'Scheduling', 'Communication'],
     avatarUrl: 'https://picsum.photos/seed/staff1/40/40',
-    availability: {}
+    availability: {} // N/A for staff
   },
   {
+    id: 'staff-002',
+    name: 'System Administrator',
+    role: 'Admin',
+    email: 'admin@aaromach.com',
+    phone: '555-000-0000',
+    currentLocation: 'Command Center',
+    reliabilityScore: 100,
+    currentWorkload: 0,
+    skills: ['System Admin'],
+    avatarUrl: getImageUrl('user-avatar-1'),
+    availability: {}
+  },
+  
+  // Clients
+  {
     id: 'client-001',
-    name: 'Johnathan Doe',
+    name: 'Jonathan Doe',
     role: 'Client Contact',
     email: 'jon.d@globalcorp.com',
     phone: '555-777-1234',
+    currentLocation: 'New York, NY', // N/A for client
+    reliabilityScore: 0, // N/A for client
+    currentWorkload: 0, // N/A for client
+    skills: [], // N/A for client
+    clientCompany: 'Global Corp',
+    avatarUrl: 'https://picsum.photos/seed/client1/40/40',
+    availability: {} // N/A for client
+  },
+  {
+    id: 'client-002',
+    name: 'Jane Smith',
+    role: 'Client Contact',
+    email: 'jane.s@acme.com',
+    phone: '555-777-5678',
     currentLocation: 'New York, NY',
     reliabilityScore: 0,
     currentWorkload: 0,
     skills: [],
-    clientCompany: 'Global Corp',
-    avatarUrl: 'https://picsum.photos/seed/client1/40/40',
+    clientCompany: 'Acme Inc.',
+    avatarUrl: 'https://picsum.photos/seed/client2/40/40',
     availability: {}
-  },
+  }
 ];
 
 export const workOrders: WorkOrder[] = [

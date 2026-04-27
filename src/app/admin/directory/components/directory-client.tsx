@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Mail, Phone, ExternalLink, Plus, Map, UserCheck, ToggleLeft, GanttChartSquare, Building } from 'lucide-react';
+import { Search, Mail, Phone, ExternalLink, Plus, Map, UserCheck, Building } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
@@ -62,9 +62,9 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                 </div>
             </div>
             
-            <div className="mt-6 bg-bg-secondary border border-border-subtle rounded-lg overflow-hidden">
-                <Tabs defaultValue="technicians" className="w-full">
-                    <TabsContent value="technicians">
+            <Tabs defaultValue="technicians" className="w-full mt-6">
+                <TabsContent value="technicians">
+                     <div className="table-wrap">
                         <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                             <div>TECHNICIAN</div>
                             <div>CONTACT INFORMATION</div>
@@ -98,8 +98,10 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                          {filteredTechnicians.length === 0 && (
                             <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
                         )}
-                    </TabsContent>
-                    <TabsContent value="staff">
+                    </div>
+                </TabsContent>
+                <TabsContent value="staff">
+                    <div className="table-wrap">
                          <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                             <div>STAFF MEMBER</div>
                             <div>CONTACT INFORMATION</div>
@@ -127,8 +129,10 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 </div>
                             </div>
                         ))}
-                    </TabsContent>
-                     <TabsContent value="clients">
+                    </div>
+                </TabsContent>
+                <TabsContent value="clients">
+                    <div className="table-wrap">
                         <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                             <div>CLIENT CONTACT</div>
                             <div>CONTACT INFORMATION</div>
@@ -155,9 +159,11 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 </div>
                             </div>
                         ))}
-                    </TabsContent>
-                     <TabsContent value="timeoff">
-                         <Table>
+                    </div>
+                </TabsContent>
+                <TabsContent value="timeoff">
+                    <div className="table-wrap">
+                        <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>PERSONNEL</TableHead>
@@ -174,7 +180,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     <TableRow key={req.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/></Avatar>
+                                                <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/><AvatarFallback>{person?.name.charAt(0)}</AvatarFallback></Avatar>
                                                 <span className="font-bold">{person?.name}</span>
                                             </div>
                                         </TableCell>
@@ -192,32 +198,32 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     </TableRow>
                                 )})}
                             </TableBody>
-                         </Table>
-                    </TabsContent>
-                     <TabsContent value="map">
-                         <div className="p-4 flex flex-col gap-4">
-                            <div className="flex justify-end items-center gap-4 border-b border-border-default pb-3">
+                        </Table>
+                    </div>
+                </TabsContent>
+                <TabsContent value="map">
+                    <div className="p-4 flex flex-col gap-4 border border-border-default rounded-lg bg-bg-secondary">
+                        <div className="flex justify-end items-center gap-4 border-b border-border-default pb-3">
+                            <div className="flex items-center gap-2">
+                                <UserCheck size={16} className="text-accent-gold" />
+                                <Label>Tech Home Area</Label>
+                            </div>
+                            <Switch id="map-toggle" />
                                 <div className="flex items-center gap-2">
-                                    <UserCheck size={16} className="text-accent-gold" />
-                                    <Label>Tech Home Area</Label>
-                                </div>
-                                <Switch id="map-toggle" />
-                                 <div className="flex items-center gap-2">
-                                    <Building size={16} className="text-text-green" />
-                                    <Label>Client Sites</Label>
-                                </div>
+                                <Building size={16} className="text-text-green" />
+                                <Label>Client Sites</Label>
                             </div>
-                            <div className="relative aspect-video w-full bg-bg-primary rounded-md overflow-hidden border border-border-subtle">
-                                <Image src="https://picsum.photos/seed/michigan/1200/800" alt="Map of Michigan" layout="fill" objectFit="cover" data-ai-hint="map michigan" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                    <p className="text-text-muted">[Interactive Map Placeholder]</p>
-                                </div>
+                        </div>
+                        <div className="relative aspect-video w-full bg-bg-primary rounded-md overflow-hidden border border-border-subtle">
+                            <Image src="https://picsum.photos/seed/michigan/1200/800" alt="Map of Michigan" layout="fill" objectFit="cover" data-ai-hint="map michigan" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                <p className="text-text-muted">[Interactive Map Placeholder]</p>
                             </div>
-                            <p className="text-xs text-text-muted text-center">In a full implementation, this would be an interactive map using a library like Mapbox or Google Maps. You could toggle layers and click on technicians to see their operational radius.</p>
-                         </div>
-                    </TabsContent>
-                </Tabs>
-            </div>
+                        </div>
+                        <p className="text-xs text-text-muted text-center">In a full implementation, this would be an interactive map using a library like Mapbox or Google Maps. You could toggle layers and click on technicians to see their operational radius.</p>
+                        </div>
+                </TabsContent>
+            </Tabs>
             <AddPersonnelDialog isOpen={isAddPersonnelOpen} setIsOpen={setIsAddPersonnelOpen} />
         </>
     );

@@ -25,12 +25,28 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
     const staff = allPersonnel.filter(p => !p.role.toLowerCase().includes('tech') && !p.role.toLowerCase().includes('client'));
     const clients = allPersonnel.filter(p => p.role.toLowerCase().includes('client'));
 
+    const lowercasedQuery = searchQuery.toLowerCase();
+
     const filteredTechnicians = technicians.filter((tech) =>
-        tech.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tech.email.toLowerCase().includes(searchQuery.toLowerCase())
+        tech.name.toLowerCase().includes(lowercasedQuery) ||
+        tech.email.toLowerCase().includes(lowercasedQuery)
     );
-     const filteredStaff = staff.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-     const filteredClients = clients.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const filteredStaff = staff.filter((s) =>
+        s.name.toLowerCase().includes(lowercasedQuery) ||
+        s.email.toLowerCase().includes(lowercasedQuery)
+    );
+
+    const filteredClients = clients.filter((c) =>
+        c.name.toLowerCase().includes(lowercasedQuery) ||
+        c.email.toLowerCase().includes(lowercasedQuery) ||
+        (c.clientCompany || '').toLowerCase().includes(lowercasedQuery)
+    );
+    
+    const filteredTimeOffRequests = timeOffRequests.filter(req => {
+        const person = allPersonnel.find(p => p.id === req.technicianId);
+        return person?.name.toLowerCase().includes(lowercasedQuery) || false;
+    });
 
 
     return (
@@ -128,6 +144,9 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     </div>
                                 </div>
                             ))}
+                             {filteredStaff.length === 0 && (
+                                <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
+                            )}
                         </div>
                     </TabsContent>
                     <TabsContent value="clients">
@@ -158,6 +177,9 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     </div>
                                 </div>
                             ))}
+                             {filteredClients.length === 0 && (
+                                <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
+                            )}
                         </div>
                     </TabsContent>
                     <TabsContent value="timeoff">
@@ -173,7 +195,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {timeOffRequests.map(req => {
+                                    {filteredTimeOffRequests.map(req => {
                                         const person = allPersonnel.find(p => p.id === req.technicianId);
                                         return (
                                         <TableRow key={req.id}>
@@ -196,6 +218,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                             </TableCell>
                                         </TableRow>
                                     )})}
+                                    {filteredTimeOffRequests.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center h-24 text-text-muted">
+                                                No time off requests match your search.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
@@ -215,9 +244,6 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                             </div>
                             <div className="relative aspect-video w-full bg-bg-primary rounded-md overflow-hidden border border-border-subtle">
                                 <Image src="https://picsum.photos/seed/michigan/1200/800" alt="Map of Michigan" layout="fill" objectFit="cover" data-ai-hint="map michigan" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                    <p className="text-text-muted">[Interactive Map Placeholder]</p>
-                                </div>
                             </div>
                             <p className="text-xs text-text-muted text-center">In a full implementation, this would be an interactive map using a library like Mapbox or Google Maps. You could toggle layers and click on technicians to see their operational radius.</p>
                             </div>

@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -15,6 +15,15 @@ export const technicians: Technician[] = [
     currentWorkload: 3,
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
     avatarUrl: getImageUrl('technician-1'),
+    availability: {
+      'Monday': { start: '08:00', end: '17:00' },
+      'Tuesday': { start: '08:00', end: '17:00' },
+      'Wednesday': { start: '08:00', end: '17:00' },
+      'Thursday': { start: '08:00', end: '17:00' },
+      'Friday': { start: '08:00', end: '17:00' },
+      'Saturday': null,
+      'Sunday': null,
+    }
   },
   {
     id: 'tech-002',
@@ -27,6 +36,15 @@ export const technicians: Technician[] = [
     currentWorkload: 2,
     skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
     avatarUrl: getImageUrl('technician-2'),
+    availability: {
+      'Monday': { start: '09:00', end: '18:00' },
+      'Tuesday': { start: '09:00', end: '18:00' },
+      'Wednesday': { start: '09:00', end: '18:00' },
+      'Thursday': { start: '09:00', end: '18:00' },
+      'Friday': { start: '09:00', end: '14:00' },
+      'Saturday': null,
+      'Sunday': null,
+    }
   },
   {
     id: 'tech-003',
@@ -39,6 +57,15 @@ export const technicians: Technician[] = [
     currentWorkload: 5,
     skills: ['Plumbing', 'Carpentry', 'Welding'],
     avatarUrl: getImageUrl('technician-3'),
+    availability: {
+      'Monday': { start: '07:00', end: '16:00' },
+      'Tuesday': { start: '07:00', end: '16:00' },
+      'Wednesday': { start: '07:00', end: '16:00' },
+      'Thursday': { start: '07:00', end: '16:00' },
+      'Friday': { start: '07:00', end: '16:00' },
+      'Saturday': { start: '09:00', end: '13:00' },
+      'Sunday': null,
+    }
   },
   {
     id: 'tech-004',
@@ -51,6 +78,15 @@ export const technicians: Technician[] = [
     currentWorkload: 1,
     skills: ['HVAC', 'Electrical', 'Smart Home', 'Networking'],
     avatarUrl: getImageUrl('technician-4'),
+    availability: {
+      'Monday': { start: '10:00', end: '19:00' },
+      'Tuesday': { start: '10:00', end: '19:00' },
+      'Wednesday': { start: '10:00', end: '19:00' },
+      'Thursday': { start: '10:00', end: '19:00' },
+      'Friday': null,
+      'Saturday': null,
+      'Sunday': null,
+    }
   },
    {
     id: 'tech-005',
@@ -63,6 +99,15 @@ export const technicians: Technician[] = [
     currentWorkload: 4,
     skills: ['Appliance Repair', 'Plumbing', 'Cabling'],
     avatarUrl: getImageUrl('technician-5'),
+    availability: {
+      'Monday': { start: '08:00', end: '17:00' },
+      'Tuesday': { start: '08:00', end: '17:00' },
+      'Wednesday': { start: '08:00', end: '17:00' },
+      'Thursday': { start: '08:00', end: '17:00' },
+      'Friday': { start: '08:00', end: '17:00' },
+      'Saturday': null,
+      'Sunday': null,
+    }
   },
 ];
 
@@ -91,7 +136,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Commercial Property',
     projectType: 'Repair',
-    scheduleDate: '2024-07-18',
+    scheduleDate: '2024-07-28', // Today
     scheduleTime: '2:00 PM EST',
     pay: 350.00,
   },
@@ -104,7 +149,7 @@ export const workOrders: WorkOrder[] = [
     status: 'unassigned',
     clientName: 'Smart Home Solutions',
     projectType: 'Installation',
-    scheduleDate: '2024-07-25',
+    scheduleDate: '2024-07-29', // Tomorrow
     scheduleTime: '10:00 AM EST',
     pay: 120.00,
   },
@@ -118,7 +163,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-002',
     clientName: 'Restaurant Supply Co.',
     projectType: 'Emergency Repair',
-    scheduleDate: '2024-07-15',
+    scheduleDate: '2024-07-25',
     scheduleTime: '4:00 PM EST',
     pay: 475.00,
   },
@@ -131,7 +176,7 @@ export const workOrders: WorkOrder[] = [
     status: 'unassigned',
     clientName: 'Corporate Tower Mgmt',
     projectType: 'Inspection',
-    scheduleDate: '2024-07-22',
+    scheduleDate: '2024-08-01',
     scheduleTime: '9:00 AM EST',
     pay: 600.00,
   },
@@ -145,7 +190,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Apartment Complex',
     projectType: 'Replacement',
-    scheduleDate: '2024-07-19',
+    scheduleDate: '2024-07-28', // Today
     scheduleTime: '1:00 PM EST',
     pay: 750.00,
   },
@@ -161,7 +206,7 @@ export const projects: Project[] = [
     startDate: '2026-04-18',
     startTime: '9:00 AM EDT',
     estimatedDuration: '2 weeks',
-    assignedTechnicianIds: ['tech-003'],
+    assignedTechnicianIds: ['tech-003', 'tech-001'],
     team: [{ technicianId: 'tech-003', role: 'Project Lead' }, { technicianId: 'tech-001', role: 'Cabling Tech'}],
     scope: 'All PCs — full hardware refresh across site. Scope includes deinstallation of old equipment, packing for shipment, and installation of new desktops, monitors, and peripherals at all workstations.',
     onsiteContact: 'John Doe - 555-123-4567',
@@ -182,6 +227,8 @@ export const projects: Project[] = [
         notes: 'All de-installed equipment must be audited against the asset list before moving to packing.',
         tasks: [
           { id: 't1-1', name: 'Remove existing cabling', isCompleted: true, requiresPhoto: true },
+          { id: 't1-2', name: 'Disconnect all peripherals', isCompleted: true, requiresPhoto: false },
+          { id: 't1-3', name: 'Remove desktops from workstations', isCompleted: true, requiresPhoto: true },
         ],
       },
       {
@@ -197,6 +244,51 @@ export const projects: Project[] = [
       },
     ],
   },
+  {
+    id: 'proj-002',
+    name: 'Global Corp HQ AV Fit-out',
+    client: 'Global Corp',
+    location: 'New York, NY',
+    status: 'active',
+    startDate: '2026-05-01',
+    startTime: '8:00 AM EDT',
+    estimatedDuration: '3 weeks',
+    assignedTechnicianIds: ['tech-001', 'tech-004'],
+    team: [{ technicianId: 'tech-001', role: 'Project Lead' }, { technicianId: 'tech-004', role: 'AV Specialist'}],
+    scope: 'Full AV system installation for new headquarters. Includes 5 conference rooms, 2 event spaces, and digital signage throughout the building.',
+    onsiteContact: 'Jane Smith - 555-987-6543',
+    siteAccessInstructions: 'Report to security on the ground floor. Hard hats required at all times. All tools must be inspected and tagged.',
+    siteHazardNotes: [
+      { id: 'h3', text: 'Active construction zone', type: 'danger'},
+    ],
+    projectBudget: 75000,
+    estimatedHours: 240,
+    actualBudget: 12000,
+    actualHours: 35,
+    phases: [
+      {
+        id: 'phase-3',
+        phaseNumber: 1,
+        name: 'Cabling & Infrastructure',
+        notes: 'Run all necessary HDMI, Cat6, and speaker wire to designated locations as per the blueprint.',
+        tasks: [
+          { id: 't3-1', name: 'Run conduit in main conference room', isCompleted: true, requiresPhoto: false },
+          { id: 't3-2', name: 'Pull all AV cabling for Room 101', isCompleted: false, requiresPhoto: true },
+          { id: 't3-3', name: 'Terminate all Cat6 runs', isCompleted: false, requiresPhoto: false },
+        ],
+      },
+       {
+        id: 'phase-4',
+        phaseNumber: 2,
+        name: 'Hardware Installation',
+        notes: '',
+        tasks: [
+          { id: 't4-1', name: 'Mount displays in all conference rooms', isCompleted: false, requiresPhoto: true },
+          { id: 't4-2', name: 'Install ceiling speakers', isCompleted: false, requiresPhoto: true },
+        ],
+      },
+    ],
+  }
 ];
 
 export const projectDocuments: ProjectDocument[] = [
@@ -286,3 +378,51 @@ export const profitabilityData = [
     { id: 'wo-102', type: 'Job', name: 'Repair central AC unit', client: 'Commercial Property', revenue: 350, laborCost: 200, materialCost: 50, totalCost: 250, net: 100, margin: 28.6 },
     { id: 'wo-104', type: 'Job', name: 'Broken refrigerator', client: 'Restaurant Supply Co.', revenue: 475, laborCost: 250, materialCost: 100, totalCost: 350, net: 125, margin: 26.3 },
 ];
+
+// Tech Portal Data
+export const assignmentTimeLogs: AssignmentTimeLog[] = [
+  { id: 'atl-1', workOrderId: 'wo-102', technicianId: 'tech-001', checkInTime: '2024-07-28T14:05:00Z', location: '40.6501° N, 73.9496° W'},
+  { id: 'atl-2', workOrderId: 'wo-106', technicianId: 'tech-001', checkInTime: '2024-07-28T13:00:00Z', location: '40.6501° N, 73.9496° W'},
+];
+
+export const weeklyLogs: WeeklyLog[] = [
+  {
+    id: 'wl-1',
+    technicianId: 'tech-001',
+    weekOf: 'July 22, 2024',
+    status: 'Draft',
+    items: [
+      { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },
+    ],
+    reimbursements: [
+      { id: 'fr-1', technicianId: 'tech-001', date: '2024-07-24', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
+    ],
+  }
+];
+
+export const timeOffRequests: TimeOffRequest[] = [
+  { id: 'tor-1', technicianId: 'tech-001', startDate: '2024-08-15', endDate: '2024-08-16', type: 'Vacation', reason: 'Family trip', status: 'approved' },
+  { id: 'tor-2', technicianId: 'tech-001', startDate: '2024-09-02', endDate: '2024-09-02', type: 'Personal', reason: 'Appointment', status: 'pending' },
+];
+
+export const penaltyEvents: PenaltyEvent[] = [
+  { id: 'pe-1', technicianId: 'tech-001', date: '2024-06-15', reason: 'Late check-in to critical job', points: -2 },
+  { id: 'pe-2', technicianId: 'tech-001', date: '2024-05-20', reason: 'Missed required photo upload', points: -1 },
+];
+
+export const projectDailyLogs: ProjectDailyLog[] = [
+  {
+    id: 'pdl-1',
+    projectId: 'proj-001',
+    technicianId: 'tech-001',
+    date: '2026-04-18',
+    hoursWorked: 9,
+    workSummary: 'Assisted with deinstallation and started running new CAT6A cabling for the refresh. All old patch panels have been removed. Coordinated with David on server room access.',
+    taskIdsProgressed: ['t2-2'],
+    taskIdsCompleted: ['t1-1', 't1-2', 't1-3'],
+    phaseIdsWorked: ['phase-1', 'phase-2'],
+    materialsUsed: [{ item: 'CAT6A Cable', quantity: 500 }],
+    photoUrls: [getImageUrl('site-photo-2')]
+  }
+]

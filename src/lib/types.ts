@@ -24,6 +24,7 @@ export type Technician = {
   currentWorkload: number;
   skills: string[];
   avatarUrl: string;
+  availability: Record<string, { start: string; end: string } | null>;
 };
 
 export type Recommendation = {
@@ -35,7 +36,7 @@ export type Recommendation = {
 // New Types for Projects Feature
 export type ProjectTeamMember = {
   technicianId: string;
-  role: string;
+  role:string;
 };
 
 export type Project = {
@@ -113,4 +114,74 @@ export type ServiceRequest = {
   status: 'new' | 'reviewed' | 'approved' | 'rejected' | 'closed';
   submittedDate: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
+};
+
+// Tech Portal Specific Types
+export type AssignmentTimeLog = {
+  id: string;
+  workOrderId: string;
+  technicianId: string;
+  checkInTime: string;
+  checkOutTime?: string;
+  minutesWorked?: number;
+  location: string; 
+};
+
+export type WeeklyLogItem = {
+  id: string;
+  workOrderId: string;
+  outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';
+  isComplete: boolean;
+  isAdminReviewed: boolean;
+};
+
+export type FinancialRecord = {
+  id: string;
+  technicianId: string;
+  date: string;
+  type: 'reimbursement' | 'payout' | 'penalty';
+  amount: number;
+  description: string;
+};
+
+export type WeeklyLog = {
+  id: string;
+  technicianId: string;
+  weekOf: string;
+  status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected';
+  items: WeeklyLogItem[];
+  reimbursements: FinancialRecord[];
+  totalPayout?: number;
+};
+
+export type TimeOffRequest = {
+  id: string;
+  technicianId: string;
+  startDate: string;
+  endDate: string;
+  type: 'Vacation' | 'Sick' | 'Personal';
+  reason: string;
+  status: 'pending' | 'approved' | 'denied';
+};
+
+export type PenaltyEvent = {
+  id: string;
+  technicianId: string;
+  date: string;
+  reason: string;
+  points: number;
+};
+
+export type ProjectDailyLog = {
+  id: string;
+  projectId: string;
+  technicianId: string;
+  date: string;
+  hoursWorked: number;
+  workSummary: string;
+  taskIdsProgressed: string[];
+  taskIdsCompleted: string[];
+  phaseIdsWorked: string[];
+  materialsUsed: { item: string; quantity: number }[];
+  photoUrls: string[];
 };

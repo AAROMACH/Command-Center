@@ -1,16 +1,36 @@
 'use client';
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { Wrench, FolderKanban, Users, AlertTriangle, TrendingUp, DollarSign, TrendingDown, FileText } from 'lucide-react';
+
+const icons = {
+    Wrench,
+    FolderKanban,
+    Users,
+    AlertTriangle,
+    TrendingUp,
+    DollarSign,
+    TrendingDown,
+    FileText
+};
+
+export type IconName = keyof typeof icons;
 
 type StatCardProps = {
     label: string;
     value: string;
     delta: string;
     deltaType: 'positive' | 'negative' | 'warning' | 'neutral';
-    icon: LucideIcon;
+    icon: IconName;
 }
 
-export function StatCard({ label, value, delta, deltaType, icon: Icon }: StatCardProps) {
+export function StatCard({ label, value, delta, deltaType, icon }: StatCardProps) {
+    const Icon = icons[icon];
+
+    if (!Icon) {
+        return null;
+    }
+
     return (
         <div className={cn("bg-bg-secondary p-6 flex flex-col justify-between h-full", {
             'border-l-4 border-brand-red': deltaType === 'negative',

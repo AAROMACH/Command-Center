@@ -42,7 +42,7 @@ export default function LoginPage() {
   function onSubmit(data: LoginFormValues) {
     console.log(data);
     // Here you would typically handle authentication
-    router.push("/admin/assignments");
+    router.push("/admin/dashboard");
   }
 
   return (

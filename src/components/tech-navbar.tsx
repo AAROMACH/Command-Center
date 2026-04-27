@@ -5,32 +5,33 @@ import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import {
-  Briefcase,
   LayoutDashboard,
-  Wrench,
-  ClipboardList,
-  Users,
-  Banknote,
+  Calendar,
+  Briefcase,
+  ScrollText,
+  User,
+  Power,
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
+import { Button } from './ui/button';
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
-  { href: '/admin/assignments', label: 'Assignments', icon: Wrench },
-  { href: '/admin/projects', label: 'Projects', icon: Briefcase },
-  { href: '/admin/directory', label: 'Directory', icon: Users },
-  { href: '/admin/financials', label: 'Financials', icon: Banknote },
+  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/tech/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/tech/projects', label: 'Projects', icon: Briefcase },
+  { href: '/tech/logs', label: 'Logs', icon: ScrollText },
+  { href: '/tech/profile', label: 'Profile', icon: User },
 ];
 
-export function Navbar() {
+export function TechNavbar() {
   const pathname = usePathname();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center gap-4 border-b border-border-default bg-[#0f0f0f] px-6">
-      <Link href="/admin/dashboard" className="mr-4 flex items-center gap-2">
+      <Link href="/tech/dashboard" className="mr-4 flex items-center gap-2">
         <Icons.logo className="h-6 w-6 text-brand-red" />
         <span className="font-mono text-lg font-bold uppercase text-text-primary">Aaromach</span>
+         <span className="text-sm font-semibold text-text-muted">/ Tech</span>
       </Link>
 
       {navItems.map(item => (
@@ -47,8 +48,14 @@ export function Navbar() {
         </Link>
       ))}
 
-      <div className="ml-auto flex items-center gap-2.5">
+      <div className="ml-auto flex items-center gap-4">
         <UserNav />
+         <Link href="/login">
+            <Button variant="outline" size="sm" className="!text-xs !normal-case">
+                <Power size={14} className="mr-2"/>
+                Sign Out
+            </Button>
+        </Link>
       </div>
     </nav>
   );

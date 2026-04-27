@@ -1,5 +1,5 @@
 'use client';
-import { Banknote, FileText, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, SlidersHorizontal, Upload, Briefcase, Wrench } from 'lucide-react';
+import { Banknote, Calendar as CalendarIcon, SlidersHorizontal, Upload, Briefcase, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard } from '@/app/admin/dashboard/components/stat-card';
@@ -13,10 +13,10 @@ import { cn } from '@/lib/utils';
 
 
 const financialStats = [
-    { label: "Total Revenue (Q2)", value: "$1.2M", delta: "+12.5% vs Q1", deltaType: "positive" as const, icon: TrendingUp },
-    { label: "Net Profit (Q2)", value: "$450K", delta: "+8.2% vs Q1", deltaType: "positive" as const, icon: DollarSign },
-    { label: "Total Costs (Q2)", value: "$750K", delta: "+15.1% vs Q1", deltaType: "warning" as const, icon: TrendingDown },
-    { label: "Open Invoices", value: "32", delta: "$85,230 overdue", deltaType: "negative" as const, icon: FileText },
+    { label: "Total Revenue (Q2)", value: "$1.2M", delta: "+12.5% vs Q1", deltaType: "positive" as const, icon: "TrendingUp" as const },
+    { label: "Net Profit (Q2)", value: "$450K", delta: "+8.2% vs Q1", deltaType: "positive" as const, icon: "DollarSign" as const },
+    { label: "Total Costs (Q2)", value: "$750K", delta: "+15.1% vs Q1", deltaType: "warning" as const, icon: "TrendingDown" as const },
+    { label: "Open Invoices", value: "32", delta: "$85,230 overdue", deltaType: "negative" as const, icon: "FileText" as const },
 ];
 
 export default function FinancialsPage() {

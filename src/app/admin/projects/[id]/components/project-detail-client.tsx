@@ -83,7 +83,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
             <div className="tab-content">
                 {activeTab === 'overview' && <OverviewTab project={project} setProject={setProject} allTechnicians={technicians} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} setProject={setProject} />}
-                {activeTab === 'documents' && <DocumentsTab documents={documents} />}
+                {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
                 {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} setTimesheets={setTimesheets} technicians={technicians} projectId={project.id}/>}
             </div>
         </div>

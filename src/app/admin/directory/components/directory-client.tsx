@@ -127,7 +127,7 @@ export function DirectoryClient({ technicians, workOrders, projects }: Directory
                         </div>
                     </CardContent>
                 </Card>
-            )}}
+            )})}
         </div>
     );
 }

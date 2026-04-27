@@ -147,18 +147,18 @@ export const projects: Project[] = [
     startTime: '9:00 AM EDT',
     estimatedDuration: '2 weeks',
     assignedTechnicianIds: ['tech-003'],
-    team: [{ technicianId: 'tech-003', role: 'Project Lead' }],
-    scope: 'All PCs — full hardware refresh across site.',
+    team: [{ technicianId: 'tech-003', role: 'Project Lead' }, { technicianId: 'tech-001', role: 'Cabling Tech'}],
+    scope: 'All PCs — full hardware refresh across site. Scope includes deinstallation of old equipment, packing for shipment, and installation of new desktops, monitors, and peripherals at all workstations.',
     onsiteContact: 'John Doe - 555-123-4567',
-    siteAccessInstructions: 'Check in at front desk, badge required. Parking in Lot B.',
+    siteAccessInstructions: 'Check in at front desk, badge required. Parking in Lot B. All personnel must wear safety vests while on the warehouse floor. Entry code for server room is 4821.',
     siteHazardNotes: [
       { id: 'h1', text: 'Forklift On-Site', type: 'danger'},
       { id: 'h2', text: 'Active Warehouse', type: 'info'},
     ],
     projectBudget: 15000,
     estimatedHours: 80,
-    actualBudget: 5500,
-    actualHours: 32,
+    actualBudget: 7500,
+    actualHours: 42,
     phases: [
       {
         id: 'phase-1',
@@ -191,7 +191,8 @@ export const projectDocuments: ProjectDocument[] = [
 
 export const timesheetLogs: TimesheetLog[] = [
   {
-    id: 'ts-1',
+    assignmentId: 'ts-1',
+    projectId: 'proj-001',
     technicianId: 'tech-003', // David Smith
     date: 'Saturday, April 18, 2026',
     checkInTime: '8:04 AM',
@@ -204,7 +205,8 @@ export const timesheetLogs: TimesheetLog[] = [
     photos: [getImageUrl('site-photo-1'), getImageUrl('site-photo-2')],
   },
    {
-    id: 'ts-2',
+    assignmentId: 'ts-2',
+    projectId: 'proj-001',
     technicianId: 'tech-001', // Alex Johnson
     date: 'Saturday, April 18, 2026',
     checkInTime: '8:01 AM',
@@ -217,7 +219,8 @@ export const timesheetLogs: TimesheetLog[] = [
     photos: [],
   },
   {
-    id: 'ts-3',
+    assignmentId: 'ts-3',
+    projectId: 'proj-001',
     technicianId: 'tech-003', // David Smith
     date: 'Sunday, April 19, 2026',
     checkInTime: '8:30 AM',

@@ -83,7 +83,8 @@ export type ProjectDocument = {
 };
 
 export type TimesheetLog = {
-  id: string;
+  assignmentId: string;
+  projectId: string;
   technicianId: string;
   date: string;
   checkInTime: string;

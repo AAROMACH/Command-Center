@@ -27,8 +27,9 @@ function getProgress(project: Project): number {
     return (completedTasks / totalTasks) * 100;
 }
 
-export function ProjectDetailClient({ project: initialProject, technicians, documents, timesheets }: ProjectDetailClientProps) {
+export function ProjectDetailClient({ project: initialProject, technicians, documents, timesheets: initialTimesheets }: ProjectDetailClientProps) {
     const [project, setProject] = useState(initialProject);
+    const [timesheets, setTimesheets] = useState(initialTimesheets);
     const [activeTab, setActiveTab] = useState('overview');
 
     const progress = getProgress(project);
@@ -62,9 +63,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                             <div className="pdh-meta-item"><Users/>{project.team.length} Technician(s)</div>
                         </div>
                     </div>
-                    <div className="pdh-actions">
-                        {/* Buttons removed as per request */}
-                    </div>
                 </div>
                 <div className="pdh-progress">
                     <div className="pdh-progress-label">Overall Progress</div>
@@ -86,7 +84,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                 {activeTab === 'overview' && <OverviewTab project={project} setProject={setProject} allTechnicians={technicians} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} setProject={setProject} />}
                 {activeTab === 'documents' && <DocumentsTab documents={documents} />}
-                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} />}
+                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} setTimesheets={setTimesheets} technicians={technicians} projectId={project.id}/>}
             </div>
         </div>
     );

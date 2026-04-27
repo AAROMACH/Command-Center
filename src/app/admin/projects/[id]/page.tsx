@@ -11,7 +11,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   // A real app would filter these by project ID
   const documentsForProject = projectDocuments;
-  const timesheetsForProject = timesheetLogs;
+  const timesheetsForProject = timesheetLogs.filter(log => log.projectId === params.id);
 
   return (
     <ProjectDetailClient 

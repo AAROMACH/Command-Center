@@ -14,6 +14,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { LogAssignmentDialog } from './log-assignment-dialog';
+
 
 const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
     <div className="ts-log-section">
@@ -113,11 +115,19 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
     )
 };
 
+type TimesheetsTabProps = {
+    timesheets: TimesheetLog[];
+    setTimesheets: React.Dispatch<React.SetStateAction<TimesheetLog[]>>;
+    technicians: Technician[];
+    projectId: string;
+};
 
-export function TimesheetsTab({ timesheets, technicians }: TimesheetsTabProps) {
+
+export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectId }: TimesheetsTabProps) {
     const [viewBy, setViewBy] = useState<'tech' | 'date'>('date');
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
+    const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
 
     const getTechnician = useCallback((id: string) => technicians.find(t => t.id === id), [technicians]);
 
@@ -240,6 +250,9 @@ export function TimesheetsTab({ timesheets, technicians }: TimesheetsTabProps) {
                         </PopoverContent>
                       </Popover>
                     <Button variant="outline" size="sm">Export CSV</Button>
+                    <Button variant="default" size="sm" onClick={() => setIsLogDialogOpen(true)}>
+                        <Plus size={14} className="mr-2"/> New Log
+                    </Button>
                 </div>
             </div>
             
@@ -257,7 +270,7 @@ export function TimesheetsTab({ timesheets, technicians }: TimesheetsTabProps) {
                             <AccordionContent className="accordion-content">
                                 <div className="space-y-2">
                                 {group.logs.map((log: TimesheetLog) => (
-                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
+                                    <TimesheetCard key={log.assignmentId} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
                                 ))}
                                 </div>
                             </AccordionContent>
@@ -269,6 +282,14 @@ export function TimesheetsTab({ timesheets, technicians }: TimesheetsTabProps) {
                     No timesheets match your filters.
                 </div>
             )}
+
+            <LogAssignmentDialog
+                isOpen={isLogDialogOpen}
+                setIsOpen={setIsLogDialogOpen}
+                technicians={technicians}
+                projectId={projectId}
+                onLogAdded={(newLog) => setTimesheets(currentLogs => [newLog, ...currentLogs])}
+            />
         </div>
     );
 }

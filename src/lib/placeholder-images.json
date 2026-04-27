@@ -1,3 +1,40 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user-avatar-1",
+      "description": "User avatar",
+      "imageUrl": "https://picsum.photos/seed/user1/40/40",
+      "imageHint": "person face"
+    },
+    {
+      "id": "technician-1",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech1/40/40",
+      "imageHint": "person working"
+    },
+    {
+      "id": "technician-2",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech2/40/40",
+      "imageHint": "person face"
+    },
+    {
+      "id": "technician-3",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech3/40/40",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "technician-4",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech4/40/40",
+      "imageHint": "person engineer"
+    },
+    {
+      "id": "technician-5",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech5/40/40",
+      "imageHint": "person smiling"
+    }
+  ]
 }

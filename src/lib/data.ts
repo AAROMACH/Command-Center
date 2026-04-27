@@ -1,0 +1,107 @@
+import type { Technician, WorkOrder } from './types';
+import { PlaceHolderImages } from './placeholder-images';
+
+const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
+
+export const technicians: Technician[] = [
+  {
+    id: 'tech-001',
+    name: 'Alex Johnson',
+    currentLocation: 'New York, NY',
+    reliabilityScore: 95,
+    currentWorkload: 3,
+    skills: ['HVAC', 'Plumbing', 'Electrical'],
+    avatarUrl: getImageUrl('technician-1'),
+  },
+  {
+    id: 'tech-002',
+    name: 'Maria Garcia',
+    currentLocation: 'Brooklyn, NY',
+    reliabilityScore: 98,
+    currentWorkload: 2,
+    skills: ['Electrical', 'Appliance Repair'],
+    avatarUrl: getImageUrl('technician-2'),
+  },
+  {
+    id: 'tech-003',
+    name: 'David Smith',
+    currentLocation: 'Queens, NY',
+    reliabilityScore: 88,
+    currentWorkload: 5,
+    skills: ['Plumbing', 'Carpentry'],
+    avatarUrl: getImageUrl('technician-3'),
+  },
+  {
+    id: 'tech-004',
+    name: 'Sarah Chen',
+    currentLocation: 'New York, NY',
+    reliabilityScore: 92,
+    currentWorkload: 1,
+    skills: ['HVAC', 'Electrical', 'Smart Home'],
+    avatarUrl: getImageUrl('technician-4'),
+  },
+   {
+    id: 'tech-005',
+    name: 'Ben Carter',
+    currentLocation: 'Jersey City, NJ',
+    reliabilityScore: 85,
+    currentWorkload: 4,
+    skills: ['Appliance Repair', 'Plumbing'],
+    avatarUrl: getImageUrl('technician-5'),
+  },
+];
+
+export const workOrders: WorkOrder[] = [
+  {
+    id: 'wo-101',
+    description: 'Fix leaking faucet in main bathroom',
+    location: '123 Main St, New York, NY',
+    requiredSkills: ['Plumbing'],
+    priority: 'medium',
+    status: 'assigned',
+    assignedTechnicianId: 'tech-003',
+  },
+  {
+    id: 'wo-102',
+    description: 'Repair central AC unit not cooling',
+    location: '456 Oak Ave, Brooklyn, NY',
+    requiredSkills: ['HVAC', 'Electrical'],
+    priority: 'high',
+    status: 'in-progress',
+    assignedTechnicianId: 'tech-001',
+  },
+  {
+    id: 'wo-103',
+    description: 'Install new smart thermostat',
+    location: '789 Pine Ln, New York, NY',
+    requiredSkills: ['Electrical', 'Smart Home'],
+    priority: 'low',
+    status: 'unassigned',
+  },
+  {
+    id: 'wo-104',
+    description: 'Broken refrigerator compressor',
+    location: '321 Elm St, Queens, NY',
+    requiredSkills: ['Appliance Repair'],
+    priority: 'critical',
+    status: 'completed',
+    assignedTechnicianId: 'tech-002',
+  },
+   {
+    id: 'wo-105',
+    description: 'Full electrical wiring inspection',
+    location: '555 Market St, New York, NY',
+    requiredSkills: ['Electrical'],
+    priority: 'high',
+    status: 'unassigned',
+  },
+   {
+    id: 'wo-106',
+    description: 'Water heater replacement',
+    location: '888 Broadway, Brooklyn, NY',
+    requiredSkills: ['Plumbing', 'HVAC'],
+    priority: 'medium',
+    status: 'in-progress',
+    assignedTechnicianId: 'tech-001'
+  },
+];

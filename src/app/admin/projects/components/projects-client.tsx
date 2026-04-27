@@ -1,16 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import type { Project, Technician } from '@/lib/types';
+import type { Project } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Folder, MapPin, Layers } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 type ProjectsClientProps = {
     projects: Project[];
-    technicians: Technician[];
 };
 
 function getProgress(project: Project): number {
@@ -30,7 +26,7 @@ function getTotalTasksCount(project: Project): number {
     return project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
 }
 
-export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
+export function ProjectsClient({ projects }: ProjectsClientProps) {
     const router = useRouter();
     
     if (projects.length === 0) {
@@ -48,12 +44,10 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th>Mission / Status</th>
-                        <th>Client & Location</th>
-                        <th style={{ width: "20%" }}>Progress</th>
-                        <th style={{width: '15%'}}>Assigned Techs</th>
-                        <th style={{ width: "10%" }}>Phases</th>
-                        <th style={{ width: "10%" }}></th>
+                        <th>Title / Status</th>
+                        <th>Client</th>
+                        <th>Location / Date</th>
+                        <th style={{ width: "25%" }}>Progress</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -64,17 +58,20 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         const totalTasks = getTotalTasksCount(project);
 
                         return (
-                            <tr key={project.id}>
+                            <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td>
                                     <div className="cell-desc-title !normal-case">{project.name}</div>
                                     <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                                 </td>
                                 <td>
-                                    <div className="font-semibold text-text-primary text-sm mb-1">{project.client}</div>
-                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                                        <MapPin className="h-3 w-3" />
+                                    <div className="font-semibold text-text-primary text-sm">{project.client}</div>
+                                </td>
+                                <td>
+                                    <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+                                        <MapPin className="h-3.5 w-3.5 text-text-muted" />
                                         <span>{project.location}</span>
                                     </div>
+                                    <div className="text-xs text-text-muted mt-1">Started {project.startDate}</div>
                                 </td>
                                 <td>
                                     <div className="progress-wrap">
@@ -83,40 +80,11 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                     </div>
                                     <div className="text-xs text-text-muted mt-1">{completedTasks} of {totalTasks} tasks complete</div>
                                 </td>
-                                <td>
-                                    <div className="tech-stack">
-                                        {project.team.map(member => {
-                                            const tech = technicians.find(t => t.id === member.technicianId);
-                                            const fallback = tech ? tech.name.split(' ').map(n => n[0]).join('') : '?';
-                                            return(
-                                                <Avatar key={member.technicianId} className="tech-avatar" title={tech?.name}>
-                                                    {tech && <AvatarImage asChild src={tech.avatarUrl} alt={tech.name}>
-                                                        <Image src={tech.avatarUrl} alt={tech.name} width={26} height={26} />
-                                                    </AvatarImage>}
-                                                    <AvatarFallback>{fallback}</AvatarFallback>
-                                                </Avatar>
-                                            )
-                                        })}
-                                    </div>
-                                </td>
-                                <td>
-                                     <div className="flex items-center gap-2 text-sm text-text-secondary">
-                                        <Layers size={14} />
-                                        <span>{project.phases.length}</span>
-                                     </div>
-                                     <div className="text-xs text-text-muted mt-1">Started {project.startDate}</div>
-                                </td>
-                                <td className="text-right">
-                                    <Button variant="folder" size="sm" onClick={() => router.push(`/admin/projects/${project.id}`)}>
-                                        <Folder size={12} className="mr-1.5" />
-                                        Open Folder
-                                    </Button>
-                                </td>
                             </tr>
                         );
                     })}
                      <tr>
-                      <td colSpan={6} className="text-center text-xs text-text-muted py-4">
+                      <td colSpan={4} className="text-center text-xs text-text-muted py-4">
                         + Add more projects with "New Project"
                       </td>
                     </tr>

@@ -1,10 +1,10 @@
 'use client';
-import { useState } from 'react';
-import type { Technician, TimeOffRequest, PenaltyEvent } from '@/lib/types';
+import { useState, useMemo } from 'react';
+import type { Technician, TimeOffRequest } from '@/lib/types';
 import { technicians, timeOffRequests as initialTimeOffRequests, penaltyEvents } from '@/lib/data';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,15 +12,118 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Gauge, ShieldAlert, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Gauge, ShieldAlert } from 'lucide-react';
-
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 const CURRENT_TECH_ID = 'tech-001';
 
+const RequestTimeOffDialog = ({ 
+    isOpen, 
+    setIsOpen, 
+    onSubmit 
+}: { 
+    isOpen: boolean, 
+    setIsOpen: (open: boolean) => void, 
+    onSubmit: (request: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => void 
+}) => {
+    const [date, setDate] = useState<DateRange | undefined>();
+    const [type, setType] = useState<TimeOffRequest['type'] | ''>('');
+    const [reason, setReason] = useState('');
+    const { toast } = useToast();
+
+    const handleSubmit = () => {
+        if (!date?.from || !date?.to || !type) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a date range and request type.' });
+            return;
+        }
+
+        onSubmit({
+            startDate: format(date.from, 'yyyy-MM-dd'),
+            endDate: format(date.to, 'yyyy-MM-dd'),
+            type: type as TimeOffRequest['type'], // Already validated
+            reason,
+        });
+
+        // Reset form
+        setDate(undefined);
+        setType('');
+        setReason('');
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Request Time Off</DialogTitle>
+                    <DialogDescription>Select the dates and reason for your time off request.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                        <Label>Date Range</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="date"
+                                    variant={"outline"}
+                                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date?.from ? (
+                                        date.to ? (
+                                            <>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</>
+                                        ) : (format(date.from, "LLL dd, y"))
+                                    ) : (<span>Pick a date range</span>)}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="request-type">Type</Label>
+                        <Select value={type} onValueChange={(value) => setType(value as TimeOffRequest['type'])}>
+                            <SelectTrigger id="request-type">
+                                <SelectValue placeholder="Select request type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Vacation">Vacation</SelectItem>
+                                <SelectItem value="Sick">Sick Day</SelectItem>
+                                <SelectItem value="Personal">Personal</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="reason">Reason (Optional)</Label>
+                        <Textarea id="reason" placeholder="Provide a brief reason for your request" value={reason} onChange={(e) => setReason(e.target.value)} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSubmit}>Submit Request</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 export default function TechProfilePage() {
     const [tech, setTech] = useState<Technician | undefined>(technicians.find(t => t.id === CURRENT_TECH_ID));
-    const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests.filter(r => r.technicianId === CURRENT_TECH_ID));
+    const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+    
+    const initialRequests = useMemo(() => initialTimeOffRequests.filter(r => r.technicianId === CURRENT_TECH_ID), []);
+    const [techTimeOffRequests, setTechTimeOffRequests] = useState(initialRequests);
+    
     const techPenaltyEvents = penaltyEvents.filter(p => p.technicianId === CURRENT_TECH_ID);
     const { toast } = useToast();
 
@@ -37,6 +140,18 @@ export default function TechProfilePage() {
                 }
             }
         }) : undefined);
+    };
+
+    const handleNewRequestSubmit = (newRequestData: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => {
+        const newRequest: TimeOffRequest = {
+            id: `tor-${Date.now()}`,
+            technicianId: CURRENT_TECH_ID,
+            status: 'pending',
+            ...newRequestData
+        };
+        setTechTimeOffRequests(prev => [newRequest, ...prev]);
+        toast({ title: "Time Off Requested", description: "Your request has been submitted for admin approval." });
+        setIsRequestDialogOpen(false);
     };
 
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -110,23 +225,75 @@ export default function TechProfilePage() {
                                         <Label className="font-semibold text-text-primary">{day}</Label>
                                         <Input
                                             type="time"
-                                            value={tech.availability[day]?.start || ''}
-                                            onChange={e => handleAvailabilityChange(day, 'start', e.target.value)}
+                                            value={tech.availability[day.toLowerCase() as keyof typeof tech.availability]?.start || ''}
+                                            onChange={e => handleAvailabilityChange(day.toLowerCase(), 'start', e.target.value)}
                                             className="bg-bg-secondary border-border-subtle"
                                         />
                                         <Input
                                             type="time"
-                                            value={tech.availability[day]?.end || ''}
-                                            onChange={e => handleAvailabilityChange(day, 'end', e.target.value)}
+                                            value={tech.availability[day.toLowerCase() as keyof typeof tech.availability]?.end || ''}
+                                            onChange={e => handleAvailabilityChange(day.toLowerCase(), 'end', e.target.value)}
                                             className="bg-bg-secondary border-border-subtle"
                                         />
-                                         <Button variant="outline" size="sm" onClick={() => setTech(prev => prev ? ({ ...prev, availability: {...prev.availability, [day]: null} }) : undefined)}>
+                                         <Button variant="outline" size="sm" onClick={() => setTech(prev => prev ? ({ ...prev, availability: {...prev.availability, [day.toLowerCase()]: null} }) : undefined)}>
                                             Mark as Unavailable
                                         </Button>
                                     </div>
                                 ))}
                             </CardContent>
                         </Card>
+
+                         <Card className="mt-6">
+                            <CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <CardTitle>Time Off Requests</CardTitle>
+                                    <Button variant="outline" onClick={() => setIsRequestDialogOpen(true)}><Plus size={14} className="mr-2"/> New Request</Button>
+                                </div>
+                                <CardDescription>Your history of time off requests and their current status.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="table-wrap">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Dates</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Reason</TableHead>
+                                            <TableHead>Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {techTimeOffRequests.map((request) => (
+                                            <TableRow key={request.id}>
+                                                <TableCell>{request.startDate} to {request.endDate}</TableCell>
+                                                <TableCell><Badge variant="secondary" className="capitalize">{request.type}</Badge></TableCell>
+                                                <TableCell className="text-text-muted">{request.reason}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={request.status === 'approved' ? 'completed' : request.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize">
+                                                        {request.status}
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                         {techTimeOffRequests.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center h-24">
+                                                    You have no time off requests.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <RequestTimeOffDialog
+                            isOpen={isRequestDialogOpen}
+                            setIsOpen={setIsRequestDialogOpen}
+                            onSubmit={handleNewRequestSubmit}
+                        />
+
                     </TabsContent>
                     
                     <TabsContent value="performance">

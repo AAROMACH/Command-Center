@@ -12,21 +12,36 @@ import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
 };
 
-export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: initialTimeOffRequests }: DirectoryClientProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
+    const { toast } = useToast();
 
     const handleRowClick = (person: Technician) => {
         setSelectedPerson(person);
         setIsDetailOpen(true);
+    };
+
+    const handleTimeOffStatusChange = (requestId: string, newStatus: 'approved' | 'denied') => {
+        setTimeOffRequests(currentRequests =>
+            currentRequests.map(req =>
+                req.id === requestId ? { ...req, status: newStatus } : req
+            )
+        );
+        toast({
+            title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+            description: `The time off request has been successfully ${newStatus}.`,
+        });
     };
 
     const technicians = allPersonnel.filter(p => p.role.toLowerCase().includes('tech'));
@@ -53,7 +68,15 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
     
     const filteredTimeOffRequests = timeOffRequests.filter(req => {
         const person = allPersonnel.find(p => p.id === req.technicianId);
-        return person?.name.toLowerCase().includes(lowercasedQuery) || false;
+        if (!person) return false;
+        
+        return (
+            person.name.toLowerCase().includes(lowercasedQuery) ||
+            req.startDate.toLowerCase().includes(lowercasedQuery) ||
+            req.endDate.toLowerCase().includes(lowercasedQuery) ||
+            req.type.toLowerCase().includes(lowercasedQuery) ||
+            req.status.toLowerCase().includes(lowercasedQuery)
+        );
     });
 
 
@@ -195,13 +218,13 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                                 </div>
                                             </TableCell>
                                             <TableCell>{req.startDate} to {req.endDate}</TableCell>
-                                            <TableCell><Badge variant="secondary">{req.type}</Badge></TableCell>
-                                            <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'}>{req.status}</Badge></TableCell>
+                                            <TableCell><Badge variant="secondary" className="capitalize">{req.type}</Badge></TableCell>
+                                            <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize">{req.status}</Badge></TableCell>
                                             <TableCell className="text-right">
                                                 {req.status === 'pending' && (
                                                     <div className="flex gap-2 justify-end">
-                                                        <Button size="sm" variant="outline">Deny</Button>
-                                                        <Button size="sm">Approve</Button>
+                                                        <Button size="sm" variant="outline" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>Deny</Button>
+                                                        <Button size="sm" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>Approve</Button>
                                                     </div>
                                                 )}
                                             </TableCell>

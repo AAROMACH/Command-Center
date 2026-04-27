@@ -1,19 +1,14 @@
 'use client';
 import { useState } from 'react';
 import type { WorkOrder, TimeOffRequest } from '@/lib/types';
-import { workOrders, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
+import { workOrders } from '@/lib/data';
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
-import { MapPin, Clock, DollarSign, Plus } from 'lucide-react';
+import { MapPin, Clock, DollarSign } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 const CURRENT_TECH_ID = 'tech-001';
 
@@ -21,9 +16,6 @@ export default function TechCalendarPage() {
     const [date, setDate] = useState<Date | undefined>(new Date('2024-07-28T12:00:00Z'));
     const [selectedEvent, setSelectedEvent] = useState<WorkOrder | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
-    const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
-    const { toast } = useToast();
 
     const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === CURRENT_TECH_ID);
 
@@ -36,71 +28,7 @@ export default function TechCalendarPage() {
         setIsDrawerOpen(true);
     };
 
-    const handleRequestTimeOff = (formData: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => {
-        const newRequest: TimeOffRequest = {
-            id: `tor-${Date.now()}`,
-            technicianId: CURRENT_TECH_ID,
-            status: 'pending',
-            ...formData,
-        };
-        setTimeOffRequests(prev => [...prev, newRequest]);
-        toast({ title: "Time Off Requested", description: "Your request has been submitted for admin approval." });
-        setIsTimeOffDialogOpen(false);
-    };
-
     const eventsForSelectedDay = techWorkOrders.filter(wo => wo.scheduleDate === format(date || new Date(), 'yyyy-MM-dd'));
-
-    const TimeOffDialog = () => {
-        const [formData, setFormData] = useState({ startDate: '', endDate: '', type: 'Vacation' as TimeOffRequest['type'], reason: '' });
-
-        const handleSubmit = () => {
-            if (!formData.startDate || !formData.endDate || !formData.reason) {
-                toast({ variant: 'destructive', title: "Missing fields", description: "Please fill out all fields."});
-                return;
-            }
-            handleRequestTimeOff(formData);
-        }
-        return (
-            <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Request Time Off</DialogTitle>
-                        <DialogDescription>Submit a new request for time off. It will be sent to an administrator for approval.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="startDate" className="text-right">Start Date</Label>
-                            <Input id="startDate" type="date" className="col-span-3" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})}/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="endDate" className="text-right">End Date</Label>
-                            <Input id="endDate" type="date" className="col-span-3" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})}/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="type" className="text-right">Type</Label>
-                             <Select onValueChange={(value: TimeOffRequest['type']) => setFormData({...formData, type: value})} defaultValue={formData.type}>
-                                <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Vacation">Vacation</SelectItem>
-                                    <SelectItem value="Sick">Sick Day</SelectItem>
-                                    <SelectItem value="Personal">Personal</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="reason" className="text-right">Reason</Label>
-                            <Textarea id="reason" className="col-span-3" placeholder="Briefly explain the reason for your request..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})}/>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" onClick={handleSubmit}>Submit Request</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        )
-    }
 
     return (
         <div>
@@ -108,9 +36,6 @@ export default function TechCalendarPage() {
                 <div>
                     <h1 className="page-title">Schedule Terminal</h1>
                     <p className="page-subtitle">View your assignments and manage your schedule.</p>
-                </div>
-                <div className="page-header-right">
-                    <Button onClick={() => setIsTimeOffDialogOpen(true)}><Plus size={16} className="mr-2"/> Request Time Off</Button>
                 </div>
             </header>
             
@@ -184,9 +109,6 @@ export default function TechCalendarPage() {
                     )}
                 </DrawerContent>
             </Drawer>
-            
-            <TimeOffDialog />
-
         </div>
     );
 }

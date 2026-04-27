@@ -160,9 +160,9 @@ export type TimeOffRequest = {
   technicianId: string;
   startDate: string;
   endDate: string;
-  type: 'Vacation' | 'Sick' | 'Personal';
+  type: 'Vacation' | 'Sick' | 'Personal' | 'Other';
   reason: string;
-  status: 'pending' | 'approved' | 'denied';
+  status: 'pending' | 'approved' | 'denied' | 'cancelled';
 };
 
 export type PenaltyEvent = {

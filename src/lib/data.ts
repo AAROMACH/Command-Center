@@ -17,13 +17,13 @@ export const technicians: Technician[] = [
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
     avatarUrl: getImageUrl('technician-1'),
     availability: {
-      'Monday': { start: '08:00', end: '17:00' },
-      'Tuesday': { start: '08:00', end: '17:00' },
-      'Wednesday': { start: '08:00', end: '17:00' },
-      'Thursday': { start: '08:00', end: '17:00' },
-      'Friday': { start: '08:00', end: '17:00' },
-      'Saturday': null,
-      'Sunday': null,
+      'monday': { start: '08:00', end: '17:00' },
+      'tuesday': { start: '08:00', end: '17:00' },
+      'wednesday': { start: '08:00', end: '17:00' },
+      'thursday': { start: '08:00', end: '17:00' },
+      'friday': { start: '08:00', end: '17:00' },
+      'saturday': null,
+      'sunday': null,
     }
   },
   {
@@ -38,13 +38,13 @@ export const technicians: Technician[] = [
     skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
     avatarUrl: getImageUrl('technician-2'),
      availability: {
-      'Monday': { start: '09:00', end: '18:00' },
-      'Tuesday': { start: '09:00', end: '18:00' },
-      'Wednesday': { start: '09:00', end: '18:00' },
-      'Thursday': { start: '09:00', end: '18:00' },
-      'Friday': { start: '09:00', end: '14:00' },
-      'Saturday': null,
-      'Sunday': null,
+      'monday': { start: '09:00', end: '18:00' },
+      'tuesday': { start: '09:00', end: '18:00' },
+      'wednesday': { start: '09:00', end: '18:00' },
+      'thursday': { start: '09:00', end: '18:00' },
+      'friday': { start: '09:00', end: '14:00' },
+      'saturday': null,
+      'sunday': null,
     }
   },
   {
@@ -59,13 +59,13 @@ export const technicians: Technician[] = [
     skills: ['Plumbing', 'Carpentry', 'Welding'],
     avatarUrl: getImageUrl('technician-3'),
      availability: {
-      'Monday': { start: '07:00', end: '16:00' },
-      'Tuesday': { start: '07:00', end: '16:00' },
-      'Wednesday': { start: '07:00', end: '16:00' },
-      'Thursday': { start: '07:00', end: '16:00' },
-      'Friday': { start: '07:00', end: '16:00' },
-      'Saturday': { start: '09:00', end: '13:00' },
-      'Sunday': null,
+      'monday': { start: '07:00', end: '16:00' },
+      'tuesday': { start: '07:00', end: '16:00' },
+      'wednesday': { start: '07:00', end: '16:00' },
+      'thursday': { start: '07:00', end: '16:00' },
+      'friday': { start: '07:00', end: '16:00' },
+      'saturday': { start: '09:00', end: '13:00' },
+      'sunday': null,
     }
   },
   {
@@ -80,13 +80,13 @@ export const technicians: Technician[] = [
     skills: ['HVAC', 'Electrical', 'Smart Home', 'Networking'],
     avatarUrl: getImageUrl('technician-4'),
      availability: {
-      'Monday': { start: '10:00', end: '19:00' },
-      'Tuesday': { start: '10:00', end: '19:00' },
-      'Wednesday': { start: '10:00', end: '19:00' },
-      'Thursday': { start: '10:00', end: '19:00' },
-      'Friday': null,
-      'Saturday': null,
-      'Sunday': null,
+      'monday': { start: '10:00', end: '19:00' },
+      'tuesday': { start: '10:00', end: '19:00' },
+      'wednesday': { start: '10:00', end: '19:00' },
+      'thursday': { start: '10:00', end: '19:00' },
+      'friday': null,
+      'saturday': null,
+      'sunday': null,
     }
   },
   {
@@ -101,13 +101,13 @@ export const technicians: Technician[] = [
     skills: ['Appliance Repair', 'Plumbing', 'Cabling'],
     avatarUrl: getImageUrl('technician-5'),
     availability: {
-      'Monday': { start: '08:00', end: '17:00' },
-      'Tuesday': { start: '08:00', end: '17:00' },
-      'Wednesday': { start: '08:00', end: '17:00' },
-      'Thursday': { start: '08:00', end: '17:00' },
-      'Friday': { start: '08:00', end: '17:00' },
-      'Saturday': null,
-      'Sunday': null,
+      'monday': { start: '08:00', end: '17:00' },
+      'tuesday': { start: '08:00', end: '17:00' },
+      'wednesday': { start: '08:00', end: '17:00' },
+      'thursday': { start: '08:00', end: '17:00' },
+      'friday': { start: '08:00', end: '17:00' },
+      'saturday': null,
+      'sunday': null,
     }
   },
 
@@ -465,6 +465,7 @@ export const timeOffRequests: TimeOffRequest[] = [
   { id: 'tor-2', technicianId: 'tech-001', startDate: '2024-09-02', endDate: '2024-09-02', type: 'Personal', reason: 'Appointment', status: 'pending' },
   { id: 'tor-3', technicianId: 'tech-003', startDate: '2024-08-05', endDate: '2024-08-09', type: 'Vacation', reason: 'Annual Leave', status: 'pending' },
   { id: 'tor-4', technicianId: 'tech-002', startDate: '2024-07-30', endDate: '2024-07-30', type: 'Sick', reason: 'Feeling unwell', status: 'approved' },
+  { id: 'tor-5', technicianId: 'tech-004', startDate: '2024-08-12', endDate: '2024-08-12', type: 'Other', reason: 'Jury Duty', status: 'denied' },
 ];
 
 export const penaltyEvents: PenaltyEvent[] = [

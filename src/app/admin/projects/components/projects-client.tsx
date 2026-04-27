@@ -44,9 +44,10 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th>Title / Status</th>
-                        <th>Client</th>
-                        <th>Location / Date</th>
+                        <th>Project ID / Status</th>
+                        <th>Title & Client</th>
+                        <th>Site Location</th>
+                        <th>Scheduled Date</th>
                         <th style={{ width: "25%" }}>Progress</th>
                     </tr>
                 </thead>
@@ -60,10 +61,11 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td>
-                                    <div className="cell-desc-title !normal-case">{project.name}</div>
+                                    <div className="cell-id">{project.id.toUpperCase()}</div>
                                     <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                                 </td>
                                 <td>
+                                    <div className="cell-desc-title !normal-case">{project.name}</div>
                                     <div className="font-semibold text-text-primary text-sm">{project.client}</div>
                                 </td>
                                 <td>
@@ -71,7 +73,9 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                                         <MapPin className="h-3.5 w-3.5 text-text-muted" />
                                         <span>{project.location}</span>
                                     </div>
-                                    <div className="text-xs text-text-muted mt-1">Started {project.startDate}</div>
+                                </td>
+                                <td>
+                                     <div className="text-sm text-text-secondary">{project.startDate}</div>
                                 </td>
                                 <td>
                                     <div className="progress-wrap">
@@ -84,7 +88,7 @@ export function ProjectsClient({ projects }: ProjectsClientProps) {
                         );
                     })}
                      <tr>
-                      <td colSpan={4} className="text-center text-xs text-text-muted py-4">
+                      <td colSpan={5} className="text-center text-xs text-text-muted py-4">
                         + Add more projects with "New Project"
                       </td>
                     </tr>

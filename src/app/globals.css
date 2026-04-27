@@ -88,11 +88,6 @@
   .body-text       { @apply text-[13px] leading-relaxed text-[var(--text-secondary)]; }
   .id-text         { @apply font-mono text-[13px] text-[var(--brand-red)]; }
 
-  /* Delta Colors */
-  .stat-delta-positive { color: var(--text-green); }
-  .stat-delta-negative { color: var(--text-red); }
-  .stat-delta-neutral  { color: var(--text-gold); }
-
   /* Page Layout */
   .page-wrapper {
     @apply min-h-screen bg-[var(--bg-primary)];

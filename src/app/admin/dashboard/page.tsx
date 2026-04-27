@@ -1,15 +1,18 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield } from "lucide-react";
+import { Shield, AlertTriangle, Clock, AlertCircle, Repeat } from "lucide-react";
 import { StatCard } from "./components/stat-card";
 import { TechEfficiencyChart } from "./components/tech-efficiency-chart";
 import { TechnicianJobVolumeChart } from "./components/technician-job-volume-chart";
+import { TeamActivity } from "./components/team-activity";
 
-const stats = [
-    { label: "Total Tech Jobs", value: "1,482", delta: "+12.1%", deltaType: "positive" as const },
-    { label: "Active Technicians", value: "37", delta: "-2", deltaType: "negative" as const },
-    { label: "Avg Compliance", value: "98.2%", delta: "+0.5%", deltaType: "positive" as const },
-    { label: "Avg Response", value: "24m", delta: "+3m", deltaType: "neutral" as const },
+const operationalStats = [
+    { label: "Unassigned Critical Jobs", value: "3", delta: "Immediate action required", deltaType: "negative" as const, icon: AlertTriangle },
+    { label: "Jobs Starting < 24h", value: "5", delta: "Unstaffed", deltaType: "negative" as const, icon: Clock },
+    { label: "Late / Missed Check-ins", value: "2", delta: "Past 48h", deltaType: "warning" as const, icon: AlertCircle },
+    { label: "Revisits Required", value: "4", delta: "Last 7 days", deltaType: "warning" as const, icon: Repeat },
 ]
 
 export default function DashboardPage() {
@@ -28,8 +31,8 @@ export default function DashboardPage() {
       </header>
 
       <div className="mb-6 grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
-        {stats.map(stat => (
-            <StatCard key={stat.label} label={stat.label} value={stat.value} delta={stat.delta} deltaType={stat.deltaType} />
+        {operationalStats.map(stat => (
+            <StatCard key={stat.label} label={stat.label} value={stat.value} delta={stat.delta} deltaType={stat.deltaType} icon={stat.icon} />
         ))}
       </div>
 
@@ -39,16 +42,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Card>
-            <CardHeader>
-                <CardTitle>Technical Team Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-center h-48 text-center">
-                    <p className="section-label">No recent activity logs</p>
-                </div>
-            </CardContent>
-        </Card>
+        <TeamActivity />
         <Card>
             <CardHeader>
                 <CardTitle>System Security</CardTitle>

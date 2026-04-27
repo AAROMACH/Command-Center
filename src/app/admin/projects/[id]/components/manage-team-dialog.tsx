@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Trash2, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import Image from 'next/image';
+import { Input } from '@/components/ui/input';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
@@ -31,11 +32,16 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
     const [team, setTeam] = useState(project.team);
     const [newTechId, setNewTechId] = useState('');
     const [newTechRole, setNewTechRole] = useState('');
+    const [searchQuery, setSearchQuery] = useState("");
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
     const availableTechnicians = allTechnicians.filter(
         (tech) => !team.some((member) => member.technicianId === tech.id)
+    );
+
+    const filteredTechnicians = availableTechnicians.filter((tech) =>
+        tech.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleRoleChange = (technicianId: string, newRole: string) => {
@@ -57,6 +63,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
             setTeam(currentTeam => [...currentTeam, { technicianId: newTechId, role: newTechRole }]);
             setNewTechId('');
             setNewTechRole('');
+            setSearchQuery('');
         }
     };
 
@@ -64,9 +71,20 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
         setProject(currentProject => ({ ...currentProject, team }));
         setIsOpen(false);
     };
+    
+    const handleOpenChange = (open: boolean) => {
+        if (!open) {
+            // Reset state on close to avoid showing stale data
+            setTeam(project.team);
+            setSearchQuery('');
+            setNewTechId('');
+            setNewTechRole('');
+        }
+        setIsOpen(open);
+    }
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
                 <DialogHeader>
                     <DialogTitle className="page-title text-xl">Manage Project Team</DialogTitle>
@@ -106,14 +124,30 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                                     <SelectValue placeholder="Select a technician..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {availableTechnicians.map(tech => (
+                                     <div className="p-2">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                                            <Input 
+                                                placeholder="Search technicians..."
+                                                className="w-full h-9 pl-8 bg-bg-primary border-border-subtle"
+                                                value={searchQuery}
+                                                onChange={e => setSearchQuery(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                    {filteredTechnicians.length > 0 ? filteredTechnicians.map(tech => (
                                         <SelectItem key={tech.id} value={tech.id}>
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-6 w-6"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback></Avatar>
                                                 <span>{tech.name}</span>
                                             </div>
                                         </SelectItem>
-                                    ))}
+                                    )) : (
+                                        <div className="text-center text-xs text-text-muted p-2">No technicians found.</div>
+                                    )}
+                                    </div>
                                 </SelectContent>
                             </Select>
                              <Select value={newTechRole} onValueChange={setNewTechRole}>
@@ -131,7 +165,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                     </div>
                 </div>
                 <DialogFooter className="pt-4">
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleSaveChanges}>Save Changes</Button>
                 </DialogFooter>
             </DialogContent>

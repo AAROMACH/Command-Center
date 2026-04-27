@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning } from "lucide-react";
+import { expenses, reports } from '@/lib/data';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -33,6 +36,8 @@ export default function FinancialsPage() {
                     <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
                     <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
                     <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
+                    <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
+                    <TabsTrigger value="reports" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">REPORTS</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="summary" className="mt-6">
@@ -71,6 +76,81 @@ export default function FinancialsPage() {
                 </TabsContent>
                 <TabsContent value="payroll"><div className="empty-state">Payroll audit page coming soon.</div></TabsContent>
                 <TabsContent value="invoices"><div className="empty-state">Invoices page coming soon.</div></TabsContent>
+                <TabsContent value="expenses" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Expense Submissions</CardTitle>
+                            <CardDescription>Review and approve submitted technician expenses.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="table-wrap p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Submitted By</TableHead>
+                                        <TableHead>Category</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {expenses.map((expense) => (
+                                        <TableRow key={expense.id}>
+                                            <TableCell>{expense.date}</TableCell>
+                                            <TableCell>{expense.submittedBy}</TableCell>
+                                            <TableCell><Badge variant="secondary">{expense.category}</Badge></TableCell>
+                                            <TableCell className="text-text-secondary">{expense.description}</TableCell>
+                                            <TableCell className="font-mono text-text-primary">${expense.amount.toFixed(2)}</TableCell>
+                                            <TableCell><Badge variant={expense.status === 'Approved' ? 'completed' : expense.status === 'Pending' ? 'onhold' : 'destructive'}>{expense.status}</Badge></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="reports" className="mt-6">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Generated Reports</CardTitle>
+                            <CardDescription>Download previously generated financial and operational reports.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="table-wrap p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Report Name</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Generation Date</TableHead>
+                                        <TableHead>Generated By</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {reports.map((report) => (
+                                        <TableRow key={report.id}>
+                                            <TableCell className="font-semibold text-text-primary">{report.name}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="gap-1.5">
+                                                    {report.type === 'Financial' && <FileText size={12}/>}
+                                                    {report.type === 'Operational' && <BarChart size={12}/>}
+                                                    {report.type === 'Compliance' && <FileWarning size={12}/>}
+                                                    {report.type}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-text-secondary">{report.generationDate}</TableCell>
+                                            <TableCell className="text-text-secondary">{report.generatedBy}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon"><Download size={16}/></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
 
         </div>

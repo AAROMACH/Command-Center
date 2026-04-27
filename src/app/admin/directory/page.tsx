@@ -1,7 +1,6 @@
-import { technicians } from "@/lib/data";
+import { technicians, timeOffRequests } from "@/lib/data";
 import { DirectoryClient } from "./components/directory-client";
-import { Button } from "@/components/ui/button";
-import { Users, Plus } from "lucide-react";
+import { Users } from "lucide-react";
 
 export default function DirectoryPage() {
 
@@ -16,15 +15,9 @@ export default function DirectoryPage() {
           <h1 className="page-title">PERSONNEL</h1>
           <p className="page-subtitle">Manage technical staff, command personnel, and client stakeholders.</p>
         </div>
-        <div className="page-header-right items-center">
-            <Button variant="default" size="default">
-                <Plus size={14} className="mr-2"/>
-                ADD PERSONNEL
-            </Button>
-        </div>
       </header>
 
-      <DirectoryClient technicians={technicians} />
+      <DirectoryClient technicians={technicians} timeOffRequests={timeOffRequests} />
     </div>
   );
 }

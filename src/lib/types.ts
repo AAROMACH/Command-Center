@@ -25,6 +25,7 @@ export type Technician = {
   skills: string[];
   avatarUrl: string;
   availability: Record<string, { start: string; end: string } | null>;
+  clientCompany?: string; // Added for client roles
 };
 
 export type Recommendation = {
@@ -184,4 +185,22 @@ export type ProjectDailyLog = {
   phaseIdsWorked: string[];
   materialsUsed: { item: string; quantity: number }[];
   photoUrls: string[];
+};
+
+export type Expense = {
+  id: string;
+  date: string;
+  submittedBy: string;
+  category: 'Travel' | 'Materials' | 'Meals' | 'Other';
+  description: string;
+  amount: number;
+  status: 'Pending' | 'Approved' | 'Rejected';
+};
+
+export type Report = {
+  id: string;
+  name: string;
+  type: 'Financial' | 'Operational' | 'Compliance';
+  generationDate: string;
+  generatedBy: string;
 };

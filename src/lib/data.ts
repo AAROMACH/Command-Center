@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -88,7 +88,7 @@ export const technicians: Technician[] = [
       'Sunday': null,
     }
   },
-   {
+  {
     id: 'tech-005',
     name: 'Ben Carter',
     role: 'Junior Technician',
@@ -108,6 +108,33 @@ export const technicians: Technician[] = [
       'Saturday': null,
       'Sunday': null,
     }
+  },
+  {
+    id: 'staff-001',
+    name: 'Eleanor Vance',
+    role: 'Dispatcher',
+    email: 'eleanor.v@aaromach.com',
+    phone: '555-888-1111',
+    currentLocation: 'Command Center',
+    reliabilityScore: 100,
+    currentWorkload: 0,
+    skills: ['Logistics', 'Scheduling', 'Communication'],
+    avatarUrl: 'https://picsum.photos/seed/staff1/40/40',
+    availability: {}
+  },
+  {
+    id: 'client-001',
+    name: 'Johnathan Doe',
+    role: 'Client Contact',
+    email: 'jon.d@globalcorp.com',
+    phone: '555-777-1234',
+    currentLocation: 'New York, NY',
+    reliabilityScore: 0,
+    currentWorkload: 0,
+    skills: [],
+    clientCompany: 'Global Corp',
+    avatarUrl: 'https://picsum.photos/seed/client1/40/40',
+    availability: {}
   },
 ];
 
@@ -404,6 +431,8 @@ export const weeklyLogs: WeeklyLog[] = [
 export const timeOffRequests: TimeOffRequest[] = [
   { id: 'tor-1', technicianId: 'tech-001', startDate: '2024-08-15', endDate: '2024-08-16', type: 'Vacation', reason: 'Family trip', status: 'approved' },
   { id: 'tor-2', technicianId: 'tech-001', startDate: '2024-09-02', endDate: '2024-09-02', type: 'Personal', reason: 'Appointment', status: 'pending' },
+  { id: 'tor-3', technicianId: 'tech-003', startDate: '2024-08-05', endDate: '2024-08-09', type: 'Vacation', reason: 'Annual Leave', status: 'pending' },
+  { id: 'tor-4', technicianId: 'tech-002', startDate: '2024-07-30', endDate: '2024-07-30', type: 'Sick', reason: 'Feeling unwell', status: 'approved' },
 ];
 
 export const penaltyEvents: PenaltyEvent[] = [
@@ -425,4 +454,18 @@ export const projectDailyLogs: ProjectDailyLog[] = [
     materialsUsed: [{ item: 'CAT6A Cable', quantity: 500 }],
     photoUrls: [getImageUrl('site-photo-2')]
   }
-]
+];
+
+export const expenses: Expense[] = [
+    { id: 'exp-001', date: '2024-07-25', submittedBy: 'Alex Johnson', category: 'Materials', description: 'Emergency purchase of 1/2" copper piping', amount: 75.50, status: 'Approved' },
+    { id: 'exp-002', date: '2024-07-26', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
+    { id: 'exp-003', date: '2024-07-27', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending' },
+    { id: 'exp-004', date: '2024-07-28', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
+];
+
+export const reports: Report[] = [
+    { id: 'rep-001', name: 'Q2 2024 Financial Summary', type: 'Financial', generationDate: '2024-07-01', generatedBy: 'System Administrator' },
+    { id: 'rep-002', name: 'July Technician Payroll', type: 'Financial', generationDate: '2024-07-25', generatedBy: 'System Administrator' },
+    { id: 'rep-003', name: 'Q2 Project Profitability Analysis', type: 'Operational', generationDate: '2024-07-05', generatedBy: 'System Administrator' },
+    { id: 'rep-004', name: 'June Safety Compliance Report', type: 'Compliance', generationDate: '2024-07-02', generatedBy: 'System Administrator' },
+];

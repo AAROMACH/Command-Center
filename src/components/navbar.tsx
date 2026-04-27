@@ -18,7 +18,6 @@ const navItems = [
   { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
   { href: '/admin/assignments', label: 'Assignments', icon: Wrench },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase },
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/directory', label: 'Directory', icon: Users },
   { href: '/admin/financials', label: 'Financials', icon: Banknote },
 ];

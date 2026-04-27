@@ -13,7 +13,30 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 import {
   Rocket,
   User,
@@ -26,7 +49,8 @@ import {
   Clock,
   DollarSign,
   Trash2,
-  UserPlus
+  UserPlus,
+  Pencil
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -47,12 +71,23 @@ export function WorkOrdersClient({
   const [recommendation, setRecommendation] = useState<Recommendation | null>(
     null
   );
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   const { toast } = useToast();
 
   const handleOpenDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
     setRecommendation(null);
     setIsDialogOpen(true);
+  };
+  
+  const handleOpenEditDialog = (order: WorkOrder) => {
+    setSelectedOrder(order);
+    setEditedOrder({ ...order }); // Create a mutable copy for the form
+    setIsEditDialogOpen(true);
   };
 
   const handleGetRecommendation = async () => {
@@ -112,16 +147,56 @@ export function WorkOrdersClient({
     });
   }
 
-  const handleDelete = (orderId: string) => {
-    setWorkOrders(currentOrders =>
-      currentOrders.filter(order => order.id !== orderId)
-    );
-    toast({
-      title: "Work Order Deleted",
-      description: `Work Order ${orderId.toUpperCase()} has been removed.`,
-    });
-  }
+  const handleSaveChanges = () => {
+    if (!editedOrder) return;
 
+    setWorkOrders(currentOrders =>
+      currentOrders.map(order =>
+        order.id === editedOrder.id ? editedOrder : order
+      )
+    );
+    setIsEditDialogOpen(false);
+    toast({
+      title: "Work Order Updated",
+      description: `Work Order ${editedOrder.id.toUpperCase()} has been successfully updated.`,
+    });
+  };
+
+  const handleDelete = () => {
+    if (!editedOrder) return;
+    const orderIdToDelete = editedOrder.id;
+    setWorkOrders(currentOrders =>
+      currentOrders.filter(order => order.id !== orderIdToDelete)
+    );
+    setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+    toast({
+      variant: "destructive",
+      title: "Work Order Deleted",
+      description: `Work Order ${orderIdToDelete.toUpperCase()} has been removed.`,
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!editedOrder) return;
+    const { name, value } = e.target;
+    let processedValue: string | number = value;
+    if (name === 'pay') {
+        processedValue = Number(value);
+    }
+    setEditedOrder({ ...editedOrder, [name]: processedValue });
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    if (!editedOrder) return;
+    
+    if (name === 'assignedTechnicianId') {
+        const newStatus = value ? 'assigned' : 'in-progress';
+        setEditedOrder({ ...editedOrder, assignedTechnicianId: value || undefined, status: newStatus });
+    } else {
+        setEditedOrder({ ...editedOrder, [name]: value as any });
+    }
+  }
 
   const recommendedTechnician = useMemo(() => {
     if (!recommendation) return null;
@@ -224,8 +299,8 @@ export function WorkOrdersClient({
                            Assign
                          </button>
                       )}
-                       <button className="btn-delete" onClick={() => handleDelete(order.id)}>
-                         <Trash2 />
+                       <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
+                         <Pencil />
                        </button>
                      </div>
                   </td>
@@ -317,6 +392,92 @@ export function WorkOrdersClient({
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[625px] bg-bg-elevated border-border-default">
+          <DialogHeader>
+            <DialogTitle className="page-title text-xl">
+              Edit Work Order
+            </DialogTitle>
+            <DialogDescription className="page-subtitle">
+              Editing Work Order: {selectedOrder?.id.toUpperCase()}
+            </DialogDescription>
+          </DialogHeader>
+          {editedOrder && (
+            <div className="py-4 space-y-4 text-sm">
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-text-muted">Description</Label>
+                <Textarea id="description" name="description" value={editedOrder.description} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-text-muted">Location</Label>
+                  <Input id="location" name="location" value={editedOrder.location} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pay" className="text-text-muted">Pay ($)</Label>
+                  <Input id="pay" name="pay" type="number" value={editedOrder.pay} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="priority" className="text-text-muted">Priority</Label>
+                    <Select value={editedOrder.priority} onValueChange={(value) => handleSelectChange('priority', value)}>
+                        <SelectTrigger id="priority" className="bg-bg-primary border-border-subtle">
+                            <SelectValue placeholder="Set priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="assignedTechnicianId" className="text-text-muted">Assigned Technician</Label>
+                    <Select value={editedOrder.assignedTechnicianId || ''} onValueChange={(value) => handleSelectChange('assignedTechnicianId', value)}>
+                        <SelectTrigger id="assignedTechnicianId" className="bg-bg-primary border-border-subtle">
+                            <SelectValue placeholder="Select a technician" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">Unassigned</SelectItem>
+                            {technicians.map(tech => (
+                                <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="pt-4">
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="mr-auto">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete work order <span className="font-bold">{editedOrder?.id.toUpperCase()}</span>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>
+                            Yes, delete work order
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveChanges}>Save Changes</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

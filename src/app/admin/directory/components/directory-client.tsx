@@ -1,18 +1,17 @@
-
 'use client';
 import type { Technician, TimeOffRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Mail, Phone, ExternalLink, Plus, Map, UserCheck, Building } from 'lucide-react';
+import { Search, Mail, Phone, Plus, Map, UserCheck, Building } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PersonnelDetailDialog } from './personnel-detail-dialog';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -22,7 +21,13 @@ type DirectoryClientProps = {
 export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: DirectoryClientProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
-    const router = useRouter();
+    const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const handleRowClick = (person: Technician) => {
+        setSelectedPerson(person);
+        setIsDetailOpen(true);
+    };
 
     const technicians = allPersonnel.filter(p => p.role.toLowerCase().includes('tech'));
     const staff = allPersonnel.filter(p => p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin');
@@ -89,7 +94,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 <div>STATUS</div>
                             </div>
                             {filteredTechnicians.map(tech => (
-                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${tech.id}`)}>
+                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(tech)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={tech.avatarUrl} />
@@ -119,7 +124,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 <div>ROLE</div>
                             </div>
                             {filteredStaff.map(s => (
-                                <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${s.id}`)}>
+                                <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(s)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={s.avatarUrl} />
@@ -147,7 +152,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                                 <div>COMPANY</div>
                             </div>
                             {filteredClients.map(c => (
-                                <div key={c.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => router.push(`/admin/directory/${c.id}`)}>
+                                <div key={c.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(c)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={c.avatarUrl} />
@@ -234,6 +239,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests }: 
                 </div>
             </Tabs>
             <AddPersonnelDialog isOpen={isAddPersonnelOpen} setIsOpen={setIsAddPersonnelOpen} />
+            <PersonnelDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} person={selectedPerson} />
         </>
     );
 }

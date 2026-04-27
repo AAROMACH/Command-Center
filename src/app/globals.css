@@ -339,7 +339,7 @@
   .ts-tech-date { @apply text-xs text-text-muted; }
   .ts-badge-wrap { @apply ml-auto flex items-center gap-2; }
   .ts-body { @apply p-2; }
-  .ts-checkin-row { @apply grid grid-cols-3 gap-3 border-b border-border-subtle pb-2 mb-2; }
+  .ts-checkin-row { @apply grid grid-cols-3 gap-3; }
   .ts-field-label { @apply mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted; }
   .ts-field-val { @apply text-sm font-semibold text-text-primary; }
   .ts-log-label { @apply mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted; }
@@ -357,8 +357,27 @@
   .accordion-item { @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
   .accordion-trigger { @apply flex w-full items-center justify-between p-3 text-sm font-bold text-text-primary transition-colors hover:bg-bg-tertiary; }
   .accordion-content { @apply p-3 pt-0; }
+
+  /* New Document Tab Styles */
+  .doc-list.small {
+    @apply rounded-lg border-none bg-transparent;
+  }
+  .doc-row.small {
+    @apply rounded-md border border-border-subtle bg-bg-primary p-2 transition-colors hover:bg-bg-tertiary;
+  }
+  .doc-icon.small {
+    @apply h-7 w-7 rounded-sm;
+  }
+  .doc-icon.small svg {
+    @apply h-3.5 w-3.5;
+  }
+
+  .required-photo-row {
+    @apply flex items-center justify-between rounded-md border border-border-subtle bg-bg-primary p-2;
+  }
 }
 
     
+
 
 

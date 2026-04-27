@@ -164,6 +164,7 @@ export const projects: Project[] = [
         id: 'phase-1',
         phaseNumber: 1,
         name: 'Deinstallation',
+        notes: 'All de-installed equipment must be audited against the asset list before moving to packing.',
         tasks: [
           { id: 't1-1', name: 'Remove existing cabling', isCompleted: true, requiresPhoto: true },
         ],
@@ -172,6 +173,7 @@ export const projects: Project[] = [
         id: 'phase-2',
         phaseNumber: 2,
         name: 'Packing of Old Equipment',
+        notes: 'Use provided packaging materials only. All boxes must be labeled with the Ki9 standard return label format.',
         tasks: [
           { id: 't2-1', name: 'Box items', isCompleted: true, requiresPhoto: false },
           { id: 't2-2', name: 'Add return labels', isCompleted: false, requiresPhoto: false },
@@ -184,9 +186,30 @@ export const projects: Project[] = [
 
 export const projectDocuments: ProjectDocument[] = [
   { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: 'Apr 18, 2026', size: '2.4 MB' },
-  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Photo', uploader: 'Corey Williams', uploadDate: 'Apr 18, 2026', size: '1.1 MB' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Contract', uploader: 'Corey Williams', uploadDate: 'Apr 18, 2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
   { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: 'Apr 17, 2026', size: '340 KB' },
-  { id: 'doc-4', name: 'Deinstallation_Signoff.pdf', type: 'pdf', label: 'Sign-off', uploader: 'David Smith', uploadDate: 'Apr 19, 2026', size: '800 KB' },
+  { 
+    id: 'doc-4', 
+    name: 'Deinstallation_Signoff.pdf', 
+    type: 'pdf', 
+    label: 'Sign-off', 
+    uploader: 'David Smith', 
+    uploadDate: 'Apr 19, 2026', 
+    size: '800 KB',
+    phaseId: 'phase-1',
+  },
+  {
+    id: 'doc-5',
+    name: 'cabling_removed.jpg',
+    type: 'img',
+    label: 'Photo',
+    uploader: 'David Smith',
+    uploadDate: 'Apr 19, 2026',
+    size: '1.8 MB',
+    phaseId: 'phase-1',
+    taskId: 't1-1',
+    url: getImageUrl('site-photo-2'),
+  }
 ];
 
 export const timesheetLogs: TimesheetLog[] = [

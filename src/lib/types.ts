@@ -63,6 +63,7 @@ export type Phase = {
   phaseNumber: number;
   name: string;
   tasks: Task[];
+  notes?: string;
 };
 
 export type Task = {
@@ -80,6 +81,9 @@ export type ProjectDocument = {
   uploader: string;
   uploadDate: string;
   size: string;
+  phaseId?: string;
+  taskId?: string;
+  url?: string;
 };
 
 export type TimesheetLog = {

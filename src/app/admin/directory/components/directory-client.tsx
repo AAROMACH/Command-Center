@@ -1,133 +1,98 @@
 'use client';
-import type { Technician, WorkOrder, Project } from '@/lib/types';
+import type { Technician } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Phone, Mail, MessageSquare, MapPin, Briefcase, Calendar, ShieldCheck } from 'lucide-react';
-import Image from 'next/image';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, Mail, Phone, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 
 type DirectoryClientProps = {
     technicians: Technician[];
-    workOrders: WorkOrder[];
-    projects: Project[];
 };
 
-export function DirectoryClient({ technicians, workOrders, projects }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: allTechnicians }: DirectoryClientProps) {
+    const [searchQuery, setSearchQuery] = useState("");
 
-    const getTechnicianStatus = (techId: string) => {
-        const isOnJob = workOrders.some(wo => wo.assignedTechnicianId === techId && wo.status === 'in-progress');
-        const isOnProject = projects.some(p => p.team.some(member => member.technicianId === techId) && p.status === 'active');
-        
-        if (isOnJob) {
-            const job = workOrders.find(wo => wo.assignedTechnicianId === techId && wo.status === 'in-progress');
-            return { status: 'On Assignment', details: `Job: ${job?.id.toUpperCase()}`, variant: 'onhold' as const };
-        }
-        if (isOnProject) {
-             const project = projects.find(p => p.team.some(member => member.technicianId === techId) && p.status === 'active');
-            return { status: 'On Assignment', details: `Project: ${project?.id.toUpperCase()}`, variant: 'onhold' as const };
-        }
-        return { status: 'Available', details: 'Awaiting next assignment', variant: 'active' as const };
-    }
-    
-    const getAssignmentHistory = (techId: string) => {
-        const jobs = workOrders.filter(wo => wo.assignedTechnicianId === techId && wo.status === 'completed').slice(0, 2);
-        const projectIds = projects.filter(p => p.team.some(m => m.technicianId === techId) && p.status === 'completed').map(p => p.id);
-        
-        return [
-            ...jobs.map(j => ({ id: j.id, description: j.description, type: 'Job' as const })),
-            ...projects.filter(p => projectIds.includes(p.id)).slice(0, 2).map(p => ({ id: p.id, description: p.name, type: 'Project' as const }))
-        ].slice(0, 3);
-    }
+    const filteredTechnicians = allTechnicians.filter((tech) =>
+        tech.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tech.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
     
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-            {technicians.map(tech => {
-                const techStatus = getTechnicianStatus(tech.id);
-                const history = getAssignmentHistory(tech.id);
-
-                return (
-                <Card key={tech.id} className="flex flex-col">
-                    <CardContent className="p-6 flex flex-col flex-1">
-                       <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-16 w-16 border-2 border-border-default">
-                                    <AvatarImage src={tech.avatarUrl} />
-                                    <AvatarFallback>{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                </Avatar>
+        <>
+            <div className="flex justify-between items-center">
+                <Tabs defaultValue="technicians" className="w-full">
+                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                        <TabsTrigger value="technicians" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
+                        <TabsTrigger value="staff" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">STAFF</TabsTrigger>
+                        <TabsTrigger value="clients" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">CLIENTS</TabsTrigger>
+                        <TabsTrigger value="timeoff" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TIME OFF</TabsTrigger>
+                        <TabsTrigger value="map" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MAP</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                 <div className="search-wrap">
+                    <Search />
+                    <input 
+                        className="search-input" 
+                        placeholder="Search directory..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+            
+            <div className="mt-6 bg-bg-secondary border border-border-subtle rounded-lg overflow-hidden">
+                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                    <div>TECHNICIAN</div>
+                    <div>CONTACT INFORMATION</div>
+                    <div>STATUS</div>
+                    <div className="text-right">ACTIONS</div>
+                </div>
+                <Tabs defaultValue="technicians" className="w-full">
+                    <TabsContent value="technicians">
+                        {filteredTechnicians.map(tech => (
+                            <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle">
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarImage src={tech.avatarUrl} />
+                                        <AvatarFallback>{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-bold text-text-primary">{tech.name}</span>
+                                </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-text-primary">{tech.name}</h3>
-                                    <p className="text-sm text-text-secondary">{tech.role}</p>
+                                    <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{tech.email}</div>
+                                    <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{tech.phone}</div>
                                 </div>
-                            </div>
-                       </div>
-                       
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
-                           <div className="flex items-start gap-2">
-                                <ShieldCheck size={16} className="mt-0.5 text-text-muted shrink-0"/>
                                 <div>
-                                    <div className="text-xs text-text-muted">Reliability</div>
-                                    <div className="font-semibold text-text-primary">{tech.reliabilityScore}%</div>
+                                    <Badge variant="active">ACTIVE</Badge>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" className="!uppercase !text-xs">COMMS</Button>
+                                    <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
+                                        <ExternalLink size={16} />
+                                    </Button>
                                 </div>
                             </div>
-                             <div className="flex items-start gap-2">
-                                <Calendar size={16} className="mt-0.5 text-text-muted shrink-0"/>
-                                 <div>
-                                    <div className="text-xs text-text-muted">Status</div>
-                                    <div className="font-semibold text-text-primary flex items-center gap-1.5">
-                                      <Badge variant={techStatus.variant} className="!p-0 !h-1.5 !w-1.5"></Badge>
-                                      {techStatus.status}
-                                    </div>
-                                </div>
-                            </div>
-                             <div className="flex items-start gap-2 col-span-2">
-                                <Mail size={16} className="mt-0.5 text-text-muted shrink-0"/>
-                                 <div>
-                                    <div className="text-xs text-text-muted">Contact</div>
-                                    <div className="font-semibold text-text-primary">{tech.email}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                             <h4 className="field-label !mb-2">Skills</h4>
-                             <div className="flex flex-wrap gap-1.5">
-                                {tech.skills.map(skill => (
-                                    <Badge key={skill} variant="secondary" className="bg-bg-tertiary text-text-secondary border-border-subtle font-normal">{skill}</Badge>
-                                ))}
-                            </div>
-                        </div>
-                        
-                         <div className="mb-4">
-                             <h4 className="field-label !mb-2">Recent Activity</h4>
-                             {history.length > 0 ? (
-                                <div className="space-y-2">
-                                    {history.map(item => (
-                                        <div key={item.id} className="flex items-center gap-2 text-sm p-2 rounded-md bg-bg-primary border border-border-subtle">
-                                            <Briefcase size={14} className="text-text-muted shrink-0"/>
-                                            <div className="truncate">
-                                               <span className="font-semibold text-text-secondary mr-2">{item.type}</span>
-                                               <span className="text-text-muted">{item.description}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                             ) : (
-                                <div className="empty-state !text-xs !py-2 !px-3 !text-left">No completed assignments.</div>
-                             )}
-                        </div>
-
-                        <div className="mt-auto flex gap-2">
-                             <Button variant="outline" size="sm" className="flex-1">
-                                <Phone size={14} className="mr-2"/> Call
-                            </Button>
-                             <Button variant="outline" size="sm" className="flex-1">
-                                <MessageSquare size={14} className="mr-2"/> Message
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )})}
-        </div>
+                        ))}
+                         {filteredTechnicians.length === 0 && (
+                            <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="staff">
+                         <div className="text-center p-12 text-text-muted">Staff directory coming soon.</div>
+                    </TabsContent>
+                     <TabsContent value="clients">
+                         <div className="text-center p-12 text-text-muted">Clients directory coming soon.</div>
+                    </TabsContent>
+                     <TabsContent value="timeoff">
+                         <div className="text-center p-12 text-text-muted">Time off requests coming soon.</div>
+                    </TabsContent>
+                     <TabsContent value="map">
+                         <div className="text-center p-12 text-text-muted">Map view coming soon.</div>
+                    </TabsContent>
+                </Tabs>
+            </div>
+        </>
     );
 }

@@ -1,10 +1,16 @@
+
+'use client';
+
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning } from "lucide-react";
-import { expenses, reports } from '@/lib/data';
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus } from "lucide-react";
+import { expenses as initialExpenses, reports, weeklyLogs, technicians } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from '@/hooks/use-toast';
+import type { Expense } from '@/lib/types';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -14,6 +20,22 @@ const financialMetrics = [
 ];
 
 export default function FinancialsPage() {
+    const [expenses, setExpenses] = useState(initialExpenses);
+    const { toast } = useToast();
+
+    const handleExpenseStatusChange = (id: string, status: 'Approved' | 'Rejected') => {
+        setExpenses(currentExpenses =>
+            currentExpenses.map(exp => (exp.id === id ? { ...exp, status } : exp))
+        );
+        toast({
+            title: `Expense ${status}`,
+            description: `The expense has been successfully ${status.toLowerCase()}.`,
+        });
+    };
+    
+    const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
+
+
     return (
         <div>
             <header className="page-header">
@@ -74,8 +96,56 @@ export default function FinancialsPage() {
                     </div>
                      <div className="mt-6 empty-state">Further financial summary components can be added here.</div>
                 </TabsContent>
-                <TabsContent value="payroll"><div className="empty-state">Payroll audit page coming soon.</div></TabsContent>
-                <TabsContent value="invoices"><div className="empty-state">Invoices page coming soon.</div></TabsContent>
+                <TabsContent value="payroll" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Payroll Audit</CardTitle>
+                            <CardDescription>Review submitted weekly manifests from technicians for approval.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="table-wrap p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Week Of</TableHead>
+                                        <TableHead>Technician</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Payout</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').map(log => (
+                                        <TableRow key={log.id}>
+                                            <TableCell className="font-semibold">{log.weekOf}</TableCell>
+                                            <TableCell>{getTechnicianName(log.technicianId)}</TableCell>
+                                            <TableCell><Badge variant={log.status === 'Approved' ? 'completed' : 'onhold'}>{log.status}</Badge></TableCell>
+                                            <TableCell className="font-mono text-text-green">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="outline" size="sm">Review Manifest</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="invoices" className="mt-6">
+                     <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle>Client Invoices</CardTitle>
+                                    <CardDescription>Manage and track all client invoices.</CardDescription>
+                                </div>
+                                <Button><Plus size={14} className="mr-2"/>Create New Invoice</Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="empty-state">Invoice management UI coming soon.</div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
                 <TabsContent value="expenses" className="mt-6">
                     <Card>
                         <CardHeader>
@@ -88,21 +158,31 @@ export default function FinancialsPage() {
                                     <TableRow>
                                         <TableHead>Date</TableHead>
                                         <TableHead>Submitted By</TableHead>
-                                        <TableHead>Category</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead>Amount</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {expenses.map((expense) => (
-                                        <TableRow key={expense.id}>
+                                        <TableRow key={expense.id} className="cursor-pointer hover:bg-bg-tertiary">
                                             <TableCell>{expense.date}</TableCell>
                                             <TableCell>{expense.submittedBy}</TableCell>
-                                            <TableCell><Badge variant="secondary">{expense.category}</Badge></TableCell>
-                                            <TableCell className="text-text-secondary">{expense.description}</TableCell>
+                                            <TableCell>
+                                                <div className="font-semibold text-text-primary">{expense.description}</div>
+                                                <div className="text-xs text-text-muted">{expense.category}</div>
+                                            </TableCell>
                                             <TableCell className="font-mono text-text-primary">${expense.amount.toFixed(2)}</TableCell>
                                             <TableCell><Badge variant={expense.status === 'Approved' ? 'completed' : expense.status === 'Pending' ? 'onhold' : 'destructive'}>{expense.status}</Badge></TableCell>
+                                            <TableCell className="text-right">
+                                                 {expense.status === 'Pending' && (
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button size="sm" variant="destructive-outline" onClick={() => handleExpenseStatusChange(expense.id, 'Rejected')}>Deny</Button>
+                                                        <Button size="sm" onClick={() => handleExpenseStatusChange(expense.id, 'Approved')}>Approve</Button>
+                                                    </div>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

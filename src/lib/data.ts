@@ -1,3 +1,4 @@
+
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -164,7 +165,11 @@ export const technicians: Technician[] = [
     skills: [], // N/A for client
     clientCompany: 'Global Corp',
     avatarUrl: 'https://picsum.photos/seed/client1/40/40',
-    availability: {} // N/A for client
+    availability: {}, // N/A for client
+    managedSites: [
+        { id: 'site-1', name: 'Global Corp HQ', location: '123 Wall St, New York, NY' },
+        { id: 'site-2', name: 'Global Corp Data Center', location: '456 Data Dr, Secaucus, NJ' },
+    ]
   },
   {
     id: 'client-002',
@@ -178,7 +183,10 @@ export const technicians: Technician[] = [
     skills: [],
     clientCompany: 'Acme Inc.',
     avatarUrl: 'https://picsum.photos/seed/client2/40/40',
-    availability: {}
+    availability: {},
+    managedSites: [
+        { id: 'site-3', name: 'Acme Inc. Warehouse', location: '789 Industrial Pkwy, Brooklyn, NY' }
+    ]
   }
 ];
 
@@ -469,6 +477,23 @@ export const weeklyLogs: WeeklyLog[] = [
     reimbursements: [
       { id: 'fr-1', technicianId: 'tech-001', date: '2024-07-24', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
     ],
+  },
+  {
+    id: 'wl-2',
+    technicianId: 'tech-002',
+    weekOf: 'July 22, 2024',
+    status: 'Submitted',
+    items: [],
+    reimbursements: [],
+  },
+  {
+    id: 'wl-3',
+    technicianId: 'tech-003',
+    weekOf: 'July 15, 2024',
+    status: 'Approved',
+    items: [],
+    reimbursements: [],
+    totalPayout: 1850.75,
   }
 ];
 
@@ -506,6 +531,7 @@ export const expenses: Expense[] = [
     { id: 'exp-002', date: '2024-07-26', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
     { id: 'exp-003', date: '2024-07-27', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending' },
     { id: 'exp-004', date: '2024-07-28', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
+    { id: 'exp-005', date: '2024-07-28', submittedBy: 'Ben Carter', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
 ];
 
 export const reports: Report[] = [

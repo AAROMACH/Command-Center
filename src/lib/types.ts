@@ -1,3 +1,4 @@
+
 export type WorkOrder = {
   id: string;
   description: string;
@@ -32,6 +33,7 @@ export type Technician = {
   avatarUrl: string;
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; // Added for client roles
+  managedSites?: { id: string; name: string; location: string }[];
 };
 
 export type Recommendation = {
@@ -197,7 +199,7 @@ export type Expense = {
   id: string;
   date: string;
   submittedBy: string;
-  category: 'Travel' | 'Materials' | 'Meals' | 'Other';
+  category: 'Travel' | 'Materials' | 'Meals' | 'Tools' | 'Other';
   description: string;
   amount: number;
   status: 'Pending' | 'Approved' | 'Rejected';

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { technicians } from "@/lib/data";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,9 +41,34 @@ export default function LoginPage() {
   });
 
   function onSubmit(data: LoginFormValues) {
-    console.log(data);
-    // Here you would typically handle authentication
-    router.push("/admin/dashboard");
+    const user = technicians.find(
+      (t) => t.email.toLowerCase() === data.email.toLowerCase()
+    );
+
+    // Simple role check, in real-world you'd check a database
+    const isTech =
+      user &&
+      (user.role.toLowerCase().includes("tech") ||
+        user.role.toLowerCase().includes("specialist") ||
+        user.role.toLowerCase().includes("integrator"));
+
+    if (typeof window !== "undefined") {
+      if (isTech && user) {
+        localStorage.setItem("currentUserId", user.id);
+      } else if (user) {
+        // Assume other roles are admin-like
+        localStorage.setItem("currentUserId", user.id);
+      } else {
+        // Default for unknown users, e.g., the main admin
+        localStorage.setItem("currentUserId", "staff-002");
+      }
+    }
+
+    if (isTech) {
+      router.push("/tech/dashboard");
+    } else {
+      router.push("/admin/dashboard");
+    }
   }
 
   return (

@@ -37,6 +37,12 @@
       "imageHint": "person smiling"
     },
     {
+      "id": "technician-6",
+      "description": "Technician avatar",
+      "imageUrl": "https://picsum.photos/seed/tech6/40/40",
+      "imageHint": "person happy"
+    },
+    {
       "id": "site-photo-1",
       "description": "A photo of a worksite",
       "imageUrl": "https://picsum.photos/seed/site1/100/100",

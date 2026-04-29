@@ -142,6 +142,33 @@ export const technicians: Technician[] = [
       'sunday': null,
     }
   },
+  {
+    id: 'tech-006',
+    name: 'Corey Williams',
+    role: 'Field Technician',
+    email: 'cwilliams@aaromach.com',
+    phone: '555-666-7777',
+    address: '303 Birch Rd, Newark, NJ 07102',
+    emergencyContact: {
+      name: 'Michael Williams',
+      relation: 'Father',
+      phone: '555-666-8888',
+    },
+    currentLocation: 'Newark, NJ',
+    reliabilityScore: 91,
+    currentWorkload: 2,
+    skills: ['Cabling', 'Networking', 'Smart Home'],
+    avatarUrl: getImageUrl('technician-6'),
+    availability: {
+      'monday': { start: '08:00', end: '17:00' },
+      'tuesday': { start: '08:00', end: '17:00' },
+      'wednesday': null,
+      'thursday': { start: '08:00', end: '17:00' },
+      'friday': { start: '08:00', end: '17:00' },
+      'saturday': { start: '09:00', end: '15:00' },
+      'sunday': null,
+    }
+  },
 
   // Staff
   {

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { WorkOrder, TimeOffRequest } from '@/lib/types';
 import { workOrders } from '@/lib/data';
 import { Calendar } from "@/components/ui/calendar";
@@ -10,14 +10,18 @@ import { format, parseISO } from 'date-fns';
 import { MapPin, Clock, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const CURRENT_TECH_ID = 'tech-001';
-
 export default function TechCalendarPage() {
+    const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [date, setDate] = useState<Date | undefined>(new Date('2024-07-28T12:00:00Z'));
     const [selectedEvent, setSelectedEvent] = useState<WorkOrder | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-    const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === CURRENT_TECH_ID);
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentTechId(userId);
+    }, []);
+
+    const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
 
     const handleDayClick = (day: Date) => {
         setDate(day);
@@ -29,6 +33,10 @@ export default function TechCalendarPage() {
     };
 
     const eventsForSelectedDay = techWorkOrders.filter(wo => wo.scheduleDate === format(date || new Date(), 'yyyy-MM-dd'));
+
+    if (!currentTechId) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div>

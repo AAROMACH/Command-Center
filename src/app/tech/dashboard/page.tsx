@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { WorkOrder, Technician, PenaltyEvent } from '@/lib/types';
 import { workOrders, technicians, penaltyEvents } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -7,24 +7,29 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Bell, AlertTriangle, Calendar, Clock, MapPin, Gauge, ScrollText, CheckCircle2 } from 'lucide-react';
 
-// For demonstration, we'll hardcode the current technician's ID
-const CURRENT_TECH_ID = 'tech-001';
 
 export default function TechDashboardPage() {
+    const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentTechId(userId);
+    }, []);
+
     const today = new Date('2024-07-28T12:00:00Z'); // Mock today's date for consistent data
     const todayStr = today.toISOString().split('T')[0];
 
-    const tech = technicians.find(t => t.id === CURRENT_TECH_ID);
+    const tech = technicians.find(t => t.id === currentTechId);
 
     const todaysAssignments = workOrders.filter(wo => 
-        wo.assignedTechnicianId === CURRENT_TECH_ID &&
+        wo.assignedTechnicianId === currentTechId &&
         wo.scheduleDate === todayStr
     );
     
     const upcomingAssignments = workOrders.filter(wo => {
       const woDate = new Date(wo.scheduleDate);
       const diffDays = (woDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-      return wo.assignedTechnicianId === CURRENT_TECH_ID && diffDays > 0 && diffDays <= 7;
+      return wo.assignedTechnicianId === currentTechId && diffDays > 0 && diffDays <= 7;
     });
 
     const reliabilityScore = tech?.reliabilityScore || 0;
@@ -33,6 +38,10 @@ export default function TechDashboardPage() {
     // In a real app, these would come from a data source
     const pendingLogAlerts = 1;
     const unreadNotifications = 3;
+
+    if (!currentTechId) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div>
@@ -134,7 +143,7 @@ export default function TechDashboardPage() {
                             </div>
                             <div className="mt-4 space-y-2">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">Recent Penalty Events</h4>
-                                {penaltyEvents.filter(p => p.technicianId === CURRENT_TECH_ID).slice(0,2).map(event => (
+                                {tech && penaltyEvents.filter(p => p.technicianId === tech.id).slice(0,2).map(event => (
                                     <div key={event.id} className="text-xs p-2 rounded-md bg-bg-primary border border-border-subtle">
                                         <div className="flex justify-between">
                                             <span className="font-semibold text-text-secondary">{event.reason}</span>

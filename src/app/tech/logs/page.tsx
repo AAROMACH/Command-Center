@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { WeeklyLog, FinancialRecord } from '@/lib/types';
 import { weeklyLogs, workOrders } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -10,14 +10,21 @@ import { Check, Edit, Plus, Coins, ScrollText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 
-const CURRENT_TECH_ID = 'tech-001';
-
 export default function TechLogsPage() {
-    const [log, setLog] = useState<WeeklyLog | undefined>(weeklyLogs.find(wl => wl.technicianId === CURRENT_TECH_ID));
+    const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+    const [log, setLog] = useState<WeeklyLog | undefined>(undefined);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
 
-    if (!log) {
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentTechId(userId);
+        if (userId) {
+            setLog(weeklyLogs.find(wl => wl.technicianId === userId));
+        }
+    }, []);
+
+    if (!currentTechId || !log) {
         return <div>Loading...</div>;
     }
     
@@ -31,9 +38,10 @@ export default function TechLogsPage() {
     };
 
     const handleAddReimbursement = () => {
+        if (!currentTechId) return;
         const newReimbursement: FinancialRecord = {
             id: `fr-${Date.now()}`,
-            technicianId: CURRENT_TECH_ID,
+            technicianId: currentTechId,
             date: new Date().toISOString().split('T')[0],
             type: 'reimbursement',
             amount: 0,

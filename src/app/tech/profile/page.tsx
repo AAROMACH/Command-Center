@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Technician, TimeOffRequest } from '@/lib/types';
 import { technicians, timeOffRequests as initialTimeOffRequests, penaltyEvents } from '@/lib/data';
 import Image from 'next/image';
@@ -22,8 +22,6 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-
-const CURRENT_TECH_ID = 'tech-001';
 
 const RequestTimeOffDialog = ({ 
     isOpen, 
@@ -118,16 +116,31 @@ const RequestTimeOffDialog = ({
 
 
 export default function TechProfilePage() {
-    const [tech, setTech] = useState<Technician | undefined>(technicians.find(t => t.id === CURRENT_TECH_ID));
+    const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+    const [tech, setTech] = useState<Technician | undefined>(undefined);
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     
-    const initialRequests = useMemo(() => initialTimeOffRequests.filter(r => r.technicianId === CURRENT_TECH_ID), []);
-    const [techTimeOffRequests, setTechTimeOffRequests] = useState(initialRequests);
+    const [techTimeOffRequests, setTechTimeOffRequests] = useState<TimeOffRequest[]>([]);
     
-    const techPenaltyEvents = penaltyEvents.filter(p => p.technicianId === CURRENT_TECH_ID);
-    const { toast } = useToast();
+    const techPenaltyEvents = useMemo(() => {
+        if (!currentTechId) return [];
+        return penaltyEvents.filter(p => p.technicianId === currentTechId);
+    }, [currentTechId]);
 
-    if (!tech) return <div>Loading...</div>;
+    const { toast } = useToast();
+    
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentTechId(userId);
+        if (userId) {
+            setTech(technicians.find(t => t.id === userId));
+            setTechTimeOffRequests(initialTimeOffRequests.filter(r => r.technicianId === userId));
+        }
+    }, []);
+
+    if (!currentTechId || !tech) {
+        return <div>Loading...</div>;
+    }
     
     const handleAvailabilityChange = (day: string, field: 'start' | 'end', value: string) => {
         setTech(prev => prev ? ({
@@ -135,6 +148,7 @@ export default function TechProfilePage() {
             availability: {
                 ...prev.availability,
                 [day]: {
+                    // @ts-ignore
                     ...prev.availability[day],
                     [field]: value,
                 }
@@ -143,9 +157,10 @@ export default function TechProfilePage() {
     };
 
     const handleNewRequestSubmit = (newRequestData: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => {
+        if (!currentTechId) return;
         const newRequest: TimeOffRequest = {
             id: `tor-${Date.now()}`,
-            technicianId: CURRENT_TECH_ID,
+            technicianId: currentTechId,
             status: 'pending',
             ...newRequestData
         };

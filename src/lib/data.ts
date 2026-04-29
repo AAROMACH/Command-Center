@@ -1,5 +1,6 @@
 
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report } from './types';
+
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -66,6 +67,12 @@ export const technicians: Technician[] = [
     role: 'Senior Technician',
     email: 'david.s@aaromach.com',
     phone: '555-333-4444',
+    address: '789 Maple Dr, Queens, NY 11101',
+    emergencyContact: {
+      name: 'Emily Smith',
+      relation: 'Spouse',
+      phone: '555-333-7777',
+    },
     currentLocation: 'Queens, NY',
     reliabilityScore: 88,
     currentWorkload: 5,
@@ -87,6 +94,12 @@ export const technicians: Technician[] = [
     role: 'Smart Home Integrator',
     email: 'sarah.c@aaromach.com',
     phone: '555-444-5555',
+    address: '101 Cherry Ln, New York, NY 10002',
+    emergencyContact: {
+      name: 'Wei Chen',
+      relation: 'Father',
+      phone: '555-444-6666',
+    },
     currentLocation: 'New York, NY',
     reliabilityScore: 92,
     currentWorkload: 1,
@@ -108,6 +121,12 @@ export const technicians: Technician[] = [
     role: 'Junior Technician',
     email: 'ben.c@aaromach.com',
     phone: '555-555-6666',
+    address: '212 River Rd, Jersey City, NJ 07302',
+    emergencyContact: {
+      name: 'Olivia Carter',
+      relation: 'Sister',
+      phone: '555-555-1111',
+    },
     currentLocation: 'Jersey City, NJ',
     reliabilityScore: 85,
     currentWorkload: 4,
@@ -131,6 +150,12 @@ export const technicians: Technician[] = [
     role: 'Dispatcher',
     email: 'eleanor.v@aaromach.com',
     phone: '555-888-1111',
+    address: '500 Park Ave, New York, NY 10022',
+    emergencyContact: {
+        name: 'Marcus Vance',
+        relation: 'Husband',
+        phone: '555-888-2222',
+    },
     currentLocation: 'Command Center',
     reliabilityScore: 100, // N/A for staff
     currentWorkload: 0, // N/A for staff
@@ -144,6 +169,12 @@ export const technicians: Technician[] = [
     role: 'Admin',
     email: 'admin@aaromach.com',
     phone: '555-000-0000',
+    address: '1 Command Center Plaza, New York, NY 10001',
+    emergencyContact: {
+        name: 'IT Support',
+        relation: 'Work',
+        phone: '555-000-0001',
+    },
     currentLocation: 'Command Center',
     reliabilityScore: 100,
     currentWorkload: 0,
@@ -469,7 +500,7 @@ export const weeklyLogs: WeeklyLog[] = [
     id: 'wl-1',
     technicianId: 'tech-001',
     weekOf: 'July 22, 2024',
-    status: 'Draft',
+    status: 'Submitted',
     items: [
       { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
       { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },
@@ -477,6 +508,7 @@ export const weeklyLogs: WeeklyLog[] = [
     reimbursements: [
       { id: 'fr-1', technicianId: 'tech-001', date: '2024-07-24', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
     ],
+    totalPayout: 2150.50,
   },
   {
     id: 'wl-2',
@@ -485,6 +517,7 @@ export const weeklyLogs: WeeklyLog[] = [
     status: 'Submitted',
     items: [],
     reimbursements: [],
+     totalPayout: 1980.00,
   },
   {
     id: 'wl-3',
@@ -539,4 +572,58 @@ export const reports: Report[] = [
     { id: 'rep-002', name: 'July Technician Payroll', type: 'Financial', generationDate: '2024-07-25', generatedBy: 'System Administrator' },
     { id: 'rep-003', name: 'Q2 Project Profitability Analysis', type: 'Operational', generationDate: '2024-07-05', generatedBy: 'System Administrator' },
     { id: 'rep-004', name: 'June Safety Compliance Report', type: 'Compliance', generationDate: '2024-07-02', generatedBy: 'System Administrator' },
+];
+
+export const invoices: Invoice[] = [
+  {
+    id: 'inv-001',
+    invoiceNumber: '2024-001',
+    clientId: 'client-001',
+    clientName: 'Global Corp',
+    projectId: 'proj-002',
+    issueDate: '2024-07-15',
+    dueDate: '2024-08-14',
+    status: 'paid',
+    lineItems: [
+      { id: 'li-1', description: 'AV Cabling & Infrastructure', quantity: 80, unitPrice: 150 },
+      { id: 'li-2', description: 'Hardware Installation Labor', quantity: 40, unitPrice: 120 },
+    ],
+    subtotal: 16800,
+    tax: 1344,
+    total: 18144,
+    notes: 'Payment received. Thank you!',
+  },
+  {
+    id: 'inv-002',
+    invoiceNumber: '2024-002',
+    clientId: 'client-002',
+    clientName: 'Acme Inc.',
+    workOrderId: 'wo-106',
+    issueDate: '2024-07-28',
+    dueDate: '2024-08-27',
+    status: 'sent',
+    lineItems: [
+      { id: 'li-3', description: 'Water Heater Replacement Labor', quantity: 8, unitPrice: 93.75 },
+      { id: 'li-4', description: 'Materials & Parts', quantity: 1, unitPrice: 450 },
+    ],
+    subtotal: 1200,
+    tax: 96,
+    total: 1296,
+  },
+    {
+    id: 'inv-003',
+    invoiceNumber: '2024-003',
+    clientId: 'client-001',
+    clientName: 'Global Corp',
+    issueDate: '2024-08-01',
+    dueDate: '2024-08-31',
+    status: 'draft',
+    lineItems: [
+       { id: 'li-5', description: 'Quarterly Maintenance Contract', quantity: 1, unitPrice: 2500 },
+    ],
+    subtotal: 2500,
+    tax: 200,
+    total: 2700,
+    notes: 'To be sent EOD.',
+  },
 ];

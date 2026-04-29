@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus } from "lucide-react";
-import { expenses as initialExpenses, reports, weeklyLogs, technicians } from '@/lib/data';
+import { expenses as initialExpenses, reports, weeklyLogs, technicians, invoices as initialInvoices, projects, workOrders } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import type { Expense } from '@/lib/types';
+import type { Expense, Invoice } from '@/lib/types';
+import { InvoiceEditor } from './components/invoice-editor';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -21,6 +22,10 @@ const financialMetrics = [
 
 export default function FinancialsPage() {
     const [expenses, setExpenses] = useState(initialExpenses);
+    const [invoices, setInvoices] = useState(initialInvoices);
+    const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
     const { toast } = useToast();
 
     const handleExpenseStatusChange = (id: string, status: 'Approved' | 'Rejected') => {
@@ -34,6 +39,42 @@ export default function FinancialsPage() {
     };
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
+
+    const clients = technicians.filter(t => t.role.toLowerCase().includes('client'));
+    
+    const handleCreateNewInvoice = () => {
+        setSelectedInvoice(null);
+        setIsInvoiceEditorOpen(true);
+    };
+
+    const handleEditInvoice = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setIsInvoiceEditorOpen(true);
+    };
+    
+    const handleSaveInvoice = (savedInvoice: Invoice) => {
+        const isNew = !savedInvoice.id || !invoices.some(inv => inv.id === savedInvoice.id);
+        if (isNew) {
+            const newInvoiceWithId = { ...savedInvoice, id: `inv-${Date.now()}`};
+            setInvoices(current => [newInvoiceWithId, ...current]);
+             toast({ title: 'Invoice Created', description: `Invoice ${newInvoiceWithId.invoiceNumber} has been successfully created.` });
+        } else {
+            setInvoices(current => current.map(inv => inv.id === savedInvoice.id ? savedInvoice : inv));
+            toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
+        }
+        setIsInvoiceEditorOpen(false);
+    };
+
+    const getInvoiceStatusVariant = (status: Invoice['status']) => {
+        switch (status) {
+            case 'paid': return 'completed';
+            case 'sent': return 'active';
+            case 'overdue': return 'destructive';
+            case 'draft': return 'onhold';
+            case 'void': return 'secondary';
+            default: return 'secondary';
+        }
+    };
 
 
     return (
@@ -138,11 +179,34 @@ export default function FinancialsPage() {
                                     <CardTitle>Client Invoices</CardTitle>
                                     <CardDescription>Manage and track all client invoices.</CardDescription>
                                 </div>
-                                <Button><Plus size={14} className="mr-2"/>Create New Invoice</Button>
+                                <Button onClick={handleCreateNewInvoice}><Plus size={14} className="mr-2"/>Create New Invoice</Button>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="empty-state">Invoice management UI coming soon.</div>
+                        <CardContent className="table-wrap p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Invoice #</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead>Total</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {invoices.map((invoice) => (
+                                        <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer">
+                                            <TableCell className="font-semibold text-text-primary">{invoice.invoiceNumber}</TableCell>
+                                            <TableCell>{invoice.clientName}</TableCell>
+                                            <TableCell>{invoice.dueDate}</TableCell>
+                                            <TableCell className="font-mono text-text-primary">${invoice.total.toFixed(2)}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={getInvoiceStatusVariant(invoice.status)} className="capitalize">{invoice.status}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -232,7 +296,15 @@ export default function FinancialsPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-
+            <InvoiceEditor
+                isOpen={isInvoiceEditorOpen}
+                setIsOpen={setIsInvoiceEditorOpen}
+                invoice={selectedInvoice}
+                clients={clients}
+                projects={projects}
+                workOrders={workOrders}
+                onSave={handleSaveInvoice}
+            />
         </div>
     );
 }

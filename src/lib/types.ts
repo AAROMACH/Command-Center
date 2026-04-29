@@ -1,4 +1,5 @@
 
+
 export type WorkOrder = {
   id: string;
   description: string;
@@ -211,4 +212,28 @@ export type Report = {
   type: 'Financial' | 'Operational' | 'Compliance';
   generationDate: string;
   generatedBy: string;
+};
+
+export type InvoiceLineItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type Invoice = {
+  id: string;
+  invoiceNumber: string;
+  clientId: string;
+  clientName: string;
+  projectId?: string;
+  workOrderId?: string;
+  issueDate: string;
+  dueDate: string;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
+  lineItems: InvoiceLineItem[];
+  notes?: string;
+  subtotal: number;
+  tax: number;
+  total: number;
 };

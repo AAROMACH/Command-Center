@@ -6,29 +6,49 @@ import { weeklyLogs, workOrders } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Check, Edit, Plus, Coins, ScrollText } from 'lucide-react';
+import { Check, Edit, Plus, Coins, ScrollText, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function TechLogsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [log, setLog] = useState<WeeklyLog | undefined>(undefined);
-    const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
         if (userId) {
-            setLog(weeklyLogs.find(wl => wl.technicianId === userId));
+            // Find the most recent draft, or the most recent log.
+            const userLogs = weeklyLogs.filter(wl => wl.technicianId === userId);
+            const draftLog = userLogs.find(l => l.status === 'Draft');
+            setLog(draftLog || userLogs[0]);
         }
     }, []);
 
-    if (!currentTechId || !log) {
+    if (!currentTechId) {
         return <div>Loading...</div>;
+    }
+
+    if (!log) {
+        return (
+             <div>
+                <header className="page-header">
+                    <div>
+                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Payroll & Logs</p>
+                        <h1 className="page-title">Weekly Manifests</h1>
+                        <p className="page-subtitle">Review your weekly work logs and submit them for payroll processing.</p>
+                    </div>
+                </header>
+                <div className="empty-state">No weekly logs found for your account.</div>
+            </div>
+        )
     }
     
     const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
+    
+    const isSubmitted = log.status !== 'Draft';
 
     const handleOutcomeChange = (itemId: string, outcome: 'worked_completed' | 'worked_revisit' | 'other') => {
         setLog(prev => prev ? ({
@@ -36,6 +56,16 @@ export default function TechLogsPage() {
             items: prev.items.map(item => item.id === itemId ? { ...item, outcomeCode: outcome } : item)
         }) : undefined);
     };
+
+    const handleReimbursementChange = (index: number, field: 'description' | 'amount', value: string) => {
+        setLog(prev => {
+            if (!prev) return undefined;
+            const newReimbursements = [...prev.reimbursements];
+            const val = field === 'amount' ? parseFloat(value) || 0 : value;
+            (newReimbursements[index] as any)[field] = val;
+            return { ...prev, reimbursements: newReimbursements };
+        });
+    }
 
     const handleAddReimbursement = () => {
         if (!currentTechId) return;
@@ -49,14 +79,20 @@ export default function TechLogsPage() {
         };
         setLog(prev => prev ? ({ ...prev, reimbursements: [...prev.reimbursements, newReimbursement] }) : undefined);
     }
+    
+    const handleRemoveReimbursement = (index: number) => {
+        setLog(prev => {
+            if (!prev) return undefined;
+            const newReimbursements = [...prev.reimbursements];
+            newReimbursements.splice(index, 1);
+            return { ...prev, reimbursements: newReimbursements };
+        });
+    }
 
     const handleSubmitManifest = () => {
         setLog(prev => prev ? ({ ...prev, status: 'Submitted' }) : undefined);
-        setIsEditing(false);
         toast({ title: "Manifest Submitted", description: "Your weekly log is now with the admins for audit." });
     }
-    
-    const isSubmitted = log.status !== 'Draft';
 
     return (
         <div>
@@ -92,7 +128,7 @@ export default function TechLogsPage() {
                                     <tr>
                                         <th>Work Order</th>
                                         <th>Client</th>
-                                        <th className="text-right">Outcome</th>
+                                        <th className="text-right w-52">Outcome</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -106,7 +142,18 @@ export default function TechLogsPage() {
                                                 </td>
                                                 <td><div className="text-sm text-text-secondary">{wo?.clientName}</div></td>
                                                 <td className="text-right">
-                                                    <Badge variant={item.outcomeCode === 'worked_completed' ? 'active' : 'medium'}>{item.outcomeCode.replace('_', ' ')}</Badge>
+                                                    {isSubmitted ? (
+                                                        <Badge variant={item.outcomeCode === 'worked_completed' ? 'active' : 'medium'}>{item.outcomeCode.replace(/_/g, ' ')}</Badge>
+                                                    ) : (
+                                                        <Select value={item.outcomeCode} onValueChange={(val) => handleOutcomeChange(item.id, val as any)}>
+                                                            <SelectTrigger><SelectValue/></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="worked_completed">Work Completed</SelectItem>
+                                                                <SelectItem value="worked_revisit">Revisit Required</SelectItem>
+                                                                <SelectItem value="other">Other</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
                                                 </td>
                                             </tr>
                                         )
@@ -129,17 +176,20 @@ export default function TechLogsPage() {
                                 <div key={item.id} className="flex gap-2 items-center">
                                     <Input 
                                         placeholder="Description (e.g., Parking, Materials)" 
-                                        defaultValue={item.description}
+                                        value={item.description}
                                         disabled={isSubmitted}
                                         className="field-input"
+                                        onChange={(e) => handleReimbursementChange(index, 'description', e.target.value)}
                                     />
                                     <Input 
                                         type="number" 
                                         placeholder="Amount" 
-                                        defaultValue={item.amount || ''}
+                                        value={item.amount || ''}
                                         disabled={isSubmitted}
                                         className="field-input w-32"
+                                        onChange={(e) => handleReimbursementChange(index, 'amount', e.target.value)}
                                     />
+                                     {!isSubmitted && <Button variant="ghost" size="icon" className="text-text-muted" onClick={() => handleRemoveReimbursement(index)}><Trash2 size={16}/></Button>}
                                 </div>
                             ))}
                             {log.reimbursements.length === 0 && (

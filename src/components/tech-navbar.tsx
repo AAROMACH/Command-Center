@@ -11,20 +11,27 @@ import {
   ScrollText,
   User,
   Power,
+  Coins,
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { Button } from './ui/button';
 
 const navItems = [
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/tech/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/tech/assignments', label: 'Assignments', icon: Calendar },
   { href: '/tech/projects', label: 'Projects', icon: Briefcase },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText },
+  { href: '/tech/earnings', label: 'Earnings', icon: Coins },
   { href: '/tech/profile', label: 'Profile', icon: User },
 ];
 
 export function TechNavbar() {
   const pathname = usePathname();
+  
+  const isActive = (href: string) => {
+    if (href === '/tech/dashboard') return pathname === href;
+    return pathname.startsWith(href);
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center gap-4 border-b border-border-default bg-[#0f0f0f] px-6">
@@ -40,7 +47,7 @@ export function TechNavbar() {
           href={item.href}
           className={cn(
             'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-[#888888] transition-all',
-            pathname.startsWith(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+            isActive(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
           )}
         >
           <item.icon className="nav-icon h-3.5 w-3.5 opacity-70" />

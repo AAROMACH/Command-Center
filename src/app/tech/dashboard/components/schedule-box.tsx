@@ -26,9 +26,6 @@ import {
   List, 
   MapPin, 
   Clock, 
-  DollarSign, 
-  LogIn, 
-  LogOut, 
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,8 +39,8 @@ type ScheduleBoxProps = {
 
 export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
-    const [currentDate, setCurrentDate] = useState(new Date('2024-07-28T12:00:00Z'));
-    const [selectedDate, setSelectedDate] = useState(new Date('2024-07-28T12:00:00Z'));
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
     const { toast } = useToast();
 
@@ -64,11 +61,11 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     const eventsByDate = useMemo(() => {
       return allWorkOrders.reduce((acc, wo) => {
         try {
-            const date = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
-            if (!acc[date]) {
-              acc[date] = [];
+            const dateStr = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
+            if (!acc[dateStr]) {
+              acc[dateStr] = [];
             }
-            acc[date].push(wo);
+            acc[dateStr].push(wo);
         } catch (e) {
         }
         return acc;
@@ -120,7 +117,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     });
 
     return (
-        <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden">
+        <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
              <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-main">
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
@@ -156,20 +153,23 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
 
             {viewMode === 'week' ? (
                 <div className="week-grid !mb-6">
-                    {weekDays.map(day => (
-                        <div 
-                          key={day.toString()} 
-                          className={cn("day-pill", {
-                            'selected': isSameDay(day, selectedDate),
-                            'today': isToday(day)
-                          })}
-                          onClick={() => setSelectedDate(day)}
-                        >
-                            <span className="day-name">{format(day, 'EEE')}</span>
-                            <span className="day-num">{format(day, 'd')}</span>
-                            {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="day-dot"></div>}
-                        </div>
-                    ))}
+                    {weekDays.map(day => {
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        return (
+                            <div 
+                              key={day.toString()} 
+                              className={cn("day-pill", {
+                                'selected': isSameDay(day, selectedDate),
+                                'today': isToday(day)
+                              })}
+                              onClick={() => setSelectedDate(day)}
+                            >
+                                <span className="day-name">{format(day, 'EEE')}</span>
+                                <span className="day-num">{format(day, 'd')}</span>
+                                {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="day-dot"></div>}
+                            </div>
+                        )
+                    })}
                 </div>
             ) : (
                 <div className="month-grid-wrap !mb-6">
@@ -179,20 +179,23 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         ))}
                     </div>
                     <div className="month-days">
-                        {monthDays.map(day => (
-                            <div 
-                              key={day.toString()}
-                              className={cn("month-day !h-10 !text-xs", {
-                                'selected': isSameDay(day, selectedDate),
-                                'today': isToday(day),
-                                'other-month': !isSameMonth(day, currentDate)
-                              })}
-                              onClick={() => setSelectedDate(day)}
-                            >
-                                {format(day, 'd')}
-                                {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="month-day-dot"></div>}
-                            </div>
-                        ))}
+                        {monthDays.map(day => {
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            return (
+                                <div 
+                                  key={day.toString()}
+                                  className={cn("month-day !h-10 !text-xs", {
+                                    'selected': isSameDay(day, selectedDate),
+                                    'today': isToday(day),
+                                    'other-month': !isSameMonth(day, currentDate)
+                                  })}
+                                  onClick={() => setSelectedDate(day)}
+                                >
+                                    {format(day, 'd')}
+                                    {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="month-day-dot"></div>}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             )}

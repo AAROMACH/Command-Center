@@ -10,16 +10,12 @@ import {
   Calendar, 
   MapPin, 
   Clock, 
-  DollarSign, 
   CheckCircle2, 
   Wrench, 
-  AlertTriangle,
-  History,
   ClipboardCheck,
   FileCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -38,18 +34,24 @@ export default function TechAssignmentsPage() {
         return allWorkOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
     }, [allWorkOrders, currentTechId]);
 
-    const activeAssignments = techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress');
-    const completedAssignments = techWorkOrders.filter(wo => wo.status === 'completed');
+    const activeAssignments = useMemo(() => 
+        techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
+    [techWorkOrders]);
+
+    const completedAssignments = useMemo(() => 
+        techWorkOrders.filter(wo => wo.status === 'completed'),
+    [techWorkOrders]);
 
     const handleConfirmSchedule = (woId: string) => {
         toast({
             title: "Schedule Confirmed",
             description: "Confirmation sent to operations. Reporting window locked.",
         });
-        // Logic to mark as confirmed would go here
     };
 
-    if (!mounted || !currentTechId) return <div className="p-8 text-center text-xs uppercase tracking-widest">Loading...</div>;
+    if (!mounted || !currentTechId) {
+        return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Loading assignments...</div>;
+    }
 
     return (
         <div>
@@ -117,7 +119,7 @@ export default function TechAssignmentsPage() {
                                         </td>
                                         <td className="text-right">
                                             {wo.status === 'assigned' && (
-                                                <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirmSchedule(wo.id)}>
+                                                <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => handleConfirmSchedule(wo.id)}>
                                                     <ClipboardCheck size={14} className="mr-2"/>
                                                     Confirm Schedule
                                                 </Button>
@@ -170,7 +172,7 @@ export default function TechAssignmentsPage() {
                                             <div className="text-xs text-text-secondary">{wo.scheduleDate}</div>
                                         </td>
                                         <td>
-                                            <Badge variant="completed" className="!bg-[#1a1a2a] !border-[#2a3a5a] !text-[#6688CC] uppercase text-[9px]">
+                                            <Badge variant="completed" className="uppercase text-[9px]">
                                                 <FileCheck size={11} className="mr-1"/>
                                                 Audit Passed
                                             </Badge>

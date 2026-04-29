@@ -1,13 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician, PenaltyEvent } from '@/lib/types';
 import { workOrders, technicians, penaltyEvents, weeklyLogs } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bell, AlertTriangle, Calendar, Clock, MapPin, Gauge, ScrollText, CheckCircle2, LayoutDashboard, Wrench } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bell, Gauge, ScrollText, LayoutDashboard, MapPin } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
-
+import { format } from 'date-fns';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -19,27 +19,40 @@ export default function TechDashboardPage() {
         setCurrentTechId(userId);
     }, []);
 
-    const today = new Date('2024-07-28T12:00:00Z');
-    const todayStr = today.toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
 
-    const tech = technicians.find(t => t.id === currentTechId);
+    const tech = useMemo(() => 
+        technicians.find(t => t.id === currentTechId), 
+    [currentTechId]);
 
-    const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
+    const techWorkOrders = useMemo(() => 
+        workOrders.filter(wo => wo.assignedTechnicianId === currentTechId),
+    [currentTechId]);
     
-    const todaysAssignments = techWorkOrders.filter(wo => wo.scheduleDate === todayStr);
+    const todaysAssignments = useMemo(() => 
+        techWorkOrders.filter(wo => wo.scheduleDate === todayStr),
+    [techWorkOrders, todayStr]);
 
-    const activeSession = todaysAssignments.find(wo => wo.status === 'in-progress');
+    const activeSession = useMemo(() => 
+        todaysAssignments.find(wo => wo.status === 'in-progress'),
+    [todaysAssignments]);
 
-    const upcomingAssignments = techWorkOrders.filter(wo => {
-      const woDate = new Date(wo.scheduleDate);
-      const diffDays = (woDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-      return diffDays > 0 && diffDays <= 7;
-    });
+    const upcomingAssignments = useMemo(() => 
+        techWorkOrders.filter(wo => {
+            const woDate = new Date(wo.scheduleDate);
+            const diffDays = (woDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+            return diffDays > 0 && diffDays <= 7;
+        }),
+    [techWorkOrders, today]);
 
     const reliabilityScore = tech?.reliabilityScore || 0;
     const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
     
-    const pendingLogAlerts = currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0;
+    const pendingLogAlerts = useMemo(() => 
+        currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0,
+    [currentTechId]);
+    
     const unreadNotifications = 3;
 
     if (!mounted || !currentTechId || !tech) {
@@ -55,7 +68,7 @@ export default function TechDashboardPage() {
                         <span className="session-label">Active Session</span>
                         <span className="session-detail">{activeSession.id.toUpperCase()} — {activeSession.description}</span>
                     </div>
-                    <span className="session-time">Since {format(new Date(), 'h:mm a')}</span>
+                    <span className="session-time">Monitoring Live Activity</span>
                 </div>
             )}
 
@@ -66,12 +79,11 @@ export default function TechDashboardPage() {
                         Mission Command
                     </p>
                     <h1 className="page-title">OPERATIONS OVERVIEW</h1>
-                    <p className="page-subtitle">Welcome back, {tech?.name}. Monitoring active engagements.</p>
+                    <p className="page-subtitle">Welcome back, {tech.name}. Monitoring active engagements.</p>
                 </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column - Tactical Intel */}
                 <div className="lg:col-span-2 space-y-6">
                     <ScheduleBox workOrders={techWorkOrders} />
 
@@ -86,14 +98,19 @@ export default function TechDashboardPage() {
                                     {upcomingAssignments.slice(0, 4).map(wo => (
                                          <tr key={wo.id}>
                                             <td className="!py-3">
-                                                <span className="font-bold text-text-primary uppercase text-[10px] tracking-widest">{new Date(wo.scheduleDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric'})}</span>
+                                                <span className="font-bold text-text-primary uppercase text-[10px] tracking-widest">
+                                                    {format(new Date(wo.scheduleDate + 'T12:00:00'), 'MMM d, EEE')}
+                                                </span>
                                             </td>
                                             <td className="!py-3">
                                                 <div className="font-bold text-text-primary text-[11px] uppercase">{wo.description}</div>
                                                 <div className="text-[10px] text-text-muted">{wo.clientName}</div>
                                             </td>
                                             <td className="!py-3">
-                                                 <div className="flex items-center gap-1.5 text-[10px] text-text-secondary uppercase"><MapPin size={12} className="text-brand-red"/>{wo.location.split(',')[0]}</div>
+                                                 <div className="flex items-center gap-1.5 text-[10px] text-text-secondary uppercase">
+                                                    <MapPin size={12} className="text-brand-red"/>
+                                                    {wo.location.split(',')[0]}
+                                                 </div>
                                             </td>
                                             <td className="!py-3 text-right">
                                                  <Badge variant="scheduled" className="text-[9px]">{wo.scheduleTime}</Badge>
@@ -111,7 +128,6 @@ export default function TechDashboardPage() {
                     </div>
                 </div>
 
-                {/* Right Column - Status & Performance */}
                 <div className="space-y-6">
                     <Card>
                         <CardHeader className="pb-4">
@@ -129,7 +145,7 @@ export default function TechDashboardPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="border-gold-border bg-gold-dim/10">
+                    <Card className="border-accent-gold/20 bg-accent-gold/5">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold">
                                 <Gauge size={14}/> 
@@ -143,16 +159,16 @@ export default function TechDashboardPage() {
                             </div>
                             <div className="mt-6 space-y-2">
                                 <h4 className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-muted border-b border-border-main pb-2">Recent Discrepancies</h4>
-                                {tech && penaltyEvents.filter(p => p.technicianId === tech.id).slice(0,2).map(event => (
+                                {penaltyEvents.filter(p => p.technicianId === currentTechId).slice(0,2).map(event => (
                                     <div key={event.id} className="text-[10px] p-2.5 rounded-md bg-bg-primary border border-border-subtle">
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="font-bold text-text-secondary uppercase">{event.reason}</span>
                                             <span className="font-mono font-bold text-text-red">{event.points} PTS</span>
                                         </div>
-                                        <div className="text-text-muted font-mono">{new Date(event.date).toLocaleDateString()}</div>
+                                        <div className="text-text-muted font-mono">{format(new Date(event.date + 'T12:00:00'), 'MMM d, yyyy')}</div>
                                     </div>
                                 ))}
-                                {penaltyEvents.filter(p => p.technicianId === tech.id).length === 0 && (
+                                {penaltyEvents.filter(p => p.technicianId === currentTechId).length === 0 && (
                                      <div className="text-[10px] text-center p-6 text-text-muted italic">Clear record. No discrepancies logged.</div>
                                 )}
                             </div>
@@ -162,9 +178,4 @@ export default function TechDashboardPage() {
             </div>
         </div>
     );
-}
-
-function format(date: Date, str: string) {
-    // Simple mock format
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }

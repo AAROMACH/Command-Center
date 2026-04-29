@@ -375,9 +375,75 @@
   .required-photo-row {
     @apply flex items-center justify-between rounded-md border border-border-subtle bg-bg-primary p-2;
   }
-}
-
     
-
-
-
+  /* Tech Schedule Page Styles */
+  .session-banner { @apply mb-5 flex items-center justify-between gap-3 rounded-lg border border-green-border bg-green-dim px-4 py-2.5; }
+  .session-dot { @apply h-2 w-2 flex-shrink-0 animate-pulse rounded-full bg-text-green; }
+  .session-label { @apply text-[11px] font-bold uppercase tracking-wider text-text-green; }
+  .session-detail { @apply text-sm text-text-secondary; }
+  .session-time { @apply text-xs uppercase tracking-wide text-text-muted; }
+  
+  .cal-controls { @apply mb-4 flex items-center justify-between; }
+  .cal-nav { @apply flex items-center gap-2; }
+  .nav-btn { @apply flex h-8 w-8 items-center justify-center rounded-md border border-border-default bg-bg-secondary text-text-muted transition-colors hover:border-[#444] hover:text-text-primary; }
+  .cal-period { @apply w-48 text-center text-sm font-bold text-text-primary; }
+  .view-toggle { @apply flex gap-0.5 rounded-md border border-border-default bg-bg-secondary p-0.5; }
+  .view-btn { @apply flex items-center gap-1.5 rounded-[4px] border-none bg-transparent px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-text-muted transition-colors; }
+  .view-btn:hover { @apply text-text-primary; }
+  .view-btn.active { @apply bg-brand-red text-white; }
+  
+  .week-grid { @apply mb-6 grid grid-cols-7 gap-2; }
+  .day-pill { @apply flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-border-default bg-bg-secondary p-2.5 transition-colors; }
+  .day-pill:hover { @apply border-[#444]; }
+  .day-pill.selected { @apply border-brand-red bg-brand-red-dim; }
+  .day-pill.today { @apply border-border-red; }
+  .day-name { @apply text-[10px] font-bold uppercase tracking-widest text-text-muted; }
+  .day-pill.selected .day-name, .day-pill.today .day-name { @apply text-brand-red; }
+  .day-num { @apply text-xl font-bold leading-none text-text-secondary; }
+  .day-pill.selected .day-num { @apply text-text-primary; }
+  .day-dot { @apply mt-0.5 h-1.5 w-1.5 rounded-full bg-brand-red; }
+  
+  .month-grid-wrap { @apply mb-6 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .month-header { @apply grid grid-cols-7 border-b border-border-default; }
+  .month-header-cell { @apply p-2 text-center text-xs font-bold uppercase tracking-wider text-text-muted; }
+  .month-days { @apply grid grid-cols-7; }
+  .month-day { @apply flex h-14 cursor-pointer flex-col items-center justify-center gap-1 border-b border-r border-border-subtle text-sm font-semibold text-text-secondary transition-colors; }
+  .month-day:hover { @apply bg-bg-tertiary; }
+  .month-day.selected { @apply bg-brand-red-dim text-brand-red; }
+  .month-day.today { @apply text-brand-red; }
+  .month-day.other-month { @apply text-text-muted opacity-40; }
+  .month-day-dot { @apply h-1 w-1 rounded-full bg-brand-red; }
+    
+  .intel-header { @apply mb-4 flex items-center gap-3 border-b border-border-default pb-2.5; }
+  .intel-label { @apply text-xs font-bold uppercase tracking-wider text-text-muted; }
+  .intel-date { @apply font-bold text-brand-red; }
+  .intel-count { @apply ml-auto text-xs text-text-muted; }
+  
+  .job-card { @apply mb-2.5 overflow-hidden rounded-lg border border-border-default bg-bg-secondary transition-colors; }
+  .job-card:hover { @apply border-[#444]; }
+  .job-card.active { @apply border-green-border; }
+  .job-card-inner { @apply flex; }
+  .job-accent { @apply w-1 flex-shrink-0 bg-brand-red; }
+  .job-accent.active-accent { @apply bg-text-green; }
+  .job-body { @apply flex flex-1 items-center gap-4 p-4; }
+  .job-left { @apply min-w-0 flex-1; }
+  .job-title-row { @apply mb-2 flex flex-wrap items-center gap-3; }
+  .job-title { @apply text-sm font-bold uppercase tracking-wide text-text-primary; }
+  .job-wo { @apply rounded-sm border border-border-red bg-brand-red-dim px-2 py-0.5 font-mono text-xs font-bold text-brand-red; }
+  .job-active-badge { @apply flex items-center gap-1.5 rounded-sm border border-green-border bg-green-dim px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-text-green; }
+  .job-active-badge-dot { @apply h-1.5 w-1.5 animate-pulse rounded-full bg-text-green; }
+  .job-meta { @apply flex flex-wrap items-center gap-x-4 gap-y-1; }
+  .job-meta-item { @apply flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-secondary; }
+  .job-meta-item svg { @apply h-3.5 w-3.5 flex-shrink-0 text-text-muted; }
+  .job-meta-divider { @apply border-l border-border-default pl-4 text-sm font-normal normal-case tracking-normal; }
+  .job-right { @apply flex-shrink-0; }
+  
+  .btn-checkin { @apply inline-flex h-9 items-center gap-2 rounded-md bg-brand-red px-4 text-xs font-bold uppercase tracking-wider text-white hover:bg-brand-red-hover; }
+  .btn-checkout { @apply inline-flex h-9 items-center gap-2 rounded-md border border-green-border bg-transparent px-4 text-xs font-bold uppercase tracking-wider text-text-green hover:bg-green-dim; }
+  .btn-completed { @apply inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-green; }
+  
+  .empty-state {
+    @apply border border-dashed border-border-default rounded-lg p-12 text-center;
+  }
+  .empty-state-text { @apply mt-3 text-xs font-bold uppercase tracking-wider text-text-muted; }
+}

@@ -18,7 +18,7 @@ import { Button } from './ui/button';
 
 const navItems = [
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/tech/assignments', label: 'Assignments', icon: Calendar },
+  { href: '/tech/assignments', label: 'Schedule', icon: Calendar },
   { href: '/tech/projects', label: 'Projects', icon: Briefcase },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText },
   { href: '/tech/earnings', label: 'Earnings', icon: Coins },

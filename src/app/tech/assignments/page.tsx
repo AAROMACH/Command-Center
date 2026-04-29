@@ -1,282 +1,283 @@
+
 'use client';
-import { useState, useEffect } from 'react';
-import type { WorkOrder, TimeOffRequest } from '@/lib/types';
-import { workOrders, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from '@/components/ui/button';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { format, parseISO } from 'date-fns';
-import { MapPin, Clock, DollarSign, Plus, Calendar as CalendarIcon } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DateRange } from 'react-day-picker';
-import { Label } from '@/components/ui/label';
+
+import { useState, useEffect, useMemo } from 'react';
+import type { WorkOrder } from '@/lib/types';
+import { workOrders } from '@/lib/data';
+import { 
+  addMonths, 
+  subMonths, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval,
+  addDays,
+  subDays,
+  format, 
+  isSameDay, 
+  isSameMonth, 
+  isToday, 
+  parseISO 
+} from 'date-fns';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar as CalendarIcon, 
+  LayoutGrid, 
+  List, 
+  MapPin, 
+  Clock, 
+  DollarSign, 
+  LogIn, 
+  LogOut, 
+  CheckCircle2
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 
-// Re-creating the dialog from profile page
-const RequestTimeOffDialog = ({ 
-    isOpen, 
-    setIsOpen, 
-    onSubmit 
-}: { 
-    isOpen: boolean, 
-    setIsOpen: (open: boolean) => void, 
-    onSubmit: (request: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => void 
-}) => {
-    const [date, setDate] = useState<DateRange | undefined>();
-    const [type, setType] = useState<TimeOffRequest['type'] | ''>('');
-    const [reason, setReason] = useState('');
-    const { toast } = useToast();
+type ViewMode = 'week' | 'month';
 
-    const handleSubmit = () => {
-        if (!date?.from || !date?.to || !type) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a date range and request type.' });
-            return;
-        }
-
-        onSubmit({
-            startDate: format(date.from, 'yyyy-MM-dd'),
-            endDate: format(date.to, 'yyyy-MM-dd'),
-            type: type as TimeOffRequest['type'],
-            reason,
-        });
-
-        setDate(undefined);
-        setType('');
-        setReason('');
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Request Time Off</DialogTitle>
-                    <DialogDescription>Select the dates and reason for your time off request.</DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <div className="space-y-2">
-                        <Label>Date Range</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    id="date"
-                                    variant={"outline"}
-                                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date?.from ? (
-                                        date.to ? (
-                                            <>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</>
-                                        ) : (format(date.from, "LLL dd, y"))
-                                    ) : (<span>Pick a date range</span>)}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="request-type">Type</Label>
-                        <Select value={type} onValueChange={(value) => setType(value as TimeOffRequest['type'])}>
-                            <SelectTrigger id="request-type">
-                                <SelectValue placeholder="Select request type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Vacation">Vacation</SelectItem>
-                                <SelectItem value="Sick">Sick Day</SelectItem>
-                                <SelectItem value="Personal">Personal</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="reason">Reason (Optional)</Label>
-                        <Textarea id="reason" placeholder="Provide a brief reason for your request" value={reason} onChange={(e) => setReason(e.target.value)} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit}>Submit Request</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
-export default function TechAssignmentsPage() {
+export default function TechSchedulePage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [date, setDate] = useState<Date | undefined>(new Date('2024-07-28T12:00:00Z'));
-    const [selectedEvent, setSelectedEvent] = useState<WorkOrder | null>(null);
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
-    const [techTimeOffRequests, setTechTimeOffRequests] = useState<TimeOffRequest[]>([]);
+    const [viewMode, setViewMode] = useState<ViewMode>('week');
+    // Set a consistent date for mock data purposes
+    const [currentDate, setCurrentDate] = useState(new Date('2026-04-29T12:00:00Z'));
+    const [selectedDate, setSelectedDate] = useState(new Date('2026-04-29T12:00:00Z'));
     const { toast } = useToast();
-    
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
-        if (userId) {
-            setTechTimeOffRequests(initialTimeOffRequests.filter(r => r.technicianId === userId));
-        }
     }, []);
+    
+    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
 
-    const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
+    const techWorkOrders = useMemo(() => {
+        if (!currentTechId) return [];
+        return allWorkOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
+    }, [allWorkOrders, currentTechId]);
 
-    const handleDayClick = (day: Date) => {
-        setDate(day);
+    const activeSession = useMemo(() => {
+        return techWorkOrders.find(wo => wo.status === 'in-progress');
+    }, [techWorkOrders]);
+
+    const assignmentsForSelectedDay = useMemo(() => {
+        return techWorkOrders.filter(wo => {
+            try {
+                return isSameDay(parseISO(wo.scheduleDate), selectedDate);
+            } catch (e) {
+                return false;
+            }
+        });
+    }, [techWorkOrders, selectedDate]);
+    
+    const eventsByDate = useMemo(() => {
+      return techWorkOrders.reduce((acc, wo) => {
+        try {
+            const date = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
+            if (!acc[date]) {
+              acc[date] = [];
+            }
+            acc[date].push(wo);
+        } catch (e) {
+            // Ignore invalid dates
+        }
+        return acc;
+      }, {} as Record<string, WorkOrder[]>);
+    }, [techWorkOrders]);
+
+
+    const handlePrev = () => {
+        if (viewMode === 'week') {
+            setCurrentDate(subDays(currentDate, 7));
+        } else {
+            setCurrentDate(subMonths(currentDate, 1));
+        }
     };
 
-    const handleEventClick = (wo: WorkOrder) => {
-        setSelectedEvent(wo);
-        setIsDrawerOpen(true);
+    const handleNext = () => {
+        if (viewMode === 'week') {
+            setCurrentDate(addDays(currentDate, 7));
+        } else {
+            setCurrentDate(addMonths(currentDate, 1));
+        }
+    };
+    
+    const handleCheckIn = (workOrderId: string) => {
+      if (activeSession) {
+        toast({
+          variant: 'destructive',
+          title: 'Active session exists',
+          description: 'You must check out of your current job before starting another.',
+        });
+        return;
+      }
+      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'in-progress'} : wo));
+      toast({ title: 'Checked In', description: 'Your session has started.' });
     };
 
-    const handleNewRequestSubmit = (newRequestData: Omit<TimeOffRequest, 'id' | 'technicianId' | 'status'>) => {
-        if (!currentTechId) return;
-        const newRequest: TimeOffRequest = {
-            id: `tor-${Date.now()}`,
-            technicianId: currentTechId,
-            status: 'pending',
-            ...newRequestData
-        };
-        setTechTimeOffRequests(prev => [newRequest, ...prev]);
-        toast({ title: "Time Off Requested", description: "Your request has been submitted for admin approval." });
-        setIsRequestDialogOpen(false);
+    const handleCheckOut = (workOrderId: string) => {
+      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'completed'} : wo));
+      toast({ title: 'Checked Out', description: 'Your session has ended.' });
     };
 
+    const weekDays = eachDayOfInterval({
+        start: startOfWeek(currentDate, { weekStartsOn: 0 }),
+        end: endOfWeek(currentDate, { weekStartsOn: 0 }),
+    });
 
-    const eventsForSelectedDay = techWorkOrders.filter(wo => wo.scheduleDate === format(date || new Date(), 'yyyy-MM-dd'));
+    const monthDays = eachDayOfInterval({
+        start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }),
+        end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
+    });
 
-    if (!currentTechId) {
-        return <div>Loading...</div>;
-    }
 
     return (
-        <div>
-            <header className="page-header">
-                <div>
-                    <h1 className="page-title">My Assignments</h1>
-                    <p className="page-subtitle">View your assignments and manage your schedule & time off.</p>
-                </div>
-                 <div className="page-header-right">
-                    <Button variant="outline" onClick={() => setIsRequestDialogOpen(true)}><Plus size={14} className="mr-2"/> Request Time Off</Button>
-                </div>
-            </header>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <Card>
-                        <CardContent className="p-2">
-                             <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={handleDayClick}
-                                className="p-0"
-                                classNames={{
-                                    day_selected: "bg-brand-red text-white hover:bg-brand-red-hover focus:bg-brand-red",
-                                    day_today: "bg-accent-gold-dim text-accent-gold",
-                                }}
-                                modifiers={{
-                                    hasEvent: techWorkOrders.map(wo => parseISO(wo.scheduleDate)),
-                                }}
-                                modifiersClassNames={{
-                                    hasEvent: 'relative !flex items-center justify-center after:content-[""] after:absolute after:bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-brand-red',
-                                }}
-                             />
-                        </CardContent>
-                    </Card>
-                </div>
-                <div>
-                    <h3 className="font-bold text-text-primary mb-3">
-                        Schedule for {format(date || new Date(), 'EEEE, MMMM d')}
-                    </h3>
-                    <div className="space-y-3">
-                        {eventsForSelectedDay.length > 0 ? eventsForSelectedDay.map(wo => (
-                            <Card key={wo.id} className="cursor-pointer hover:bg-bg-tertiary" onClick={() => handleEventClick(wo)}>
-                                <CardContent className="p-3">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-semibold text-text-primary">{wo.description}</p>
-                                            <p className="text-xs text-text-muted">{wo.clientName}</p>
-                                        </div>
-                                        <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'}>{wo.scheduleTime}</Badge>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )) : (
-                            <div className="empty-state text-sm">No assignments scheduled for this day.</div>
-                        )}
+        <div className="page">
+            {activeSession && (
+                <div className="session-banner">
+                    <div className="flex items-center gap-2.5">
+                        <div className="session-dot"></div>
+                        <span className="session-label">Active Session</span>
+                        <span className="session-detail">Checked in to {activeSession.id.toUpperCase()} — {activeSession.description}</span>
                     </div>
+                    <span className="session-time">Since {format(new Date(), 'h:mm a')}</span>
+                </div>
+            )}
+
+            <div className="page-header">
+                <div>
+                    <div className="eyebrow">
+                        <CalendarIcon size={12} />
+                        Fleet Assignments
+                    </div>
+                    <div className="page-title">Schedule</div>
+                    <p className="page-subtitle">Operational overview of assigned IT infrastructure deployments.</p>
                 </div>
             </div>
 
-            <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle>Time Off Request History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="table-wrap">
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Dates</TableHead><TableHead>Type</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {techTimeOffRequests.map((request) => (
-                                    <TableRow key={request.id}>
-                                        <TableCell>{request.startDate} to {request.endDate}</TableCell>
-                                        <TableCell><Badge variant="secondary" className="capitalize">{request.type}</Badge></TableCell>
-                                        <TableCell className="text-text-muted">{request.reason}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={request.status === 'approved' ? 'completed' : request.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize">
-                                                {request.status}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {techTimeOffRequests.length === 0 && (
-                                    <TableRow><TableCell colSpan={4} className="text-center h-24">You have no time off requests.</TableCell></TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                <DrawerContent>
-                    {selectedEvent && (
-                    <div className="mx-auto w-full max-w-lg">
-                        <DrawerHeader>
-                            <DrawerTitle>{selectedEvent.description}</DrawerTitle>
-                            <DrawerDescription>{selectedEvent.projectType} for {selectedEvent.clientName}</DrawerDescription>
-                        </DrawerHeader>
-                        <div className="p-4 space-y-4">
-                            <div className="flex items-center gap-2 text-sm text-text-secondary"><MapPin size={14} className="text-text-muted"/> {selectedEvent.location}</div>
-                            <div className="flex items-center gap-2 text-sm text-text-secondary"><Clock size={14} className="text-text-muted"/> {selectedEvent.scheduleDate} at {selectedEvent.scheduleTime}</div>
-                            <div className="flex items-center gap-2 text-sm text-text-green"><DollarSign size={14}/> Pay: ${selectedEvent.pay.toFixed(2)}</div>
+            <div className="cal-controls">
+                <div className="cal-nav">
+                    <button className="nav-btn" onClick={handlePrev}>&#8249;</button>
+                    <span className="cal-period">
+                        {viewMode === 'week' 
+                            ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d, yyyy')}`
+                            : format(currentDate, 'MMMM yyyy')
+                        }
+                    </span>
+                    <button className="nav-btn" onClick={handleNext}>&#8250;</button>
+                </div>
+                <div className="view-toggle">
+                    <button className={cn("view-btn", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
+                        <List size={11}/> Week
+                    </button>
+                    <button className={cn("view-btn", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
+                        <LayoutGrid size={11}/> Month
+                    </button>
+                </div>
+            </div>
+
+            {viewMode === 'week' ? (
+                <div className="week-grid">
+                    {weekDays.map(day => (
+                        <div 
+                          key={day.toString()} 
+                          className={cn("day-pill", {
+                            'selected': isSameDay(day, selectedDate),
+                            'today': isToday(day)
+                          })}
+                          onClick={() => setSelectedDate(day)}
+                        >
+                            <span className="day-name">{format(day, 'EEE')}</span>
+                            <span className="day-num">{format(day, 'd')}</span>
+                            {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="day-dot"></div>}
                         </div>
-                        <DrawerFooter>
-                            <Button size="lg">{selectedEvent.status === 'in-progress' ? 'Check Out' : 'Check In'}</Button>
-                            <DrawerClose asChild>
-                                <Button variant="outline" size="lg">Close</Button>
-                            </DrawerClose>
-                        </DrawerFooter>
+                    ))}
+                </div>
+            ) : (
+                <div className="month-grid-wrap">
+                    <div className="month-header">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(dayName => (
+                            <div key={dayName} className="month-header-cell">{dayName}</div>
+                        ))}
                     </div>
-                    )}
-                </DrawerContent>
-            </Drawer>
-             <RequestTimeOffDialog
-                isOpen={isRequestDialogOpen}
-                setIsOpen={setIsRequestDialogOpen}
-                onSubmit={handleNewRequestSubmit}
-            />
+                    <div className="month-days">
+                        {monthDays.map(day => (
+                            <div 
+                              key={day.toString()}
+                              className={cn("month-day", {
+                                'selected': isSameDay(day, selectedDate),
+                                'today': isToday(day),
+                                'other-month': !isSameMonth(day, currentDate)
+                              })}
+                              onClick={() => setSelectedDate(day)}
+                            >
+                                {format(day, 'd')}
+                                {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="month-day-dot"></div>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="intel-header">
+                <span className="intel-label">Operational Intel</span>
+                <span className="intel-date">{format(selectedDate, 'EEEE, MMMM d')}</span>
+                <span className="intel-count">{assignmentsForSelectedDay.length} assignments</span>
+            </div>
+
+            {assignmentsForSelectedDay.length > 0 ? (
+                assignmentsForSelectedDay.map(wo => (
+                    <div key={wo.id} className={cn("job-card", { 'active': wo.status === 'in-progress'})}>
+                        <div className="job-card-inner">
+                            <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
+                            <div className="job-body">
+                                <div className="job-left">
+                                    <div className="job-title-row">
+                                        <span className="job-title">{wo.description}</span>
+                                        <span className="job-wo">{wo.id.toUpperCase()}</span>
+                                        {wo.status === 'in-progress' && (
+                                            <div className="job-active-badge">
+                                                <div className="job-active-badge-dot"></div>
+                                                Active
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="job-meta">
+                                        <div className="job-meta-item"><Clock size={12}/> {wo.scheduleTime}</div>
+                                        <div className="job-meta-item"><MapPin size={12} className="text-brand-red"/> {wo.location}</div>
+                                        <div className="job-meta-item"><DollarSign size={12} className="text-text-green"/> ${wo.pay.toFixed(2)} <span className="text-text-muted font-normal normal-case">(fixed)</span></div>
+                                        <div className="job-meta-item job-meta-divider">{wo.clientName}</div>
+                                    </div>
+                                </div>
+                                <div className="job-right">
+                                    {wo.status === 'completed' ? (
+                                        <div className="btn-completed"><CheckCircle2 size={14}/> Completed</div>
+                                    ) : wo.status === 'in-progress' ? (
+                                        <button className="btn-checkout" onClick={() => handleCheckOut(wo.id)}>
+                                            <LogOut size={13}/> Check Out
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            className="btn-checkin"
+                                            disabled={!!activeSession}
+                                            onClick={() => handleCheckIn(wo.id)}
+                                        >
+                                            <LogIn size={13}/> Check In
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <div className="empty-state">
+                    <CalendarIcon size={40} className="text-[#333]" strokeWidth={1} />
+                    <div className="empty-state-text">No assignments scheduled for this date</div>
+                </div>
+            )}
         </div>
     );
 }

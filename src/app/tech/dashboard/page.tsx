@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import type { WorkOrder, Technician, PenaltyEvent } from '@/lib/types';
-import { workOrders, technicians, penaltyEvents } from '@/lib/data';
+import { workOrders, technicians, penaltyEvents, weeklyLogs } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,11 +35,10 @@ export default function TechDashboardPage() {
     const reliabilityScore = tech?.reliabilityScore || 0;
     const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
     
-    // In a real app, these would come from a data source
-    const pendingLogAlerts = 1;
-    const unreadNotifications = 3;
+    const pendingLogAlerts = currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0;
+    const unreadNotifications = 3; // Mock data
 
-    if (!currentTechId) {
+    if (!currentTechId || !tech) {
         return <div>Loading...</div>;
     }
 
@@ -107,6 +106,11 @@ export default function TechDashboardPage() {
                                             </td>
                                         </tr>
                                     ))}
+                                    {upcomingAssignments.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="text-center h-24 text-text-muted">No upcoming assignments in the next 7 days.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -152,6 +156,9 @@ export default function TechDashboardPage() {
                                         <div className="text-text-muted">{new Date(event.date).toLocaleDateString()}</div>
                                     </div>
                                 ))}
+                                {penaltyEvents.filter(p => p.technicianId === tech.id).length === 0 && (
+                                     <div className="text-xs text-center p-4 text-text-muted">No penalty events on record.</div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

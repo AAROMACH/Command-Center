@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { projects, technicians } from '@/lib/data';
@@ -14,7 +13,7 @@ export default function TechProjectsPage() {
     }, []);
 
     const techProjects = projects.filter(p => 
-        currentTechId && p.assignedTechnicianIds.includes(currentTechId)
+        currentTechId && p.team.some(member => member.technicianId === currentTechId)
     );
 
     if (!currentTechId) {

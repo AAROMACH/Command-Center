@@ -1,37 +1,113 @@
 'use client';
 
-import { AlertTriangle, Clock, CopyX, FileCheck2 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { AlertTriangle, Clock, CopyX, FileCheck2, CalendarCheck, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { workOrders, penaltyEvents, weeklyLogs } from '@/lib/data';
+import { addDays, isWithinInterval } from 'date-fns';
 
-const alerts = [
-  {
-    type: 'critical',
-    text: '4 Unassigned Jobs — Next 24h',
-    icon: AlertTriangle,
-  },
-  {
-    type: 'warning',
-    text: '2 Jobs Starting Soon — No Tech',
-    icon: Clock,
-  },
-  {
-    type: 'warning',
-    text: '1 Late / Missed Check-In',
-    icon: Clock,
-  },
-  {
-    type: 'info',
-    text: '3 Revisits Required',
-    icon: CopyX,
-  },
-  {
-    type: 'info',
-    text: '2 Manifests Pending Audit',
-    icon: FileCheck2,
-  },
-];
+type Alert = {
+  type: 'critical' | 'warning' | 'info';
+  text: string;
+  icon: React.ElementType;
+}
 
 export function AlertBand() {
+  const pathname = usePathname();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const isTechPortal = pathname.startsWith('/tech');
+
+  useEffect(() => {
+    if (isTechPortal) {
+      const techAlerts: Alert[] = [];
+      const userId = localStorage.getItem('currentUserId');
+      if (!userId) return;
+
+      // Alert 1: Upcoming job in 24 hours
+      const tomorrow = addDays(new Date(), 1);
+      const now = new Date();
+      const upcomingJobs = workOrders.filter(wo =>
+        wo.assignedTechnicianId === userId &&
+        new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
+        wo.status !== 'completed'
+      ).length;
+
+      if (upcomingJobs > 0) {
+        techAlerts.push({
+          type: 'info',
+          text: `${upcomingJobs} Job${upcomingJobs > 1 ? 's' : ''} in next 24h`,
+          icon: CalendarCheck,
+        });
+      }
+
+      // Alert 2: Pending weekly log
+      const pendingLogs = weeklyLogs.filter(log =>
+        log.technicianId === userId && log.status === 'Draft'
+      ).length;
+
+      if (pendingLogs > 0) {
+        techAlerts.push({
+          type: 'warning',
+          text: `${pendingLogs} Weekly Manifest Pending Submission`,
+          icon: FileWarning,
+        });
+      }
+
+      // Alert 3: Recent penalty events
+      const recentPenalties = penaltyEvents.filter(p => p.technicianId === userId).length;
+       if (recentPenalties > 0) {
+        techAlerts.push({
+          type: 'critical',
+          text: `${recentPenalties} Recent Penalty Event${recentPenalties > 1 ? 's' : ''}`,
+          icon: AlertTriangle,
+        });
+      }
+
+      setAlerts(techAlerts);
+
+    } else { // Admin portal
+      const unassignedJobs = workOrders.filter(wo => wo.status === 'unassigned').length;
+      const lateCheckIns = 1; // Mock
+      const revisitsRequired = 3; // Mock
+      const manifestsToAudit = weeklyLogs.filter(log => log.status === 'Submitted').length;
+
+      const adminDynamicAlerts: Alert[] = [];
+      if (unassignedJobs > 0) {
+        adminDynamicAlerts.push({
+          type: 'critical',
+          text: `${unassignedJobs} Unassigned Job${unassignedJobs > 1 ? 's' : ''}`,
+          icon: AlertTriangle
+        });
+      }
+       if (lateCheckIns > 0) {
+        adminDynamicAlerts.push({
+          type: 'warning',
+          text: `${lateCheckIns} Late / Missed Check-In`,
+          icon: Clock
+        });
+      }
+       if (revisitsRequired > 0) {
+        adminDynamicAlerts.push({
+          type: 'info',
+          text: `${revisitsRequired} Revisit${revisitsRequired > 1 ? 's' : ''} Required`,
+          icon: CopyX
+        });
+      }
+       if (manifestsToAudit > 0) {
+        adminDynamicAlerts.push({
+          type: 'info',
+          text: `${manifestsToAudit} Manifest${manifestsToAudit > 1 ? 's' : ''} Pending Audit`,
+          icon: FileCheck2
+        });
+      }
+
+      setAlerts(adminDynamicAlerts);
+    }
+  }, [pathname, isTechPortal]);
+
+  if (alerts.length === 0) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border-default bg-[#0f0f0f] px-10 py-2">
       {alerts.map((alert, index) => (

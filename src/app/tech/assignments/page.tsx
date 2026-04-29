@@ -1,49 +1,29 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder } from '@/lib/types';
 import { workOrders } from '@/lib/data';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
-  addMonths, 
-  subMonths, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  endOfWeek, 
-  eachDayOfInterval,
-  addDays,
-  subDays,
-  format, 
-  isSameDay, 
-  isSameMonth, 
-  isToday, 
-  parseISO 
-} from 'date-fns';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-  LayoutGrid, 
-  List, 
+  Calendar, 
   MapPin, 
   Clock, 
   DollarSign, 
-  LogIn, 
-  LogOut, 
-  CheckCircle2
+  CheckCircle2, 
+  Wrench, 
+  AlertTriangle,
+  History,
+  ClipboardCheck,
+  FileCheck
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-type ViewMode = 'week' | 'month';
-
-export default function TechSchedulePage() {
+export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<ViewMode>('week');
-    // Set a consistent date for mock data purposes
-    const [currentDate, setCurrentDate] = useState(new Date('2026-04-29T12:00:00Z'));
-    const [selectedDate, setSelectedDate] = useState(new Date('2026-04-29T12:00:00Z'));
+    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
     const [mounted, setMounted] = useState(false);
     const { toast } = useToast();
 
@@ -52,235 +32,167 @@ export default function TechSchedulePage() {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
-    
-    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
         return allWorkOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
     }, [allWorkOrders, currentTechId]);
 
-    const activeSession = useMemo(() => {
-        return techWorkOrders.find(wo => wo.status === 'in-progress');
-    }, [techWorkOrders]);
+    const activeAssignments = techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress');
+    const completedAssignments = techWorkOrders.filter(wo => wo.status === 'completed');
 
-    const assignmentsForSelectedDay = useMemo(() => {
-        return techWorkOrders.filter(wo => {
-            try {
-                return isSameDay(parseISO(wo.scheduleDate), selectedDate);
-            } catch (e) {
-                return false;
-            }
-        });
-    }, [techWorkOrders, selectedDate]);
-    
-    const eventsByDate = useMemo(() => {
-      return techWorkOrders.reduce((acc, wo) => {
-        try {
-            const date = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
-            if (!acc[date]) {
-              acc[date] = [];
-            }
-            acc[date].push(wo);
-        } catch (e) {
-            // Ignore invalid dates
-        }
-        return acc;
-      }, {} as Record<string, WorkOrder[]>);
-    }, [techWorkOrders]);
-
-
-    const handlePrev = () => {
-        if (viewMode === 'week') {
-            setCurrentDate(subDays(currentDate, 7));
-        } else {
-            setCurrentDate(subMonths(currentDate, 1));
-        }
-    };
-
-    const handleNext = () => {
-        if (viewMode === 'week') {
-            setCurrentDate(addDays(currentDate, 7));
-        } else {
-            setCurrentDate(addMonths(currentDate, 1));
-        }
-    };
-    
-    const handleCheckIn = (workOrderId: string) => {
-      if (activeSession) {
+    const handleConfirmSchedule = (woId: string) => {
         toast({
-          variant: 'destructive',
-          title: 'Active session exists',
-          description: 'You must check out of your current job before starting another.',
+            title: "Schedule Confirmed",
+            description: "Confirmation sent to operations. Reporting window locked.",
         });
-        return;
-      }
-      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'in-progress'} : wo));
-      toast({ title: 'Checked In', description: 'Your session has started.' });
+        // Logic to mark as confirmed would go here
     };
 
-    const handleCheckOut = (workOrderId: string) => {
-      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'completed'} : wo));
-      toast({ title: 'Checked Out', description: 'Your session has ended.' });
-    };
-
-    const weekDays = eachDayOfInterval({
-        start: startOfWeek(currentDate, { weekStartsOn: 0 }),
-        end: endOfWeek(currentDate, { weekStartsOn: 0 }),
-    });
-
-    const monthDays = eachDayOfInterval({
-        start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }),
-        end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
-    });
-
-    if (!mounted) return null;
+    if (!mounted || !currentTechId) return <div className="p-8 text-center text-xs uppercase tracking-widest">Loading...</div>;
 
     return (
-        <div className="page">
-            {activeSession && (
-                <div className="session-banner">
-                    <div className="flex items-center gap-2.5">
-                        <div className="session-dot"></div>
-                        <span className="session-label">Active Session</span>
-                        <span className="session-detail">Checked in to {activeSession.id.toUpperCase()} — {activeSession.description}</span>
-                    </div>
-                    <span className="session-time">Since {format(new Date(), 'h:mm a')}</span>
-                </div>
-            )}
-
-            <div className="page-header">
+        <div>
+            <header className="page-header">
                 <div>
-                    <div className="eyebrow">
-                        <CalendarIcon size={12} />
-                        Fleet Assignments
-                    </div>
-                    <div className="page-title">Schedule</div>
-                    <p className="page-subtitle">Operational overview of assigned IT infrastructure deployments.</p>
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <Wrench size={12} />
+                        Service Engagement Console
+                    </p>
+                    <h1 className="page-title">Assignments</h1>
+                    <p className="page-subtitle">Manage tactical engagements and historical performance audit.</p>
                 </div>
-            </div>
+            </header>
 
-            <div className="cal-controls">
-                <div className="cal-nav">
-                    <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
-                    <span className="cal-period">
-                        {viewMode === 'week' 
-                            ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d, yyyy')}`
-                            : format(currentDate, 'MMMM yyyy')
-                        }
-                    </span>
-                    <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
-                </div>
-                <div className="view-toggle">
-                    <button className={cn("view-btn", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
-                        <List size={11}/> Week
-                    </button>
-                    <button className={cn("view-btn", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
-                        <LayoutGrid size={11}/> Month
-                    </button>
-                </div>
-            </div>
-
-            {viewMode === 'week' ? (
-                <div className="week-grid">
-                    {weekDays.map(day => (
-                        <div 
-                          key={day.toString()} 
-                          className={cn("day-pill", {
-                            'selected': isSameDay(day, selectedDate),
-                            'today': isToday(day)
-                          })}
-                          onClick={() => setSelectedDate(day)}
-                        >
-                            <span className="day-name">{format(day, 'EEE')}</span>
-                            <span className="day-num">{format(day, 'd')}</span>
-                            {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="day-dot"></div>}
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="month-grid-wrap">
-                    <div className="month-header">
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(dayName => (
-                            <div key={dayName} className="month-header-cell">{dayName}</div>
-                        ))}
-                    </div>
-                    <div className="month-days">
-                        {monthDays.map(day => (
-                            <div 
-                              key={day.toString()}
-                              className={cn("month-day", {
-                                'selected': isSameDay(day, selectedDate),
-                                'today': isToday(day),
-                                'other-month': !isSameMonth(day, currentDate)
-                              })}
-                              onClick={() => setSelectedDate(day)}
-                            >
-                                {format(day, 'd')}
-                                {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="month-day-dot"></div>}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="intel-header">
-                <span className="intel-label">Operational Intel</span>
-                <span className="intel-date">{format(selectedDate, 'EEEE, MMMM d')}</span>
-                <span className="intel-count">{assignmentsForSelectedDay.length} assignments</span>
-            </div>
-
-            {assignmentsForSelectedDay.length > 0 ? (
-                assignmentsForSelectedDay.map(wo => (
-                    <div key={wo.id} className={cn("job-card", { 'active': wo.status === 'in-progress'})}>
-                        <div className="job-card-inner">
-                            <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
-                            <div className="job-body">
-                                <div className="job-left">
-                                    <div className="job-title-row">
-                                        <span className="job-title">{wo.description}</span>
-                                        <span className="job-wo">{wo.id.toUpperCase()}</span>
-                                        {wo.status === 'in-progress' && (
-                                            <div className="job-active-badge">
-                                                <div className="job-active-badge-dot"></div>
-                                                Active
+            <Tabs defaultValue="active" className="w-full">
+                <TabsList className="tabs !mb-6">
+                    <TabsTrigger value="active" className="tab">
+                        Active Engagements <span className="tab-count">({activeAssignments.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="tab">
+                        Engagement History <span className="tab-count">({completedAssignments.length})</span>
+                    </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="active" className="mt-0">
+                    <div className="table-wrap">
+                        <table className="tbl">
+                            <thead>
+                                <tr>
+                                    <th>Work Order / Status</th>
+                                    <th>Mission Description</th>
+                                    <th>Site Location</th>
+                                    <th>Schedule Window</th>
+                                    <th className="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeAssignments.map((wo) => (
+                                    <tr key={wo.id}>
+                                        <td>
+                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize">{wo.status}</Badge>
+                                        </td>
+                                        <td>
+                                            <div className="cell-desc-title">{wo.description}</div>
+                                            <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                        </td>
+                                        <td>
+                                            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+                                                <MapPin className="h-3.5 w-3.5 text-brand-red" />
+                                                <span>{wo.location}</span>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="job-meta">
-                                        <div className="job-meta-item"><Clock size={12}/> {wo.scheduleTime}</div>
-                                        <div className="job-meta-item"><MapPin size={12} className="text-brand-red"/> {wo.location}</div>
-                                        <div className="job-meta-item"><DollarSign size={12} className="text-text-green"/> ${wo.pay.toFixed(2)} <span className="text-text-muted font-normal normal-case">(fixed)</span></div>
-                                        <div className="job-meta-item job-meta-divider">{wo.clientName}</div>
-                                    </div>
-                                </div>
-                                <div className="job-right">
-                                    {wo.status === 'completed' ? (
-                                        <div className="btn-completed"><CheckCircle2 size={14}/> Completed</div>
-                                    ) : wo.status === 'in-progress' ? (
-                                        <button className="btn-checkout" onClick={() => handleCheckOut(wo.id)}>
-                                            <LogOut size={13}/> Check Out
-                                        </button>
-                                    ) : (
-                                        <button 
-                                            className="btn-checkin"
-                                            disabled={!!activeSession}
-                                            onClick={() => handleCheckIn(wo.id)}
-                                        >
-                                            <LogIn size={13}/> Check In
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                        </td>
+                                        <td>
+                                            <div className="cell-sched">
+                                                <div className="cell-sched-date">
+                                                    <Calendar size={13}/>
+                                                    <span>{wo.scheduleDate}</span>
+                                                </div>
+                                                <div className="cell-sched-time">
+                                                    <Clock size={13}/>
+                                                    <span>{wo.scheduleTime}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="text-right">
+                                            {wo.status === 'assigned' && (
+                                                <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirmSchedule(wo.id)}>
+                                                    <ClipboardCheck size={14} className="mr-2"/>
+                                                    Confirm Schedule
+                                                </Button>
+                                            )}
+                                            {wo.status === 'in-progress' && (
+                                                <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-end gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
+                                                    Mission Active
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {activeAssignments.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active engagements on record.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                ))
-            ) : (
-                <div className="empty-state">
-                    <CalendarIcon size={40} className="text-[#333]" strokeWidth={1} />
-                    <div className="empty-state-text">No assignments scheduled for this date</div>
-                </div>
-            )}
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-0">
+                    <div className="table-wrap">
+                        <table className="tbl">
+                            <thead>
+                                <tr>
+                                    <th>Work Order</th>
+                                    <th>Service Result</th>
+                                    <th>Date Completed</th>
+                                    <th>Payroll Status</th>
+                                    <th className="text-right">Approved Payout</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {completedAssignments.map((wo) => (
+                                    <tr key={wo.id}>
+                                        <td>
+                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                            <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                        </td>
+                                        <td>
+                                            <div className="cell-desc-title">{wo.description}</div>
+                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
+                                                <CheckCircle2 size={12}/> COMPLETED
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="text-xs text-text-secondary">{wo.scheduleDate}</div>
+                                        </td>
+                                        <td>
+                                            <Badge variant="completed" className="!bg-[#1a1a2a] !border-[#2a3a5a] !text-[#6688CC] uppercase text-[9px]">
+                                                <FileCheck size={11} className="mr-1"/>
+                                                Audit Passed
+                                            </Badge>
+                                        </td>
+                                        <td className="text-right">
+                                            <div className="text-sm font-bold text-text-green font-mono">
+                                                ${wo.pay.toFixed(2)}
+                                            </div>
+                                            <div className="text-[9px] text-text-muted uppercase tracking-widest">Final Approved</div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {completedAssignments.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No completed missions found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

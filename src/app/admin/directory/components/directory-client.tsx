@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -115,13 +116,16 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                 <div className="w-full mt-6">
                     <TabsContent value="technicians">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                            <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                                 <div>TECHNICIAN</div>
                                 <div>CONTACT INFORMATION</div>
+                                <div className="text-center">RELIABILITY</div>
                                 <div>STATUS</div>
                             </div>
-                            {filteredTechnicians.map(tech => (
-                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(tech)}>
+                            {filteredTechnicians.map(tech => {
+                                const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
+                                return (
+                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(tech)}>
                                     <div className="flex items-center gap-4">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={tech.avatarUrl} />
@@ -133,11 +137,14 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                                         <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{tech.email}</div>
                                         <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{tech.phone}</div>
                                     </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className={`font-mono font-bold text-xl ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
+                                    </div>
                                     <div>
                                         <Badge variant="active">ACTIVE</Badge>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                             {filteredTechnicians.length === 0 && (
                                 <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
                             )}

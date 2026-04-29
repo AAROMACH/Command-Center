@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,11 +25,11 @@
     --text-gold: #C89B3C;
     --text-green: #44CC88;
 
-    --border-default: #2a2a2a;
-    --border-subtle: #1f1f1f;
-    --border-red: #5a1000;
-    --gold-border: #4a3500;
-    --green-border: #0f3a1a;
+    --border-main: #2a2a2a;
+    --border-sub: #1f1f1f;
+    --border-alert: #5a1000;
+    --border-gold: #4a3500;
+    --border-green: #0f3a1a;
     --green-dim: #0a1f0f;
 
 
@@ -67,7 +68,7 @@
 
 @layer base {
   * {
-    @apply border-border-default;
+    @apply border-border-main;
   }
   body {
     background-color: var(--bg-primary);
@@ -81,20 +82,20 @@
 
 @layer components {
   /* Typography Classes */
-  .page-eyebrow    { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-red)]; }
-  .page-title      { @apply text-[28px] font-bold uppercase tracking-[0.02em] text-[var(--text-primary)]; }
-  .page-subtitle   { @apply text-[13px] text-[var(--text-secondary)]; }
-  .section-label   { @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]; }
-  .stat-value      { @apply text-[32px] font-bold text-[var(--text-primary)]; }
-  .stat-label      { @apply text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-muted)]; }
+  .page-eyebrow    { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-red; }
+  .page-title      { @apply text-[28px] font-bold uppercase tracking-[0.02em] text-text-primary; }
+  .page-subtitle   { @apply text-[13px] text-text-secondary; }
+  .section-label   { @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-text-muted; }
+  .stat-value      { @apply text-[32px] font-bold text-text-primary; }
+  .stat-label      { @apply text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted; }
   .stat-delta      { @apply text-[11px] font-semibold; }
-  .table-header    { @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]; }
-  .body-text       { @apply text-[13px] leading-relaxed text-[var(--text-secondary)]; }
-  .id-text         { @apply font-mono text-[13px] text-[var(--brand-red)]; }
+  .table-header    { @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted; }
+  .body-text       { @apply text-[13px] leading-relaxed text-text-secondary; }
+  .id-text         { @apply font-mono text-[13px] text-brand-red; }
 
   /* Page Layout */
   .page-wrapper {
-    @apply min-h-screen bg-[var(--bg-primary)];
+    @apply min-h-screen bg-bg-primary;
   }
   .page-content {
     @apply mx-auto max-w-[1400px] px-10 py-8;
@@ -106,7 +107,7 @@
 
   /* ShadCN Component Overrides */
   .card {
-    @apply rounded-lg border border-border-default bg-bg-secondary shadow-none;
+    @apply rounded-lg border border-border-main bg-bg-secondary shadow-none;
   }
 
   /* Assignments Page Styles */
@@ -117,7 +118,7 @@
     @apply absolute left-3 h-4 w-4 text-text-muted;
   }
   .search-input {
-    @apply w-[350px] rounded-md border border-border-default bg-bg-secondary py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
+    @apply w-[350px] rounded-md border border-border-main bg-bg-secondary py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
   }
   .tabs {
     @apply mb-4 flex gap-1 p-0;
@@ -135,19 +136,19 @@
     @apply ml-1.5 opacity-80;
   }
   .table-wrap {
-    @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary;
+    @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary;
   }
   .tbl {
     @apply w-full text-sm;
   }
   .tbl thead tr {
-    @apply border-b border-border-default bg-bg-tertiary;
+    @apply border-b border-border-main bg-bg-tertiary;
   }
   .tbl th {
     @apply px-4 py-3 text-left table-header;
   }
   .tbl tbody tr {
-    @apply border-b border-border-subtle transition-colors hover:bg-bg-tertiary;
+    @apply border-b border-border-sub transition-colors hover:bg-bg-tertiary;
   }
   .tbl tbody tr:last-child {
     @apply border-none;
@@ -212,12 +213,12 @@
   .btn-assign svg { @apply h-3.5 w-3.5; }
 
   .btn-delete {
-    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-default hover:bg-bg-tertiary hover:text-text-red;
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-main hover:bg-bg-tertiary hover:text-text-red;
   }
   .btn-delete svg { @apply h-4 w-4; }
 
   .btn-edit {
-    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-default hover:bg-bg-tertiary hover:text-accent-gold;
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-text-muted hover:border-border-main hover:bg-bg-tertiary hover:text-accent-gold;
   }
   .btn-edit svg { @apply h-4 w-4; }
 
@@ -226,11 +227,11 @@
   .tech-avatar { @apply flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-bg-secondary bg-bg-tertiary text-[9px] font-bold text-text-secondary; }
   .tech-avatar:not(:first-child) { @apply -ml-1.5; }
 
-  .btn-folder { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
+  .btn-folder { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-alert bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
   .btn-folder svg { @apply h-3 w-3; }
 
   .progress-wrap { @apply flex items-center gap-2.5; }
-  .progress-track { @apply h-[5px] flex-1 overflow-hidden rounded-full bg-border-default; }
+  .progress-track { @apply h-[5px] flex-1 overflow-hidden rounded-full bg-border-main; }
   .progress-fill { @apply h-full rounded-full bg-brand-red relative overflow-hidden; }
   .progress-fill.gold { @apply bg-accent-gold; }
   .progress-fill.green { @apply bg-text-green; }
@@ -253,16 +254,16 @@
     animation: shimmer 2s infinite;
   }
   
-  .detail-nav { @apply mb-5 flex items-center gap-2 border-b border-border-default pb-4; }
+  .detail-nav { @apply mb-5 flex items-center gap-2 border-b border-border-main pb-4; }
   .detail-back { @apply flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text-primary; }
   .detail-breadcrumb { @apply text-sm text-text-muted; }
   .detail-breadcrumb span { @apply font-semibold text-text-primary; }
 
-  .detail-tabs { @apply mb-6 flex border-b border-border-default; }
+  .detail-tabs { @apply mb-6 flex border-b border-border-main; }
   .detail-tab { @apply -mb-px cursor-pointer border-b-2 border-transparent px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary; }
   .detail-tab.active { @apply border-brand-red text-text-primary; }
 
-  .project-detail-header { @apply mb-5 rounded-lg border border-border-default bg-bg-secondary p-5; }
+  .project-detail-header { @apply mb-5 rounded-lg border border-border-main bg-bg-secondary p-5; }
   .pdh-top { @apply mb-4 flex items-start justify-between; }
   .pdh-title { @apply mb-1 text-xl font-bold uppercase tracking-wider text-text-primary; }
   .pdh-meta { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary; }
@@ -273,22 +274,22 @@
   .pdh-progress-label { @apply text-xs font-semibold uppercase tracking-wider text-text-muted; }
 
   .overview-grid { @apply grid grid-cols-1 gap-4 lg:grid-cols-2; }
-  .field-group { @apply rounded-lg border border-border-default bg-bg-secondary p-5; }
+  .field-group { @apply rounded-lg border border-border-main bg-bg-secondary p-5; }
   .field-group-title { @apply mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-muted; }
   .field-group-title svg { @apply h-3.5 w-3.5 text-brand-red; }
   .field-row { @apply mb-3; }
   .field-row:last-child { @apply mb-0; }
   .field-label { @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-muted; }
-  .field-input, .field-textarea { @apply w-full rounded-md border-border-subtle bg-bg-primary p-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0; }
+  .field-input, .field-textarea { @apply w-full rounded-md border-border-sub bg-bg-primary p-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0; }
   
   .note-chips { @apply mt-2 flex flex-wrap gap-2; }
   .note-chip { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold; }
-  .note-chip.danger { @apply border-border-red bg-brand-red-dim text-text-red; }
+  .note-chip.danger { @apply border-border-alert bg-brand-red-dim text-text-red; }
   .note-chip.info { @apply border-accent/50 bg-accent-gold-dim text-accent-gold; }
-  .note-chip-add { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border-default px-2.5 py-1 text-xs font-semibold text-text-muted transition-colors hover:border-text-secondary hover:text-text-secondary; }
+  .note-chip-add { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border-main px-2.5 py-1 text-xs font-semibold text-text-muted transition-colors hover:border-text-secondary hover:text-text-secondary; }
   .note-chip svg { @apply h-3 w-3; }
   
-  .phase-block { @apply mb-3 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .phase-block { @apply mb-3 overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
   .phase-header { @apply flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-bg-tertiary; }
   .phase-num { @apply flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-red text-xs font-bold text-white; }
   .phase-name { @apply flex-1 text-sm font-bold text-text-primary; }
@@ -296,8 +297,8 @@
   .phase-chevron { @apply text-text-muted transition-transform; }
   .phase-chevron.open { @apply rotate-180; }
   .phase-progress { @apply px-4 pb-2; }
-  .tasks-list { @apply border-t border-border-default; }
-  .task-row { @apply flex items-center gap-3 border-b border-border-subtle p-3 transition-colors hover:bg-bg-tertiary; }
+  .tasks-list { @apply border-t border-border-main; }
+  .task-row { @apply flex items-center gap-3 border-b border-border-sub p-3 transition-colors hover:bg-bg-tertiary; }
   .task-row:last-child { @apply border-none; }
   .task-check { @apply h-4 w-4 shrink-0; }
   .task-name { @apply flex-1 text-sm text-text-primary; }
@@ -309,14 +310,14 @@
   .task-action-btn svg { @apply h-3.5 w-3.5; }
   .add-task-row { @apply flex items-center gap-2 p-3; }
   .add-task-input { @apply flex-1 bg-transparent text-sm text-text-muted placeholder:text-text-muted focus:text-text-primary focus:outline-none; }
-  .add-phase-btn { @apply mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-default py-4 text-sm font-semibold uppercase tracking-wider text-text-muted transition-colors hover:border-brand-red hover:text-brand-red; }
+  .add-phase-btn { @apply mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-main py-4 text-sm font-semibold uppercase tracking-wider text-text-muted transition-colors hover:border-brand-red hover:text-brand-red; }
 
   .docs-toolbar { @apply mb-4 flex items-center justify-between; }
-  .upload-zone { @apply mb-4 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border-default p-7 text-center transition-colors hover:border-brand-red hover:bg-brand-red-dim; }
+  .upload-zone { @apply mb-4 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border-main p-7 text-center transition-colors hover:border-brand-red hover:bg-brand-red-dim; }
   .upload-zone-text { @apply text-sm text-text-secondary; }
   .upload-zone-sub { @apply text-xs text-text-muted; }
-  .doc-list { @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
-  .doc-row { @apply flex items-center gap-3.5 border-b border-border-subtle p-3.5 transition-colors hover:bg-bg-tertiary; }
+  .doc-list { @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
+  .doc-row { @apply flex items-center gap-3.5 border-b border-border-sub p-3.5 transition-colors hover:bg-bg-tertiary; }
   .doc-row:last-child { @apply border-none; }
   .doc-icon { @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md; }
   .doc-icon.pdf { @apply border border-[#5a1010] bg-[#2a0808] text-[#FF6644]; }
@@ -326,15 +327,15 @@
   .doc-info { @apply min-w-0 flex-1; }
   .doc-name { @apply truncate text-sm font-semibold text-text-primary; }
   .doc-meta { @apply mt-0.5 flex items-center gap-2.5 text-xs text-text-muted; }
-  .doc-label { @apply inline-flex items-center rounded border border-border-default bg-bg-tertiary px-2 py-0.5 text-xs font-semibold text-text-secondary; }
+  .doc-label { @apply inline-flex items-center rounded border border-border-main bg-bg-tertiary px-2 py-0.5 text-xs font-semibold text-text-secondary; }
   .doc-size { @apply text-xs text-text-muted; }
   .doc-actions { @apply flex items-center gap-1.5; }
-  .doc-btn { @apply inline-flex h-7 items-center gap-1.5 rounded-md border border-border-default bg-bg-tertiary px-2 text-xs font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
+  .doc-btn { @apply inline-flex h-7 items-center gap-1.5 rounded-md border border-border-main bg-bg-tertiary px-2 text-xs font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
   .doc-btn svg { @apply h-3.5 w-3.5; }
 
-  .ts-card { @apply mb-2 overflow-hidden rounded-md border border-border-default bg-bg-secondary; }
-  .ts-card-header { @apply flex items-center gap-3 border-b border-border-default p-2; }
-  .ts-tech-avatar { @apply flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-bg-tertiary text-xs font-bold; }
+  .ts-card { @apply mb-2 overflow-hidden rounded-md border border-border-main bg-bg-secondary; }
+  .ts-card-header { @apply flex items-center gap-3 border-b border-border-main p-2; }
+  .ts-tech-avatar { @apply flex h-8 w-8 items-center justify-center rounded-full border border-border-main bg-bg-tertiary text-xs font-bold; }
   .ts-tech-name { @apply text-sm font-bold text-text-primary; }
   .ts-tech-date { @apply text-xs text-text-muted; }
   .ts-badge-wrap { @apply ml-auto flex items-center gap-2; }
@@ -347,14 +348,14 @@
   .ts-log-tasks { @apply mt-2.5 flex flex-wrap gap-1.5; }
   .ts-task-pill { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold; }
   .ts-task-pill.done { @apply border-green-border bg-green-dim text-text-green; }
-  .ts-task-pill.progress { @apply border-gold-border bg-accent-gold-dim text-accent-gold; }
+  .ts-task-pill.progress { @apply border-border-gold bg-accent-gold-dim text-accent-gold; }
   .ts-task-pill svg { @apply h-3 w-3; }
   .ts-photos { @apply mt-3 flex flex-wrap gap-2; }
-  .ts-photo { @apply h-16 w-16 cursor-pointer rounded-md border border-border-default bg-bg-tertiary p-1; }
+  .ts-photo { @apply h-16 w-16 cursor-pointer rounded-md border border-border-main bg-bg-tertiary p-1; }
   .ts-photo:hover { @apply border-brand-red; }
 
   /* Accordion styles for timesheets */
-  .accordion-item { @apply overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
+  .accordion-item { @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
   .accordion-trigger { @apply flex w-full items-center justify-between p-3 text-sm font-bold text-text-primary transition-colors hover:bg-bg-tertiary; }
   .accordion-content { @apply p-3 pt-0; }
 
@@ -363,7 +364,7 @@
     @apply rounded-lg border-none bg-transparent;
   }
   .doc-row.small {
-    @apply rounded-md border border-border-subtle bg-bg-primary p-2 transition-colors hover:bg-bg-tertiary;
+    @apply rounded-md border border-border-sub bg-bg-primary p-2 transition-colors hover:bg-bg-tertiary;
   }
   .doc-icon.small {
     @apply h-7 w-7 rounded-sm;
@@ -373,7 +374,7 @@
   }
 
   .required-photo-row {
-    @apply flex items-center justify-between rounded-md border border-border-subtle bg-bg-primary p-2;
+    @apply flex items-center justify-between rounded-md border border-border-sub bg-bg-primary p-2;
   }
     
   /* Tech Schedule Page Styles */
@@ -385,41 +386,41 @@
   
   .cal-controls { @apply mb-4 flex items-center justify-between; }
   .cal-nav { @apply flex items-center gap-2; }
-  .nav-btn { @apply flex h-8 w-8 items-center justify-center rounded-md border border-border-default bg-bg-secondary text-text-muted transition-colors hover:border-[#444] hover:text-text-primary; }
+  .nav-btn { @apply flex h-8 w-8 items-center justify-center rounded-md border border-border-main bg-bg-secondary text-text-muted transition-colors hover:border-[#444] hover:text-text-primary; }
   .cal-period { @apply w-48 text-center text-sm font-bold text-text-primary; }
-  .view-toggle { @apply flex gap-0.5 rounded-md border border-border-default bg-bg-secondary p-0.5; }
+  .view-toggle { @apply flex gap-0.5 rounded-md border border-border-main bg-bg-secondary p-0.5; }
   .view-btn { @apply flex items-center gap-1.5 rounded-[4px] border-none bg-transparent px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-text-muted transition-colors; }
   .view-btn:hover { @apply text-text-primary; }
   .view-btn.active { @apply bg-brand-red text-white; }
   
   .week-grid { @apply mb-6 grid grid-cols-7 gap-2; }
-  .day-pill { @apply flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-border-default bg-bg-secondary p-2.5 transition-colors; }
+  .day-pill { @apply flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-border-main bg-bg-secondary p-2.5 transition-colors; }
   .day-pill:hover { @apply border-[#444]; }
   .day-pill.selected { @apply border-brand-red bg-brand-red-dim; }
-  .day-pill.today { @apply border-border-red; }
+  .day-pill.today { @apply border-border-alert; }
   .day-name { @apply text-[10px] font-bold uppercase tracking-widest text-text-muted; }
   .day-pill.selected .day-name, .day-pill.today .day-name { @apply text-brand-red; }
   .day-num { @apply text-xl font-bold leading-none text-text-secondary; }
   .day-pill.selected .day-num { @apply text-text-primary; }
   .day-dot { @apply mt-0.5 h-1.5 w-1.5 rounded-full bg-brand-red; }
   
-  .month-grid-wrap { @apply mb-6 overflow-hidden rounded-lg border border-border-default bg-bg-secondary; }
-  .month-header { @apply grid grid-cols-7 border-b border-border-default; }
+  .month-grid-wrap { @apply mb-6 overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
+  .month-header { @apply grid grid-cols-7 border-b border-border-main; }
   .month-header-cell { @apply p-2 text-center text-xs font-bold uppercase tracking-wider text-text-muted; }
   .month-days { @apply grid grid-cols-7; }
-  .month-day { @apply flex h-14 cursor-pointer flex-col items-center justify-center gap-1 border-b border-r border-border-subtle text-sm font-semibold text-text-secondary transition-colors; }
+  .month-day { @apply flex h-14 cursor-pointer flex-col items-center justify-center gap-1 border-b border-r border-border-sub text-sm font-semibold text-text-secondary transition-colors; }
   .month-day:hover { @apply bg-bg-tertiary; }
   .month-day.selected { @apply bg-brand-red-dim text-brand-red; }
   .month-day.today { @apply text-brand-red; }
   .month-day.other-month { @apply text-text-muted opacity-40; }
   .month-day-dot { @apply h-1 w-1 rounded-full bg-brand-red; }
     
-  .intel-header { @apply mb-4 flex items-center gap-3 border-b border-border-default pb-2.5; }
+  .intel-header { @apply mb-4 flex items-center gap-3 border-b border-border-main pb-2.5; }
   .intel-label { @apply text-xs font-bold uppercase tracking-wider text-text-muted; }
   .intel-date { @apply font-bold text-brand-red; }
   .intel-count { @apply ml-auto text-xs text-text-muted; }
   
-  .job-card { @apply mb-2.5 overflow-hidden rounded-lg border border-border-default bg-bg-secondary transition-colors; }
+  .job-card { @apply mb-2.5 overflow-hidden rounded-lg border border-border-main bg-bg-secondary transition-colors; }
   .job-card:hover { @apply border-[#444]; }
   .job-card.active { @apply border-green-border; }
   .job-card-inner { @apply flex; }
@@ -429,13 +430,13 @@
   .job-left { @apply min-w-0 flex-1; }
   .job-title-row { @apply mb-2 flex flex-wrap items-center gap-3; }
   .job-title { @apply text-sm font-bold uppercase tracking-wide text-text-primary; }
-  .job-wo { @apply rounded-sm border border-border-red bg-brand-red-dim px-2 py-0.5 font-mono text-xs font-bold text-brand-red; }
+  .job-wo { @apply rounded-sm border border-border-alert bg-brand-red-dim px-2 py-0.5 font-mono text-xs font-bold text-brand-red; }
   .job-active-badge { @apply flex items-center gap-1.5 rounded-sm border border-green-border bg-green-dim px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-text-green; }
   .job-active-badge-dot { @apply h-1.5 w-1.5 animate-pulse rounded-full bg-text-green; }
   .job-meta { @apply flex flex-wrap items-center gap-x-4 gap-y-1; }
   .job-meta-item { @apply flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-secondary; }
   .job-meta-item svg { @apply h-3.5 w-3.5 flex-shrink-0 text-text-muted; }
-  .job-meta-divider { @apply border-l border-border-default pl-4 text-sm font-normal normal-case tracking-normal; }
+  .job-meta-divider { @apply border-l border-border-main pl-4 text-sm font-normal normal-case tracking-normal; }
   .job-right { @apply flex-shrink-0; }
   
   .btn-checkin { @apply inline-flex h-9 items-center gap-2 rounded-md bg-brand-red px-4 text-xs font-bold uppercase tracking-wider text-white hover:bg-brand-red-hover; }
@@ -443,7 +444,7 @@
   .btn-completed { @apply inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-green; }
   
   .empty-state {
-    @apply border border-dashed border-border-default rounded-lg p-12 text-center;
+    @apply border border-dashed border-border-main rounded-lg p-12 text-center;
   }
   .empty-state-text { @apply mt-3 text-xs font-bold uppercase tracking-wider text-text-muted; }
 }

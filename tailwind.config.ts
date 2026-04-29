@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -64,10 +65,10 @@ export default {
         'text-red': 'var(--text-red)',
         'text-gold': 'var(--text-gold)',
         'text-green': 'var(--text-green)',
-        'border-default': 'var(--border-default)',
-        'border-subtle': 'var(--border-subtle)',
-        'border-red': 'var(--border-red)',
-        'gold-border': 'var(--gold-border)',
+        'border-main': 'var(--border-main)',
+        'border-sub': 'var(--border-sub)',
+        'border-alert': 'var(--border-alert)',
+        'border-gold': 'var(--border-gold)',
         'green-border': 'var(--green-border)',
       },
       borderRadius: {

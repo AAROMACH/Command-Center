@@ -44,9 +44,11 @@ export default function TechSchedulePage() {
     // Set a consistent date for mock data purposes
     const [currentDate, setCurrentDate] = useState(new Date('2026-04-29T12:00:00Z'));
     const [selectedDate, setSelectedDate] = useState(new Date('2026-04-29T12:00:00Z'));
+    const [mounted, setMounted] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
+        setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
@@ -132,6 +134,7 @@ export default function TechSchedulePage() {
         end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
     });
 
+    if (!mounted) return null;
 
     return (
         <div className="page">
@@ -159,14 +162,14 @@ export default function TechSchedulePage() {
 
             <div className="cal-controls">
                 <div className="cal-nav">
-                    <button className="nav-btn" onClick={handlePrev}>&#8249;</button>
+                    <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
                     <span className="cal-period">
                         {viewMode === 'week' 
                             ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d, yyyy')}`
                             : format(currentDate, 'MMMM yyyy')
                         }
                     </span>
-                    <button className="nav-btn" onClick={handleNext}>&#8250;</button>
+                    <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
                 </div>
                 <div className="view-toggle">
                     <button className={cn("view-btn", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>

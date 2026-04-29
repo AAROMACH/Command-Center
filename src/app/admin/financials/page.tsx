@@ -13,6 +13,17 @@ import { useToast } from '@/hooks/use-toast';
 import type { Expense, Invoice, WeeklyLog } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -113,8 +124,45 @@ export default function FinancialsPage() {
                     <p className="page-subtitle">Consolidated management of client revenue, technician payroll, and project overhead.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="outline" onClick={() => toast({ title: "Exporting...", description: "Your general ledger is being generated and will be downloaded shortly." })}>⇩ EXPORT GENERAL LEDGER</Button>
-                    <Button variant="secondary" onClick={() => toast({ title: "Closing Period...", description: "This will lock all records for the current fiscal period." })}>CLOSE FISCAL PERIOD</Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline">⇩ EXPORT GENERAL LEDGER</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Export General Ledger?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will generate a CSV file of all financial transactions for the current period. This process may take a few moments.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => toast({ title: "Exporting...", description: "Your general ledger is being generated and will be downloaded shortly." })}>
+                                    Yes, Export
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                             <Button variant="secondary">CLOSE FISCAL PERIOD</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. Closing the fiscal period will lock all financial records, and they will become read-only.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => toast({ title: "Closing Period...", description: "This will lock all records for the current fiscal period." })}>
+                                    Yes, Close Period
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </header>
 
@@ -341,5 +389,3 @@ export default function FinancialsPage() {
         </div>
     );
 }
-
-    

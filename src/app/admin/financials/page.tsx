@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus } from "lucide-react";
-import { expenses as initialExpenses, reports, weeklyLogs, technicians, invoices as initialInvoices, projects, workOrders } from '@/lib/data';
+import { expenses as initialExpenses, reports, weeklyLogs as initialWeeklyLogs, technicians, invoices as initialInvoices, projects, workOrders } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import type { Expense, Invoice } from '@/lib/types';
+import type { Expense, Invoice, WeeklyLog } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
+import { PayrollReviewDialog } from './components/payroll-review-dialog';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -23,8 +24,11 @@ const financialMetrics = [
 export default function FinancialsPage() {
     const [expenses, setExpenses] = useState(initialExpenses);
     const [invoices, setInvoices] = useState(initialInvoices);
+    const [weeklyLogs, setWeeklyLogs] = useState(initialWeeklyLogs);
     const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
+    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
     const { toast } = useToast();
 
@@ -39,6 +43,8 @@ export default function FinancialsPage() {
     };
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
+    const getTechnician = (id: string) => technicians.find(t => t.id === id);
+
 
     const clients = technicians.filter(t => t.role.toLowerCase().includes('client'));
     
@@ -75,6 +81,24 @@ export default function FinancialsPage() {
             default: return 'secondary';
         }
     };
+    
+    const handleReviewLog = (log: WeeklyLog) => {
+        setSelectedLog(log);
+        setIsReviewDialogOpen(true);
+    };
+    
+    const handleUpdateLogStatus = (logId: string, status: WeeklyLog['status']) => {
+        setWeeklyLogs(currentLogs =>
+            currentLogs.map(log =>
+                log.id === logId ? { ...log, status } : log
+            )
+        );
+        toast({
+            title: `Manifest ${status}`,
+            description: `The weekly manifest has been ${status.toLowerCase()}.`,
+        });
+        setIsReviewDialogOpen(false);
+    };
 
 
     return (
@@ -89,8 +113,8 @@ export default function FinancialsPage() {
                     <p className="page-subtitle">Consolidated management of client revenue, technician payroll, and project overhead.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="outline">⇩ EXPORT GENERAL LEDGER</Button>
-                    <Button variant="secondary">CLOSE FISCAL PERIOD</Button>
+                    <Button variant="outline" onClick={() => toast({ title: "Exporting...", description: "Your general ledger is being generated and will be downloaded shortly." })}>⇩ EXPORT GENERAL LEDGER</Button>
+                    <Button variant="secondary" onClick={() => toast({ title: "Closing Period...", description: "This will lock all records for the current fiscal period." })}>CLOSE FISCAL PERIOD</Button>
                 </div>
             </header>
 
@@ -155,14 +179,14 @@ export default function FinancialsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').map(log => (
+                                    {weeklyLogs.map(log => (
                                         <TableRow key={log.id}>
                                             <TableCell className="font-semibold">{log.weekOf}</TableCell>
                                             <TableCell>{getTechnicianName(log.technicianId)}</TableCell>
-                                            <TableCell><Badge variant={log.status === 'Approved' ? 'completed' : 'onhold'}>{log.status}</Badge></TableCell>
+                                            <TableCell><Badge variant={log.status === 'Approved' ? 'completed' : log.status === 'Submitted' ? 'onhold' : 'pending'}>{log.status}</Badge></TableCell>
                                             <TableCell className="font-mono text-text-green">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="outline" size="sm">Review Manifest</Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleReviewLog(log)}>Review Manifest</Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -305,6 +329,17 @@ export default function FinancialsPage() {
                 workOrders={workOrders}
                 onSave={handleSaveInvoice}
             />
+            {selectedLog && (
+                <PayrollReviewDialog
+                    isOpen={isReviewDialogOpen}
+                    setIsOpen={setIsReviewDialogOpen}
+                    log={selectedLog}
+                    technician={getTechnician(selectedLog.technicianId)}
+                    onStatusChange={handleUpdateLogStatus}
+                />
+            )}
         </div>
     );
 }
+
+    

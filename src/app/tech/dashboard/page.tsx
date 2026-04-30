@@ -19,39 +19,44 @@ export default function TechDashboardPage() {
         setCurrentTechId(userId);
     }, []);
 
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
+    // Stable date for filtering to avoid hydration mismatches
+    const todayStr = useMemo(() => {
+        if (!mounted) return '';
+        return format(new Date(), 'yyyy-MM-dd');
+    }, [mounted]);
 
     const tech = useMemo(() => 
-        technicians.find(t => t.id === currentTechId), 
-    [currentTechId]);
+        mounted && currentTechId ? technicians.find(t => t.id === currentTechId) : null, 
+    [currentTechId, mounted]);
 
     const techWorkOrders = useMemo(() => 
-        workOrders.filter(wo => wo.assignedTechnicianId === currentTechId),
-    [currentTechId]);
+        mounted && currentTechId ? workOrders.filter(wo => wo.assignedTechnicianId === currentTechId) : [],
+    [currentTechId, mounted]);
     
     const todaysAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.scheduleDate === todayStr),
-    [techWorkOrders, todayStr]);
+        mounted ? techWorkOrders.filter(wo => wo.scheduleDate === todayStr) : [],
+    [techWorkOrders, todayStr, mounted]);
 
     const activeSession = useMemo(() => 
-        todaysAssignments.find(wo => wo.status === 'in-progress'),
-    [todaysAssignments]);
+        mounted ? todaysAssignments.find(wo => wo.status === 'in-progress') : null,
+    [todaysAssignments, mounted]);
 
-    const upcomingAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => {
+    const upcomingAssignments = useMemo(() => {
+        if (!mounted) return [];
+        const now = new Date();
+        return techWorkOrders.filter(wo => {
             const woDate = new Date(wo.scheduleDate);
-            const diffDays = (woDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+            const diffDays = (woDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
             return diffDays > 0 && diffDays <= 7;
-        }),
-    [techWorkOrders, today]);
+        });
+    }, [techWorkOrders, mounted]);
 
     const reliabilityScore = tech?.reliabilityScore || 0;
     const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
     
     const pendingLogAlerts = useMemo(() => 
-        currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0,
-    [currentTechId]);
+        mounted && currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0,
+    [currentTechId, mounted]);
     
     const unreadNotifications = 3;
 

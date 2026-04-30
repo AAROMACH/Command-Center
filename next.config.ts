@@ -2,12 +2,11 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    allowedDevOrigins: [
-        '6000-firebase-studio-1777209284208.cluster-kadnvepafzbgiwrf2a46powzly.cloudworkstations.dev',
-        '*.cloudworkstations.dev',
-    ],
-  },
+  // Move allowedDevOrigins to the root as it is unrecognized in the experimental block in this version
+  allowedDevOrigins: [
+    '6000-firebase-studio-1777209284208.cluster-kadnvepafzbgiwrf2a46powzly.cloudworkstations.dev',
+    '*.cloudworkstations.dev',
+  ],
   typescript: {
     ignoreBuildErrors: true,
   },

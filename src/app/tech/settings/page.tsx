@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -53,7 +52,7 @@ export default function TechSettingsPage() {
     if (!mounted) return null;
 
     return (
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
              <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -65,26 +64,26 @@ export default function TechSettingsPage() {
                 </div>
             </header>
 
-            <Tabs defaultValue="notifications" className="w-full flex flex-col md:flex-row gap-8">
-                <TabsList className="flex flex-col h-auto bg-transparent border-r border-border-main p-0 pr-4 items-start space-y-1 min-w-[200px]">
-                    <TabsTrigger value="notifications" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
-                        <Bell size={16}/> Notifications
+            <Tabs defaultValue="notifications" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-8">
+                    <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
+                        <Bell size={14}/> Notifications
                     </TabsTrigger>
-                    <TabsTrigger value="security" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
-                        <Shield size={16}/> Security
+                    <TabsTrigger value="security" className="flex items-center gap-2 py-3">
+                        <Shield size={14}/> Security
                     </TabsTrigger>
-                    <TabsTrigger value="privacy" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
-                        <Eye size={16}/> Privacy
+                    <TabsTrigger value="privacy" className="flex items-center gap-2 py-3">
+                        <Eye size={14}/> Privacy
                     </TabsTrigger>
-                    <TabsTrigger value="experience" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
-                        <Monitor size={16}/> Experience
+                    <TabsTrigger value="experience" className="flex items-center gap-2 py-3">
+                        <Monitor size={14}/> Experience
                     </TabsTrigger>
-                    <TabsTrigger value="account" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
-                        <Database size={16}/> Account & Data
+                    <TabsTrigger value="account" className="flex items-center gap-2 py-3">
+                        <Database size={14}/> Account & Data
                     </TabsTrigger>
                 </TabsList>
 
-                <div className="flex-1">
+                <div className="mt-6">
                     {/* NOTIFICATIONS */}
                     <TabsContent value="notifications" className="m-0 space-y-6">
                         <Card>
@@ -100,7 +99,7 @@ export default function TechSettingsPage() {
                                     { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when manifests are approved or payouts initiated.' },
                                     { id: 'n-5', label: 'Reliability Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
                                 ].map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                         <div className="space-y-0.5">
                                             <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
                                             <p className="text-[10px] text-text-muted">{item.desc}</p>
@@ -127,7 +126,7 @@ export default function TechSettingsPage() {
                                         <Input type="time" defaultValue="07:00" className="bg-bg-primary" />
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-bold uppercase tracking-wider">Critical Bypass</p>
                                         <p className="text-[10px] text-text-muted">Allow critical mission alerts to bypass quiet hours.</p>
@@ -159,7 +158,7 @@ export default function TechSettingsPage() {
                                 <CardDescription>Manage credentials and multi-factor security.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/20">
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-border-alert">
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-brand-red rounded-md text-white">
                                             <ShieldCheck size={20}/>
@@ -171,7 +170,7 @@ export default function TechSettingsPage() {
                                     </div>
                                     <Switch onCheckedChange={() => handleToggle("2FA")} />
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-wider">Change Password</p>
                                         <p className="text-[10px] text-text-muted">Update your Command Center access key.</p>
@@ -191,9 +190,9 @@ export default function TechSettingsPage() {
                                     { device: 'iPhone 15 Pro (Current)', location: 'New York, US', time: 'Active now', isCurrent: true },
                                     { device: 'MacBook Pro 16"', location: 'Brooklyn, US', time: '2 hours ago', isCurrent: false },
                                 ].map((session, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div key={idx} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-subtle">
+                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub">
                                                 <History size={14} className="text-text-muted"/>
                                             </div>
                                             <div>
@@ -226,7 +225,7 @@ export default function TechSettingsPage() {
                                     { id: 'p-2', label: 'Show Email to Team', desc: 'Allow project leads to see your contact email.' },
                                     { id: 'p-3', label: 'Allow Direct Messaging', desc: 'Enable the internal team chat for your profile.' },
                                 ].map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                         <div className="space-y-0.5">
                                             <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
                                             <p className="text-[10px] text-text-muted">{item.desc}</p>
@@ -249,7 +248,7 @@ export default function TechSettingsPage() {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] uppercase tracking-widest text-text-muted">Display Theme</Label>
-                                        <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-subtle">
+                                        <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub">
                                             <button className="flex-1 flex flex-col items-center gap-1 p-2 rounded bg-brand-red text-white text-[10px] font-bold uppercase">
                                                 <Moon size={14}/> Dark
                                             </button>
@@ -313,14 +312,14 @@ export default function TechSettingsPage() {
                                 <CardDescription>Manage your personal data records and local terminal storage.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-wider">Export My Data</p>
                                         <p className="text-[10px] text-text-muted">Download a full archive of your assignments and payout history.</p>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={() => handleToggle("Data Export")}><Download size={14} className="mr-2"/> Request ZIP</Button>
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-wider">Clear Local Cache</p>
                                         <p className="text-[10px] text-text-muted">Purge locally stored session data and temporary files.</p>
@@ -336,7 +335,7 @@ export default function TechSettingsPage() {
                                 <CardDescription>Irreversible account management actions.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-red">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-alert">
                                     <div>
                                         <p className="text-xs font-bold text-text-red uppercase tracking-wider">Deactivate Account</p>
                                         <p className="text-[10px] text-text-muted">This will suspend your terminal access and mission assignments.</p>

@@ -40,11 +40,12 @@ export function Navbar() {
             <Image 
               src={logo.imageUrl} 
               alt="Aaromach Logo" 
-              width={40} 
-              height={40} 
+              width={80} 
+              height={80} 
               className="object-contain"
               data-ai-hint={logo.imageHint}
               priority
+              style={{ height: '80px', width: 'auto' }}
             />
           )}
           <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary">Aaromach</span>

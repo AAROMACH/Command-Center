@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -81,11 +80,12 @@ export default function LoginPage() {
               <Image 
                 src={logo.imageUrl} 
                 alt="Aaromach Logo" 
-                width={120} 
-                height={120} 
+                width={80} 
+                height={80} 
                 className="object-contain"
                 data-ai-hint={logo.imageHint}
                 priority
+                style={{ height: '80px', width: 'auto' }}
               />
             )}
           </div>

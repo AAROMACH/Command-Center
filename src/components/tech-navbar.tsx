@@ -43,11 +43,12 @@ export function TechNavbar() {
             <Image 
               src={logo.imageUrl} 
               alt="Aaromach Logo" 
-              width={40} 
-              height={40} 
+              width={80} 
+              height={80} 
               className="object-contain"
               data-ai-hint={logo.imageHint}
               priority
+              style={{ height: '80px', width: 'auto' }}
             />
           )}
           <div className="flex flex-col">

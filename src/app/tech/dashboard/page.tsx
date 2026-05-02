@@ -27,12 +27,14 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
 import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
+import { PendingPayoutDialog } from './components/pending-payout-dialog';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false);
     
     const { toast } = useToast();
 
@@ -51,7 +53,13 @@ export default function TechDashboardPage() {
     [currentTechId, mounted]);
     
     const todaysWorkOrders = useMemo(() => 
-        techWorkOrders.filter(wo => isSameDay(parseISO(wo.scheduleDate), new Date())),
+        techWorkOrders.filter(wo => {
+            try {
+                return isSameDay(parseISO(wo.scheduleDate), new Date());
+            } catch (e) {
+                return false;
+            }
+        }),
     [techWorkOrders]);
 
     const activeJob = useMemo(() => 
@@ -70,6 +78,11 @@ export default function TechDashboardPage() {
         return weeklyLogs
             .filter(l => l.technicianId === currentTechId && l.status === 'Draft')
             .sort((a, b) => new Date(a.weekOf).getTime() - new Date(b.weekOf).getTime())[0];
+    }, [currentTechId]);
+
+    const submittedLogs = useMemo(() => {
+        if (!currentTechId) return [];
+        return weeklyLogs.filter(l => l.technicianId === currentTechId && l.status === 'Submitted');
     }, [currentTechId]);
 
     const criticalAlerts = useMemo(() => {
@@ -94,7 +107,9 @@ export default function TechDashboardPage() {
         expectedHours: (todaysWorkOrders.length * 1.5).toFixed(1)
     }), [todaysWorkOrders]);
 
-    const pendingEarnings = 1450.75;
+    const pendingEarnings = useMemo(() => {
+        return submittedLogs.reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+    }, [submittedLogs]);
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
@@ -136,39 +151,19 @@ export default function TechDashboardPage() {
                 <Button 
                     variant="outline" 
                     className="flex-1 min-w-[240px] h-12 bg-bg-tertiary border-border-subtle hover:border-text-green group"
-                    asChild
+                    onClick={() => setIsPayoutDialogOpen(true)}
                 >
-                    <Link href="/tech/earnings">
-                        <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center">
-                                <Coins size={16} className="text-text-green mr-2" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">Pending Payout</span>
-                            </div>
-                            <span className="font-mono text-sm text-text-green">${pendingEarnings.toFixed(2)}</span>
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center">
+                            <Coins size={16} className="text-text-green mr-2" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Pending Payout</span>
                         </div>
-                    </Link>
+                        <span className="font-mono text-sm text-text-green">${pendingEarnings.toFixed(2)}</span>
+                    </div>
                 </Button>
             </div>
 
-            {/* 2. CRITICAL ALERTS */}
-            {criticalAlerts.length > 0 && (
-                <div className="space-y-2">
-                    {criticalAlerts.map(alert => (
-                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red py-3">
-                            <alert.icon className="h-4 w-4" />
-                            <div className="flex w-full items-center justify-between">
-                                <div>
-                                    <AlertTitle className="text-xs font-bold uppercase tracking-wider">{alert.text}</AlertTitle>
-                                    <AlertDescription className="text-[10px] text-text-muted">Requires immediate technician attention.</AlertDescription>
-                                </div>
-                                <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => alert.id === 'logs' ? setIsLogDialogOpen(true) : null}>Resolve</Button>
-                            </div>
-                        </Alert>
-                    ))}
-                </div>
-            )}
-
-            {/* 3. TODAY SUMMARY METRICS (Top Level) */}
+            {/* 2. TODAY SUMMARY METRICS (Top Level) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
                 <div className="bg-bg-secondary p-4">
                     <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Jobs Today</p>
@@ -187,6 +182,24 @@ export default function TechDashboardPage() {
                     <p className="text-2xl font-bold text-text-green">{tech.reliabilityScore}%</p>
                 </div>
             </div>
+
+            {/* 3. CRITICAL ALERTS */}
+            {criticalAlerts.length > 0 && (
+                <div className="space-y-2">
+                    {criticalAlerts.map(alert => (
+                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red py-3">
+                            <alert.icon className="h-4 w-4" />
+                            <div className="flex w-full items-center justify-between">
+                                <div>
+                                    <AlertTitle className="text-xs font-bold uppercase tracking-wider">{alert.text}</AlertTitle>
+                                    <AlertDescription className="text-[10px] text-text-muted">Requires immediate technician attention.</AlertDescription>
+                                </div>
+                                <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => alert.id === 'logs' ? setIsLogDialogOpen(true) : null}>Resolve</Button>
+                            </div>
+                        </Alert>
+                    ))}
+                </div>
+            )}
 
             {/* 4. ASSIGNMENT PHASE (Next Action / Active Job) - Middle */}
             <div className="space-y-6">
@@ -300,6 +313,13 @@ export default function TechDashboardPage() {
                 setIsOpen={setIsReceiptDialogOpen}
                 workOrders={techWorkOrders}
                 projects={projects.filter(p => p.assignedTechnicianIds.includes(currentTechId || ''))}
+            />
+
+            <PendingPayoutDialog
+                isOpen={isPayoutDialogOpen}
+                setIsOpen={setIsPayoutDialogOpen}
+                pendingAmount={pendingEarnings}
+                submittedLogs={submittedLogs}
             />
         </div>
     );

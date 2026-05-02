@@ -3,11 +3,36 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Bell, Shield, Smartphone, Mail, Key } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Bell, 
+  Shield, 
+  Smartphone, 
+  Mail, 
+  Key, 
+  Settings as SettingsIcon, 
+  Eye, 
+  Monitor, 
+  Globe, 
+  Database,
+  ShieldCheck,
+  History,
+  Lock,
+  MessageSquare,
+  Clock,
+  Download,
+  Trash2,
+  Moon,
+  Sun,
+  Layout
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -17,109 +42,312 @@ export default function TechSettingsPage() {
         setMounted(true);
     }, []);
 
+    const handleToggle = (setting: string) => {
+        // In a real implementation, this would trigger a Firestore updateDoc call
+        toast({
+            title: "Configuration Synced",
+            description: `${setting} has been updated in your master profile.`,
+        });
+    };
+
     if (!mounted) return null;
 
     return (
-        <div>
+        <div className="max-w-6xl mx-auto">
              <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <SettingsIcon size={12} />
-                        System Preferences
+                        Terminal Configuration
                     </p>
-                    <h1 className="page-title">Settings</h1>
-                    <p className="page-subtitle">Configure terminal behavior and communication protocols.</p>
+                    <h1 className="page-title">System Settings</h1>
+                    <p className="page-subtitle">Manage communication protocols, security layers, and UI preferences.</p>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Bell size={16} className="text-brand-red"/>
-                                Communication Protocols
-                            </CardTitle>
-                            <CardDescription>Manage how the Command Center alerts your device.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                <Label htmlFor="email-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                    <span className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2"><Mail size={14}/> Email Alerts</span>
-                                    <span className="text-xs text-text-muted">Receive mission briefings and schedule updates via encrypted email.</span>
-                                </Label>
-                                <Switch id="email-notifications" defaultChecked />
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                <Label htmlFor="push-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                    <span className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2"><Smartphone size={14}/> Push Notifications</span>
-                                    <span className="text-xs text-text-muted">Get real-time tactical alerts on your mobile device.</span>
-                                </Label>
-                                <Switch id="push-notifications" defaultChecked/>
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                <Label htmlFor="sms-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                    <span className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2"><Smartphone size={14}/> SMS Critical Alerts</span>
-                                    <span className="text-xs text-text-muted">Emergency communication for high-priority mission changes.</span>
-                                </Label>
-                                <Switch id="sms-notifications" />
-                            </div>
-                        </CardContent>
-                    </Card>
+            <Tabs defaultValue="notifications" className="w-full flex flex-col md:flex-row gap-8">
+                <TabsList className="flex flex-col h-auto bg-transparent border-r border-border-main p-0 pr-4 items-start space-y-1 min-w-[200px]">
+                    <TabsTrigger value="notifications" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
+                        <Bell size={16}/> Notifications
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
+                        <Shield size={16}/> Security
+                    </TabsTrigger>
+                    <TabsTrigger value="privacy" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
+                        <Eye size={16}/> Privacy
+                    </TabsTrigger>
+                    <TabsTrigger value="experience" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
+                        <Monitor size={16}/> Experience
+                    </TabsTrigger>
+                    <TabsTrigger value="account" className="w-full justify-start gap-3 px-4 py-3 data-[state=active]:bg-brand-red-dim data-[state=active]:text-brand-red">
+                        <Database size={16}/> Account & Data
+                    </TabsTrigger>
+                </TabsList>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield size={16} className="text-accent-gold"/>
-                                Security Terminal
-                            </CardTitle>
-                            <CardDescription>Manage access credentials and session security.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                <div>
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wider">Change Password</p>
-                                    <p className="text-xs text-text-muted">Update your Command Center access key.</p>
-                                </div>
-                                <Button variant="outline" size="sm"><Key size={14} className="mr-2"/> Reset Key</Button>
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                <div>
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wider">Session Management</p>
-                                    <p className="text-xs text-text-muted">Currently active on this device.</p>
-                                </div>
-                                <Button variant="destructive-outline" size="sm" onClick={() => toast({ title: "Session Cleared", description: "All other active sessions have been terminated."})}>Log Out Other Devices</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                <div className="flex-1">
+                    {/* NOTIFICATIONS */}
+                    <TabsContent value="notifications" className="m-0 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Trigger Management</CardTitle>
+                                <CardDescription>Define which operational events generate system alerts.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {[
+                                    { id: 'n-1', label: 'New Assignments', desc: 'Alert when a new work order is assigned to you.' },
+                                    { id: 'n-2', label: 'Assignment Updates', desc: 'Alert when site details or requirements change.' },
+                                    { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or dates are modified.' },
+                                    { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when manifests are approved or payouts initiated.' },
+                                    { id: 'n-5', label: 'Reliability Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
+                                ].map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
+                                            <p className="text-[10px] text-text-muted">{item.desc}</p>
+                                        </div>
+                                        <Switch defaultChecked onCheckedChange={() => handleToggle(item.label)} />
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
 
-                <div className="space-y-6">
-                    <Card className="bg-brand-red-dim/10 border-border-red">
-                        <CardHeader>
-                            <CardTitle className="text-brand-red">System Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-[10px] space-y-2 uppercase tracking-widest text-text-muted">
-                            <div className="flex justify-between border-b border-border-red/20 pb-2">
-                                <span>Build Version</span>
-                                <span className="text-text-primary font-mono">1.4.2-STABLE</span>
-                            </div>
-                            <div className="flex justify-between border-b border-border-red/20 pb-2">
-                                <span>Protocol</span>
-                                <span className="text-text-primary font-mono">ENCRYPTED-V3</span>
-                            </div>
-                            <div className="flex justify-between border-b border-border-red/20 pb-2">
-                                <span>Node Location</span>
-                                <span className="text-text-primary font-mono">US-EAST-1</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Button className="w-full h-12" onClick={() => toast({ title: "Settings Saved", description: "System preferences updated."})}>
-                        Save System Preferences
-                    </Button>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Notification Timing</CardTitle>
+                                <CardDescription>Control alert behavior and delivery frequency.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Quiet Hours Start</Label>
+                                        <Input type="time" defaultValue="22:00" className="bg-bg-primary" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Quiet Hours End</Label>
+                                        <Input type="time" defaultValue="07:00" className="bg-bg-primary" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-bold uppercase tracking-wider">Critical Bypass</p>
+                                        <p className="text-[10px] text-text-muted">Allow critical mission alerts to bypass quiet hours.</p>
+                                    </div>
+                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Critical Bypass")} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Delivery Mode</Label>
+                                    <Select defaultValue="instant" onValueChange={(val) => handleToggle(`Delivery Mode: ${val}`)}>
+                                        <SelectTrigger className="bg-bg-primary">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="instant">Instant (Immediate Alerts)</SelectItem>
+                                            <SelectItem value="summary">Summary (Hourly Batch)</SelectItem>
+                                            <SelectItem value="daily">Daily Digest</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* SECURITY */}
+                    <TabsContent value="security" className="m-0 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Authentication Layers</CardTitle>
+                                <CardDescription>Manage credentials and multi-factor security.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/20">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-brand-red rounded-md text-white">
+                                            <ShieldCheck size={20}/>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold uppercase tracking-wider">Two-Factor Authentication</p>
+                                            <p className="text-xs text-text-muted">Add a layer of security to your terminal access.</p>
+                                        </div>
+                                    </div>
+                                    <Switch onCheckedChange={() => handleToggle("2FA")} />
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider">Change Password</p>
+                                        <p className="text-[10px] text-text-muted">Update your Command Center access key.</p>
+                                    </div>
+                                    <Button variant="outline" size="sm"><Key size={14} className="mr-2"/> Reset Key</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Active Sessions</CardTitle>
+                                <CardDescription>Monitor and manage currently authorized devices.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {[
+                                    { device: 'iPhone 15 Pro (Current)', location: 'New York, US', time: 'Active now', isCurrent: true },
+                                    { device: 'MacBook Pro 16"', location: 'Brooklyn, US', time: '2 hours ago', isCurrent: false },
+                                ].map((session, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-subtle">
+                                                <History size={14} className="text-text-muted"/>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{session.device}</p>
+                                                <p className="text-[10px] text-text-muted">{session.location} • {session.time}</p>
+                                            </div>
+                                        </div>
+                                        {!session.isCurrent && (
+                                            <Button variant="ghost" size="sm" className="text-[10px] hover:text-text-red">Revoke</Button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button variant="destructive-outline" className="w-full mt-2" onClick={() => handleToggle("Logout All")}>
+                                    Log Out All Other Devices
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* PRIVACY */}
+                    <TabsContent value="privacy" className="m-0 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Team Visibility</CardTitle>
+                                <CardDescription>Control how your information is displayed to other field personnel.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {[
+                                    { id: 'p-1', label: 'Show Phone to Team', desc: 'Allow other technicians on your project to see your phone number.' },
+                                    { id: 'p-2', label: 'Show Email to Team', desc: 'Allow project leads to see your contact email.' },
+                                    { id: 'p-3', label: 'Allow Direct Messaging', desc: 'Enable the internal team chat for your profile.' },
+                                ].map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
+                                            <p className="text-[10px] text-text-muted">{item.desc}</p>
+                                        </div>
+                                        <Switch defaultChecked onCheckedChange={() => handleToggle(item.label)} />
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* EXPERIENCE */}
+                    <TabsContent value="experience" className="m-0 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Interface & Region</CardTitle>
+                                <CardDescription>Customize the visual behavior and regional settings of the terminal.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Display Theme</Label>
+                                        <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-subtle">
+                                            <button className="flex-1 flex flex-col items-center gap-1 p-2 rounded bg-brand-red text-white text-[10px] font-bold uppercase">
+                                                <Moon size={14}/> Dark
+                                            </button>
+                                            <button className="flex-1 flex flex-col items-center gap-1 p-2 rounded hover:bg-bg-secondary text-text-muted text-[10px] font-bold uppercase transition-colors">
+                                                <Sun size={14}/> Light
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Default Landing Page</Label>
+                                        <Select defaultValue="dashboard" onValueChange={(val) => handleToggle(`Landing Page: ${val}`)}>
+                                            <SelectTrigger className="bg-bg-primary">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="dashboard">Dashboard</SelectItem>
+                                                <SelectItem value="assignments">Assignments</SelectItem>
+                                                <SelectItem value="projects">Projects</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Time Zone</Label>
+                                        <Select defaultValue="est" onValueChange={(val) => handleToggle(`Time Zone: ${val}`)}>
+                                            <SelectTrigger className="bg-bg-primary">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="est">Eastern Standard (UTC-5)</SelectItem>
+                                                <SelectItem value="cst">Central Standard (UTC-6)</SelectItem>
+                                                <SelectItem value="mst">Mountain Standard (UTC-7)</SelectItem>
+                                                <SelectItem value="pst">Pacific Standard (UTC-8)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Time Format</Label>
+                                        <Select defaultValue="12h" onValueChange={(val) => handleToggle(`Time Format: ${val}`)}>
+                                            <SelectTrigger className="bg-bg-primary">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="12h">12-Hour (AM/PM)</SelectItem>
+                                                <SelectItem value="24h">24-Hour (Military)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* ACCOUNT & DATA */}
+                    <TabsContent value="account" className="m-0 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Data Sovereignty</CardTitle>
+                                <CardDescription>Manage your personal data records and local terminal storage.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider">Export My Data</p>
+                                        <p className="text-[10px] text-text-muted">Download a full archive of your assignments and payout history.</p>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={() => handleToggle("Data Export")}><Download size={14} className="mr-2"/> Request ZIP</Button>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider">Clear Local Cache</p>
+                                        <p className="text-[10px] text-text-muted">Purge locally stored session data and temporary files.</p>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={() => handleToggle("Cache Cleared")}>Clear Now</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-red-800/20 bg-red-900/5">
+                            <CardHeader>
+                                <CardTitle className="text-text-red">Danger Zone</CardTitle>
+                                <CardDescription>Irreversible account management actions.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-red">
+                                    <div>
+                                        <p className="text-xs font-bold text-text-red uppercase tracking-wider">Deactivate Account</p>
+                                        <p className="text-[10px] text-text-muted">This will suspend your terminal access and mission assignments.</p>
+                                    </div>
+                                    <Button variant="destructive" size="sm"><Trash2 size={14} className="mr-2"/> Deactivate</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
                 </div>
-            </div>
+            </Tabs>
         </div>
     );
 }
-

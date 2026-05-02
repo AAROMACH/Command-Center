@@ -36,7 +36,7 @@ export function TechNavbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center gap-4 border-b border-border-default bg-[#0f0f0f] px-6">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center gap-4 border-b border-border-main bg-[#0f0f0f] px-6">
       <Link href="/tech/dashboard" className="mr-4 flex items-center gap-2">
         <Icons.logo className="h-6 w-6 text-brand-red" />
         <span className="font-mono text-lg font-bold uppercase text-text-primary">Aaromach</span>
@@ -60,16 +60,16 @@ export function TechNavbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-4">
-        <div className="flex items-center gap-2 border-r border-border-default pr-4 mr-2">
+        <div className="flex items-center gap-2 border-r border-border-main pr-4 mr-2">
           <Link href="/tech/settings">
-            <Button variant="ghost" size="icon-sm" className={cn("text-text-muted hover:text-text-primary", pathname === '/tech/settings' && "text-brand-red")}>
+            <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-text-muted hover:text-text-primary", pathname === '/tech/settings' && "text-brand-red")}>
               <Settings size={18} />
             </Button>
           </Link>
           <UserNav />
         </div>
          <Link href="/login">
-            <Button variant="outline" size="sm" className="!text-xs !normal-case">
+            <Button variant="outline" size="sm" className="!text-[10px] !h-8 !px-3">
                 <Power size={14} className="mr-2"/>
                 Sign Out
             </Button>
@@ -78,4 +78,3 @@ export function TechNavbar() {
     </nav>
   );
 }
-

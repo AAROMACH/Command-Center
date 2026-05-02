@@ -76,6 +76,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'field_logs',
   ],
   client: [
+    'view_dashboard',
     'client_portal',
   ],
 };
@@ -130,4 +131,9 @@ export function isTech(user: Technician | null | undefined): boolean {
                        user.role.toLowerCase().includes('integrator');
   
   return isLegacyTech || userRoles.some(role => techRoles.includes(role));
+}
+
+export function isClient(user: Technician | null | undefined): boolean {
+  if (!user) return false;
+  return user.roles?.includes('client') || user.role.toLowerCase().includes('client');
 }

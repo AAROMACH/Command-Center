@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   Avatar,
@@ -23,14 +23,17 @@ import {
   Settings,
   CreditCard,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  MonitorCheck,
+  Check
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
-import { isAdmin, isTech } from '@/lib/permissions';
+import { isAdmin, isTech, isClient } from '@/lib/permissions';
 
 export function UserNav() {
   const router = useRouter();
+  const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
 
   useEffect(() => {
@@ -46,9 +49,18 @@ export function UserNav() {
   
   const displayIsAdmin = isAdmin(currentUser);
   const displayIsTech = isTech(currentUser);
+  const displayIsClient = isClient(currentUser);
 
-  const profilePath = displayIsTech ? '/tech/profile' : '/admin/profile';
-  const settingsPath = displayIsTech ? '/tech/settings' : '/admin/settings';
+  const availablePortals = [
+    { id: 'admin', label: 'Admin Portal', visible: displayIsAdmin, path: '/admin/dashboard' },
+    { id: 'tech', label: 'Technician Portal', visible: displayIsTech, path: '/tech/dashboard' },
+    { id: 'client', label: 'Client Portal', visible: displayIsClient, path: '/client/dashboard' },
+  ].filter(p => p.visible);
+
+  const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
+
+  const profilePath = pathname.startsWith('/tech') ? '/tech/profile' : '/admin/profile';
+  const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : '/admin/settings';
 
   return (
     <DropdownMenu>
@@ -59,7 +71,7 @@ export function UserNav() {
                 {currentUser?.name || 'Authorized User'}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
-                {displayIsAdmin ? 'Administrator' : displayIsTech ? 'Field Technician' : 'Client'}
+                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client'}
              </span>
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -80,6 +92,24 @@ export function UserNav() {
             </p>
           </div>
         </DropdownMenuLabel>
+        
+        {availablePortals.length > 1 && (
+            <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-[0.2em] text-text-muted flex items-center gap-2">
+                    <MonitorCheck size={12}/> Switch Portal
+                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                    {availablePortals.map(portal => (
+                        <DropdownMenuItem key={portal.id} onSelect={() => router.push(portal.path)} className="flex items-center justify-between">
+                            <span>{portal.label}</span>
+                            {activePortalId === portal.id && <Check size={14} className="text-text-green" />}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuGroup>
+            </>
+        )}
+
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={() => router.push(profilePath)}>

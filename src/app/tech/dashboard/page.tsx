@@ -212,7 +212,7 @@ export default function TechDashboardPage() {
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <div className="page-eyebrow text-brand-red">Next Assignment Phase</div>
-                                <Badge variant="high">Priority Task</Badge>
+                                <Badge variant="high">Priority</Badge>
                             </div>
                             <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Assignments'}</CardTitle>
                         </CardHeader>

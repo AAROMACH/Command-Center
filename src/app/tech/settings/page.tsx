@@ -62,7 +62,7 @@ export default function TechSettingsPage() {
                     <h1 className="page-title">System Settings</h1>
                     <p className="page-subtitle">Manage communication protocols, security layers, and UI preferences.</p>
                 </div>
-            </header>
+             </header>
 
             <Tabs defaultValue="notifications" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-8">
@@ -129,7 +129,7 @@ export default function TechSettingsPage() {
                                 <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-bold uppercase tracking-wider">Critical Bypass</p>
-                                        <p className="text-[10px] text-text-muted">Allow critical mission alerts to bypass quiet hours.</p>
+                                        <p className="text-[10px] text-text-muted">Allow critical assignment alerts to bypass quiet hours.</p>
                                     </div>
                                     <Switch defaultChecked onCheckedChange={() => handleToggle("Critical Bypass")} />
                                 </div>

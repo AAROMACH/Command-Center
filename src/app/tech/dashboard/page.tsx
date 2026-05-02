@@ -125,7 +125,7 @@ export default function TechDashboardPage() {
                         <Card className="border-2 border-brand-red bg-brand-red-dim/5">
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
-                                    <div className="page-eyebrow text-brand-red">Next Mission Phase</div>
+                                    <div className="page-eyebrow text-brand-red">Next Assignment Phase</div>
                                     <Badge variant="high">Priority Task</Badge>
                                 </div>
                                 <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Jobs'}</CardTitle>
@@ -198,7 +198,7 @@ export default function TechDashboardPage() {
                                             <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
                                         </div>
                                     </div>
-                                    <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Mission finalized."})}>
+                                    <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Assignment finalized."})}>
                                         <LogOut size={16}/> CHECK OUT / FINALIZE
                                     </Button>
                                 </div>
@@ -269,7 +269,7 @@ export default function TechDashboardPage() {
                                 <Link href="/tech/assignments">
                                     <div className="flex items-center gap-3">
                                         <ArrowRight size={16} className="text-text-muted"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">View All Missions</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">View All Assignments</span>
                                     </div>
                                     <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
                                 </Link>

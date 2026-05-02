@@ -82,7 +82,7 @@ export default function TechAssignmentsPage() {
                             <thead>
                                 <tr>
                                     <th>Work Order / Status</th>
-                                    <th>Mission Description</th>
+                                    <th>Assignment Description</th>
                                     <th>Site Location</th>
                                     <th>Schedule Window</th>
                                     <th className="text-right">Action</th>
@@ -127,7 +127,7 @@ export default function TechAssignmentsPage() {
                                             {wo.status === 'in-progress' && (
                                                 <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-end gap-2">
                                                     <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
-                                                    Mission Active
+                                                    Assignment Active
                                                 </div>
                                             )}
                                         </td>
@@ -187,7 +187,7 @@ export default function TechAssignmentsPage() {
                                 ))}
                                 {completedAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No completed missions found.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No completed assignments found.</td>
                                     </tr>
                                 )}
                             </tbody>

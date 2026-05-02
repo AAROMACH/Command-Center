@@ -197,7 +197,7 @@ export default function TechProfilePage() {
                             <Card className="lg:col-span-2">
                                 <CardHeader>
                                     <CardTitle>Recurring Schedule</CardTitle>
-                                    <CardDescription>Default weekly availability for mission dispatch.</CardDescription>
+                                    <CardDescription>Default weekly availability for assignment dispatch.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     {daysOfWeek.map(day => (

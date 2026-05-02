@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import {
   User,
   Power,
   Coins,
+  Settings,
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { Button } from './ui/button';
@@ -58,7 +60,14 @@ export function TechNavbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-4">
-        <UserNav />
+        <div className="flex items-center gap-2 border-r border-border-default pr-4 mr-2">
+          <Link href="/tech/settings">
+            <Button variant="ghost" size="icon-sm" className={cn("text-text-muted hover:text-text-primary", pathname === '/tech/settings' && "text-brand-red")}>
+              <Settings size={18} />
+            </Button>
+          </Link>
+          <UserNav />
+        </div>
          <Link href="/login">
             <Button variant="outline" size="sm" className="!text-xs !normal-case">
                 <Power size={14} className="mr-2"/>
@@ -69,3 +78,4 @@ export function TechNavbar() {
     </nav>
   );
 }
+

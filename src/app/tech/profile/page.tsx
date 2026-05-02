@@ -1,21 +1,22 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import type { Technician, TimeOffRequest } from '@/lib/types';
+import type { Technician, TimeOffRequest, PenaltyEvent } from '@/lib/types';
 import { technicians, penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Clock, Plus, Settings } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { subDays, isAfter } from 'date-fns';
 
 export default function TechProfilePage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -41,8 +42,15 @@ export default function TechProfilePage() {
         return penaltyEvents.filter(p => p.technicianId === currentTechId);
     }, [currentTechId]);
 
+    const penaltyPoints30d = useMemo(() => {
+        const thirtyDaysAgo = subDays(new Date(), 30);
+        return techPenaltyEvents
+            .filter(e => isAfter(new Date(e.date), thirtyDaysAgo))
+            .reduce((acc, curr) => acc + Math.abs(curr.points), 0);
+    }, [techPenaltyEvents]);
+
     if (!mounted || !currentTechId || !tech) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Profile...</div>;
+        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Personnel File...</div>;
     }
     
     const handleAvailabilityChange = (day: string, field: 'start' | 'end', value: string) => {
@@ -78,6 +86,8 @@ export default function TechProfilePage() {
 
     const reliabilityScore = tech.reliabilityScore;
     const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
+    const reliabilityStatus = reliabilityScore > 90 ? 'OPERATIONAL' : reliabilityScore > 80 ? 'MONITORED' : 'RESTRICTED';
+    
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     return (
@@ -85,123 +95,94 @@ export default function TechProfilePage() {
              <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
-                        <Settings size={12} />
-                        Personal Management
+                        <User size={12} />
+                        Identity & Operational Status
                     </p>
-                    <h1 className="page-title">My Profile</h1>
-                    <p className="page-subtitle">Configure your operational identity, availability, and system settings.</p>
+                    <h1 className="page-title">Personnel File</h1>
+                    <p className="page-subtitle">Master record for {tech.name}. Restricted access terminal.</p>
                 </div>
                  <div className="page-header-right">
-                    <Button onClick={() => toast({ title: "Changes Saved", description: "Your profile has been updated."})}>Save Changes</Button>
+                    <Button onClick={() => toast({ title: "Profile Updated", description: "Changes have been committed to the master record."})}>
+                        Commit Changes
+                    </Button>
                 </div>
             </header>
             
-            <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-xl mb-8">
-                    <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                    <TabsTrigger value="availability">Availability</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
+            <Tabs defaultValue="identity" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-8">
+                    <TabsTrigger value="identity" className="flex items-center gap-2">
+                        <User size={14}/> Identity
+                    </TabsTrigger>
+                    <TabsTrigger value="availability" className="flex items-center gap-2">
+                        <Timer size={14}/> Availability
+                    </TabsTrigger>
+                    <TabsTrigger value="reliability" className="flex items-center gap-2">
+                        <Activity size={14}/> Reliability
+                    </TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
-                    {/* PERSONAL INFO & PERFORMANCE */}
-                    <TabsContent value="personal" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card className="lg:col-span-2">
-                                <CardHeader>
-                                    <CardTitle>Core Identity</CardTitle>
-                                    <CardDescription>Official personnel records and contact information.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="flex items-center gap-6 pb-6 border-b border-border-main">
-                                        <Avatar className="h-20 w-20">
-                                           <AvatarImage asChild src={tech.avatarUrl} alt={tech.name} >
-                                               <Image src={tech.avatarUrl} alt={tech.name} width={80} height={80} />
-                                            </AvatarImage>
-                                            <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="space-y-2">
-                                            <Button variant="outline" size="sm">Change Avatar</Button>
-                                            <p className="text-[10px] uppercase tracking-widest text-text-muted">ID: {tech.id}</p>
+                    {/* LAYER A: IDENTITY */}
+                    <TabsContent value="identity">
+                        <Card className="max-w-4xl">
+                            <CardHeader>
+                                <CardTitle>Core Identity</CardTitle>
+                                <CardDescription>Official personnel records and contact credentials.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-8">
+                                <div className="flex items-center gap-8 pb-8 border-b border-border-main">
+                                    <Avatar className="h-24 w-24 border-2 border-border-main">
+                                       <AvatarImage asChild src={tech.avatarUrl} alt={tech.name} >
+                                           <Image src={tech.avatarUrl} alt={tech.name} width={96} height={96} />
+                                        </AvatarImage>
+                                        <AvatarFallback className="text-2xl">{tech.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="space-y-3">
+                                        <Button variant="outline" size="sm">Update Photo</Button>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Personnel ID</p>
+                                            <p className="font-mono text-xs text-brand-red">{tech.id}</p>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-widest text-text-muted">Full Name</Label>
-                                            <Input id="fullName" defaultValue={tech.name} className="bg-bg-primary" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Email Address</Label>
-                                            <div className="relative">
-                                                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                                <Input id="email" type="email" defaultValue={tech.email} className="bg-bg-primary pl-9" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-text-muted">Phone Number</Label>
-                                            <div className="relative">
-                                                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                                <Input id="phone" type="tel" defaultValue={tech.phone} className="bg-bg-primary pl-9" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="address" className="text-xs font-bold uppercase tracking-widest text-text-muted">Home Address</Label>
-                                            <div className="relative">
-                                                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                                <Input id="address" defaultValue={tech.address} className="bg-bg-primary pl-9" />
-                                            </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-widest text-text-muted">Full Legal Name</Label>
+                                        <Input id="fullName" defaultValue={tech.name} className="bg-bg-primary h-11" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Secure Email</Label>
+                                        <div className="relative">
+                                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                                            <Input id="email" type="email" defaultValue={tech.email} className="bg-bg-primary pl-9 h-11" />
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-
-                            <div className="space-y-6">
-                                <Card className="border-accent-gold/20 bg-accent-gold/5">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold">
-                                            <Gauge size={14}/> Reliability Metric
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-center py-4">
-                                            <p className={`text-6xl font-bold ${reliabilityColor}`}>{reliabilityScore}%</p>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-2">Operational Integrity Score</p>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-text-muted">Primary Phone</Label>
+                                        <div className="relative">
+                                            <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                                            <Input id="phone" type="tel" defaultValue={tech.phone} className="bg-bg-primary pl-9 h-11" />
                                         </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em]">
-                                            <ShieldAlert size={14} className="text-text-red" /> Penalty Events
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                         {techPenaltyEvents.map(event => (
-                                            <div key={event.id} className="text-[10px] p-2.5 rounded-md bg-bg-primary border border-border-subtle">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold text-text-secondary uppercase">{event.reason}</span>
-                                                    <span className="font-mono font-bold text-text-red">{event.points} PTS</span>
-                                                </div>
-                                                <div className="text-text-muted font-mono">{new Date(event.date + 'T12:00:00').toLocaleDateString()}</div>
-                                            </div>
-                                        ))}
-                                        {techPenaltyEvents.length === 0 && (
-                                            <div className="text-[10px] text-center p-6 text-text-muted italic">Clear record. No discrepancies logged.</div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="address" className="text-xs font-bold uppercase tracking-widest text-text-muted">Operational Base Address</Label>
+                                        <div className="relative">
+                                            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                                            <Input id="address" defaultValue={tech.address} className="bg-bg-primary pl-9 h-11" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                     
-                    {/* AVAILABILITY & TIME OFF */}
+                    {/* LAYER B: OPERATIONAL STATUS (AVAILABILITY) */}
                     <TabsContent value="availability" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
-                                    <CardTitle>Tactical Availability</CardTitle>
-                                    <CardDescription>Set your recurring weekly work hours. These windows are used for mission dispatch.</CardDescription>
+                                    <CardTitle>Recurring Schedule</CardTitle>
+                                    <CardDescription>Default weekly availability for mission dispatch.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     {daysOfWeek.map(day => (
@@ -230,8 +211,8 @@ export default function TechProfilePage() {
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                                     <div>
-                                        <CardTitle>Time Off Requests</CardTitle>
-                                        <CardDescription>Specific dates requested for absence.</CardDescription>
+                                        <CardTitle>Schedule Exceptions</CardTitle>
+                                        <CardDescription>Time off and absence requests.</CardDescription>
                                     </div>
                                     <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
                                         <DialogTrigger asChild>
@@ -278,7 +259,7 @@ export default function TechProfilePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     {myTimeOff.length === 0 ? (
-                                        <div className="text-[10px] text-center p-8 border border-dashed border-border-main rounded-md text-text-muted uppercase tracking-widest">No active requests</div>
+                                        <div className="text-[10px] text-center p-8 border border-dashed border-border-main rounded-md text-text-muted uppercase tracking-widest">No active exceptions</div>
                                     ) : (
                                         myTimeOff.map(req => (
                                             <div key={req.id} className="p-3 rounded-md bg-bg-primary border border-border-subtle">
@@ -300,50 +281,68 @@ export default function TechProfilePage() {
                         </div>
                     </TabsContent>
 
-                    {/* SETTINGS / NOTIFICATIONS */}
-                    <TabsContent value="settings">
-                         <Card className="max-w-2xl">
-                            <CardHeader>
-                                <CardTitle>System Settings & Notifications</CardTitle>
-                                <CardDescription>Configure how the command center communicates with your device.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                        <Label htmlFor="email-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                            <span className="text-sm font-bold text-text-primary uppercase tracking-wider">Email Alerts</span>
-                                            <span className="text-xs text-text-muted">Receive mission briefings and schedule updates via email.</span>
-                                        </Label>
-                                        <Switch id="email-notifications" defaultChecked />
+                    {/* LAYER C: PERFORMANCE / RELIABILITY */}
+                    <TabsContent value="reliability" className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card className="border-accent-gold/20 bg-accent-gold/5">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold uppercase">
+                                        <Gauge size={14}/> Operational Integrity
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-center py-6">
+                                        <p className={`text-7xl font-bold ${reliabilityColor}`}>{reliabilityScore}%</p>
+                                        <div className="mt-4 flex flex-col items-center gap-1">
+                                            <Badge variant={reliabilityScore > 90 ? 'active' : 'onhold'} className="h-6 px-4 text-xs">
+                                                {reliabilityStatus}
+                                            </Badge>
+                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Live Reliability Score</p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                        <Label htmlFor="push-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                            <span className="text-sm font-bold text-text-primary uppercase tracking-wider">Push Notifications</span>
-                                            <span className="text-xs text-text-muted">Get real-time tactical alerts on your mobile device.</span>
-                                        </Label>
-                                        <Switch id="push-notifications" defaultChecked/>
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
-                                        <Label htmlFor="sms-notifications" className="flex flex-col space-y-1 cursor-pointer">
-                                            <span className="text-sm font-bold text-text-primary uppercase tracking-wider">SMS Critical Alerts</span>
-                                            <span className="text-xs text-text-muted">Emergency communication for high-priority mission changes.</span>
-                                        </Label>
-                                        <Switch id="sms-notifications" />
-                                    </div>
-                                </div>
+                                </CardContent>
+                            </Card>
 
-                                <div className="pt-6 border-t border-border-main">
-                                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-4">Security</h4>
-                                    <Button variant="outline" className="w-full justify-start h-10">
-                                        <Clock size={16} className="mr-2 opacity-50" />
-                                        Update Password
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            <Card className="lg:col-span-2">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase">
+                                        <ShieldAlert size={14} className="text-text-red" /> Penalty Ledger
+                                    </CardTitle>
+                                    <CardDescription>Official record of discrepancies and compliance failures.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/20 border border-border-red">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest">30-Day Penalty Delta</p>
+                                            <p className="text-2xl font-bold text-text-primary">-{penaltyPoints30d} Points</p>
+                                        </div>
+                                        <Activity size={32} className="text-brand-red opacity-50" />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-2">History</h4>
+                                         {techPenaltyEvents.map(event => (
+                                            <div key={event.id} className="text-[11px] p-4 rounded-md bg-bg-primary border border-border-subtle flex justify-between items-center">
+                                                <div className="space-y-1">
+                                                    <span className="font-bold text-text-primary uppercase tracking-wide">{event.reason}</span>
+                                                    <div className="text-text-muted font-mono text-[10px]">{new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-mono font-bold text-text-red text-sm">{event.points} PTS</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {techPenaltyEvents.length === 0 && (
+                                            <div className="text-[11px] text-center p-12 border border-dashed border-border-main rounded-md text-text-muted italic">Clear record. No discrepancies logged.</div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </TabsContent>
                 </div>
             </Tabs>
         </div>
     );
 }
+

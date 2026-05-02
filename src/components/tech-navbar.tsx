@@ -9,12 +9,9 @@ import {
   Calendar,
   Briefcase,
   ScrollText,
-  User,
-  Power,
   Coins,
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
-import { Button } from './ui/button';
 
 const navItems = [
   { href: '/tech/assignments', label: 'Assignments', icon: Calendar },
@@ -22,7 +19,6 @@ const navItems = [
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText },
   { href: '/tech/earnings', label: 'Earnings', icon: Coins },
-  { href: '/tech/profile', label: 'Profile', icon: User },
 ];
 
 export function TechNavbar() {
@@ -57,16 +53,8 @@ export function TechNavbar() {
         ))}
       </div>
 
-      <div className="ml-auto flex items-center gap-4">
-        <div className="flex items-center gap-2 border-r border-border-main pr-4 mr-2">
-          <UserNav />
-        </div>
-         <Link href="/login">
-            <Button variant="outline" size="sm" className="!text-[10px] !h-8 !px-3">
-                <Power size={14} className="mr-2"/>
-                Sign Out
-            </Button>
-        </Link>
+      <div className="ml-auto flex items-center">
+        <UserNav />
       </div>
     </nav>
   );

@@ -23,7 +23,8 @@ import {
   Navigation,
   Loader2,
   ShieldCheck,
-  LocateFixed
+  LocateFixed,
+  AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,6 +51,9 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
     const [isLocating, setIsLocating] = useState(false);
     const { toast } = useToast();
 
+    // Simulated distance for prototyping logic (normally calculated from destination lat/lng)
+    const [simulatedDistance, setSimulatedDistance] = useState(0.4); // Miles
+
     // Get live location when dialog opens
     useEffect(() => {
         if (isOpen) {
@@ -63,6 +67,8 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                             accuracy: position.coords.accuracy
                         });
                         setIsLocating(false);
+                        // For demo: randomly set distance over 1 mile 30% of the time
+                        setSimulatedDistance(Math.random() > 0.7 ? 1.4 : 0.4);
                     },
                     (error) => {
                         console.error("Geolocation error:", error);
@@ -114,13 +120,23 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
         searchableItems.find(i => i.id === selectedId),
     [selectedId, searchableItems]);
 
+    const isOutOfRange = simulatedDistance > 1.0;
+
     const handleCheckIn = () => {
         if (!selectedId || !userLocation) return;
         
-        toast({
-            title: "Check In Successful",
-            description: "On-site session initiated. GPS monitoring active at coordinates.",
-        });
+        if (isOutOfRange) {
+            toast({
+                variant: "destructive",
+                title: "Check In Flagged",
+                description: `Location flagged: You are ${simulatedDistance}mi from site. Entry recorded with range discrepancy.`,
+            });
+        } else {
+            toast({
+                title: "Check In Successful",
+                description: "On-site session initiated. GPS monitoring active at coordinates.",
+            });
+        }
         setIsOpen(false);
     };
 
@@ -141,7 +157,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
                                 <LocateFixed size={12} className={userLocation ? "text-text-green" : "text-text-red"}/>
-                                Tactical Coordinates
+                                Coordinates
                             </h3>
                             {isLocating ? (
                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-accent-gold uppercase animate-pulse">
@@ -170,7 +186,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select Mission Registry</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select Assignment Registry</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                             <Input 
@@ -183,7 +199,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     </div>
 
                     <div className="border border-border-sub rounded-md overflow-hidden bg-bg-primary">
-                        <ScrollArea className={cn("transition-all duration-300", selectedId ? "h-[120px]" : "h-[250px]")}>
+                        <ScrollArea className={cn("transition-all duration-300", selectedId ? "h-[100px]" : "h-[200px]")}>
                             <div className="p-1 space-y-1">
                                 {filteredItems.length > 0 ? filteredItems.map(item => {
                                     const isSelected = selectedId === item.id;
@@ -213,7 +229,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     )
                                 }) : (
                                     <div className="text-center py-12">
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No active assignments matching search</p>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No matches found</p>
                                     </div>
                                 )}
                             </div>
@@ -222,21 +238,39 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
 
                     {selectedItem && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                             <div className="p-3 rounded-lg border border-border-sub bg-bg-secondary/50 flex items-center justify-between">
+                             <div className={cn(
+                                 "p-3 rounded-lg border flex items-center justify-between transition-colors",
+                                 isOutOfRange 
+                                    ? "bg-brand-red-dim/10 border-brand-red/30" 
+                                    : "bg-bg-secondary/50 border-border-sub"
+                             )}>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] uppercase font-bold text-text-muted">Target Destination</p>
-                                    <p className="text-xs font-bold text-text-primary uppercase">{selectedItem.location}</p>
+                                    <p className="text-[10px] uppercase font-bold text-text-muted">Verification Status</p>
+                                    {isOutOfRange ? (
+                                        <p className="text-[10px] font-bold text-text-red uppercase flex items-center gap-1.5">
+                                            <AlertCircle size={12}/> Flagged: Out of Range ({simulatedDistance}mi)
+                                        </p>
+                                    ) : (
+                                        <p className="text-[10px] font-bold text-text-green uppercase flex items-center gap-1.5">
+                                            <ShieldCheck size={12}/> Proximity Verified
+                                        </p>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="text-right">
-                                        <p className="text-[9px] uppercase font-bold text-text-green tracking-widest">Verification Status</p>
-                                        <p className="text-[10px] font-bold text-text-primary">Proximity Verified</p>
-                                    </div>
-                                    <ShieldCheck className="text-text-green" size={20} />
+                                <div className="text-right">
+                                     <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest">Target Location</p>
+                                     <p className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[150px]">{selectedItem.location}</p>
                                 </div>
                              </div>
 
-                             {/* Location Preview (Static Map Placeholder) */}
+                             {isOutOfRange && (
+                                <div className="p-2.5 rounded bg-brand-red-dim/20 border border-brand-red/20 text-center">
+                                    <p className="text-[9px] text-text-red font-bold uppercase tracking-wider">
+                                        Note: Checking in while flagged will notify operations for manual review.
+                                    </p>
+                                </div>
+                             )}
+
+                             {/* Location Preview */}
                              <div className="relative aspect-video w-full bg-bg-primary rounded-lg overflow-hidden border border-border-sub">
                                 <iframe 
                                     src={`https://www.google.com/maps/embed/v1/place?key=AIzaSy...FAKEKEY&q=${encodeURIComponent(selectedItem.location)}`} 
@@ -263,10 +297,14 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     </Button>
                     <Button 
                         onClick={handleCheckIn} 
-                        className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1 uppercase font-bold text-[10px] tracking-widest"
+                        className={cn(
+                            "h-10 flex-1 uppercase font-bold text-[10px] tracking-widest",
+                            isOutOfRange ? "bg-accent-gold hover:bg-accent-gold/80" : "bg-brand-red hover:bg-brand-red-hover"
+                        )}
                         disabled={!selectedId || !userLocation}
                     >
-                        <Play size={14} className="mr-2 fill-current" /> Initialize Session
+                        <Play size={14} className="mr-2 fill-current" /> 
+                        {isOutOfRange ? "Override & Initialize" : "Initialize Session"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

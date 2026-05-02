@@ -5,9 +5,10 @@ import { workOrders, technicians, penaltyEvents, weeklyLogs } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, Gauge, ScrollText, LayoutDashboard, MapPin } from 'lucide-react';
+import { Bell, Gauge, ScrollText, LayoutDashboard, MapPin, AlertTriangle, Info } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { format } from 'date-fns';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -40,16 +41,6 @@ export default function TechDashboardPage() {
     const activeSession = useMemo(() => 
         mounted ? todaysAssignments.find(wo => wo.status === 'in-progress') : null,
     [todaysAssignments, mounted]);
-
-    const upcomingAssignments = useMemo(() => {
-        if (!mounted) return [];
-        const now = new Date();
-        return techWorkOrders.filter(wo => {
-            const woDate = new Date(wo.scheduleDate);
-            const diffDays = (woDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
-            return diffDays > 0 && diffDays <= 7;
-        });
-    }, [techWorkOrders, mounted]);
 
     const reliabilityScore = tech?.reliabilityScore || 0;
     const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
@@ -88,49 +79,31 @@ export default function TechDashboardPage() {
                 </div>
             </header>
 
+            {/* Tactical Alerts */}
+            <div className="mb-6 space-y-3">
+                {pendingLogAlerts > 0 && (
+                    <Alert variant="destructive" className="bg-brand-red-dim border-brand-red text-text-red">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="text-[11px] font-bold uppercase tracking-[0.1em]">Mission Critical: Pending Manifests</AlertTitle>
+                        <AlertDescription className="text-xs opacity-90">
+                            You have {pendingLogAlerts} weekly log(s) awaiting submission. Finalize your reports to ensure payroll processing.
+                        </AlertDescription>
+                    </Alert>
+                )}
+                {reliabilityScore < 90 && (
+                    <Alert className="bg-accent-gold-dim border-accent-gold text-accent-gold">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle className="text-[11px] font-bold uppercase tracking-[0.1em]">Operational Note: Reliability Advisory</AlertTitle>
+                        <AlertDescription className="text-xs opacity-90">
+                            Your operational integrity score is {reliabilityScore}%. Review recent discrepancies in the reliability ledger.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <ScheduleBox workOrders={techWorkOrders} />
-
-                     <div>
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-text-muted mb-3 flex items-center gap-2">
-                            <Bell size={14} className="text-brand-red" />
-                            Next Engagement Window
-                        </h2>
-                        <div className="table-wrap">
-                            <table className="tbl">
-                                <tbody>
-                                    {upcomingAssignments.slice(0, 4).map(wo => (
-                                         <tr key={wo.id}>
-                                            <td className="!py-3">
-                                                <span className="font-bold text-text-primary uppercase text-[10px] tracking-widest">
-                                                    {format(new Date(wo.scheduleDate + 'T12:00:00'), 'MMM d, EEE')}
-                                                </span>
-                                            </td>
-                                            <td className="!py-3">
-                                                <div className="font-bold text-text-primary text-[11px] uppercase">{wo.description}</div>
-                                                <div className="text-[10px] text-text-muted">{wo.clientName}</div>
-                                            </td>
-                                            <td className="!py-3">
-                                                 <div className="flex items-center gap-1.5 text-[10px] text-text-secondary uppercase">
-                                                    <MapPin size={12} className="text-brand-red"/>
-                                                    {wo.location.split(',')[0]}
-                                                 </div>
-                                            </td>
-                                            <td className="!py-3 text-right">
-                                                 <Badge variant="scheduled" className="text-[9px]">{wo.scheduleTime}</Badge>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {upcomingAssignments.length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No engagements scheduled.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
 
                 <div className="space-y-6">

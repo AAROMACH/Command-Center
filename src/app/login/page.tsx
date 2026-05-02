@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm } from "react-form-hook";
 import * as z from "zod";
 import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -80,12 +80,12 @@ export default function LoginPage() {
               <Image 
                 src={logo.imageUrl} 
                 alt="Aaromach Logo" 
-                width={80} 
-                height={80} 
+                width={120} 
+                height={60} 
                 className="object-contain"
                 data-ai-hint={logo.imageHint}
                 priority
-                style={{ height: '80px', width: 'auto' }}
+                style={{ height: '60px', width: 'auto' }}
               />
             )}
           </div>

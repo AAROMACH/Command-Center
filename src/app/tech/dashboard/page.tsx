@@ -1,18 +1,38 @@
 'use client';
+
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder, Technician, PenaltyEvent } from '@/lib/types';
-import { workOrders, technicians, penaltyEvents, weeklyLogs } from '@/lib/data';
+import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { workOrders, technicians, weeklyLogs } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, Gauge, ScrollText, LayoutDashboard, MapPin, AlertTriangle, Info } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { 
+  MapPin, 
+  Clock, 
+  AlertTriangle, 
+  ArrowRight, 
+  CheckCircle2, 
+  Calendar as CalendarIcon,
+  Play,
+  ClipboardList,
+  Receipt,
+  Eye,
+  LogOut,
+  StickyNote,
+  Camera,
+  Coins,
+  ChevronRight
+} from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
-import { format } from 'date-fns';
+import { format, isSameDay, parseISO } from 'date-fns';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
@@ -20,11 +40,7 @@ export default function TechDashboardPage() {
         setCurrentTechId(userId);
     }, []);
 
-    // Stable date for filtering to avoid hydration mismatches
-    const todayStr = useMemo(() => {
-        if (!mounted) return '';
-        return format(new Date(), 'yyyy-MM-dd');
-    }, [mounted]);
+    const todayStr = useMemo(() => mounted ? format(new Date(), 'yyyy-MM-dd') : '', [mounted]);
 
     const tech = useMemo(() => 
         mounted && currentTechId ? technicians.find(t => t.id === currentTechId) : null, 
@@ -34,121 +50,252 @@ export default function TechDashboardPage() {
         mounted && currentTechId ? workOrders.filter(wo => wo.assignedTechnicianId === currentTechId) : [],
     [currentTechId, mounted]);
     
-    const todaysAssignments = useMemo(() => 
-        mounted ? techWorkOrders.filter(wo => wo.scheduleDate === todayStr) : [],
-    [techWorkOrders, todayStr, mounted]);
+    const todaysWorkOrders = useMemo(() => 
+        techWorkOrders.filter(wo => isSameDay(parseISO(wo.scheduleDate), new Date())),
+    [techWorkOrders]);
 
-    const activeSession = useMemo(() => 
-        mounted ? todaysAssignments.find(wo => wo.status === 'in-progress') : null,
-    [todaysAssignments, mounted]);
+    const activeJob = useMemo(() => 
+        todaysWorkOrders.find(wo => wo.status === 'in-progress'),
+    [todaysWorkOrders]);
 
-    const reliabilityScore = tech?.reliabilityScore || 0;
-    const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
-    
-    const pendingLogAlerts = useMemo(() => 
-        mounted && currentTechId ? weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft').length : 0,
-    [currentTechId, mounted]);
-    
-    const unreadNotifications = 3;
+    const nextAction = useMemo(() => {
+        if (activeJob) return null;
+        return todaysWorkOrders
+            .filter(wo => wo.status === 'assigned')
+            .sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime))[0];
+    }, [todaysWorkOrders, activeJob]);
+
+    const criticalAlerts = useMemo(() => {
+        if (!mounted || !currentTechId) return [];
+        const alerts = [];
+        
+        // Unacknowledged jobs
+        const unacknowledged = techWorkOrders.filter(wo => wo.status === 'assigned' && !wo.isAcknowledged);
+        if (unacknowledged.length > 0) {
+            alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Job(s)`, icon: AlertTriangle });
+        }
+
+        // Pending Logs
+        const pendingLogs = weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft');
+        if (pendingLogs.length > 0) {
+            alerts.push({ id: 'logs', type: 'warning', text: `${pendingLogs.length} Missing Weekly Manifests`, icon: ClipboardList });
+        }
+
+        return alerts;
+    }, [techWorkOrders, currentTechId, mounted]);
+
+    const summary = useMemo(() => ({
+        totalJobs: todaysWorkOrders.length,
+        remainingJobs: todaysWorkOrders.filter(wo => wo.status !== 'completed').length,
+        expectedHours: (todaysWorkOrders.length * 1.5).toFixed(1) // Mocking 1.5h per job
+    }), [todaysWorkOrders]);
+
+    const thisWeekEarnings = 1450.75; // Mock
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
     }
 
     return (
-        <div>
-            {activeSession && (
-                <div className="session-banner">
-                    <div className="flex items-center gap-2.5">
-                        <div className="session-dot"></div>
-                        <span className="session-label">Active Session</span>
-                        <span className="session-detail">{activeSession.id.toUpperCase()} — {activeSession.description}</span>
-                    </div>
-                    <span className="session-time">Monitoring Live Activity</span>
+        <div className="space-y-6">
+            {/* ALERT BAR */}
+            {criticalAlerts.length > 0 && (
+                <div className="space-y-2">
+                    {criticalAlerts.map(alert => (
+                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red">
+                            <alert.icon className="h-4 w-4" />
+                            <div className="flex w-full items-center justify-between">
+                                <div>
+                                    <AlertTitle className="text-xs font-bold uppercase tracking-wider">{alert.text}</AlertTitle>
+                                    <AlertDescription className="text-[10px] text-text-muted">Requires immediate technician attention.</AlertDescription>
+                                </div>
+                                <Button size="sm" variant="outline" className="h-7 text-[9px]">Fix Now</Button>
+                            </div>
+                        </Alert>
+                    ))}
                 </div>
             )}
 
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <LayoutDashboard size={12} />
-                        Mission Command
-                    </p>
-                    <h1 className="page-title">OPERATIONS OVERVIEW</h1>
-                    <p className="page-subtitle">Welcome back, {tech.name}. Monitoring active engagements.</p>
-                </div>
-            </header>
-
-            {/* Tactical Alerts */}
-            <div className="mb-6 space-y-3">
-                {pendingLogAlerts > 0 && (
-                    <Alert variant="destructive" className="bg-brand-red-dim border-brand-red text-text-red">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle className="text-[11px] font-bold uppercase tracking-[0.1em]">Mission Critical: Pending Manifests</AlertTitle>
-                        <AlertDescription className="text-xs opacity-90">
-                            You have {pendingLogAlerts} weekly log(s) awaiting submission. Finalize your reports to ensure payroll processing.
-                        </AlertDescription>
-                    </Alert>
-                )}
-                {reliabilityScore < 90 && (
-                    <Alert className="bg-accent-gold-dim border-accent-gold text-accent-gold">
-                        <Info className="h-4 w-4" />
-                        <AlertTitle className="text-[11px] font-bold uppercase tracking-[0.1em]">Operational Note: Reliability Advisory</AlertTitle>
-                        <AlertDescription className="text-xs opacity-90">
-                            Your operational integrity score is {reliabilityScore}%. Review recent discrepancies in the reliability ledger.
-                        </AlertDescription>
-                    </Alert>
-                )}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* COLUMN 1 & 2: ACTION & ACTIVE STATUS */}
                 <div className="lg:col-span-2 space-y-6">
-                    <ScheduleBox workOrders={techWorkOrders} />
+                    
+                    {/* 1. NEXT ACTION */}
+                    {!activeJob && (
+                        <Card className="border-2 border-brand-red bg-brand-red-dim/5">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="page-eyebrow text-brand-red">Next Mission Phase</div>
+                                    <Badge variant="high">Priority Task</Badge>
+                                </div>
+                                <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Jobs'}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {nextAction ? (
+                                    <div className="space-y-6">
+                                        <div className="flex flex-wrap gap-6">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-2 bg-bg-primary rounded-md"><Clock size={16} className="text-accent-gold"/></div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase font-bold text-text-muted">Schedule Window</p>
+                                                    <p className="text-sm font-semibold">{nextAction.scheduleTime}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-2 bg-bg-primary rounded-md"><MapPin size={16} className="text-brand-red"/></div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase font-bold text-text-muted">Site Location</p>
+                                                    <p className="text-sm font-semibold">{nextAction.location}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <Button className="flex-1 h-12 gap-2 text-sm" onClick={() => toast({ title: "Job Started", description: "GPS track initiated."})}>
+                                                <Play size={16} fill="currentColor"/> START JOB
+                                            </Button>
+                                            <Button variant="outline" className="h-12 px-6"><Eye size={16} className="mr-2"/> VIEW DETAILS</Button>
+                                            <Button variant="secondary" className="h-12 px-6">ACKNOWLEDGE</Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center border border-dashed border-border-main rounded-md">
+                                        <p className="text-sm text-text-muted italic">Schedule terminal clear. Awaiting further dispatch.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 4. ACTIVE JOB (IF ON-SITE) */}
+                    {activeJob && (
+                        <Card className="border-2 border-text-green bg-green-dim/10">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live Engagement</span>
+                                    </div>
+                                    <Badge variant="active">On-Site</Badge>
+                                </div>
+                                <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
+                                <CardDescription className="flex items-center gap-1.5"><MapPin size={14}/> {activeJob.location}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                    <div className="space-y-4">
+                                        <div className="flex gap-8">
+                                            <div>
+                                                <p className="text-[10px] uppercase font-bold text-text-muted">Checked In</p>
+                                                <p className="text-lg font-mono text-text-green">{activeJob.scheduleTime}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] uppercase font-bold text-text-muted">Duration</p>
+                                                <p className="text-lg font-mono">01:42:15</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" className="h-9 gap-2"><StickyNote size={14}/> Add Notes</Button>
+                                            <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
+                                        </div>
+                                    </div>
+                                    <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Mission finalized."})}>
+                                        <LogOut size={16}/> CHECK OUT / FINALIZE
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 3. TODAY SUMMARY */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
+                        <div className="bg-bg-secondary p-4">
+                            <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Jobs Today</p>
+                            <p className="text-2xl font-bold">{summary.totalJobs}</p>
+                        </div>
+                        <div className="bg-bg-secondary p-4">
+                            <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Remaining</p>
+                            <p className="text-2xl font-bold text-brand-red">{summary.remainingJobs}</p>
+                        </div>
+                        <div className="bg-bg-secondary p-4">
+                            <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Expected Hours</p>
+                            <p className="text-2xl font-bold">{summary.expectedHours}h</p>
+                        </div>
+                        <div className="bg-bg-secondary p-4">
+                            <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Site Reliability</p>
+                            <p className="text-2xl font-bold text-text-green">{tech.reliabilityScore}%</p>
+                        </div>
+                    </div>
+
+                    {/* 6. SCHEDULE (SECONDARY) */}
+                    <div className="opacity-80 grayscale-[0.5] hover:grayscale-0 hover:opacity-100 transition-all">
+                        <ScheduleBox workOrders={techWorkOrders} />
+                    </div>
                 </div>
 
+                {/* COLUMN 3: SIDEBAR ACTIONS & EARNINGS */}
                 <div className="space-y-6">
+                    {/* 5. QUICK ACTIONS */}
                     <Card>
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-[10px] tracking-[0.15em]">System Actions</CardTitle>
+                            <CardTitle className="text-[10px] tracking-[0.15em] uppercase">Tactical Quick-Actions</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2">
-                             <Button variant="outline" className="!h-auto !flex-col !gap-2 !p-4 !text-[10px] !font-bold !bg-bg-primary">
-                                <Bell size={18} className="text-text-muted"/>
-                                <span>{unreadNotifications} UNREAD</span>
+                        <CardContent className="grid grid-cols-1 gap-2">
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                                <Link href="/tech/assignments">
+                                    <div className="flex items-center gap-3">
+                                        <Play size={16} className="text-brand-red"/>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Start Next Job</span>
+                                    </div>
+                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                                </Link>
                             </Button>
-                             <Button variant="outline" className="!h-auto !flex-col !gap-2 !p-4 !text-[10px] !font-bold !bg-bg-primary">
-                                <ScrollText size={18} className="text-text-muted"/>
-                                <span>{pendingLogAlerts} PENDING</span>
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                                <Link href="/tech/logs">
+                                    <div className="flex items-center gap-3">
+                                        <ClipboardList size={16} className="text-accent-gold"/>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
+                                    </div>
+                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                                </Link>
+                            </Button>
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group">
+                                <div className="flex items-center gap-3">
+                                    <Receipt size={16} className="text-text-muted"/>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest">Upload Receipt</span>
+                                </div>
+                                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                            </Button>
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                                <Link href="/tech/assignments">
+                                    <div className="flex items-center gap-3">
+                                        <ArrowRight size={16} className="text-text-muted"/>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">View All Missions</span>
+                                    </div>
+                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                                </Link>
                             </Button>
                         </CardContent>
                     </Card>
-                    
-                    <Card className="border-accent-gold/20 bg-accent-gold/5">
+
+                    {/* 7. EARNINGS SNAPSHOT */}
+                    <Card className="bg-bg-tertiary border-border-subtle">
                         <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold">
-                                <Gauge size={14}/> 
-                                Reliability Metric
-                            </CardTitle>
+                             <CardTitle className="text-[10px] tracking-[0.15em] uppercase text-text-muted flex items-center justify-between">
+                                Payroll Snapshot
+                                <Coins size={14} className="text-text-green"/>
+                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                             <div className="text-center py-4">
-                                <p className={`text-6xl font-bold ${reliabilityColor}`}>{reliabilityScore}%</p>
-                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-2">Operational Integrity Score</p>
-                            </div>
-                            <div className="mt-6 space-y-2">
-                                <h4 className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-muted border-b border-border-main pb-2">Recent Discrepancies</h4>
-                                {penaltyEvents.filter(p => p.technicianId === currentTechId).slice(0,2).map(event => (
-                                    <div key={event.id} className="text-[10px] p-2.5 rounded-md bg-bg-primary border border-border-subtle">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-text-secondary uppercase">{event.reason}</span>
-                                            <span className="font-mono font-bold text-text-red">{event.points} PTS</span>
-                                        </div>
-                                        <div className="text-text-muted font-mono">{format(new Date(event.date + 'T12:00:00'), 'MMM d, yyyy')}</div>
-                                    </div>
-                                ))}
-                                {penaltyEvents.filter(p => p.technicianId === currentTechId).length === 0 && (
-                                     <div className="text-[10px] text-center p-6 text-text-muted italic">Clear record. No discrepancies logged.</div>
-                                )}
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-3xl font-bold text-text-green font-mono">${thisWeekEarnings.toFixed(2)}</p>
+                                    <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest mt-1">Pending This Period</p>
+                                </div>
+                                <div className="pt-4 border-t border-border-main">
+                                    <Button variant="link" className="p-0 h-auto text-[10px] uppercase font-bold text-brand-red" asChild>
+                                        <Link href="/tech/earnings">View Full Ledger <ArrowRight size={10} className="ml-1.5"/></Link>
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

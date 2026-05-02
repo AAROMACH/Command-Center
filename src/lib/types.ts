@@ -11,6 +11,7 @@ export type WorkOrder = {
   scheduleDate: string;
   scheduleTime: string;
   pay: number;
+  isAcknowledged?: boolean;
 };
 
 export type Technician = {

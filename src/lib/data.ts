@@ -218,6 +218,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-07-20',
     scheduleTime: '11:00 AM EST',
     pay: 150.00,
+    isAcknowledged: true,
   },
   {
     id: 'wo-102',
@@ -225,13 +226,14 @@ export const workOrders: WorkOrder[] = [
     location: '456 Oak Ave, Brooklyn, NY',
     requiredSkills: ['HVAC', 'Electrical'],
     priority: 'high',
-    status: 'in-progress',
+    status: 'assigned',
     assignedTechnicianId: 'tech-001',
     clientName: 'Commercial Property',
     projectType: 'Repair',
-    scheduleDate: '2024-07-28', 
-    scheduleTime: '2:00 PM EST',
+    scheduleDate: new Date().toISOString().split('T')[0], // Today
+    scheduleTime: '02:00 PM EST',
     pay: 350.00,
+    isAcknowledged: false,
   },
   {
     id: 'wo-103',
@@ -259,6 +261,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-07-25',
     scheduleTime: '4:00 PM EST',
     pay: 475.00,
+    isAcknowledged: true,
   },
    {
     id: 'wo-105',
@@ -270,7 +273,7 @@ export const workOrders: WorkOrder[] = [
     clientName: 'Corporate Tower Mgmt',
     projectType: 'Inspection',
     scheduleDate: '2024-08-01',
-    scheduleTime: '9:00 AM EST',
+    scheduleTime: '09:00 AM EST',
     pay: 600.00,
   },
    {
@@ -283,9 +286,10 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Apartment Complex',
     projectType: 'Replacement',
-    scheduleDate: '2024-07-28', 
-    scheduleTime: '1:00 PM EST',
+    scheduleDate: new Date().toISOString().split('T')[0], // Today
+    scheduleTime: '01:00 PM EST',
     pay: 750.00,
+    isAcknowledged: true,
   },
 ];
 
@@ -482,7 +486,7 @@ export const weeklyLogs: WeeklyLog[] = [
     id: 'wl-1',
     technicianId: 'tech-001',
     weekOf: 'July 22, 2024',
-    status: 'Submitted',
+    status: 'Draft', // Changed to draft for alert demo
     items: [
       { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
       { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },

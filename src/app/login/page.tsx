@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -82,8 +83,9 @@ export default function LoginPage() {
                 alt="Aaromach Logo" 
                 width={120} 
                 height={120} 
-                className="rounded-lg object-contain"
+                className="object-contain"
                 data-ai-hint={logo.imageHint}
+                priority
               />
             )}
           </div>

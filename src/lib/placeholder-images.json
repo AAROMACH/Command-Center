@@ -3,8 +3,8 @@
     {
       "id": "app-logo",
       "description": "Aaromach Brand Logo",
-      "imageUrl": "https://picsum.photos/seed/aaromach-logo/200/200",
-      "imageHint": "industrial logo"
+      "imageUrl": "/no%20bg.png",
+      "imageHint": "company logo"
     },
     {
       "id": "user-avatar-1",

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -43,8 +44,9 @@ export function Navbar() {
               alt="Aaromach Logo" 
               width={32} 
               height={32} 
-              className="rounded-sm object-contain"
+              className="object-contain"
               data-ai-hint={logo.imageHint}
+              priority
             />
           )}
           <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary">Aaromach</span>

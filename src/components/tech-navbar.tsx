@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -45,8 +46,9 @@ export function TechNavbar() {
               alt="Aaromach Logo" 
               width={32} 
               height={32} 
-              className="rounded-sm object-contain"
+              className="object-contain"
               data-ai-hint={logo.imageHint}
+              priority
             />
           )}
           <div className="flex flex-col">

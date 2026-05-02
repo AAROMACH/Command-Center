@@ -164,7 +164,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     <Loader2 size={10} className="animate-spin" /> Retrieving GPS...
                                 </div>
                             ) : (
-                                <Badge variant="active" className="text-[9px] h-5">GPS LOCK ACTIVE</Badge>
+                                <Badge variant="active" className="text-[9px] h-5 uppercase">On Site</Badge>
                             )}
                         </div>
                         {userLocation ? (

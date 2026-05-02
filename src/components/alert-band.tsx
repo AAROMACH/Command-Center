@@ -24,7 +24,7 @@ export function AlertBand() {
       const userId = localStorage.getItem('currentUserId');
       if (!userId) return;
 
-      // Alert 1: Upcoming job in 24 hours
+      // Alert 1: Upcoming assignment in 24 hours
       const tomorrow = addDays(new Date(), 1);
       const now = new Date();
       const upcomingJobs = workOrders.filter(wo =>
@@ -36,7 +36,7 @@ export function AlertBand() {
       if (upcomingJobs > 0) {
         techAlerts.push({
           type: 'info',
-          text: `${upcomingJobs} Job${upcomingJobs > 1 ? 's' : ''} in next 24h`,
+          text: `${upcomingJobs} Assignment${upcomingJobs > 1 ? 's' : ''} in next 24h`,
           icon: CalendarCheck,
         });
       }
@@ -70,13 +70,13 @@ export function AlertBand() {
       const unassignedJobs = workOrders.filter(wo => wo.status === 'unassigned').length;
       const lateCheckIns = 1; // Mock
       const revisitsRequired = 3; // Mock
-      const manifestsToAudit = weeklyLogs.filter(log => log.status === 'Submitted').length;
+      const logsToAudit = weeklyLogs.filter(log => log.status === 'Submitted').length;
 
       const adminDynamicAlerts: Alert[] = [];
       if (unassignedJobs > 0) {
         adminDynamicAlerts.push({
           type: 'critical',
-          text: `${unassignedJobs} Unassigned Job${unassignedJobs > 1 ? 's' : ''}`,
+          text: `${unassignedJobs} Unassigned Assignment${unassignedJobs > 1 ? 's' : ''}`,
           icon: AlertTriangle
         });
       }
@@ -94,10 +94,10 @@ export function AlertBand() {
           icon: CopyX
         });
       }
-       if (manifestsToAudit > 0) {
+       if (logsToAudit > 0) {
         adminDynamicAlerts.push({
           type: 'info',
-          text: `${manifestsToAudit} Log${manifestsToAudit > 1 ? 's' : ''} Pending Audit`,
+          text: `${logsToAudit} Log${logsToAudit > 1 ? 's' : ''} Pending Audit`,
           icon: FileCheck2
         });
       }

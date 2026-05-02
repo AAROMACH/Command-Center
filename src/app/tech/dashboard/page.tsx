@@ -91,7 +91,7 @@ export default function TechDashboardPage() {
         
         const unacknowledged = techWorkOrders.filter(wo => wo.status === 'assigned' && !wo.isAcknowledged);
         if (unacknowledged.length > 0) {
-            alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Job(s)`, icon: AlertTriangle });
+            alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Assignment(s)`, icon: AlertTriangle });
         }
 
         if (earliestDraftLog) {
@@ -210,7 +210,7 @@ export default function TechDashboardPage() {
                                 <div className="page-eyebrow text-brand-red">Next Assignment Phase</div>
                                 <Badge variant="high">Priority Task</Badge>
                             </div>
-                            <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Jobs'}</CardTitle>
+                            <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Assignments'}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             {nextAction ? (

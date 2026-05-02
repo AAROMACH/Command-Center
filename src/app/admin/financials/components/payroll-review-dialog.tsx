@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { WeeklyLog, Technician, WorkOrder } from '@/lib/types';
@@ -41,7 +40,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="lg:max-w-3xl bg-bg-elevated border-border-default">
                 <DialogHeader>
-                    <DialogTitle className="page-title text-xl">Review Weekly Manifest</DialogTitle>
+                    <DialogTitle className="page-title text-xl">Review Weekly Log</DialogTitle>
                     <DialogDescription>
                         For <span className="font-bold text-text-primary">{technician.name}</span> · Week of <span className="font-bold text-text-primary">{log.weekOf}</span>
                     </DialogDescription>
@@ -125,7 +124,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                         <>
                         <Button variant="destructive-outline" className="mr-auto" onClick={() => handleStatusChange('Rejected')}>Reject</Button>
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button onClick={() => handleStatusChange('Approved')}>Approve Manifest</Button>
+                        <Button onClick={() => handleStatusChange('Approved')}>Approve Log</Button>
                         </>
                     ) : (
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
@@ -135,6 +134,3 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
         </Dialog>
     );
 }
-
-
-    

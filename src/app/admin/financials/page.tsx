@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -105,8 +104,8 @@ export default function FinancialsPage() {
             )
         );
         toast({
-            title: `Manifest ${status}`,
-            description: `The weekly manifest has been ${status.toLowerCase()}.`,
+            title: `Log ${status}`,
+            description: `The weekly log has been ${status.toLowerCase()}.`,
         });
         setIsReviewDialogOpen(false);
     };
@@ -213,7 +212,7 @@ export default function FinancialsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Payroll Audit</CardTitle>
-                            <CardDescription>Review submitted weekly manifests from technicians for approval.</CardDescription>
+                            <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
                         </CardHeader>
                         <CardContent className="table-wrap p-0">
                             <Table>
@@ -234,7 +233,7 @@ export default function FinancialsPage() {
                                             <TableCell><Badge variant={log.status === 'Approved' ? 'completed' : log.status === 'Submitted' ? 'onhold' : 'pending'}>{log.status}</Badge></TableCell>
                                             <TableCell className="font-mono text-text-green">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="outline" size="sm" onClick={() => handleReviewLog(log)}>Review Manifest</Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleReviewLog(log)}>Review Log</Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

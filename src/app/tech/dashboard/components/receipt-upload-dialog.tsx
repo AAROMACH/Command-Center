@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { WorkOrder, Project } from '@/lib/types';
 import { 
   Dialog, 
@@ -41,6 +41,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     const [step, setStep] = useState<'upload' | 'extracting' | 'review'>('upload');
     const [extractionProgress, setExtractionProgress] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [extractedData, setExtractedData] = useState({
         merchant: '',
         date: '',
@@ -50,17 +51,23 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     });
     const { toast } = useToast();
 
-    const handleFileSelect = () => {
-        setStep('extracting');
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 15;
-            setExtractionProgress(progress);
-            if (progress >= 100) {
-                clearInterval(interval);
-                simulateExtraction();
-            }
-        }, 300);
+    const handleFileClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setStep('extracting');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 15;
+                setExtractionProgress(progress);
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    simulateExtraction();
+                }
+            }, 300);
+        }
     };
 
     const handleManualEntry = () => {
@@ -113,7 +120,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
         const woItems = workOrders.map(wo => ({
             id: wo.id,
             name: `${wo.id.toUpperCase()} - ${wo.description}`,
-            type: 'Work Order' as const,
+            type: 'Assignment' as const,
             icon: FileText
         }));
         const projItems = projects.map(p => ({
@@ -148,17 +155,24 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                 <div className="py-4">
                     {step === 'upload' && (
                         <div className="space-y-4">
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handleFileChange}
+                            />
                             <div 
                                 className="border-2 border-dashed border-border-main rounded-lg p-12 text-center hover:border-brand-red hover:bg-brand-red-dim/5 transition-all cursor-pointer group"
-                                onClick={handleFileSelect}
+                                onClick={handleFileClick}
                             >
                                 <div className="flex justify-center mb-4">
                                     <div className="p-5 bg-bg-secondary rounded-full group-hover:bg-brand-red group-hover:text-white transition-colors">
                                         <Camera size={40} />
                                     </div>
                                 </div>
-                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Initiate Deep Scan</p>
-                                <p className="text-xs text-text-muted">Extract data automatically from image</p>
+                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Upload Receipt</p>
+                                <p className="text-xs text-text-muted">Digital photo required for AI extraction</p>
                             </div>
                             
                             <div className="relative">
@@ -232,7 +246,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                                     <Input 
-                                        placeholder="Search missions..." 
+                                        placeholder="Search across your assignments..." 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red"

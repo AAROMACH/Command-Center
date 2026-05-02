@@ -11,7 +11,6 @@ import {
   Clock, 
   AlertTriangle, 
   ArrowRight, 
-  CheckCircle2, 
   Calendar as CalendarIcon,
   Play,
   ClipboardList,
@@ -40,8 +39,6 @@ export default function TechDashboardPage() {
         setCurrentTechId(userId);
     }, []);
 
-    const todayStr = useMemo(() => mounted ? format(new Date(), 'yyyy-MM-dd') : '', [mounted]);
-
     const tech = useMemo(() => 
         mounted && currentTechId ? technicians.find(t => t.id === currentTechId) : null, 
     [currentTechId, mounted]);
@@ -69,13 +66,11 @@ export default function TechDashboardPage() {
         if (!mounted || !currentTechId) return [];
         const alerts = [];
         
-        // Unacknowledged jobs
         const unacknowledged = techWorkOrders.filter(wo => wo.status === 'assigned' && !wo.isAcknowledged);
         if (unacknowledged.length > 0) {
             alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Job(s)`, icon: AlertTriangle });
         }
 
-        // Pending Logs
         const pendingLogs = weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft');
         if (pendingLogs.length > 0) {
             alerts.push({ id: 'logs', type: 'warning', text: `${pendingLogs.length} Missing Weekly Manifests`, icon: ClipboardList });
@@ -87,10 +82,10 @@ export default function TechDashboardPage() {
     const summary = useMemo(() => ({
         totalJobs: todaysWorkOrders.length,
         remainingJobs: todaysWorkOrders.filter(wo => wo.status !== 'completed').length,
-        expectedHours: (todaysWorkOrders.length * 1.5).toFixed(1) // Mocking 1.5h per job
+        expectedHours: (todaysWorkOrders.length * 1.5).toFixed(1)
     }), [todaysWorkOrders]);
 
-    const thisWeekEarnings = 1450.75; // Mock
+    const thisWeekEarnings = 1450.75;
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
@@ -98,7 +93,6 @@ export default function TechDashboardPage() {
 
     return (
         <div className="space-y-6">
-            {/* ALERT BAR */}
             {criticalAlerts.length > 0 && (
                 <div className="space-y-2">
                     {criticalAlerts.map(alert => (
@@ -117,10 +111,7 @@ export default function TechDashboardPage() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* COLUMN 1 & 2: ACTION & ACTIVE STATUS */}
                 <div className="lg:col-span-2 space-y-6">
-                    
-                    {/* 1. NEXT ACTION */}
                     {!activeJob && (
                         <Card className="border-2 border-brand-red bg-brand-red-dim/5">
                             <CardHeader className="pb-2">
@@ -153,7 +144,11 @@ export default function TechDashboardPage() {
                                             <Button className="flex-1 h-12 gap-2 text-sm" onClick={() => toast({ title: "Job Started", description: "GPS track initiated."})}>
                                                 <Play size={16} fill="currentColor"/> START JOB
                                             </Button>
-                                            <Button variant="outline" className="h-12 px-6"><Eye size={16} className="mr-2"/> VIEW DETAILS</Button>
+                                            <Button variant="outline" className="h-12 px-6" asChild>
+                                                <Link href={`/tech/assignments`}>
+                                                    <Eye size={16} className="mr-2"/> VIEW DETAILS
+                                                </Link>
+                                            </Button>
                                             <Button variant="secondary" className="h-12 px-6">ACKNOWLEDGE</Button>
                                         </div>
                                     </div>
@@ -166,7 +161,6 @@ export default function TechDashboardPage() {
                         </Card>
                     )}
 
-                    {/* 4. ACTIVE JOB (IF ON-SITE) */}
                     {activeJob && (
                         <Card className="border-2 border-text-green bg-green-dim/10">
                             <CardHeader className="pb-2">
@@ -206,7 +200,6 @@ export default function TechDashboardPage() {
                         </Card>
                     )}
 
-                    {/* 3. TODAY SUMMARY */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
                         <div className="bg-bg-secondary p-4">
                             <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Jobs Today</p>
@@ -226,21 +219,16 @@ export default function TechDashboardPage() {
                         </div>
                     </div>
 
-                    {/* 6. SCHEDULE (SECONDARY) */}
                     <div className="opacity-80 grayscale-[0.5] hover:grayscale-0 hover:opacity-100 transition-all">
                         <ScheduleBox workOrders={techWorkOrders} />
                     </div>
                 </div>
 
-                {/* COLUMN 3: SIDEBAR ACTIONS & EARNINGS */}
                 <div className="space-y-6">
-                    {/* 5. QUICK ACTIONS */}
-                    <Card>
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-[10px] tracking-[0.15em] uppercase">Tactical Quick-Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-2">
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-3 ml-1">Quick Actions</p>
+                        <div className="grid grid-cols-1 gap-2">
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
                                 <Link href="/tech/assignments">
                                     <div className="flex items-center gap-3">
                                         <Play size={16} className="text-brand-red"/>
@@ -249,7 +237,7 @@ export default function TechDashboardPage() {
                                     <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
                                 </Link>
                             </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
                                 <Link href="/tech/logs">
                                     <div className="flex items-center gap-3">
                                         <ClipboardList size={16} className="text-accent-gold"/>
@@ -258,26 +246,25 @@ export default function TechDashboardPage() {
                                     <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
                                 </Link>
                             </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group">
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group">
                                 <div className="flex items-center gap-3">
                                     <Receipt size={16} className="text-text-muted"/>
                                     <span className="text-[10px] font-bold uppercase tracking-widest">Upload Receipt</span>
                                 </div>
                                 <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
                             </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-primary hover:!border-brand-red group" asChild>
+                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
                                 <Link href="/tech/assignments">
                                     <div className="flex items-center gap-3">
                                         <ArrowRight size={16} className="text-text-muted"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">View All Assignments</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">All Assignments</span>
                                     </div>
                                     <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
                                 </Link>
                             </Button>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
 
-                    {/* 7. EARNINGS SNAPSHOT */}
                     <Card className="bg-bg-tertiary border-border-subtle">
                         <CardHeader className="pb-2">
                              <CardTitle className="text-[10px] tracking-[0.15em] uppercase text-text-muted flex items-center justify-between">
@@ -288,7 +275,7 @@ export default function TechDashboardPage() {
                         <CardContent>
                             <div className="space-y-4">
                                 <div>
-                                    <p className="text-3xl font-bold text-text-green font-mono">${thisWeekEarnings.toFixed(2)}</p>
+                                    <p className="text-3xl font-bold text-text-green font-mono tracking-tight">${thisWeekEarnings.toFixed(2)}</p>
                                     <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest mt-1">Pending This Period</p>
                                 </div>
                                 <div className="pt-4 border-t border-border-main">

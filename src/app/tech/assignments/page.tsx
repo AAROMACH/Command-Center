@@ -62,17 +62,17 @@ export default function TechAssignmentsPage() {
                         Service Engagement Console
                     </p>
                     <h1 className="page-title">Assignments</h1>
-                    <p className="page-subtitle">Manage tactical engagements and historical performance audit.</p>
+                    <p className="page-subtitle">Manage tactical assignments and historical performance audit.</p>
                 </div>
             </header>
 
             <Tabs defaultValue="active" className="w-full">
                 <TabsList className="tabs !mb-6">
                     <TabsTrigger value="active" className="tab">
-                        Active Engagements <span className="tab-count">({activeAssignments.length})</span>
+                        Active Assignments <span className="tab-count">({activeAssignments.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="history" className="tab">
-                        Engagement History <span className="tab-count">({completedAssignments.length})</span>
+                        Assignment History <span className="tab-count">({completedAssignments.length})</span>
                     </TabsTrigger>
                 </TabsList>
                 
@@ -135,7 +135,7 @@ export default function TechAssignmentsPage() {
                                 ))}
                                 {activeAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active engagements on record.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments on record.</td>
                                     </tr>
                                 )}
                             </tbody>

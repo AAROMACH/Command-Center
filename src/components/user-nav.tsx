@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -38,6 +39,9 @@ export function UserNav() {
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
   const isTech = currentUser?.role.toLowerCase().includes('tech');
 
+  const profilePath = isTech ? '/tech/profile' : '/admin/profile';
+  const settingsPath = isTech ? '/tech/settings' : '/admin/settings';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -61,26 +65,24 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={() => router.push(isTech ? '/tech/profile' : '/admin/profile')}>
+          <DropdownMenuItem onSelect={() => router.push(profilePath)}>
             Profile
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push(settingsPath)}>
+            Settings
+            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+          </DropdownMenuItem>
           {!isTech && (
-            <>
-              <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
-                Billing
-                <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/admin/settings')}>
-                Settings
-                <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </>
+            <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
+              Billing
+              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
+            </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push('/login')}>
-          Log out
+          Sign out
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

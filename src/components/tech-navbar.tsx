@@ -13,7 +13,6 @@ import {
   User,
   Power,
   Coins,
-  Settings,
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { Button } from './ui/button';
@@ -61,11 +60,6 @@ export function TechNavbar() {
 
       <div className="ml-auto flex items-center gap-4">
         <div className="flex items-center gap-2 border-r border-border-main pr-4 mr-2">
-          <Link href="/tech/settings">
-            <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-text-muted hover:text-text-primary", pathname === '/tech/settings' && "text-brand-red")}>
-              <Settings size={18} />
-            </Button>
-          </Link>
           <UserNav />
         </div>
          <Link href="/login">

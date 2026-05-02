@@ -1,6 +1,12 @@
 {
   "placeholderImages": [
     {
+      "id": "app-logo",
+      "description": "Aaromach Brand Logo",
+      "imageUrl": "https://picsum.photos/seed/aaromach-logo/200/200",
+      "imageHint": "industrial logo"
+    },
+    {
       "id": "user-avatar-1",
       "description": "User avatar",
       "imageUrl": "https://picsum.photos/seed/user1/40/40",

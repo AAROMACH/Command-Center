@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { technicians } from "@/lib/data";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Icons } from "@/components/icons";
 
 const loginSchema = z.object({
   email: z.string().email({
@@ -32,6 +33,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
+  
   const {
     register,
     handleSubmit,
@@ -45,7 +48,6 @@ export default function LoginPage() {
       (t) => t.email.toLowerCase() === data.email.toLowerCase()
     );
 
-    // Simple role check, in real-world you'd check a database
     const isTech =
       user &&
       (user.role.toLowerCase().includes("tech") ||
@@ -56,10 +58,8 @@ export default function LoginPage() {
       if (isTech && user) {
         localStorage.setItem("currentUserId", user.id);
       } else if (user) {
-        // Assume other roles are admin-like
         localStorage.setItem("currentUserId", user.id);
       } else {
-        // Default for unknown users, e.g., the main admin
         localStorage.setItem("currentUserId", "staff-002");
       }
     }
@@ -72,46 +72,64 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <Icons.logo className="h-12 w-12 text-primary" />
+    <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
+      <Card className="w-full max-w-sm border-border-default bg-bg-secondary shadow-2xl">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            {logo && (
+              <Image 
+                src={logo.imageUrl} 
+                alt="Aaromach Logo" 
+                width={120} 
+                height={120} 
+                className="rounded-lg object-contain"
+                data-ai-hint={logo.imageHint}
+              />
+            )}
           </div>
-          <CardTitle className="font-headline text-2xl">
-            Aaromach Command Center
-          </CardTitle>
-          <CardDescription>
-            Enter your credentials to access your dashboard
-          </CardDescription>
+          <div>
+            <CardTitle className="text-2xl font-bold uppercase tracking-wider text-text-primary">
+              Command Center
+            </CardTitle>
+            <CardDescription className="text-text-muted">
+              Precision, Quality and Connectivity
+            </CardDescription>
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Secure Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@aaromach.com"
+                className="bg-bg-primary border-border-sub"
                 {...register("email")}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-xs font-bold text-brand-red uppercase">{errors.email.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...register("password")} placeholder="••••••••" />
+              <Label htmlFor="password" text-xs font-bold uppercase tracking-widest text-text-muted>Access Key</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                {...register("password")} 
+                placeholder="••••••••" 
+                className="bg-bg-primary border-border-sub"
+              />
               {errors.password && (
-                <p className="text-sm text-destructive">
+                <p className="text-xs font-bold text-brand-red uppercase">
                   {errors.password.message}
                 </p>
               )}
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest">
+              Initiate Login
             </Button>
           </CardFooter>
         </form>

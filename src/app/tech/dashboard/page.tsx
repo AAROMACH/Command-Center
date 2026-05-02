@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
-import { workOrders, technicians, weeklyLogs } from '@/lib/data';
+import { workOrders, technicians, weeklyLogs, projects } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import {
   Clock, 
   AlertTriangle, 
   ArrowRight, 
-  Calendar as CalendarIcon,
   Play,
   ClipboardList,
   Receipt,
@@ -20,17 +19,23 @@ import {
   StickyNote,
   Camera,
   Coins,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
-import { format, isSameDay, parseISO } from 'date-fns';
+import { isSameDay, parseISO } from 'date-fns';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { WeeklyLogDialog } from './components/weekly-log-dialog';
+import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+    const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    
     const { toast } = useToast();
 
     useEffect(() => {
@@ -62,6 +67,13 @@ export default function TechDashboardPage() {
             .sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime))[0];
     }, [todaysWorkOrders, activeJob]);
 
+    const earliestDraftLog = useMemo(() => {
+        if (!currentTechId) return null;
+        return weeklyLogs
+            .filter(l => l.technicianId === currentTechId && l.status === 'Draft')
+            .sort((a, b) => new Date(a.weekOf).getTime() - new Date(b.weekOf).getTime())[0];
+    }, [currentTechId]);
+
     const criticalAlerts = useMemo(() => {
         if (!mounted || !currentTechId) return [];
         const alerts = [];
@@ -71,13 +83,12 @@ export default function TechDashboardPage() {
             alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Job(s)`, icon: AlertTriangle });
         }
 
-        const pendingLogs = weeklyLogs.filter(log => log.technicianId === currentTechId && log.status === 'Draft');
-        if (pendingLogs.length > 0) {
-            alerts.push({ id: 'logs', type: 'warning', text: `${pendingLogs.length} Missing Weekly Manifests`, icon: ClipboardList });
+        if (earliestDraftLog) {
+            alerts.push({ id: 'logs', type: 'warning', text: `Weekly Manifest for ${earliestDraftLog.weekOf} Pending`, icon: ClipboardList });
         }
 
         return alerts;
-    }, [techWorkOrders, currentTechId, mounted]);
+    }, [techWorkOrders, currentTechId, mounted, earliestDraftLog]);
 
     const summary = useMemo(() => ({
         totalJobs: todaysWorkOrders.length,
@@ -85,7 +96,7 @@ export default function TechDashboardPage() {
         expectedHours: (todaysWorkOrders.length * 1.5).toFixed(1)
     }), [todaysWorkOrders]);
 
-    const thisWeekEarnings = 1450.75;
+    const pendingEarnings = 1450.75;
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
@@ -93,17 +104,65 @@ export default function TechDashboardPage() {
 
     return (
         <div className="space-y-6">
+            {/* TOP HORIZONTAL QUICK ACTIONS */}
+            <div className="flex flex-wrap items-center gap-2">
+                <Button 
+                    variant="outline" 
+                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
+                    onClick={() => earliestDraftLog ? setIsLogDialogOpen(true) : toast({ title: "No Pending Logs", description: "All weekly manifests are finalized."})}
+                >
+                    <ClipboardList size={16} className="text-accent-gold mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
+                </Button>
+                
+                <Button 
+                    variant="outline" 
+                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
+                    onClick={() => setIsReceiptDialogOpen(true)}
+                >
+                    <Receipt size={16} className="text-text-muted mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Upload Receipt</span>
+                </Button>
+
+                <Button 
+                    variant="outline" 
+                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
+                    asChild
+                >
+                    <Link href="/tech/assignments">
+                        <Calendar size={16} className="text-text-muted mr-2" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">All Assignments</span>
+                    </Link>
+                </Button>
+
+                <Button 
+                    variant="outline" 
+                    className="flex-1 min-w-[240px] h-12 bg-bg-tertiary border-border-subtle hover:border-text-green group"
+                    asChild
+                >
+                    <Link href="/tech/earnings">
+                        <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center">
+                                <Coins size={16} className="text-text-green mr-2" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Pending Payout</span>
+                            </div>
+                            <span className="font-mono text-sm text-text-green">${pendingEarnings.toFixed(2)}</span>
+                        </div>
+                    </Link>
+                </Button>
+            </div>
+
             {criticalAlerts.length > 0 && (
                 <div className="space-y-2">
                     {criticalAlerts.map(alert => (
-                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red">
+                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red py-3">
                             <alert.icon className="h-4 w-4" />
                             <div className="flex w-full items-center justify-between">
                                 <div>
                                     <AlertTitle className="text-xs font-bold uppercase tracking-wider">{alert.text}</AlertTitle>
                                     <AlertDescription className="text-[10px] text-text-muted">Requires immediate technician attention.</AlertDescription>
                                 </div>
-                                <Button size="sm" variant="outline" className="h-7 text-[9px]">Fix Now</Button>
+                                <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => alert.id === 'logs' ? setIsLogDialogOpen(true) : null}>Resolve</Button>
                             </div>
                         </Alert>
                     ))}
@@ -218,76 +277,32 @@ export default function TechDashboardPage() {
                             <p className="text-2xl font-bold text-text-green">{tech.reliabilityScore}%</p>
                         </div>
                     </div>
+                </div>
 
+                <div className="space-y-6">
                     <div className="opacity-80 grayscale-[0.5] hover:grayscale-0 hover:opacity-100 transition-all">
                         <ScheduleBox workOrders={techWorkOrders} />
                     </div>
                 </div>
-
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-3 ml-1">Quick Actions</p>
-                        <div className="grid grid-cols-1 gap-2">
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
-                                <Link href="/tech/assignments">
-                                    <div className="flex items-center gap-3">
-                                        <Play size={16} className="text-brand-red"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Start Next Job</span>
-                                    </div>
-                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                                </Link>
-                            </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
-                                <Link href="/tech/logs">
-                                    <div className="flex items-center gap-3">
-                                        <ClipboardList size={16} className="text-accent-gold"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
-                                    </div>
-                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                                </Link>
-                            </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group">
-                                <div className="flex items-center gap-3">
-                                    <Receipt size={16} className="text-text-muted"/>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">Upload Receipt</span>
-                                </div>
-                                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                            </Button>
-                             <Button variant="outline" className="justify-between !h-12 !px-4 !bg-bg-secondary border-border-main hover:!border-brand-red group" asChild>
-                                <Link href="/tech/assignments">
-                                    <div className="flex items-center gap-3">
-                                        <ArrowRight size={16} className="text-text-muted"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">All Assignments</span>
-                                    </div>
-                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-
-                    <Card className="bg-bg-tertiary border-border-subtle">
-                        <CardHeader className="pb-2">
-                             <CardTitle className="text-[10px] tracking-[0.15em] uppercase text-text-muted flex items-center justify-between">
-                                Payroll Snapshot
-                                <Coins size={14} className="text-text-green"/>
-                             </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-3xl font-bold text-text-green font-mono tracking-tight">${thisWeekEarnings.toFixed(2)}</p>
-                                    <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest mt-1">Pending This Period</p>
-                                </div>
-                                <div className="pt-4 border-t border-border-main">
-                                    <Button variant="link" className="p-0 h-auto text-[10px] uppercase font-bold text-brand-red" asChild>
-                                        <Link href="/tech/earnings">View Full Ledger <ArrowRight size={10} className="ml-1.5"/></Link>
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
+
+            {earliestDraftLog && (
+                <WeeklyLogDialog 
+                    isOpen={isLogDialogOpen} 
+                    setIsOpen={setIsLogDialogOpen} 
+                    log={earliestDraftLog}
+                    onSubmitted={() => {
+                        toast({ title: "Manifest Finalized", description: "Your weekly log has been sent to audit." });
+                    }}
+                />
+            )}
+
+            <ReceiptUploadDialog
+                isOpen={isReceiptDialogOpen}
+                setIsOpen={setIsReceiptDialogOpen}
+                workOrders={techWorkOrders}
+                projects={projects.filter(p => p.assignedTechnicianIds.includes(currentTechId || ''))}
+            />
         </div>
     );
 }

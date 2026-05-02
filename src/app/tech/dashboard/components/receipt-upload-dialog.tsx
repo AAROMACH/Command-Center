@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import Image from 'next/image';
 import type { WorkOrder, Project } from '@/lib/types';
 import { 
   Dialog, 
@@ -23,7 +24,8 @@ import {
   Search,
   FileText,
   Briefcase,
-  Upload
+  Upload,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -42,6 +44,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     const [extractionProgress, setExtractionProgress] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [receiptImage, setReceiptImage] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState({
         merchant: '',
         date: '',
@@ -57,28 +60,27 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            setStep('extracting');
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 15;
-                setExtractionProgress(progress);
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    simulateExtraction();
-                }
-            }, 300);
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setReceiptImage(reader.result as string);
+                setStep('extracting');
+                startExtraction();
+            };
+            reader.readAsDataURL(file);
         }
     };
 
-    const handleManualEntry = () => {
-        setExtractedData({
-            merchant: '',
-            date: new Date().toISOString().split('T')[0],
-            amount: '',
-            relatedId: '',
-            relatedName: ''
-        });
-        setStep('review');
+    const startExtraction = () => {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 15;
+            setExtractionProgress(progress);
+            if (progress >= 100) {
+                clearInterval(interval);
+                simulateExtraction();
+            }
+        }, 300);
     };
 
     const simulateExtraction = () => {
@@ -112,6 +114,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
         setStep('upload');
         setExtractionProgress(0);
         setSearchQuery("");
+        setReceiptImage(null);
         setExtractedData({ merchant: '', date: '', amount: '', relatedId: '', relatedName: '' });
         setIsOpen(false);
     };
@@ -143,16 +146,16 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0">
+                <DialogHeader className="p-6 pb-2">
                     <div className="flex items-center gap-2 mb-1">
                         <Receipt className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Receipt Console</DialogTitle>
                     </div>
-                    <DialogDescription>Attach field expenses via AI extraction or manual terminal entry.</DialogDescription>
+                    <DialogDescription>Photo identification required for all field expense records.</DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4">
+                <div className="flex-1 overflow-y-auto px-6 py-4">
                     {step === 'upload' && (
                         <div className="space-y-4">
                             <input 
@@ -163,46 +166,39 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                 onChange={handleFileChange}
                             />
                             <div 
-                                className="border-2 border-dashed border-border-main rounded-lg p-12 text-center hover:border-brand-red hover:bg-brand-red-dim/5 transition-all cursor-pointer group"
+                                className="border-2 border-dashed border-border-main rounded-lg p-16 text-center hover:border-brand-red hover:bg-brand-red-dim/5 transition-all cursor-pointer group"
                                 onClick={handleFileClick}
                             >
-                                <div className="flex justify-center mb-4">
-                                    <div className="p-5 bg-bg-secondary rounded-full group-hover:bg-brand-red group-hover:text-white transition-colors">
-                                        <Camera size={40} />
+                                <div className="flex justify-center mb-6">
+                                    <div className="p-6 bg-bg-secondary rounded-full group-hover:bg-brand-red group-hover:text-white transition-colors">
+                                        <Camera size={48} />
                                     </div>
                                 </div>
-                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Upload Receipt</p>
-                                <p className="text-xs text-text-muted">Digital photo required for AI extraction</p>
+                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Identify Receipt Photo</p>
+                                <p className="text-xs text-text-muted">Digital capture required to initiate terminal entry</p>
                             </div>
                             
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border-sub" /></div>
-                                <div className="relative flex justify-center text-[10px] uppercase font-bold text-text-muted"><span className="bg-bg-elevated px-2">OR</span></div>
+                            <div className="p-4 rounded-lg bg-bg-secondary/50 border border-border-sub text-center">
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
+                                    Terminal Note: Manual entry is locked until receipt imagery is provided to ensure compliance with audit protocols.
+                                </p>
                             </div>
-
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-11 text-[10px] uppercase font-bold tracking-[0.2em]"
-                                onClick={handleManualEntry}
-                            >
-                                Manual Terminal Entry
-                            </Button>
                         </div>
                     )}
 
                     {step === 'extracting' && (
-                        <div className="text-center py-10 space-y-6">
+                        <div className="text-center py-16 space-y-8">
                             <div className="flex justify-center">
-                                <Loader2 size={48} className="animate-spin text-brand-red" />
+                                <Loader2 size={56} className="animate-spin text-brand-red" />
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <div className="flex items-center justify-center gap-2 text-accent-gold">
-                                    <Sparkles size={16} />
-                                    <p className="text-sm font-bold uppercase tracking-widest">AI Extraction in Progress</p>
+                                    <Sparkles size={18} />
+                                    <p className="text-sm font-bold uppercase tracking-widest">AI Vision Processing</p>
                                 </div>
-                                <p className="text-xs text-text-muted font-mono">Parsing merchant metadata and financial signatures...</p>
+                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto">Parsing high-fidelity merchant metadata and financial signatures...</p>
                             </div>
-                            <div className="px-10">
+                            <div className="px-12">
                                 <Progress value={extractionProgress} className="h-1 bg-bg-secondary" />
                             </div>
                         </div>
@@ -210,6 +206,23 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
                     {step === 'review' && (
                         <div className="space-y-6">
+                            {/* Receipt Preview */}
+                            {receiptImage && (
+                                <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-border-sub bg-bg-primary">
+                                    <div className="absolute top-2 left-2 z-10">
+                                        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
+                                            <Eye size={10} /> Original Capture
+                                        </div>
+                                    </div>
+                                    <Image 
+                                        src={receiptImage} 
+                                        alt="Receipt original" 
+                                        fill 
+                                        className="object-contain"
+                                    />
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Merchant / Vendor</Label>
@@ -254,7 +267,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                 </div>
                                 
                                 <div className="border border-border-sub rounded-md overflow-hidden bg-bg-primary mt-2">
-                                    <ScrollArea className="h-[140px]">
+                                    <ScrollArea className="h-[120px]">
                                         <div className="p-1 space-y-1">
                                             {filteredItems.length > 0 ? filteredItems.map(item => {
                                                 const isSelected = extractedData.relatedId === item.id;
@@ -288,14 +301,14 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                     )}
                 </div>
 
-                <DialogFooter className="border-t border-border-default pt-4">
-                    <Button variant="outline" onClick={resetAndClose} className="h-10">
+                <DialogFooter className="border-t border-border-default p-6 bg-bg-secondary/30">
+                    <Button variant="outline" onClick={resetAndClose} className="h-10 flex-1">
                         <X size={16} className="mr-2" /> Cancel
                     </Button>
                     {step === 'review' && (
                         <Button 
                             onClick={handleSave} 
-                            className="h-10 bg-brand-red hover:bg-brand-red-hover px-8"
+                            className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1"
                             disabled={!extractedData.relatedId}
                         >
                             <Upload size={16} className="mr-2" /> Sync Record

@@ -17,7 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -74,18 +73,15 @@ export function UserNav() {
           <DropdownMenuItem onSelect={() => router.push(profilePath)}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
-            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push(settingsPath)}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
           {!isTech && (
             <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
               <CreditCard className="mr-2 h-4 w-4" />
               <span>Billing</span>
-              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
@@ -93,7 +89,6 @@ export function UserNav() {
         <DropdownMenuItem onSelect={() => router.push('/login')}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
-          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

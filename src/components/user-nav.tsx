@@ -20,6 +20,12 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  User,
+  Settings,
+  CreditCard,
+  LogOut,
+} from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 
@@ -66,23 +72,27 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={() => router.push(profilePath)}>
-            Profile
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push(settingsPath)}>
-            Settings
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
           {!isTech && (
             <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
-              Billing
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Billing</span>
               <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push('/login')}>
-          Sign out
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sign out</span>
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

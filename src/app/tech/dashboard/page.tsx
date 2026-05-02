@@ -17,8 +17,7 @@ import {
   LogOut,
   StickyNote,
   Camera,
-  Coins,
-  Calendar
+  Coins
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO } from 'date-fns';
@@ -129,12 +128,12 @@ export default function TechDashboardPage() {
                 <Button 
                     variant="outline" 
                     className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => setIsLogSelectionOpen(true)}
+                    onClick={() => setIsCheckInDialogOpen(true)}
                 >
-                    <ClipboardList size={16} className="text-accent-gold mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
+                    <Play size={16} className="text-text-muted mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Check In</span>
                 </Button>
-                
+
                 <Button 
                     variant="outline" 
                     className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
@@ -147,10 +146,10 @@ export default function TechDashboardPage() {
                 <Button 
                     variant="outline" 
                     className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => setIsCheckInDialogOpen(true)}
+                    onClick={() => setIsLogSelectionOpen(true)}
                 >
-                    <Play size={16} className="text-text-muted mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Check In</span>
+                    <ClipboardList size={16} className="text-accent-gold mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
                 </Button>
 
                 <Button 

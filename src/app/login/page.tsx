@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-form-hook";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";

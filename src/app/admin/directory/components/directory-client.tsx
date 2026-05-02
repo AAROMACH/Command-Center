@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -6,11 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Mail, Phone, Plus, Map, UserCheck, Building } from 'lucide-react';
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
+import { EditPersonnelDialog } from './edit-personnel-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -21,9 +20,11 @@ type DirectoryClientProps = {
     workOrders: WorkOrder[];
 };
 
-export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
+    const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
+    const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
@@ -32,6 +33,32 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
     const handleRowClick = (person: Technician) => {
         setSelectedPerson(person);
         setIsDetailOpen(true);
+    };
+
+    const handleEditClick = (person: Technician) => {
+        setSelectedPerson(person);
+        setIsDetailOpen(false);
+        setIsEditPersonnelOpen(true);
+    };
+
+    const handleSavePersonnel = (updatedPerson: Technician) => {
+        setPersonnel(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
+        // Also update selected person if it's the one being edited
+        if (selectedPerson?.id === updatedPerson.id) {
+            setSelectedPerson(updatedPerson);
+        }
+        toast({
+            title: "Operative Updated",
+            description: `Personnel records for ${updatedPerson.name} have been committed.`
+        });
+    };
+
+    const handleAddPersonnel = (newPerson: Technician) => {
+        setPersonnel(prev => [newPerson, ...prev]);
+        toast({
+            title: "Personnel Enrolled",
+            description: `${newPerson.name} has been successfully registered.`
+        });
     };
 
     const handleTimeOffStatusChange = (requestId: string, newStatus: 'approved' | 'denied') => {
@@ -46,30 +73,30 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
         });
     };
 
-    const technicians = allPersonnel.filter(p => p.role.toLowerCase().includes('tech'));
-    const staff = allPersonnel.filter(p => p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin');
-    const clients = allPersonnel.filter(p => p.role.toLowerCase().includes('client'));
+    const techniciansList = personnel.filter(p => p.roles?.some(r => r.includes('tech') || r.includes('lead')) || p.role.toLowerCase().includes('tech'));
+    const staffList = personnel.filter(p => p.roles?.some(r => r.includes('admin') || r.includes('manager')) || p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin');
+    const clientsList = personnel.filter(p => p.roles?.includes('client') || p.role.toLowerCase().includes('client'));
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
-    const filteredTechnicians = technicians.filter((tech) =>
+    const filteredTechnicians = techniciansList.filter((tech) =>
         tech.name.toLowerCase().includes(lowercasedQuery) ||
         tech.email.toLowerCase().includes(lowercasedQuery)
     );
 
-    const filteredStaff = staff.filter((s) =>
+    const filteredStaff = staffList.filter((s) =>
         s.name.toLowerCase().includes(lowercasedQuery) ||
         s.email.toLowerCase().includes(lowercasedQuery)
     );
 
-    const filteredClients = clients.filter((c) =>
+    const filteredClients = clientsList.filter((c) =>
         c.name.toLowerCase().includes(lowercasedQuery) ||
         c.email.toLowerCase().includes(lowercasedQuery) ||
         (c.clientCompany || '').toLowerCase().includes(lowercasedQuery)
     );
     
     const filteredTimeOffRequests = timeOffRequests.filter(req => {
-        const person = allPersonnel.find(p => p.id === req.technicianId);
+        const person = personnel.find(p => p.id === req.technicianId);
         if (!person) return false;
         
         return (
@@ -82,7 +109,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
     });
 
     const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
-    const personTimeOffRequests = selectedPerson ? initialTimeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
+    const personTimeOffRequests = selectedPerson ? timeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
 
     return (
@@ -170,7 +197,12 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                                         <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{s.email}</div>
                                         <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{s.phone}</div>
                                     </div>
-                                    <div><Badge variant="secondary">{s.role}</Badge></div>
+                                    <div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[9px]">{r.replace('_', ' ').toUpperCase()}</Badge>)}
+                                            {!s.roles?.length && <Badge variant="secondary">{s.role}</Badge>}
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                              {filteredStaff.length === 0 && (
@@ -219,7 +251,7 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                                 </TableHeader>
                                 <TableBody>
                                     {filteredTimeOffRequests.map(req => {
-                                        const person = allPersonnel.find(p => p.id === req.technicianId);
+                                        const person = personnel.find(p => p.id === req.technicianId);
                                         return (
                                         <TableRow key={req.id}>
                                             <TableCell>
@@ -272,13 +304,29 @@ export function DirectoryClient({ technicians: allPersonnel, timeOffRequests: in
                     </TabsContent>
                 </div>
             </Tabs>
-            <AddPersonnelDialog isOpen={isAddPersonnelOpen} setIsOpen={setIsAddPersonnelOpen} />
+            
+            <AddPersonnelDialog 
+                isOpen={isAddPersonnelOpen} 
+                setIsOpen={setIsAddPersonnelOpen} 
+                onSave={handleAddPersonnel}
+            />
+            
+            {selectedPerson && (
+                <EditPersonnelDialog 
+                    isOpen={isEditPersonnelOpen} 
+                    setIsOpen={setIsEditPersonnelOpen} 
+                    person={selectedPerson}
+                    onSave={handleSavePersonnel}
+                />
+            )}
+            
             <PersonnelDetailDialog 
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
                 person={selectedPerson}
                 workOrders={personWorkOrders}
                 timeOffRequests={personTimeOffRequests}
+                onEdit={() => handleEditClick(selectedPerson!)}
             />
         </>
     );

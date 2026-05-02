@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Technician, WorkOrder, TimeOffRequest } from '@/lib/types';
@@ -14,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Mail, Phone, Wrench, BarChart, Shield, Building, Calendar, Briefcase, DollarSign, Folder, StickyNote, User, Home, HeartPulse, MapPin } from 'lucide-react';
+import { Mail, Phone, Wrench, BarChart, Shield, Building, Calendar, Briefcase, DollarSign, Folder, StickyNote, User, Home, HeartPulse, MapPin, Pencil } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -24,14 +23,15 @@ type PersonnelDetailDialogProps = {
   person: Technician | null;
   workOrders: WorkOrder[];
   timeOffRequests: TimeOffRequest[];
+  onEdit?: () => void;
 };
 
-export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests }: PersonnelDetailDialogProps) {
+export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   if (!person) return null;
 
-  const isTechnician = person.role.toLowerCase().includes('tech');
-  const isStaff = person.role.toLowerCase() === 'dispatcher' || person.role.toLowerCase() === 'admin';
-  const isClient = person.role.toLowerCase().includes('client');
+  const isTechnician = person.roles?.some(r => r.includes('tech') || r.includes('lead')) || person.role.toLowerCase().includes('tech');
+  const isStaff = person.roles?.some(r => r.includes('admin') || r.includes('manager')) || person.role.toLowerCase() === 'dispatcher' || person.role.toLowerCase() === 'admin';
+  const isClient = person.roles?.includes('client') || person.role.toLowerCase().includes('client');
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 
@@ -53,6 +53,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                          <div className="flex items-center gap-2 mt-2">
                              <Badge variant="active">Active</Badge>
                              <span className="text-xs text-text-muted font-mono">{person.id}</span>
+                             {person.roles?.map(r => (
+                                 <Badge key={r} variant="outline" className="text-[8px] uppercase">{r.replace('_', ' ')}</Badge>
+                             ))}
                          </div>
                     </div>
                 </div>
@@ -143,7 +146,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
             <TabsContent value="schedule">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
-                    {(isTechnician || isStaff) && (
+                    {(isTechnician || isStaff) && person.availability && (
                         <>
                         <div className="field-group !p-0 !bg-transparent !border-none">
                             <h3 className="field-group-title">Weekly Availability</h3>
@@ -238,7 +241,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
         
         <DialogFooter className="border-t border-border-default pt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-          <Button>Edit Personnel</Button>
+          <Button onClick={onEdit}><Pencil size={14} className="mr-2"/> Edit Personnel</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

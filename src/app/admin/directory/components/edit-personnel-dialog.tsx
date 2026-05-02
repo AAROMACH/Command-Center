@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,7 +27,8 @@ import {
   Lock, 
   Info,
   CheckCircle2,
-  Users
+  Users,
+  Save
 } from 'lucide-react';
 import {
   Select,
@@ -38,10 +39,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 
-type AddPersonnelDialogProps = {
+type EditPersonnelDialogProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (newPerson: Technician) => void;
+  person: Technician;
+  onSave: (updatedPerson: Technician) => void;
 };
 
 type RoleOption = {
@@ -110,28 +112,20 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
     ]
 };
 
-export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDialogProps) {
-  const [formData, setFormData] = useState<Partial<Technician>>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    roles: [],
-    clientCompany: '',
-    availability: {},
-    skills: [],
-    reliabilityScore: 100,
-    currentWorkload: 0,
-    avatarUrl: 'https://picsum.photos/seed/newuser/40/40',
-    workPreferences: {
-        preferredRadius: 25,
-        maxTravelDistance: 50,
-        preferredJobTypes: [],
-        availabilityOverride: false
-    }
-  });
+export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
+  const [formData, setFormData] = useState<Technician>(person);
   const [selectedCategory, setSelectedCategory] = useState<'admin' | 'tech' | 'client' | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+        setFormData(person);
+        // Determine initial category based on existing roles
+        if (person.roles?.some(r => ROLE_DATA.admin.map(x => x.id).includes(r))) setSelectedCategory('admin');
+        else if (person.roles?.some(r => ROLE_DATA.tech.map(x => x.id).includes(r))) setSelectedCategory('tech');
+        else if (person.roles?.includes('client')) setSelectedCategory('client');
+    }
+  }, [person, isOpen]);
 
   const handleSave = () => {
     if (!formData.name || !formData.email || (formData.roles || []).length === 0) {
@@ -142,47 +136,16 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         });
         return;
     }
-    
-    const newPerson: Technician = {
-        ...formData as Technician,
-        id: `oper-${Date.now()}`,
-        role: (formData.roles || [])[0].replace('_', ' ').toUpperCase() // Legacy compatibility
-    };
-    
-    onSave(newPerson);
-    handleReset();
+    onSave(formData);
     setIsOpen(false);
   };
-  
-  const handleReset = () => {
-    setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        roles: [],
-        clientCompany: '',
-        availability: {},
-        skills: [],
-        reliabilityScore: 100,
-        currentWorkload: 0,
-        avatarUrl: 'https://picsum.photos/seed/newuser/40/40',
-        workPreferences: {
-            preferredRadius: 25,
-            maxTravelDistance: 50,
-            preferredJobTypes: [],
-            availabilityOverride: false
-        }
-    });
-    setSelectedCategory(null);
-  }
 
   const toggleRole = (role: AppRole) => {
     const currentRoles = formData.roles || [];
     const newRoles = currentRoles.includes(role) 
         ? currentRoles.filter(r => r !== role) 
         : [...currentRoles, role];
-        
+    
     setFormData(prev => ({
         ...prev,
         roles: newRoles
@@ -204,12 +167,12 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
   const isClient = formData.roles?.includes('client');
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="page-title text-xl">Personnel Registration Terminal</DialogTitle>
+          <DialogTitle className="page-title text-xl">Personnel Update Terminal</DialogTitle>
           <DialogDescription>
-            Register a new operative and assign mission-specific authorization levels.
+            Modify operative credentials and adjust mission authorization levels for <span className="text-text-primary font-bold">{person.name}</span>.
           </DialogDescription>
         </DialogHeader>
 
@@ -237,7 +200,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Base Location</Label>
-                    <Input id="address" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="address" value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>
           </section>
@@ -354,9 +317,10 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         </div>
 
         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Abort Enrollment</Button>
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Abort Updates</Button>
           <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover group">
-            Finalize Enrollment
+            <Save size={14} className="mr-2" />
+            Commit Updates
             <ChevronRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </DialogFooter>

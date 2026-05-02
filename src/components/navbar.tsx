@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +28,6 @@ export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
 
-  // Center index is 2 for Dashboard in this 6-item list
   const leftItems = navItems.slice(0, 2);
   const centerItem = navItems[2];
   const rightItems = navItems.slice(3);
@@ -42,8 +40,8 @@ export function Navbar() {
             <Image 
               src={logo.imageUrl} 
               alt="Aaromach Logo" 
-              width={32} 
-              height={32} 
+              width={40} 
+              height={40} 
               className="object-contain"
               data-ai-hint={logo.imageHint}
               priority

@@ -50,10 +50,18 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-9 w-9">
+        <Button variant="ghost" className="relative flex h-auto items-center gap-3 px-2 py-1 hover:bg-bg-tertiary rounded-md">
+          <div className="flex flex-col items-end text-right hidden sm:flex">
+             <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary leading-tight">
+                {currentUser?.name || 'Authorized User'}
+             </span>
+             <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none">
+                {isTech ? 'Field Technician' : 'Administrator'}
+             </span>
+          </div>
+          <Avatar className="h-8 w-8 border border-border-main">
             {userAvatarUrl && <AvatarImage asChild src={userAvatarUrl} alt={currentUser?.name || 'User'}>
-                <Image src={userAvatarUrl} alt={currentUser?.name || 'User Avatar'} width={36} height={36} />
+                <Image src={userAvatarUrl} alt={currentUser?.name || 'User Avatar'} width={32} height={32} />
             </AvatarImage>}
             <AvatarFallback>{userFallback}</AvatarFallback>
           </Avatar>
@@ -86,7 +94,12 @@ export function UserNav() {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => router.push('/login')}>
+        <DropdownMenuItem onSelect={() => {
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('currentUserId');
+            }
+            router.push('/login');
+        }}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
         </DropdownMenuItem>

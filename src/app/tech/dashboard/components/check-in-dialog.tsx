@@ -186,7 +186,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select Assignment Registry</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select job Registry</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                             <Input 

@@ -95,7 +95,7 @@ export default function TechDashboardPage() {
         }
 
         if (earliestDraftLog) {
-            alerts.push({ id: 'logs', type: 'warning', text: `Weekly Manifest for ${earliestDraftLog.weekOf} Pending`, icon: ClipboardList });
+            alerts.push({ id: 'logs', type: 'warning', text: `Weekly Log for ${earliestDraftLog.weekOf} Pending`, icon: ClipboardList });
         }
 
         return alerts;
@@ -122,7 +122,7 @@ export default function TechDashboardPage() {
                 <Button 
                     variant="outline" 
                     className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => earliestDraftLog ? setIsLogDialogOpen(true) : toast({ title: "No Pending Logs", description: "All weekly manifests are finalized."})}
+                    onClick={() => earliestDraftLog ? setIsLogDialogOpen(true) : toast({ title: "No Pending Logs", description: "All weekly logs are finalized."})}
                 >
                     <ClipboardList size={16} className="text-accent-gold mr-2" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
@@ -303,7 +303,7 @@ export default function TechDashboardPage() {
                     setIsOpen={setIsLogDialogOpen} 
                     log={earliestDraftLog}
                     onSubmitted={() => {
-                        toast({ title: "Manifest Finalized", description: "Your weekly log has been sent to audit." });
+                        toast({ title: "Log Finalized", description: "Your weekly log has been sent to audit." });
                     }}
                 />
             )}

@@ -64,7 +64,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                 <DialogHeader>
                     <div className="flex items-center gap-2 mb-1">
                         <ScrollText className="text-accent-gold h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Finalize Weekly Manifest</DialogTitle>
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Finalize Weekly Log</DialogTitle>
                     </div>
                     <DialogDescription>
                         Audit for week of <span className="text-text-primary font-bold">{log.weekOf}</span>. Ensure all reimbursements are logged.
@@ -147,7 +147,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                 <DialogFooter className="border-t border-border-default pt-4">
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                     <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover">
-                        <Check size={16} className="mr-2"/> Submit Manifest
+                        <Check size={16} className="mr-2"/> Submit Log
                     </Button>
                 </DialogFooter>
             </DialogContent>

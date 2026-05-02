@@ -49,7 +49,7 @@ export function AlertBand() {
       if (pendingLogs > 0) {
         techAlerts.push({
           type: 'warning',
-          text: `${pendingLogs} Weekly Manifest Pending Submission`,
+          text: `${pendingLogs} Weekly Log Pending Submission`,
           icon: FileWarning,
         });
       }
@@ -97,7 +97,7 @@ export function AlertBand() {
        if (manifestsToAudit > 0) {
         adminDynamicAlerts.push({
           type: 'info',
-          text: `${manifestsToAudit} Manifest${manifestsToAudit > 1 ? 's' : ''} Pending Audit`,
+          text: `${manifestsToAudit} Log${manifestsToAudit > 1 ? 's' : ''} Pending Audit`,
           icon: FileCheck2
         });
       }

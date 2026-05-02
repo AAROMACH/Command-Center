@@ -37,7 +37,7 @@ export default function TechLogsPage() {
     }, [allLogs]);
 
     if (!currentTechId) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Manifest Terminal...</div>;
+        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Log Terminal...</div>;
     }
 
     const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
@@ -92,11 +92,11 @@ export default function TechLogsPage() {
         }));
     }
 
-    const handleSubmitManifest = () => {
+    const handleSubmitLog = () => {
         setAllLogs(prev => prev.map(log => 
             log.id === editingLogId ? { ...log, status: 'Submitted' } : log
         ));
-        toast({ title: "Manifest Submitted", description: "Your weekly log is now with the admins for audit." });
+        toast({ title: "Log Submitted", description: "Your weekly log is now with the admins for audit." });
         setEditingLogId(null);
     }
 
@@ -106,8 +106,8 @@ export default function TechLogsPage() {
             <div className="space-y-12">
                 <header className="page-header">
                     <div>
-                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Payroll & Manifests</p>
-                        <h1 className="page-title">Work Manifests</h1>
+                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Payroll & Logs</p>
+                        <h1 className="page-title">Work Logs</h1>
                         <p className="page-subtitle">Submit tactical work logs for audit and payroll processing.</p>
                     </div>
                 </header>
@@ -120,7 +120,7 @@ export default function TechLogsPage() {
                                 <Clock size={14}/>
                                 Pending Audit & Drafts
                             </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.open.length} Manifest(s)</span>
+                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.open.length} Log(s)</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {groupedLogs.open.map(log => (
@@ -156,7 +156,7 @@ export default function TechLogsPage() {
                             ))}
                             {groupedLogs.open.length === 0 && (
                                 <div className="col-span-full py-12 text-center border border-dashed border-border-main rounded-lg bg-bg-secondary/50">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No pending manifests. Your log history is clean.</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No pending logs. Your history is clean.</p>
                                 </div>
                             )}
                         </div>
@@ -169,7 +169,7 @@ export default function TechLogsPage() {
                                 <FileText size={14}/>
                                 Finalized History
                             </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.closed.length} Manifest(s)</span>
+                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.closed.length} Log(s)</span>
                         </div>
                         <div className="space-y-2">
                             {groupedLogs.closed.map(log => (
@@ -199,7 +199,7 @@ export default function TechLogsPage() {
                                 </div>
                             ))}
                             {groupedLogs.closed.length === 0 && (
-                                <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No historical manifests found.</div>
+                                <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No historical logs found.</div>
                             )}
                         </div>
                     </section>
@@ -219,14 +219,14 @@ export default function TechLogsPage() {
                         <ChevronLeft size={24}/>
                     </Button>
                     <div>
-                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Manifest Editor</p>
+                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Log Editor</p>
                         <h1 className="page-title">Week of {editingLog.weekOf}</h1>
                         <p className="page-subtitle">Status: <span className="font-bold text-text-primary uppercase">{editingLog.status}</span></p>
                     </div>
                 </div>
                 <div className="page-header-right">
                     {!isSubmitted && (
-                        <Button onClick={handleSubmitManifest} className="h-11 px-8"><Check size={16} className="mr-2"/> Submit Manifest</Button>
+                        <Button onClick={handleSubmitLog} className="h-11 px-8"><Check size={16} className="mr-2"/> Submit Log</Button>
                     )}
                     {isSubmitted && (
                         <Button variant="outline" onClick={() => setEditingLogId(null)}>Back to History</Button>
@@ -239,7 +239,7 @@ export default function TechLogsPage() {
                     <div className="flex justify-between items-start">
                         <div>
                             <CardTitle className="text-lg">Audit Verification</CardTitle>
-                            <CardDescription>Review all assignments and add any reimbursements before finalizing the manifest.</CardDescription>
+                            <CardDescription>Review all assignments and add any reimbursements before finalizing the log.</CardDescription>
                         </div>
                         <Badge variant={editingLog.status === 'Approved' ? 'active' : editingLog.status === 'Submitted' ? 'onhold' : 'pending'}>
                             {editingLog.status}
@@ -349,7 +349,7 @@ export default function TechLogsPage() {
                             ))}
                             {editingLog.reimbursements.length === 0 && (
                                 <div className="p-8 text-center border border-dashed border-border-sub rounded text-[10px] uppercase font-bold text-text-muted tracking-widest">
-                                    No reimbursements filed for this manifest
+                                    No reimbursements filed for this log
                                 </div>
                             )}
                         </div>
@@ -357,7 +357,7 @@ export default function TechLogsPage() {
 
                     <div className="pt-6 border-t border-border-sub">
                          <div className="max-w-xs ml-auto p-4 rounded-lg bg-bg-tertiary border border-border-sub text-center">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Total Manifest Value</h3>
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Total Log Value</h3>
                             <p className={`text-3xl font-mono font-bold ${editingLog.status === 'Approved' ? 'text-text-green' : 'text-text-primary'}`}>
                                 ${(editingLog.totalPayout || 0).toFixed(2)}
                             </p>
@@ -368,7 +368,7 @@ export default function TechLogsPage() {
                 {!isSubmitted && (
                     <CardFooter className="bg-bg-tertiary/50 py-4 flex justify-end gap-3 rounded-b-lg">
                         <Button variant="outline" onClick={() => setEditingLogId(null)}>Save as Draft</Button>
-                        <Button onClick={handleSubmitManifest} className="px-10">Submit for Audit</Button>
+                        <Button onClick={handleSubmitLog} className="px-10">Submit for Audit</Button>
                     </CardFooter>
                 )}
             </Card>

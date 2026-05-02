@@ -33,7 +33,7 @@ export default function TechEarningsPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2"><Coins size={12} /> Payroll & Earnings</p>
                     <h1 className="page-title">My Earnings</h1>
-                    <p className="page-subtitle">Track your manifest statuses and view your payment history.</p>
+                    <p className="page-subtitle">Track your log statuses and view your payment history.</p>
                 </div>
             </header>
 
@@ -45,7 +45,7 @@ export default function TechEarningsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-text-green">${totalPaid.toFixed(2)}</div>
-                        <p className="text-xs text-text-muted">Across all approved manifests.</p>
+                        <p className="text-xs text-text-muted">Across all approved logs.</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -55,14 +55,14 @@ export default function TechEarningsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-accent-gold">${pendingPayout.toFixed(2)}</div>
-                        <p className="text-xs text-text-muted">From submitted manifests pending approval.</p>
+                        <p className="text-xs text-text-muted">From submitted logs pending approval.</p>
                     </CardContent>
                 </Card>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Manifest History</CardTitle>
+                    <CardTitle>Log History</CardTitle>
                     <CardDescription>A summary of your submitted weekly logs and their payout status.</CardDescription>
                 </CardHeader>
                 <CardContent className="table-wrap p-0">

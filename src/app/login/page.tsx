@@ -80,12 +80,12 @@ export default function LoginPage() {
               <Image 
                 src={logo.imageUrl} 
                 alt="Aaromach Logo" 
-                width={120} 
-                height={60} 
+                width={100} 
+                height={50} 
                 className="object-contain"
                 data-ai-hint={logo.imageHint}
                 priority
-                style={{ height: '60px', width: 'auto' }}
+                style={{ height: '50px', width: 'auto' }}
               />
             )}
           </div>

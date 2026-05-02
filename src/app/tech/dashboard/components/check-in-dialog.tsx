@@ -304,7 +304,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         disabled={!selectedId || !userLocation}
                     >
                         <Play size={14} className="mr-2 fill-current" /> 
-                        {isOutOfRange ? "Override & Initialize" : "Initialize Session"}
+                        {isOutOfRange ? "Override & Confirm" : "Confirm Check In"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

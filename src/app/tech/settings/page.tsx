@@ -328,22 +328,6 @@ export default function TechSettingsPage() {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        <Card className="border-red-800/20 bg-red-900/5">
-                            <CardHeader>
-                                <CardTitle className="text-text-red">Danger Zone</CardTitle>
-                                <CardDescription>Irreversible account management actions.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-alert">
-                                    <div>
-                                        <p className="text-xs font-bold text-text-red uppercase tracking-wider">Deactivate Account</p>
-                                        <p className="text-[10px] text-text-muted">This will suspend your terminal access and mission assignments.</p>
-                                    </div>
-                                    <Button variant="destructive" size="sm"><Trash2 size={14} className="mr-2"/> Deactivate</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </TabsContent>
                 </div>
             </Tabs>

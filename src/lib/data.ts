@@ -1,12 +1,9 @@
-
-
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
 
 export const technicians: Technician[] = [
-  // Technicians
   {
     id: 'tech-001',
     name: 'Alex Johnson',
@@ -32,6 +29,12 @@ export const technicians: Technician[] = [
       'friday': { start: '08:00', end: '17:00' },
       'saturday': null,
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 25,
+      maxTravelDistance: 50,
+      preferredJobTypes: ['HVAC', 'Electrical'],
+      availabilityOverride: false,
     }
   },
   {
@@ -59,6 +62,12 @@ export const technicians: Technician[] = [
       'friday': { start: '09:00', end: '14:00' },
       'saturday': null,
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 15,
+      maxTravelDistance: 30,
+      preferredJobTypes: ['Appliance Repair', 'Refrigeration'],
+      availabilityOverride: true,
     }
   },
   {
@@ -86,6 +95,12 @@ export const technicians: Technician[] = [
       'friday': { start: '07:00', end: '16:00' },
       'saturday': { start: '09:00', end: '13:00' },
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 30,
+      maxTravelDistance: 60,
+      preferredJobTypes: ['Plumbing', 'Construction'],
+      availabilityOverride: false,
     }
   },
   {
@@ -113,6 +128,12 @@ export const technicians: Technician[] = [
       'friday': null,
       'saturday': null,
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 10,
+      maxTravelDistance: 20,
+      preferredJobTypes: ['Smart Home', 'Networking'],
+      availabilityOverride: false,
     }
   },
   {
@@ -140,6 +161,12 @@ export const technicians: Technician[] = [
       'friday': { start: '08:00', end: '17:00' },
       'saturday': null,
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 20,
+      maxTravelDistance: 40,
+      preferredJobTypes: ['Cabling', 'Repair'],
+      availabilityOverride: false,
     }
   },
   {
@@ -167,85 +194,14 @@ export const technicians: Technician[] = [
       'friday': { start: '08:00', end: '17:00' },
       'saturday': { start: '09:00', end: '15:00' },
       'sunday': null,
+    },
+    workPreferences: {
+      preferredRadius: 40,
+      maxTravelDistance: 100,
+      preferredJobTypes: ['Cabling', 'Networking', 'Infrastructure'],
+      availabilityOverride: true,
     }
   },
-
-  // Staff
-  {
-    id: 'staff-001',
-    name: 'Eleanor Vance',
-    role: 'Dispatcher',
-    email: 'eleanor.v@aaromach.com',
-    phone: '555-888-1111',
-    address: '500 Park Ave, New York, NY 10022',
-    emergencyContact: {
-        name: 'Marcus Vance',
-        relation: 'Husband',
-        phone: '555-888-2222',
-    },
-    currentLocation: 'Command Center',
-    reliabilityScore: 100, // N/A for staff
-    currentWorkload: 0, // N/A for staff
-    skills: ['Logistics', 'Scheduling', 'Communication'],
-    avatarUrl: 'https://picsum.photos/seed/staff1/40/40',
-    availability: {} // N/A for staff
-  },
-  {
-    id: 'staff-002',
-    name: 'System Administrator',
-    role: 'Admin',
-    email: 'admin@aaromach.com',
-    phone: '555-000-0000',
-    address: '1 Command Center Plaza, New York, NY 10001',
-    emergencyContact: {
-        name: 'IT Support',
-        relation: 'Work',
-        phone: '555-000-0001',
-    },
-    currentLocation: 'Command Center',
-    reliabilityScore: 100,
-    currentWorkload: 0,
-    skills: ['System Admin'],
-    avatarUrl: getImageUrl('user-avatar-1'),
-    availability: {}
-  },
-  
-  // Clients
-  {
-    id: 'client-001',
-    name: 'Jonathan Doe',
-    role: 'Client Contact',
-    email: 'jon.d@globalcorp.com',
-    phone: '555-777-1234',
-    currentLocation: 'New York, NY', // N/A for client
-    reliabilityScore: 0, // N/A for client
-    currentWorkload: 0, // N/A for client
-    skills: [], // N/A for client
-    clientCompany: 'Global Corp',
-    avatarUrl: 'https://picsum.photos/seed/client1/40/40',
-    availability: {}, // N/A for client
-    managedSites: [
-        { id: 'site-1', name: 'Global Corp HQ', location: '123 Wall St, New York, NY' },
-        { id: 'site-2', name: 'Global Corp Data Center', location: '456 Data Dr, Secaucus, NJ' },
-    ]
-  },
-  {
-    id: 'client-002',
-    name: 'Jane Smith',
-    role: 'Client Contact',
-    email: 'jane.s@acme.com',
-    phone: '555-777-5678',
-    currentLocation: 'New York, NY',
-    reliabilityScore: 0,
-    currentWorkload: 0,
-    skills: [],
-    clientCompany: 'Acme Inc.',
-    avatarUrl: 'https://picsum.photos/seed/client2/40/40',
-    availability: {},
-    managedSites: [
-        { id: 'site-3', name: 'Acme Inc. Warehouse', location: '789 Industrial Pkwy, Brooklyn, NY' }
-    ]
-  }
 ];
 
 export const workOrders: WorkOrder[] = [
@@ -273,7 +229,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Commercial Property',
     projectType: 'Repair',
-    scheduleDate: '2024-07-28', // Today
+    scheduleDate: '2024-07-28', 
     scheduleTime: '2:00 PM EST',
     pay: 350.00,
   },
@@ -286,7 +242,7 @@ export const workOrders: WorkOrder[] = [
     status: 'unassigned',
     clientName: 'Smart Home Solutions',
     projectType: 'Installation',
-    scheduleDate: '2024-07-29', // Tomorrow
+    scheduleDate: '2024-07-29', 
     scheduleTime: '10:00 AM EST',
     pay: 120.00,
   },
@@ -327,7 +283,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Apartment Complex',
     projectType: 'Replacement',
-    scheduleDate: '2024-07-28', // Today
+    scheduleDate: '2024-07-28', 
     scheduleTime: '1:00 PM EST',
     pay: 750.00,
   },
@@ -460,7 +416,7 @@ export const timesheetLogs: TimesheetLog[] = [
   {
     assignmentId: 'ts-1',
     projectId: 'proj-001',
-    technicianId: 'tech-003', // David Smith
+    technicianId: 'tech-003', 
     date: 'Saturday, April 18, 2026',
     checkInTime: '8:04 AM',
     checkOutTime: '12:31 PM',
@@ -474,7 +430,7 @@ export const timesheetLogs: TimesheetLog[] = [
    {
     assignmentId: 'ts-2',
     projectId: 'proj-001',
-    technicianId: 'tech-001', // Alex Johnson
+    technicianId: 'tech-001', 
     date: 'Saturday, April 18, 2026',
     checkInTime: '8:01 AM',
     checkOutTime: '5:05 PM',
@@ -488,7 +444,7 @@ export const timesheetLogs: TimesheetLog[] = [
   {
     assignmentId: 'ts-3',
     projectId: 'proj-001',
-    technicianId: 'tech-003', // David Smith
+    technicianId: 'tech-003', 
     date: 'Sunday, April 19, 2026',
     checkInTime: '8:30 AM',
     checkOutTime: '4:45 PM',
@@ -516,7 +472,6 @@ export const profitabilityData = [
     { id: 'wo-104', type: 'Job', name: 'Broken refrigerator', client: 'Restaurant Supply Co.', revenue: 475, laborCost: 250, materialCost: 100, totalCost: 350, net: 125, margin: 26.3 },
 ];
 
-// Tech Portal Data
 export const assignmentTimeLogs: AssignmentTimeLog[] = [
   { id: 'atl-1', workOrderId: 'wo-102', technicianId: 'tech-001', checkInTime: '2024-07-28T14:05:00Z', location: '40.6501° N, 73.9496° W'},
   { id: 'atl-2', workOrderId: 'wo-106', technicianId: 'tech-001', checkInTime: '2024-07-28T13:00:00Z', location: '40.6501° N, 73.9496° W'},

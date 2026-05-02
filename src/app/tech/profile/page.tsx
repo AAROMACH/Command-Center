@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { Technician, TimeOffRequest, PenaltyEvent } from '@/lib/types';
@@ -11,11 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Briefcase, Settings2, Sliders } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { subDays, isAfter } from 'date-fns';
 
 export default function TechProfilePage() {
@@ -67,6 +68,16 @@ export default function TechProfilePage() {
         }) : undefined);
     };
 
+    const handlePreferenceChange = (field: keyof Technician['workPreferences'], value: any) => {
+        setTech(prev => prev ? ({
+            ...prev,
+            workPreferences: {
+                ...prev.workPreferences,
+                [field]: value
+            }
+        }) : undefined);
+    };
+
     const handleRequestTimeOff = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -89,6 +100,7 @@ export default function TechProfilePage() {
     const reliabilityStatus = reliabilityScore > 90 ? 'OPERATIONAL' : reliabilityScore > 80 ? 'MONITORED' : 'RESTRICTED';
     
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const jobTypes = ['HVAC', 'Electrical', 'Plumbing', 'Cabling', 'Networking', 'Smart Home', 'Security', 'Infrastructure', 'AV Fit-out'];
 
     return (
         <div>
@@ -109,12 +121,15 @@ export default function TechProfilePage() {
             </header>
             
             <Tabs defaultValue="identity" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-8">
+                <TabsList className="grid w-full grid-cols-4 max-w-3xl mb-8">
                     <TabsTrigger value="identity" className="flex items-center gap-2">
                         <User size={14}/> Identity
                     </TabsTrigger>
                     <TabsTrigger value="availability" className="flex items-center gap-2">
                         <Timer size={14}/> Availability
+                    </TabsTrigger>
+                    <TabsTrigger value="preferences" className="flex items-center gap-2">
+                        <Settings2 size={14}/> Work Preferences
                     </TabsTrigger>
                     <TabsTrigger value="reliability" className="flex items-center gap-2">
                         <Activity size={14}/> Reliability
@@ -214,48 +229,7 @@ export default function TechProfilePage() {
                                         <CardTitle>Schedule Exceptions</CardTitle>
                                         <CardDescription>Time off and absence requests.</CardDescription>
                                     </div>
-                                    <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button size="icon" variant="outline" className="h-8 w-8"><Plus size={14}/></Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="bg-bg-elevated border-border-main">
-                                            <DialogHeader>
-                                                <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request Absence</DialogTitle>
-                                                <DialogDescription>Submit specific dates for vacation, sick leave, or personal time.</DialogDescription>
-                                            </DialogHeader>
-                                            <form onSubmit={handleRequestTimeOff} className="space-y-4 py-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Start Date</Label>
-                                                        <Input type="date" name="startDate" required className="bg-bg-primary" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">End Date</Label>
-                                                        <Input type="date" name="endDate" required className="bg-bg-primary" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Type</Label>
-                                                    <Select name="type" defaultValue="Vacation">
-                                                        <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="Vacation">Vacation</SelectItem>
-                                                            <SelectItem value="Sick">Sick Leave</SelectItem>
-                                                            <SelectItem value="Personal">Personal Time</SelectItem>
-                                                            <SelectItem value="Other">Other</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Reason</Label>
-                                                    <Textarea name="reason" placeholder="Brief explanation..." className="bg-bg-primary" />
-                                                </div>
-                                                <DialogFooter>
-                                                    <Button type="submit">Submit Request</Button>
-                                                </DialogFooter>
-                                            </form>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsTimeOffDialogOpen(true)}><Plus size={14}/></Button>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     {myTimeOff.length === 0 ? (
@@ -281,7 +255,106 @@ export default function TechProfilePage() {
                         </div>
                     </TabsContent>
 
-                    {/* LAYER C: PERFORMANCE / RELIABILITY */}
+                    {/* LAYER C: WORK PREFERENCES */}
+                    <TabsContent value="preferences">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Tactical Constraints</CardTitle>
+                                    <CardDescription>Define your operational limits for automated assignment logic.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-10">
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-end">
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Work Radius</Label>
+                                                <p className="text-xs text-text-muted">Target distance for daily assignments.</p>
+                                            </div>
+                                            <span className="font-mono text-brand-red font-bold">{tech.workPreferences.preferredRadius} Miles</span>
+                                        </div>
+                                        <Slider 
+                                            value={[tech.workPreferences.preferredRadius]} 
+                                            max={100} 
+                                            step={5}
+                                            onValueChange={([val]) => handlePreferenceChange('preferredRadius', val)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-end">
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Max Travel Distance</Label>
+                                                <p className="text-xs text-text-muted">Hard limit for emergency or high-value assignments.</p>
+                                            </div>
+                                            <span className="font-mono text-brand-red font-bold">{tech.workPreferences.maxTravelDistance} Miles</span>
+                                        </div>
+                                        <Slider 
+                                            value={[tech.workPreferences.maxTravelDistance]} 
+                                            max={250} 
+                                            step={10}
+                                            onValueChange={([val]) => handlePreferenceChange('maxTravelDistance', val)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Job Types</Label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {jobTypes.map(type => {
+                                                const isSelected = tech.workPreferences.preferredJobTypes.includes(type);
+                                                return (
+                                                    <button
+                                                        key={type}
+                                                        onClick={() => {
+                                                            const newTypes = isSelected 
+                                                                ? tech.workPreferences.preferredJobTypes.filter(t => t !== type)
+                                                                : [...tech.workPreferences.preferredJobTypes, type];
+                                                            handlePreferenceChange('preferredJobTypes', newTypes);
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                                            isSelected 
+                                                                ? 'bg-brand-red-dim border-brand-red text-text-primary' 
+                                                                : 'bg-bg-primary border-border-subtle text-text-muted hover:border-text-muted'
+                                                        }`}
+                                                    >
+                                                        {type}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-brand-red/20 bg-brand-red/5">
+                                <CardHeader>
+                                    <CardTitle className="text-brand-red flex items-center gap-2">
+                                        <Sliders size={14}/>
+                                        Assignment Logic
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Availability Override</p>
+                                            <p className="text-[10px] text-text-muted leading-tight">Allow dispatch to offer jobs outside standard hours.</p>
+                                        </div>
+                                        <Switch 
+                                            checked={tech.workPreferences.availabilityOverride}
+                                            onCheckedChange={(val) => handlePreferenceChange('availabilityOverride', val)}
+                                        />
+                                    </div>
+                                    <div className="p-4 rounded-lg bg-bg-primary border border-border-subtle space-y-4">
+                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">System Note</p>
+                                         <p className="text-[10px] text-text-secondary leading-normal">
+                                            Assignments exceeding your max travel distance will require manual override and will be flagged for "Extended Travel" pay.
+                                         </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    {/* LAYER D: PERFORMANCE / RELIABILITY */}
                     <TabsContent value="reliability" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="border-accent-gold/20 bg-accent-gold/5">
@@ -342,7 +415,46 @@ export default function TechProfilePage() {
                     </TabsContent>
                 </div>
             </Tabs>
+
+            <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
+                <DialogContent className="bg-bg-elevated border-border-main">
+                    <DialogHeader>
+                        <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request Absence</DialogTitle>
+                        <DialogDescription>Submit specific dates for vacation, sick leave, or personal time.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleRequestTimeOff} className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase tracking-widest text-text-muted">Start Date</Label>
+                                <Input type="date" name="startDate" required className="bg-bg-primary" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase tracking-widest text-text-muted">End Date</Label>
+                                <Input type="date" name="endDate" required className="bg-bg-primary" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase tracking-widest text-text-muted">Type</Label>
+                            <Select name="type" defaultValue="Vacation">
+                                <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Vacation">Vacation</SelectItem>
+                                    <SelectItem value="Sick">Sick Leave</SelectItem>
+                                    <SelectItem value="Personal">Personal Time</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase tracking-widest text-text-muted">Reason</Label>
+                            <Textarea name="reason" placeholder="Brief explanation..." className="bg-bg-primary" />
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit">Submit Request</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
-

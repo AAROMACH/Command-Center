@@ -1,5 +1,3 @@
-
-
 export type WorkOrder = {
   id: string;
   description: string;
@@ -33,8 +31,14 @@ export type Technician = {
   skills: string[];
   avatarUrl: string;
   availability: Record<string, { start: string; end: string } | null>;
-  clientCompany?: string; // Added for client roles
+  clientCompany?: string; 
   managedSites?: { id: string; name: string; location: string }[];
+  workPreferences: {
+    preferredRadius: number;
+    maxTravelDistance: number;
+    preferredJobTypes: string[];
+    availabilityOverride: boolean;
+  };
 };
 
 export type Recommendation = {
@@ -43,7 +47,6 @@ export type Recommendation = {
   alternativeTechnicianIds?: string[];
 };
 
-// New Types for Projects Feature
 export type ProjectTeamMember = {
   technicianId: string;
   role:string;
@@ -58,10 +61,9 @@ export type Project = {
   startDate: string;
   startTime?: string;
   estimatedDuration: string;
-  assignedTechnicianIds: string[]; // Keep for compatibility, use team instead
+  assignedTechnicianIds: string[]; 
   team: ProjectTeamMember[];
   phases: Phase[];
-  // Fields for Overview Tab
   scope: string;
   onsiteContact?: string;
   siteAccessInstructions?: string;
@@ -126,7 +128,6 @@ export type ServiceRequest = {
   priority: 'low' | 'medium' | 'high' | 'critical';
 };
 
-// Tech Portal Specific Types
 export type AssignmentTimeLog = {
   id: string;
   workOrderId: string;

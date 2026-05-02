@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { isAdmin, isTech } from "@/lib/permissions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,25 +49,16 @@ export default function LoginPage() {
       (t) => t.email.toLowerCase() === data.email.toLowerCase()
     );
 
-    const isTech =
-      user &&
-      (user.role.toLowerCase().includes("tech") ||
-        user.role.toLowerCase().includes("specialist") ||
-        user.role.toLowerCase().includes("integrator"));
-
-    if (typeof window !== "undefined") {
-      if (isTech && user) {
-        localStorage.setItem("currentUserId", user.id);
-      } else if (user) {
-        localStorage.setItem("currentUserId", user.id);
-      } else {
-        localStorage.setItem("currentUserId", "staff-002");
-      }
+    if (typeof window !== "undefined" && user) {
+      localStorage.setItem("currentUserId", user.id);
     }
 
-    if (isTech) {
+    if (isAdmin(user)) {
+      router.push("/admin/dashboard");
+    } else if (isTech(user)) {
       router.push("/tech/dashboard");
     } else {
+      // Default fallback
       router.push("/admin/dashboard");
     }
   }

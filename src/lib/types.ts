@@ -1,3 +1,12 @@
+export type AppRole = 
+  | 'super_admin' 
+  | 'dispatch_admin' 
+  | 'payroll_admin' 
+  | 'project_manager' 
+  | 'project_lead' 
+  | 'field_technician' 
+  | 'client';
+
 export type WorkOrder = {
   id: string;
   description: string;
@@ -17,7 +26,8 @@ export type WorkOrder = {
 export type Technician = {
   id: string;
   name: string;
-  role: string;
+  role: string; // Legacy single role field
+  roles?: AppRole[]; // New multi-role array
   email: string;
   phone: string;
   address?: string;

@@ -14,23 +14,54 @@ import {
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useState, useEffect } from 'react';
+import type { Technician } from '@/lib/types';
+import { technicians } from '@/lib/data';
+import { hasPermission, type Permission } from '@/lib/permissions';
 
-const navItems = [
-  { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
-  { href: '/admin/assignments', label: 'Assignments', icon: Wrench },
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/projects', label: 'Projects', icon: Briefcase },
-  { href: '/admin/directory', label: 'Directory', icon: Users },
-  { href: '/admin/financials', label: 'Financials', icon: Banknote },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: any;
+  permission: Permission;
+};
+
+const navItems: NavItem[] = [
+  { href: '/admin/requests', label: 'Requests', icon: ClipboardList, permission: 'view_requests' },
+  { href: '/admin/assignments', label: 'Assignments', icon: Wrench, permission: 'view_assignments' },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
+  { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
+  { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
+  { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
+  const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
 
-  const leftItems = navItems.slice(0, 2);
-  const centerItem = navItems[2];
-  const rightItems = navItems.slice(3);
+  useEffect(() => {
+    const userId = localStorage.getItem('currentUserId');
+    if (userId) {
+      setCurrentUser(technicians.find(t => t.id === userId));
+    }
+  }, []);
+
+  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
+
+  // Determine positions for a centered dashboard if possible
+  const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
+  let leftItems: NavItem[] = [];
+  let centerItem: NavItem | null = null;
+  let rightItems: NavItem[] = [];
+
+  if (dashboardIndex !== -1) {
+    leftItems = visibleItems.slice(0, dashboardIndex);
+    centerItem = visibleItems[dashboardIndex];
+    rightItems = visibleItems.slice(dashboardIndex + 1);
+  } else {
+    leftItems = visibleItems;
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6">
@@ -67,16 +98,18 @@ export function Navbar() {
           </Link>
         ))}
 
-        <Link
-          href={centerItem.href}
-          className={cn(
-            'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#888888] transition-all border border-transparent',
-            pathname === centerItem.href ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
-          )}
-        >
-          <centerItem.icon className="h-4 w-4" />
-          <span>{centerItem.label}</span>
-        </Link>
+        {centerItem && (
+          <Link
+            href={centerItem.href}
+            className={cn(
+              'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#888888] transition-all border border-transparent',
+              pathname === centerItem.href ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+            )}
+          >
+            <centerItem.icon className="h-4 w-4" />
+            <span>{centerItem.label}</span>
+          </Link>
+        )}
 
         {rightItems.map(item => (
           <Link

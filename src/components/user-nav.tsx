@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
+import { isAdmin, isTech } from '@/lib/permissions';
 
 export function UserNav() {
   const router = useRouter();
@@ -42,10 +43,12 @@ export function UserNav() {
 
   const userAvatarUrl = currentUser?.avatarUrl;
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
-  const isTech = currentUser?.role.toLowerCase().includes('tech');
+  
+  const displayIsAdmin = isAdmin(currentUser);
+  const displayIsTech = isTech(currentUser);
 
-  const profilePath = isTech ? '/tech/profile' : '/admin/profile';
-  const settingsPath = isTech ? '/tech/settings' : '/admin/settings';
+  const profilePath = displayIsTech ? '/tech/profile' : '/admin/profile';
+  const settingsPath = displayIsTech ? '/tech/settings' : '/admin/settings';
 
   return (
     <DropdownMenu>
@@ -56,7 +59,7 @@ export function UserNav() {
                 {currentUser?.name || 'Authorized User'}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
-                {isTech ? 'Field Technician' : 'Administrator'}
+                {displayIsAdmin ? 'Administrator' : displayIsTech ? 'Field Technician' : 'Client'}
              </span>
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -87,7 +90,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {!isTech && (
+          {displayIsAdmin && (
             <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
               <CreditCard className="mr-2 h-4 w-4" />
               <span>Billing</span>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -15,10 +16,12 @@ import {
   ChevronRight, 
   Search,
   User,
-  Briefcase
+  Briefcase,
+  LayoutGrid
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { Input } from "@/components/ui/input";
+import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -55,6 +58,9 @@ export default function AssignmentsHubPage() {
         <TabsList className="tabs">
           <TabsTrigger value="schedule" className="tab">
             Live Schedule <span className="tab-count">({activeWorkOrders.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="tab">
+            Global Calendar
           </TabsTrigger>
           <TabsTrigger value="archive" className="tab">
             Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
@@ -112,6 +118,13 @@ export default function AssignmentsHubPage() {
                     );
                 })}
             </div>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-6">
+            <GlobalScheduleCalendar 
+                workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
+                technicians={technicians} 
+            />
         </TabsContent>
 
         <TabsContent value="archive" className="mt-6">

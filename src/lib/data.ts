@@ -95,17 +95,11 @@ export const technicians: Technician[] = [
   {
     id: 'staff-002',
     name: 'Corey Williams',
-    role: 'Client Contact',
-    roles: ['client'],
+    role: 'Operational Admin',
+    roles: ['dispatch_admin', 'field_technician'],
     email: 'cwilliams@aaromach.com',
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',
-    clientCompany: 'Ki9',
-    businessType: 'Logistics & Supply Chain',
-    managedSites: [
-        { id: 'ki9-det', name: 'Ki9 Warehouse - Detroit', location: 'Detroit, MI 48201' },
-        { id: 'ki9-nwk', name: 'Ki9 Logistics Hub', location: 'Newark, NJ 07102' }
-    ],
     emergencyContact: {
       name: 'Michael Williams',
       relation: 'Father',
@@ -113,14 +107,22 @@ export const technicians: Technician[] = [
     },
     currentLocation: 'Newark, NJ',
     reliabilityScore: 91,
-    currentWorkload: 0,
-    skills: ['Strategic Planning', 'Procurement'],
+    currentWorkload: 2,
+    skills: ['Strategic Planning', 'Procurement', 'Network Infrastructure'],
     avatarUrl: getImageUrl('technician-6'),
-    availability: {},
+    availability: {
+      'monday': { start: '08:00', end: '17:00' },
+      'tuesday': { start: '08:00', end: '17:00' },
+      'wednesday': { start: '08:00', end: '17:00' },
+      'thursday': { start: '08:00', end: '17:00' },
+      'friday': { start: '08:00', end: '17:00' },
+      'saturday': null,
+      'sunday': null,
+    },
     workPreferences: {
-      preferredRadius: 0,
-      maxTravelDistance: 0,
-      preferredJobTypes: [],
+      preferredRadius: 50,
+      maxTravelDistance: 100,
+      preferredJobTypes: ['Cabling', 'Networking'],
       availabilityOverride: true,
     }
   },

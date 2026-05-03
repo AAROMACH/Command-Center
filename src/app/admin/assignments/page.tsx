@@ -46,7 +46,7 @@ export default function AssignmentsPage() {
                   Import Jobs
                 </Button>
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
-                  New Assignment
+                  + New Assignment
                 </Button>
             </div>
       </header>

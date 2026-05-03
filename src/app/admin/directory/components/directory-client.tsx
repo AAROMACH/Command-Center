@@ -255,27 +255,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsList>
 
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                        {/* Sort Controller */}
-                        {activeTab !== 'map' && activeTab !== 'requests' && (
-                            <div className="flex items-center gap-2">
-                                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                    <SelectTrigger className="w-[140px] bg-bg-tertiary border-border-sub h-10 text-[10px] uppercase font-bold tracking-widest">
-                                        <div className="flex items-center gap-2">
-                                            <ArrowUpDown size={12} className="text-text-muted" />
-                                            <SelectValue placeholder="Sort By" />
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="name" className="text-[10px] uppercase font-bold">Sort: Name</SelectItem>
-                                        {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[10px] uppercase font-bold">Sort: Reliability</SelectItem>}
-                                        {activeTab === 'clients' && <SelectItem value="contacts" className="text-[10px] uppercase font-bold">Sort: Density</SelectItem>}
-                                        {activeTab === 'staff' && <SelectItem value="role" className="text-[10px] uppercase font-bold">Sort: Role</SelectItem>}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {/* View Switcher */}
+                        {/* View Switcher - Now before Sort */}
                         {activeTab !== 'map' && activeTab !== 'requests' && (
                             <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1 h-10">
                                 <Button 
@@ -305,6 +285,26 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 >
                                     <Columns2 size={14} />
                                 </Button>
+                            </div>
+                        )}
+
+                        {/* Sort Controller - Now after View */}
+                        {activeTab !== 'map' && activeTab !== 'requests' && (
+                            <div className="flex items-center gap-2">
+                                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                                    <SelectTrigger className="w-[140px] bg-bg-tertiary border-border-sub h-10 text-[10px] uppercase font-bold tracking-widest">
+                                        <div className="flex items-center gap-2">
+                                            <ArrowUpDown size={12} className="text-text-muted" />
+                                            <SelectValue placeholder="Sort By" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="name" className="text-[10px] uppercase font-bold">Sort: Name</SelectItem>
+                                        {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[10px] uppercase font-bold">Sort: Reliability</SelectItem>}
+                                        {activeTab === 'clients' && <SelectItem value="contacts" className="text-[10px] uppercase font-bold">Sort: Density</SelectItem>}
+                                        {activeTab === 'staff' && <SelectItem value="role" className="text-[10px] uppercase font-bold">Sort: Role</SelectItem>}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
 

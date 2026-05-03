@@ -22,8 +22,10 @@ import {
     X,
     Check,
     History,
-    AlertCircle
+    AlertCircle,
+    Eye
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,7 @@ export default function ClientSitesPage() {
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
     const [localRequests, setLocalSiteRequests] = useState<SiteRequest[]>([]);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
@@ -177,15 +180,17 @@ export default function ClientSitesPage() {
                 <TabsContent value="registry" className="mt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {sitesData.map(site => (
-                            <Card key={site.id} className={cn(
-                                "bg-bg-secondary border-border-main transition-all flex flex-col",
-                                site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40" : "hover:border-text-muted"
+                            <Card key={site.id} 
+                                onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
+                                className={cn(
+                                "bg-bg-secondary border-border-main transition-all flex flex-col group",
+                                site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
                             )}>
                                 <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{site.name}</h3>
+                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
                                                 {site.status === 'pending' && (
                                                     <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">Pending Audit</Badge>
                                                 )}
@@ -194,9 +199,11 @@ export default function ClientSitesPage() {
                                                 <MapPin size={12}/> {site.location}
                                             </p>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="text-text-muted">
-                                            <Navigation size={18} />
-                                        </Button>
+                                        {site.status === 'authorized' && (
+                                            <Button variant="ghost" size="icon" className="text-text-muted group-hover:text-text-primary transition-colors">
+                                                <Eye size={18} />
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-5 flex-1 space-y-6">
@@ -239,7 +246,7 @@ export default function ClientSitesPage() {
                                                     <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    {site.activeAssignments.map(wo => (
+                                                    {site.activeAssignments.slice(0, 2).map(wo => (
                                                         <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
                                                             <div className="space-y-0.5">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
@@ -250,6 +257,11 @@ export default function ClientSitesPage() {
                                                             </Badge>
                                                         </div>
                                                     ))}
+                                                    {site.activeAssignments.length > 2 && (
+                                                        <p className="text-[9px] text-brand-red font-bold uppercase tracking-widest text-center pt-1">
+                                                            +{site.activeAssignments.length - 2} Additional Assignments
+                                                        </p>
+                                                    )}
                                                     {site.activeAssignments.length === 0 && (
                                                         <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
                                                     )}
@@ -258,13 +270,13 @@ export default function ClientSitesPage() {
                                         </>
                                     )}
 
-                                    <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4">
+                                    <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4 mt-auto">
                                         <div className="space-y-1">
                                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
                                             <p className="text-[10px] font-bold text-text-primary uppercase">{site.contact}</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><ShieldCheck size={10}/> Access Tier</p>
+                                        <div className="space-y-1 text-right">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
                                             <p className="text-[10px] font-bold text-text-primary uppercase">
                                                 {site.status === 'pending' ? 'Pending Audit' : 'Tier 1 Internal'}
                                             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Route, WorkOrder } from '@/lib/types';
+import type { Route, WorkOrder, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +15,20 @@ import {
     Search,
     Wrench,
     Check,
-    GripVertical
+    GripVertical,
+    ClipboardList
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
   DndContext,
@@ -39,6 +47,7 @@ type RoutesViewProps = {
     onRoutesChange: (routes: Route[]) => void;
     allWorkOrders: WorkOrder[];
     onWorkOrdersChange: (orders: WorkOrder[]) => void;
+    technicians: Technician[];
 };
 
 // --- DRAGGABLE JOB ITEM ---
@@ -92,7 +101,8 @@ function DroppableRoute({
     onDelete, 
     onTechChange, 
     onRemoveJob, 
-    onAssignClick 
+    onAssignClick,
+    technicians
 }: { 
     route: Route, 
     routeJobs: WorkOrder[], 
@@ -100,7 +110,8 @@ function DroppableRoute({
     onDelete: (id: string) => void, 
     onTechChange: (id: string, name: string) => void,
     onRemoveJob: (jobId: string, routeId: string) => void,
-    onAssignClick: (routeId: string) => void
+    onAssignClick: (routeId: string) => void,
+    technicians: Technician[]
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: route.id,
@@ -124,15 +135,21 @@ function DroppableRoute({
         <CardContent className="p-4 flex-1 space-y-4">
             <div className="space-y-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted ml-1">Assigned Technician</label>
-                <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                    <Input 
-                        placeholder="Type operative name..." 
-                        value={route.technicianName}
-                        onChange={(e) => onTechChange(route.id, e.target.value)}
-                        className="h-9 pl-9 bg-bg-primary border-border-sub text-[11px] font-bold uppercase tracking-wider focus:border-brand-red"
-                    />
-                </div>
+                <Select value={route.technicianName || ""} onValueChange={(val) => onTechChange(route.id, val)}>
+                    <SelectTrigger className="h-9 bg-bg-primary border-border-sub text-[11px] font-bold uppercase tracking-wider focus:ring-brand-red">
+                        <div className="flex items-center gap-2">
+                            <User size={12} className="text-text-muted" />
+                            <SelectValue placeholder="Select operative..." />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
+                            <SelectItem key={tech.id} value={tech.name} className="text-xs font-bold uppercase">
+                                {tech.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="space-y-3">
@@ -171,7 +188,7 @@ function DroppableRoute({
   );
 }
 
-export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrdersChange }: RoutesViewProps) {
+export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrdersChange, technicians }: RoutesViewProps) {
     const [isNewRouteOpen, setIsNewRouteOpen] = useState(false);
     const [newRouteName, setNewRouteName] = useState("");
     const [isAddJobsOpen, setIsAddJobsOpen] = useState(false);
@@ -294,11 +311,16 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-sub">
-                <div>
+                <div className="flex items-center gap-6">
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                         <Layers size={14} className="text-brand-red" />
                         Tactical Formations
                     </h3>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
+                        <ClipboardList size={12} className="text-accent-gold" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Jobs Pool Remaining:</span>
+                        <span className="text-xs font-mono font-bold text-text-primary">{unassignedJobs.length}</span>
+                    </div>
                 </div>
                 <Button onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px]">
                     <Plus size={14} className="mr-2"/> Initialize Route
@@ -328,6 +350,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                     setActiveRouteId(id);
                                     setIsAddJobsOpen(true);
                                 }}
+                                technicians={technicians}
                             />
                         )
                     })}

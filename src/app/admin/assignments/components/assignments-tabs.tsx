@@ -50,6 +50,7 @@ export function AssignmentsTabs({
             onRoutesChange={onRoutesChange}
             allWorkOrders={workOrders}
             onWorkOrdersChange={onWorkOrdersChange}
+            technicians={technicians}
           />
       </TabsContent>
     </Tabs>

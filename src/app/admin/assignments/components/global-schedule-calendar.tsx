@@ -38,22 +38,34 @@ type ViewMode = 'week' | 'month';
 type GlobalScheduleCalendarProps = {
     workOrders: WorkOrder[];
     technicians: Technician[];
+    selectedDate?: Date;
+    onDateSelect?: (date: Date) => void;
 };
 
-export function GlobalScheduleCalendar({ workOrders, technicians }: GlobalScheduleCalendarProps) {
+export function GlobalScheduleCalendar({ workOrders, technicians, selectedDate, onDateSelect }: GlobalScheduleCalendarProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [internalSelectedDate, setInternalSelectedDate] = useState(new Date());
+
+    const effectiveSelectedDate = selectedDate || internalSelectedDate;
+
+    const handleDayClick = (day: Date) => {
+        if (onDateSelect) {
+            onDateSelect(day);
+        } else {
+            setInternalSelectedDate(day);
+        }
+    };
 
     const assignmentsForSelectedDay = useMemo(() => {
         return workOrders.filter(wo => {
             try {
-                return isSameDay(parseISO(wo.scheduleDate), selectedDate);
+                return isSameDay(parseISO(wo.scheduleDate), effectiveSelectedDate);
             } catch (e) {
                 return false;
             }
         });
-    }, [workOrders, selectedDate]);
+    }, [workOrders, effectiveSelectedDate]);
     
     const eventsByDate = useMemo(() => {
       return workOrders.reduce((acc, wo) => {
@@ -129,10 +141,10 @@ export function GlobalScheduleCalendar({ workOrders, technicians }: GlobalSchedu
                                 <div 
                                   key={day.toString()} 
                                   className={cn("day-pill !h-16 !p-1.5 justify-center", {
-                                    'selected': isSameDay(day, selectedDate),
+                                    'selected': isSameDay(day, effectiveSelectedDate),
                                     'today': isToday(day)
                                   })}
-                                  onClick={() => setSelectedDate(day)}
+                                  onClick={() => handleDayClick(day)}
                                 >
                                     <span className="day-name !text-[8px]">{format(day, 'EEE')}</span>
                                     <span className="day-num !text-base">{format(day, 'd')}</span>
@@ -156,11 +168,11 @@ export function GlobalScheduleCalendar({ workOrders, technicians }: GlobalSchedu
                                     <div 
                                       key={day.toString()}
                                       className={cn("month-day !h-10 !text-[10px] !border-border-sub", {
-                                        'selected': isSameDay(day, selectedDate),
+                                        'selected': isSameDay(day, effectiveSelectedDate),
                                         'today': isToday(day),
                                         'other-month': !isSameMonth(day, currentDate)
                                       })}
-                                      onClick={() => setSelectedDate(day)}
+                                      onClick={() => handleDayClick(day)}
                                     >
                                         <span>{format(day, 'd')}</span>
                                         {hasEvents && <div className="h-0.5 w-0.5 rounded-full bg-brand-red" />}
@@ -181,7 +193,7 @@ export function GlobalScheduleCalendar({ workOrders, technicians }: GlobalSchedu
                         </div>
                         <div>
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Manifest</p>
-                            <p className="text-lg font-bold text-text-primary uppercase">{format(selectedDate, 'EEEE, MMMM d, yyyy')}</p>
+                            <p className="text-lg font-bold text-text-primary uppercase">{format(effectiveSelectedDate, 'EEEE, MMMM d, yyyy')}</p>
                         </div>
                     </div>
                     <Badge variant="outline" className="bg-bg-tertiary border-border-sub text-[10px] px-4 h-8 uppercase font-bold tracking-widest">

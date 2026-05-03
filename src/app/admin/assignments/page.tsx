@@ -15,7 +15,8 @@ import {
   User,
   Briefcase,
   Activity,
-  Maximize2
+  Maximize2,
+  X
 } from "lucide-react";
 import type { WorkOrder } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -28,23 +29,31 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
+import { format, isSameDay, parseISO } from 'date-fns';
 
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
       const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
       const query = searchQuery.toLowerCase();
-      return (
+      
+      const matchesSearch = (
         wo.id.toLowerCase().includes(query) ||
         wo.description.toLowerCase().includes(query) ||
         wo.clientName.toLowerCase().includes(query) ||
         (tech && tech.name.toLowerCase().includes(query))
       );
+
+      const matchesDate = !filterDate || (wo.scheduleDate && isSameDay(parseISO(wo.scheduleDate), filterDate));
+
+      return matchesSearch && matchesDate;
     });
-  }, [workOrders, searchQuery]);
+  }, [workOrders, searchQuery, filterDate]);
 
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
@@ -92,16 +101,32 @@ export default function AssignmentsHubPage() {
         <TabsContent value="schedule" className="mt-6">
             <div className="space-y-6">
                 <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-                    <div className="flex items-center gap-3">
-                        <Activity size={16} className="text-brand-red" />
-                        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <Activity size={16} className="text-brand-red" />
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
+                        </div>
+                        {filterDate && (
+                            <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                                <CalendarIcon size={12} />
+                                <span className="text-[10px] uppercase font-bold tracking-widest">{format(filterDate, 'MMM d, yyyy')}</span>
+                                <button 
+                                    onClick={() => setFilterDate(null)}
+                                    className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </Badge>
+                        )}
                     </div>
                     
-                    <Dialog>
+                    <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <DialogTrigger asChild>
                             <Button variant="secondary" size="sm" className="h-9 px-4 gap-2 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10">
                                 <CalendarIcon size={14} />
-                                <span className="text-[10px] uppercase font-bold tracking-widest">Operational Calendar</span>
+                                <span className="text-[10px] uppercase font-bold tracking-widest">
+                                    {filterDate ? 'Change Date' : 'Operational Calendar'}
+                                </span>
                                 <Maximize2 size={12} className="opacity-50" />
                             </Button>
                         </DialogTrigger>
@@ -112,14 +137,19 @@ export default function AssignmentsHubPage() {
                                         <CalendarIcon size={20} className="text-brand-red" />
                                     </div>
                                     <div>
-                                        <DialogTitle className="text-xl font-bold uppercase tracking-widest text-text-primary">Global Mission Schedule</DialogTitle>
-                                        <p className="text-xs text-text-muted">Real-time situational awareness across all field coordinates.</p>
+                                        <DialogTitle className="text-xl font-bold uppercase tracking-widest text-text-primary">Date Selector Terminal</DialogTitle>
+                                        <p className="text-xs text-text-muted">Select a temporal coordinate to filter the assignment registry.</p>
                                     </div>
                                 </div>
                             </DialogHeader>
                             <GlobalScheduleCalendar 
                                 workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
                                 technicians={technicians} 
+                                selectedDate={filterDate || undefined}
+                                onDateSelect={(date) => {
+                                    setFilterDate(date);
+                                    setIsCalendarOpen(false);
+                                }}
                             />
                         </DialogContent>
                     </Dialog>
@@ -175,8 +205,19 @@ export default function AssignmentsHubPage() {
                         );
                     })}
                     {activeWorkOrders.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">No active missions matching search criteria</p>
+                        <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                            <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
+                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">
+                                {filterDate 
+                                    ? `No active missions found for ${format(filterDate, 'MMMM d, yyyy')}`
+                                    : "No active missions matching search criteria"
+                                }
+                            </p>
+                            {filterDate && (
+                                <Button variant="ghost" className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red" onClick={() => setFilterDate(null)}>
+                                    Reset Date Selection
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>

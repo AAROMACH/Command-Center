@@ -49,7 +49,7 @@ export default function ClientDashboardPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <LayoutDashboard size={12} />
-                        Stakeholder Portal
+                        Client Portal
                     </p>
                     <h1 className="page-title">Welcome, {currentUser?.name}</h1>
                     <p className="page-subtitle">Real-time status for {currentUser?.clientCompany} deployments.</p>

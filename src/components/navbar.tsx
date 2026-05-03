@@ -98,7 +98,7 @@ export function Navbar() {
           <div className="flex flex-col">
             <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red">
-                {isClientPortal ? 'Stakeholder Portal' : 'Admin Portal'}
+                {isClientPortal ? 'Client Portal' : 'Admin Portal'}
             </span>
           </div>
         </Link>

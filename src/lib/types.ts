@@ -188,6 +188,18 @@ export type TimeOffRequest = {
   status: 'pending' | 'approved' | 'denied' | 'cancelled';
 };
 
+export type SiteRequest = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  siteName: string;
+  location: string;
+  managerName?: string;
+  managerPhone?: string;
+  status: 'pending' | 'approved' | 'denied';
+  submittedDate: string;
+};
+
 export type PenaltyEvent = {
   id: string;
   technicianId: string;

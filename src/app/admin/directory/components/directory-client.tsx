@@ -1,5 +1,5 @@
 'use client';
-import type { Technician, TimeOffRequest, WorkOrder } from '@/lib/types';
+import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,13 @@ import {
     Columns2,
     Shield,
     Star,
-    ArrowUpDown
+    ArrowUpDown,
+    ClipboardList,
+    MapPin,
+    Calendar,
+    Check,
+    X,
+    Clock
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
@@ -44,12 +50,13 @@ type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
     workOrders: WorkOrder[];
+    siteRequests: SiteRequest[];
 };
 
 type ViewMode = 'rows' | 'grid' | 'columns';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
-export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders, siteRequests: initialSiteRequests }: DirectoryClientProps) {
     const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
@@ -62,7 +69,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isCompanyDetailOpen, setIsCompanyDetailOpen] = useState(false);
+    
     const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
+    const [siteRequests, setSiteRequests] = useState(initialSiteRequests);
+    
     const { toast } = useToast();
 
     const handleRowClick = (person: Technician) => {
@@ -109,6 +119,18 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         toast({
             title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
             description: `The time off request has been successfully ${newStatus}.`,
+        });
+    };
+
+    const handleSiteRequestStatusChange = (requestId: string, newStatus: 'approved' | 'denied') => {
+        setSiteRequests(current =>
+            current.map(req =>
+                req.id === requestId ? { ...req, status: newStatus } : req
+            )
+        );
+        toast({
+            title: `Registry Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+            description: `The site registry request has been ${newStatus}.`,
         });
     };
 
@@ -208,6 +230,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
     }, [timeOffRequests, personnel, lowercasedQuery]);
 
+    const filteredSiteRequests = useMemo(() => {
+        return siteRequests
+            .filter(req => 
+                req.clientName.toLowerCase().includes(lowercasedQuery) ||
+                req.siteName.toLowerCase().includes(lowercasedQuery) ||
+                req.location.toLowerCase().includes(lowercasedQuery)
+            )
+            .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime());
+    }, [siteRequests, lowercasedQuery]);
+
     const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
     const personTimeOffRequests = selectedPerson ? timeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
@@ -219,7 +251,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <TabsTrigger value="technicians" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
                         <TabsTrigger value="staff" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">STAFF</TabsTrigger>
                         <TabsTrigger value="clients" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">CLIENTS</TabsTrigger>
-                        <TabsTrigger value="timeoff" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TIME OFF</TabsTrigger>
+                        <TabsTrigger value="requests" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">DIRECTORY REQUESTS</TabsTrigger>
                         <TabsTrigger value="map" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MAP</TabsTrigger>
                     </TabsList>
 
@@ -557,51 +589,124 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         )}
                     </TabsContent>
                     
-                    <TabsContent value="timeoff">
-                        <div className="table-wrap">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>PERSONNEL</TableHead>
-                                        <TableHead>DATES REQUESTED</TableHead>
-                                        <TableHead>TYPE</TableHead>
-                                        <TableHead>STATUS</TableHead>
-                                        <TableHead className="text-right">ACTIONS</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredTimeOffRequests.map(req => {
-                                        const person = personnel.find(p => p.id === req.technicianId);
-                                        return (
-                                        <TableRow key={req.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/><AvatarFallback>{person?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                    <span className="font-bold uppercase tracking-wide text-xs">{person?.name}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-xs font-mono">{req.startDate} to {req.endDate}</TableCell>
-                                            <TableCell><Badge variant="secondary" className="capitalize text-[10px]">{req.type}</Badge></TableCell>
-                                            <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[10px]">{req.status}</Badge></TableCell>
-                                            <TableCell className="text-right">
-                                                {req.status === 'pending' && (
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>Deny</Button>
-                                                        <Button size="sm" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>Approve</Button>
-                                                    </div>
+                    <TabsContent value="requests">
+                        <div className="space-y-6">
+                            <Tabs defaultValue="personnel_absences" className="w-full">
+                                <div className="flex items-center gap-4 mb-4 border-b border-border-sub pb-2">
+                                    <TabsList className="bg-transparent h-auto p-0 gap-6">
+                                        <TabsTrigger value="personnel_absences" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2">Personnel Absences</TabsTrigger>
+                                        <TabsTrigger value="site_registry" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2">Site Registry</TabsTrigger>
+                                    </TabsList>
+                                </div>
+
+                                <TabsContent value="personnel_absences" className="mt-0">
+                                    <div className="table-wrap">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>PERSONNEL</TableHead>
+                                                    <TableHead>DATES REQUESTED</TableHead>
+                                                    <TableHead>TYPE</TableHead>
+                                                    <TableHead>STATUS</TableHead>
+                                                    <TableHead className="text-right">ACTIONS</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredTimeOffRequests.map(req => {
+                                                    const person = personnel.find(p => p.id === req.technicianId);
+                                                    return (
+                                                    <TableRow key={req.id}>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/><AvatarFallback>{person?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                <span className="font-bold uppercase tracking-wide text-xs">{person?.name}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-xs font-mono">{req.startDate} to {req.endDate}</TableCell>
+                                                        <TableCell><Badge variant="secondary" className="capitalize text-[10px]">{req.type}</Badge></TableCell>
+                                                        <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[10px]">{req.status}</Badge></TableCell>
+                                                        <TableCell className="text-right">
+                                                            {req.status === 'pending' && (
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>Deny</Button>
+                                                                    <Button size="sm" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>Approve</Button>
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )})}
+                                                {filteredTimeOffRequests.length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center h-24 text-text-muted italic">
+                                                            No personnel absence requests on record.
+                                                        </TableCell>
+                                                    </TableRow>
                                                 )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )})}
-                                    {filteredTimeOffRequests.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center h-24 text-text-muted">
-                                                No time off requests match your search.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="site_registry" className="mt-0">
+                                    <div className="table-wrap">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>CLIENT & SITE IDENTIFIER</TableHead>
+                                                    <TableHead>TACTICAL COORDINATES</TableHead>
+                                                    <TableHead>ON-SITE MANAGER</TableHead>
+                                                    <TableHead>STATUS</TableHead>
+                                                    <TableHead className="text-right">ACTIONS</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredSiteRequests.map(req => (
+                                                    <TableRow key={req.id}>
+                                                        <TableCell>
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest">{req.clientName}</p>
+                                                                <p className="text-xs font-bold text-text-primary uppercase">{req.siteName}</p>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2 text-xs text-text-secondary">
+                                                                <MapPin size={12} className="text-text-muted" />
+                                                                <span>{req.location}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-xs font-semibold text-text-primary">{req.managerName || 'Not Assigned'}</p>
+                                                                <p className="text-[10px] text-text-muted font-mono">{req.submittedDate}</p>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[10px]">
+                                                                {req.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            {req.status === 'pending' && (
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>Deny</Button>
+                                                                    <Button size="sm" className="h-7 text-[9px]" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>Register Site</Button>
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {filteredSiteRequests.length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center h-24 text-text-muted italic">
+                                                            No site registry requests pending.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
                     </TabsContent>
                     

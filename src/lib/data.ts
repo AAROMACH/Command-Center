@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -530,6 +530,11 @@ export const timeOffRequests: TimeOffRequest[] = [
   { id: 'tor-3', technicianId: 'tech-003', startDate: '2024-08-05', endDate: '2024-08-09', type: 'Vacation', reason: 'Annual Leave', status: 'pending' },
   { id: 'tor-4', technicianId: 'tech-002', startDate: '2024-07-30', endDate: '2024-07-30', type: 'Sick', reason: 'Feeling unwell', status: 'approved' },
   { id: 'tor-5', technicianId: 'tech-004', startDate: '2024-08-12', endDate: '2024-08-12', type: 'Other', reason: 'Jury Duty', status: 'denied' },
+];
+
+export const siteRequests: SiteRequest[] = [
+  { id: 'sr-1', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Gotham Data Center', location: '42 Gotham Way, Newark, NJ', managerName: 'Bruce Wayne', status: 'pending', submittedDate: '2024-07-28' },
+  { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 Daily Planet Ave, New York, NY', managerName: 'Clark Kent', status: 'pending', submittedDate: '2024-07-29' },
 ];
 
 export const penaltyEvents: PenaltyEvent[] = [

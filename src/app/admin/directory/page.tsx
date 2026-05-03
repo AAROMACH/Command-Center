@@ -1,4 +1,4 @@
-import { technicians, timeOffRequests, workOrders } from "@/lib/data";
+import { technicians, timeOffRequests, workOrders, siteRequests } from "@/lib/data";
 import { DirectoryClient } from "./components/directory-client";
 import { Users } from "lucide-react";
 
@@ -17,7 +17,12 @@ export default function DirectoryPage() {
         </div>
       </header>
 
-      <DirectoryClient technicians={technicians} timeOffRequests={timeOffRequests} workOrders={workOrders} />
+      <DirectoryClient 
+        technicians={technicians} 
+        timeOffRequests={timeOffRequests} 
+        workOrders={workOrders} 
+        siteRequests={siteRequests}
+      />
     </div>
   );
 }

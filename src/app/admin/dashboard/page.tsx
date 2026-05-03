@@ -7,12 +7,12 @@ import {
   Wrench,
   FolderKanban,
   Clock,
-  CopyX
+  Building2
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { WorkloadChart } from './components/workload-chart';
-import { workOrders, technicians, projects } from '@/lib/data';
+import { workOrders, technicians, projects, siteRequests } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,8 @@ export default function DashboardPage() {
         name: tech.name,
         assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
     }));
+
+    const pendingSitesCount = siteRequests.filter(sr => sr.status === 'pending').length;
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const canSwap = availablePortals.length > 1;
@@ -82,6 +84,15 @@ export default function DashboardPage() {
                 icon="FolderKanban"
             />
         </Link>
+        <Link href="/admin/directory">
+            <StatCard 
+                label="Pending Site Registry" 
+                value={pendingSitesCount.toString()}
+                delta="Awaiting Audit" 
+                deltaType="warning"
+                icon="Clock"
+            />
+        </Link>
         <Link href="/admin/assignments">
             <StatCard 
                 label="Late/Missed Check-ins" 
@@ -89,15 +100,6 @@ export default function DashboardPage() {
                 delta="1 tech affected" 
                 deltaType="negative"
                 icon="Clock"
-            />
-        </Link>
-        <Link href="/admin/assignments">
-            <StatCard 
-                label="Revisits Required" 
-                value="3"
-                delta="From recent jobs"
-                deltaType="warning"
-                icon="CopyX"
             />
         </Link>
       </div>

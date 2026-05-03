@@ -240,6 +240,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime());
     }, [siteRequests, lowercasedQuery]);
 
+    const pendingRequestsCount = timeOffRequests.filter(r => r.status === 'pending').length + siteRequests.filter(r => r.status === 'pending').length;
+
     const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
     const personTimeOffRequests = selectedPerson ? timeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
@@ -253,7 +255,14 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <TabsTrigger value="technicians" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
                             <TabsTrigger value="staff" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">STAFF</TabsTrigger>
                             <TabsTrigger value="clients" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">CLIENTS</TabsTrigger>
-                            <TabsTrigger value="requests" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">DIRECTORY REQUESTS</TabsTrigger>
+                            <TabsTrigger value="requests" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                                DIRECTORY REQUESTS
+                                {pendingRequestsCount > 0 && (
+                                    <Badge variant="destructive" className="h-4 px-1.5 min-w-[18px] flex items-center justify-center text-[9px] animate-pulse">
+                                        {pendingRequestsCount}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
                         </TabsList>
 
                         <div className="flex items-center gap-3">
@@ -613,61 +622,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     
                     <TabsContent value="requests">
                         <div className="space-y-6">
-                            <Tabs defaultValue="personnel_absences" className="w-full">
+                            <Tabs defaultValue="site_registry" className="w-full">
                                 <div className="flex items-center gap-4 mb-4 border-b border-border-sub pb-2">
                                     <TabsList className="bg-transparent h-auto p-0 gap-6">
-                                        <TabsTrigger value="personnel_absences" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2">Personnel Absences</TabsTrigger>
-                                        <TabsTrigger value="site_registry" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2">Site Registry</TabsTrigger>
+                                        <TabsTrigger value="site_registry" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2 flex items-center gap-2">
+                                            PENDING SITE REGISTRY
+                                            {siteRequests.filter(s => s.status === 'pending').length > 0 && (
+                                                <Badge variant="destructive" className="h-4 px-1 text-[8px]">
+                                                    {siteRequests.filter(s => s.status === 'pending').length}
+                                                </Badge>
+                                            )}
+                                        </TabsTrigger>
+                                        <TabsTrigger value="personnel_absences" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2 flex items-center gap-2">
+                                            Personnel Absences
+                                            {timeOffRequests.filter(r => r.status === 'pending').length > 0 && (
+                                                <Badge variant="secondary" className="h-4 px-1 text-[8px]">
+                                                    {timeOffRequests.filter(r => r.status === 'pending').length}
+                                                </Badge>
+                                            )}
+                                        </TabsTrigger>
                                     </TabsList>
                                 </div>
-
-                                <TabsContent value="personnel_absences" className="mt-0">
-                                    <div className="table-wrap">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>PERSONNEL</TableHead>
-                                                    <TableHead>DATES REQUESTED</TableHead>
-                                                    <TableHead>TYPE</TableHead>
-                                                    <TableHead>STATUS</TableHead>
-                                                    <TableHead className="text-right">ACTIONS</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredTimeOffRequests.map(req => {
-                                                    const person = personnel.find(p => p.id === req.technicianId);
-                                                    return (
-                                                    <TableRow key={req.id}>
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-3">
-                                                                <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/><AvatarFallback>{person?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                <span className="font-bold uppercase tracking-wide text-xs">{person?.name}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-xs font-mono">{req.startDate} to {req.endDate}</TableCell>
-                                                        <TableCell><Badge variant="secondary" className="capitalize text-[10px]">{req.type}</Badge></TableCell>
-                                                        <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[10px]">{req.status}</Badge></TableCell>
-                                                        <TableCell className="text-right">
-                                                            {req.status === 'pending' && (
-                                                                <div className="flex gap-2 justify-end">
-                                                                    <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>Deny</Button>
-                                                                    <Button size="sm" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>Approve</Button>
-                                                                </div>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )})}
-                                                {filteredTimeOffRequests.length === 0 && (
-                                                    <TableRow>
-                                                        <TableCell colSpan={5} className="text-center h-24 text-text-muted italic">
-                                                            No personnel absence requests on record.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </TabsContent>
 
                                 <TabsContent value="site_registry" className="mt-0">
                                     <div className="table-wrap">
@@ -721,6 +696,54 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                     <TableRow>
                                                         <TableCell colSpan={5} className="text-center h-24 text-text-muted italic">
                                                             No site registry requests pending.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="personnel_absences" className="mt-0">
+                                    <div className="table-wrap">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>PERSONNEL</TableHead>
+                                                    <TableHead>DATES REQUESTED</TableHead>
+                                                    <TableHead>TYPE</TableHead>
+                                                    <TableHead>STATUS</TableHead>
+                                                    <TableHead className="text-right">ACTIONS</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredTimeOffRequests.map(req => {
+                                                    const person = personnel.find(p => p.id === req.technicianId);
+                                                    return (
+                                                    <TableRow key={req.id}>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar className="h-8 w-8"><AvatarImage src={person?.avatarUrl}/><AvatarFallback>{person?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                <span className="font-bold uppercase tracking-wide text-xs">{person?.name}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-xs font-mono">{req.startDate} to {req.endDate}</TableCell>
+                                                        <TableCell><Badge variant="secondary" className="capitalize text-[10px]">{req.type}</Badge></TableCell>
+                                                        <TableCell><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[10px]">{req.status}</Badge></TableCell>
+                                                        <TableCell className="text-right">
+                                                            {req.status === 'pending' && (
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>Deny</Button>
+                                                                    <Button size="sm" className="h-7 text-[9px]" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>Approve</Button>
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )})}
+                                                {filteredTimeOffRequests.length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center h-24 text-text-muted italic">
+                                                            No personnel absence requests on record.
                                                         </TableCell>
                                                     </TableRow>
                                                 )}

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians, workOrders, assignmentTimeLogs } from '@/lib/data';
-import type { Technician, WorkOrder, AssignmentTimeLog } from '@/lib/types';
+import { technicians, workOrders, assignmentTimeLogs, siteRequests } from '@/lib/data';
+import type { Technician, WorkOrder, AssignmentTimeLog, SiteRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,14 @@ import {
     Plus,
     Building2,
     X,
-    Check
+    Check,
+    History
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -83,6 +85,11 @@ export default function ClientSitesPage() {
         );
     }, [currentUser, searchQuery]);
 
+    const myPendingSites = useMemo(() => {
+        if (!currentUser?.clientCompany) return [];
+        return siteRequests.filter(sr => sr.clientName === currentUser.clientCompany && sr.status === 'pending');
+    }, [currentUser]);
+
     const handleAddSite = (e: React.FormEvent) => {
         e.preventDefault();
         toast({
@@ -113,109 +120,157 @@ export default function ClientSitesPage() {
                 </div>
             </header>
 
-            <div className="mb-6 flex items-center justify-between">
-                <div className="search-wrap">
-                    <Search />
-                    <input 
-                        className="search-input" 
-                        placeholder="Search by site name or coordinates..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {sitesData.map(site => (
-                    <Card key={site.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all flex flex-col">
-                        <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-1">
-                                    <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{site.name}</h3>
-                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                        <MapPin size={12}/> {site.location}
-                                    </p>
-                                </div>
-                                <Button variant="ghost" size="icon" className="text-text-muted">
-                                    <Navigation size={18} />
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-5 flex-1 space-y-6">
-                            {/* Live Status Section */}
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
-                                {site.liveCheckIns.length > 0 ? (
-                                    <div className="p-3 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="relative">
-                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
-                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1" />
-                                                <UserCheck size={18} className="text-text-green" />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
-                                                <p className="text-[10px] text-text-muted font-mono">{site.liveCheckIns.length} Verified Session(s)</p>
-                                            </div>
-                                        </div>
-                                        <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest">LIVE</Badge>
-                                    </div>
-                                ) : (
-                                    <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-3 grayscale opacity-60">
-                                        <Activity size={18} className="text-text-muted" />
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Active Assignments */}
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
-                                    <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
-                                </div>
-                                <div className="space-y-2">
-                                    {site.activeAssignments.map(wo => (
-                                        <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
-                                            <div className="space-y-0.5">
-                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.scheduleTime} • {wo.id.toUpperCase()}</p>
-                                            </div>
-                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4">
-                                                {wo.status.toUpperCase()}
-                                            </Badge>
-                                        </div>
-                                    ))}
-                                    {site.activeAssignments.length === 0 && (
-                                        <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Site Info */}
-                            <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">{site.contact}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><ShieldCheck size={10}/> Access Tier</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">Tier 1 Internal</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-                {sitesData.length === 0 && (
-                    <div className="col-span-full p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                        <MapPin size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in directory.</p>
-                        <Button variant="outline" className="mt-6" onClick={() => setIsAddSiteOpen(true)}>
-                            <Plus size={14} className="mr-2"/> Add First Site
-                        </Button>
+            <Tabs defaultValue="registry" className="w-full">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                        <TabsTrigger value="registry" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Active Registry</TabsTrigger>
+                        <TabsTrigger value="pending" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                            Pending Requests
+                            {myPendingSites.length > 0 && (
+                                <Badge variant="destructive" className="h-4 px-1.5 text-[8px] animate-pulse">
+                                    {myPendingSites.length}
+                                </Badge>
+                            )}
+                        </TabsTrigger>
+                    </TabsList>
+                    <div className="search-wrap !mb-0">
+                        <Search />
+                        <input 
+                            className="search-input" 
+                            placeholder="Search by site name or coordinates..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
-                )}
-            </div>
+                </div>
+
+                <TabsContent value="registry" className="mt-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sitesData.map(site => (
+                            <Card key={site.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all flex flex-col">
+                                <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{site.name}</h3>
+                                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                                <MapPin size={12}/> {site.location}
+                                            </p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="text-text-muted">
+                                            <Navigation size={18} />
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-5 flex-1 space-y-6">
+                                    {/* Live Status Section */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
+                                        {site.liveCheckIns.length > 0 ? (
+                                            <div className="p-3 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
+                                                        <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1" />
+                                                        <UserCheck size={18} className="text-text-green" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
+                                                        <p className="text-[10px] text-text-muted font-mono">{site.liveCheckIns.length} Verified Session(s)</p>
+                                                    </div>
+                                                </div>
+                                                <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest">LIVE</Badge>
+                                            </div>
+                                        ) : (
+                                            <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-3 grayscale opacity-60">
+                                                <Activity size={18} className="text-text-muted" />
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Active Assignments */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
+                                            <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {site.activeAssignments.map(wo => (
+                                                <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
+                                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.scheduleTime} • {wo.id.toUpperCase()}</p>
+                                                    </div>
+                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4">
+                                                        {wo.status.toUpperCase()}
+                                                    </Badge>
+                                                </div>
+                                            ))}
+                                            {site.activeAssignments.length === 0 && (
+                                                <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Site Info */}
+                                    <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
+                                            <p className="text-[10px] font-bold text-text-primary uppercase">{site.contact}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><ShieldCheck size={10}/> Access Tier</p>
+                                            <p className="text-[10px] font-bold text-text-primary uppercase">Tier 1 Internal</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="pending" className="mt-0">
+                    <div className="space-y-4">
+                        {myPendingSites.map(req => (
+                            <Card key={req.id} className="bg-bg-secondary border-border-main">
+                                <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                    <div className="flex items-center gap-5">
+                                        <div className="p-3 bg-bg-tertiary rounded border border-border-sub">
+                                            <Building2 size={24} className="text-accent-gold" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{req.siteName}</h3>
+                                                <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">PENDING AUDIT</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                <span className="flex items-center gap-1.5"><MapPin size={12}/> {req.location}</span>
+                                                <span className="flex items-center gap-1.5"><History size={12}/> Submitted {req.submittedDate}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-8 border-l border-border-sub pl-8">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">On-Site Manager</p>
+                                            <p className="text-[10px] font-bold text-text-primary uppercase">{req.managerName || 'Awaiting Entry'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Verification Status</p>
+                                            <p className="text-[10px] font-bold text-accent-gold uppercase animate-pulse">Processing Coordinates...</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                        {myPendingSites.length === 0 && (
+                            <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                                <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No pending site registrations found.</p>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+            </Tabs>
 
             <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">

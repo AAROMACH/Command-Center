@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Wrench, Search, MapPin, Building2, Check, ChevronDown } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, ChevronDown } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -62,7 +62,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   }, []);
 
   const selectedClient = useMemo(() => {
-    return clients.find(c => c.clientCompany === formData.clientName || c.name === formData.clientName);
+    return clients.find(c => (c.clientCompany || c.name) === formData.clientName);
   }, [formData.clientName, clients]);
 
   const filteredClients = useMemo(() => {
@@ -150,21 +150,27 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
                 <div className="relative">
-                    <Input 
-                        placeholder="Type name or search registry..." 
-                        value={formData.clientName}
-                        onChange={(e) => {
-                            setFormData({...formData, clientName: e.target.value});
-                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
-                        }}
-                        onFocus={() => setIsClientPopoverOpen(true)}
-                        className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide"
-                    />
                     <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
                         <PopoverTrigger asChild>
-                            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
-                                <ChevronDown size={14} />
-                            </button>
+                            <div className="relative w-full">
+                                <Input 
+                                    placeholder="Type name or search registry..." 
+                                    value={formData.clientName}
+                                    onChange={(e) => {
+                                        setFormData({...formData, clientName: e.target.value});
+                                        if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
+                                    }}
+                                    onFocus={() => setIsClientPopoverOpen(true)}
+                                    className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide"
+                                />
+                                <button 
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                                    onClick={() => setIsClientPopoverOpen(!isClientPopoverOpen)}
+                                >
+                                    <ChevronDown size={14} />
+                                </button>
+                            </div>
                         </PopoverTrigger>
                         <PopoverContent 
                             className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" 
@@ -179,6 +185,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                     {filteredClients.map(client => (
                                         <button
                                             key={client.id}
+                                            type="button"
                                             onClick={() => selectClient(client)}
                                             className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group"
                                         >
@@ -208,20 +215,33 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
                 <div className="relative">
-                    <Input 
-                        placeholder="Full address or coordinates..." 
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                        className="bg-bg-primary h-10 pr-10 text-xs"
-                    />
-                    {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                        <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <button className={cn("absolute right-3 top-1/2 -translate-y-1/2 transition-colors", formData.location ? "text-text-green" : "text-text-muted hover:text-text-primary")}>
-                                    <MapPin size={16} />
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                    <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <div className="relative w-full">
+                                <Input 
+                                    placeholder="Full address or coordinates..." 
+                                    value={formData.location}
+                                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                    onFocus={() => {
+                                        if (selectedClient?.managedSites && selectedClient.managedSites.length > 0) {
+                                            setIsSitePopoverOpen(true);
+                                        }
+                                    }}
+                                    className="bg-bg-primary h-10 pr-10 text-xs"
+                                />
+                                {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
+                                    <button 
+                                        type="button"
+                                        className={cn("absolute right-3 top-1/2 -translate-y-1/2 transition-colors", formData.location ? "text-text-green" : "text-text-muted hover:text-text-primary")}
+                                        onClick={() => setIsSitePopoverOpen(!isSitePopoverOpen)}
+                                    >
+                                        <MapPin size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </PopoverTrigger>
+                        {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
+                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
                                 <div className="p-3 border-b border-border-sub bg-bg-tertiary">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
                                 </div>
@@ -230,6 +250,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                         {selectedClient.managedSites.map(site => (
                                             <button
                                                 key={site.id}
+                                                type="button"
                                                 onClick={() => selectSite(site)}
                                                 className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group"
                                             >
@@ -243,8 +264,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                     </div>
                                 </ScrollArea>
                             </PopoverContent>
-                        </Popover>
-                    )}
+                        )}
+                    </Popover>
                 </div>
             </div>
           </div>
@@ -325,7 +346,6 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort</Button>
           <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
-            <Plus size={16} className="mr-2" />
             Create Assignment
           </Button>
         </DialogFooter>

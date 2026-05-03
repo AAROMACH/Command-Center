@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,11 +12,10 @@ import {
   Settings as SettingsIcon, 
   CreditCard,
   Building2,
-  Mail,
-  History,
   ShieldCheck,
   ChevronRight,
-  Database
+  Database,
+  History
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -187,9 +186,9 @@ export default function ClientSettingsPage() {
                                 <Button 
                                     variant="outline" 
                                     className="w-full h-11 uppercase font-bold text-[10px] tracking-widest"
-                                    onClick={() => router.push('/client/financials')}
+                                    onClick={() => router.push('/client/billing')}
                                 >
-                                    Manage Methods in Financials Portal
+                                    Manage Methods in Billing Terminal
                                     <ChevronRight size={14} className="ml-2" />
                                 </Button>
                             </CardContent>

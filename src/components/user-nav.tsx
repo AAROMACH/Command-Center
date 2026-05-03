@@ -52,6 +52,7 @@ export function UserNav() {
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
   
   const displayIsAdmin = isAdmin(currentUser);
+  const displayIsTech = isTech(currentUser);
   const displayIsClient = isClient(currentUser);
   
   const availablePortals = getAvailablePortals(currentUser);
@@ -63,6 +64,9 @@ export function UserNav() {
   
   const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : 
                       pathname.startsWith('/client') ? '/client/settings' : '/admin/settings';
+
+  const billingPath = pathname.startsWith('/tech') ? '/tech/earnings' :
+                     pathname.startsWith('/client') ? '/client/billing' : '/admin/billing';
 
   return (
     <DropdownMenu>
@@ -122,12 +126,10 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {(displayIsAdmin || displayIsClient) && (
-            <DropdownMenuItem onSelect={() => router.push(displayIsClient ? '/client/financials' : '/admin/billing')}>
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing & Plan</span>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={() => router.push(billingPath)}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Billing & Plan</span>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => {

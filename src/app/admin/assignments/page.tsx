@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState } from 'react';
 import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
 import { AssignmentsTabs } from "./components/assignments-tabs";
 import { Button } from "@/components/ui/button";
-import { SlidersHorizontal, Plus, Search, Briefcase, Import } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Briefcase, Import as ImportIcon } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import type { WorkOrder } from "@/lib/types";
@@ -43,7 +42,7 @@ export default function AssignmentsPage() {
             </div>
             <div className="page-header-right">
                 <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>
-                  <Import size={14} className="mr-2"/>
+                  <ImportIcon size={14} className="mr-2"/>
                   Import Jobs
                 </Button>
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>

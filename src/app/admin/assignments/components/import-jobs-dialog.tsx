@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Import, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -141,7 +140,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
       <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
-            <Import className="text-brand-red h-5 w-5" />
+            <ImportIcon className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">
                 {step === 'input' ? 'Job Integration Terminal' : 'Integration Audit'}
             </DialogTitle>

@@ -21,12 +21,16 @@ export function DispatchTabs({
   onRoutesChange 
 }: DispatchTabsProps) {
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned');
+  const assignedWorkOrders = workOrders.filter(wo => wo.status === 'assigned');
   
   return (
     <Tabs defaultValue="unassigned">
       <TabsList className="tabs">
         <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
+        </TabsTrigger>
+        <TabsTrigger value="assigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+          Assigned <span className="tab-count">({assignedWorkOrders.length})</span>
         </TabsTrigger>
         <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Routes <span className="tab-count">({routes.length})</span>
@@ -35,11 +39,23 @@ export function DispatchTabs({
       
       <TabsContent value="unassigned" className="mt-0">
           <WorkOrdersClient
-              workOrders={workOrders}
+              workOrders={unassignedWorkOrders}
               allWorkOrders={workOrders}
               technicians={technicians}
               onWorkOrdersChange={onWorkOrdersChange}
               routes={routes}
+              mode="unassigned"
+          />
+      </TabsContent>
+
+      <TabsContent value="assigned" className="mt-0">
+          <WorkOrdersClient
+              workOrders={assignedWorkOrders}
+              allWorkOrders={workOrders}
+              technicians={technicians}
+              onWorkOrdersChange={onWorkOrdersChange}
+              routes={routes}
+              mode="assigned"
           />
       </TabsContent>
       

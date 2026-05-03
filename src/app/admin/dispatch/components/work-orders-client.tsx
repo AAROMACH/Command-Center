@@ -33,7 +33,9 @@ import {
   UserPlus,
   Layers,
   DollarSign,
-  User
+  User,
+  Send,
+  ShieldCheck
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +46,7 @@ type WorkOrdersClientProps = {
   technicians: Technician[];
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
   routes: Route[];
+  mode: 'unassigned' | 'assigned';
 };
 
 export function WorkOrdersClient({
@@ -51,7 +54,8 @@ export function WorkOrdersClient({
   allWorkOrders,
   technicians,
   onWorkOrdersChange,
-  routes
+  routes,
+  mode
 }: WorkOrdersClientProps) {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -122,8 +126,8 @@ export function WorkOrdersClient({
     onWorkOrdersChange(updated);
     setIsDialogOpen(false);
     toast({
-      title: "Dispatch Confirmed",
-      description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.`,
+      title: "Allocation Committed",
+      description: `Assignment ${selectedOrder.id.toUpperCase()} has been moved to the assigned registry.`,
     });
   }
 
@@ -136,6 +140,13 @@ export function WorkOrdersClient({
     setIsEditDialogOpen(false);
     toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
+
+  const handleConfirmAssignments = () => {
+    toast({
+      title: "Transmission Initiated",
+      description: `${workOrders.length} field assignments transmitted to operative terminals via secure protocol.`,
+    });
+  }
 
   const filteredTechnicians = useMemo(() => {
     return technicians
@@ -151,6 +162,22 @@ export function WorkOrdersClient({
 
   return (
     <>
+      {mode === 'assigned' && workOrders.length > 0 && (
+        <div className="mb-4 flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-sub">
+            <div className="flex items-center gap-3">
+                <ShieldCheck className="text-text-green h-5 w-5" />
+                <div>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Global Allocation Protocol</p>
+                    <p className="text-xs font-bold text-text-primary uppercase">Ready for mission transmission</p>
+                </div>
+            </div>
+            <Button onClick={handleConfirmAssignments} className="h-9 bg-text-green hover:bg-text-green/90 px-6">
+                <Send className="mr-2 h-3.5 w-3.5" />
+                Transmit Missions ({workOrders.length})
+            </Button>
+        </div>
+      )}
+
       <div className="table-wrap">
         <table className="tbl">
           <thead>
@@ -160,13 +187,15 @@ export function WorkOrdersClient({
               <th style={{ width: "160px" }}>Schedule</th>
               <th style={{ width: "140px" }}>Route Status</th>
               <th style={{ width: "160px" }}>Site Location</th>
-              <th style={{ width: "160px" }}>Pay ($)</th>
+              <th style={{ width: "180px" }}>{mode === 'assigned' ? 'Assigned Operative' : 'Pay ($)'}</th>
               <th style={{ width: "140px" }}></th>
             </tr>
           </thead>
           <tbody>
             {workOrders.map((order) => {
               const route = routes.find(r => r.id === order.routeId);
+              const technician = technicians.find(t => t.id === order.assignedTechnicianId);
+              
               return (
                 <tr key={order.id}>
                   <td>
@@ -202,13 +231,30 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="cell-pay">
-                        <DollarSign />
-                        <div className="flex flex-col">
-                            <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
+                    {mode === 'assigned' ? (
+                        technician ? (
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8 border border-border-sub">
+                                    <AvatarImage src={technician.avatarUrl} />
+                                    <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="space-y-0.5">
+                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
+                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <span className="text-[10px] text-text-red uppercase font-bold tracking-widest">ID Discrepancy</span>
+                        )
+                    ) : (
+                        <div className="cell-pay">
+                            <DollarSign />
+                            <div className="flex flex-col">
+                                <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
+                                <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                   </td>
                   <td>
                      <div className="cell-actions">

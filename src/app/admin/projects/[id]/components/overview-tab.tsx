@@ -34,7 +34,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                 {/* Main Content: Briefing & Economics */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="field-group">
-                        <h3 className="field-group-title"><FileText/> Pre-Site Briefing</h3>
+                        <h3 className="field-group-title"><FileText/> Site Briefing</h3>
                         
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
@@ -47,7 +47,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         </div>
                         
                         <div className="field-row">
-                            <label className="field-label">Site Instructions &amp; Notes</label>
+                            <label className="field-label">Field Intelligence & Site Notes</label>
                             <div className="note-chips">
                                 {project.siteHazardNotes.map(note => (
                                     <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>

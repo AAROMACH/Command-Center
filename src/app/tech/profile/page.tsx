@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import type { Technician, TimeOffRequest, PenaltyEvent } from '@/lib/types';
+import type { Technician, TimeOffRequest } from '@/lib/types';
 import { technicians, penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Briefcase, Settings2, Sliders } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -51,7 +51,7 @@ export default function TechProfilePage() {
     }, [techPenaltyEvents]);
 
     if (!mounted || !currentTechId || !tech) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Personnel File...</div>;
+        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Technician Profile...</div>;
     }
     
     const handleAvailabilityChange = (day: string, field: 'start' | 'end', value: string) => {
@@ -100,7 +100,7 @@ export default function TechProfilePage() {
     const reliabilityStatus = reliabilityScore > 90 ? 'OPERATIONAL' : reliabilityScore > 80 ? 'MONITORED' : 'RESTRICTED';
     
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const jobTypes = ['HVAC', 'Electrical', 'Plumbing', 'Cabling', 'Networking', 'Smart Home', 'Security', 'Infrastructure', 'AV Fit-out'];
+    const jobTypes = ['Low Voltage Cabling', 'Network Infrastructure', 'Security Systems', 'Electrical Repair', 'Fiber Optics', 'AV Fit-out', 'Smart Home Integration'];
 
     return (
         <div>
@@ -108,13 +108,13 @@ export default function TechProfilePage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <User size={12} />
-                        Identity & Operational Status
+                        Identity & Field Readiness
                     </p>
-                    <h1 className="page-title">Personnel File</h1>
-                    <p className="page-subtitle">Master record for {tech.name}. Restricted access terminal.</p>
+                    <h1 className="page-title">Technician Profile</h1>
+                    <p className="page-subtitle">Master field record for {tech.name}. Restricted terminal access.</p>
                 </div>
                  <div className="page-header-right">
-                    <Button onClick={() => toast({ title: "Profile Updated", description: "Changes have been committed to the master record."})}>
+                    <Button onClick={() => toast({ title: "Profile Updated", description: "Changes have been committed to your technician record."})}>
                         Commit Changes
                     </Button>
                 </div>
@@ -132,7 +132,7 @@ export default function TechProfilePage() {
                         <Settings2 size={14}/> Work Preferences
                     </TabsTrigger>
                     <TabsTrigger value="reliability" className="flex items-center gap-2">
-                        <Activity size={14}/> Reliability Score
+                        <Activity size={14}/> Job Integrity
                     </TabsTrigger>
                 </TabsList>
 
@@ -141,8 +141,8 @@ export default function TechProfilePage() {
                     <TabsContent value="identity">
                         <Card className="max-w-4xl">
                             <CardHeader>
-                                <CardTitle>Core Identity</CardTitle>
-                                <CardDescription>Official personnel records and contact credentials.</CardDescription>
+                                <CardTitle>Technician Identity</CardTitle>
+                                <CardDescription>Official low voltage personnel records and contact credentials.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-8">
                                 <div className="flex items-center gap-8 pb-8 border-b border-border-main">
@@ -155,7 +155,7 @@ export default function TechProfilePage() {
                                     <div className="space-y-3">
                                         <Button variant="outline" size="sm">Update Photo</Button>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Personnel ID</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Technician ID</p>
                                             <p className="font-mono text-xs text-brand-red">{tech.id}</p>
                                         </div>
                                     </div>
@@ -180,7 +180,7 @@ export default function TechProfilePage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="address" className="text-xs font-bold uppercase tracking-widest text-text-muted">Operational Base Address</Label>
+                                        <Label htmlFor="address" className="text-xs font-bold uppercase tracking-widest text-text-muted">Operational Base address</Label>
                                         <div className="relative">
                                             <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                                             <Input id="address" defaultValue={tech.address} className="bg-bg-primary pl-9 h-11" />
@@ -196,8 +196,8 @@ export default function TechProfilePage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
-                                    <CardTitle>Recurring Schedule</CardTitle>
-                                    <CardDescription>Default weekly availability for assignment dispatch.</CardDescription>
+                                    <CardTitle>Recurring Job availability</CardTitle>
+                                    <CardDescription>Default weekly availability for job dispatch.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     {daysOfWeek.map(day => (
@@ -227,7 +227,7 @@ export default function TechProfilePage() {
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                                     <div>
                                         <CardTitle>Schedule Exceptions</CardTitle>
-                                        <CardDescription>Time off and absence requests.</CardDescription>
+                                        <CardDescription>Time off and absence logs.</CardDescription>
                                     </div>
                                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsTimeOffDialogOpen(true)}><Plus size={14}/></Button>
                                 </CardHeader>
@@ -260,15 +260,15 @@ export default function TechProfilePage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
-                                    <CardTitle>Tactical Constraints</CardTitle>
-                                    <CardDescription>Define your operational limits for automated assignment logic.</CardDescription>
+                                    <CardTitle>Job Constraints</CardTitle>
+                                    <CardDescription>Define your low voltage job limits for automated assignment logic.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-10">
                                     <div className="space-y-6">
                                         <div className="flex justify-between items-end">
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Work Radius</Label>
-                                                <p className="text-xs text-text-muted">Target distance for daily assignments.</p>
+                                                <p className="text-xs text-text-muted">Target distance for daily field jobs.</p>
                                             </div>
                                             <span className="font-mono text-brand-red font-bold">{tech.workPreferences.preferredRadius} Miles</span>
                                         </div>
@@ -284,7 +284,7 @@ export default function TechProfilePage() {
                                         <div className="flex justify-between items-end">
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Max Travel Distance</Label>
-                                                <p className="text-xs text-text-muted">Hard limit for emergency or high-value assignments.</p>
+                                                <p className="text-xs text-text-muted">Hard limit for high-value infrastructure jobs.</p>
                                             </div>
                                             <span className="font-mono text-brand-red font-bold">{tech.workPreferences.maxTravelDistance} Miles</span>
                                         </div>
@@ -329,14 +329,14 @@ export default function TechProfilePage() {
                                 <CardHeader>
                                     <CardTitle className="text-brand-red flex items-center gap-2">
                                         <Sliders size={14}/>
-                                        Assignment Logic
+                                        Dispatch Logic
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Availability Override</p>
-                                            <p className="text-[10px] text-text-muted leading-tight">Allow dispatch to offer jobs outside standard hours.</p>
+                                            <p className="text-[10px] text-text-muted leading-tight">Allow Command Center to offer jobs outside standard hours.</p>
                                         </div>
                                         <Switch 
                                             checked={tech.workPreferences.availabilityOverride}
@@ -346,7 +346,7 @@ export default function TechProfilePage() {
                                     <div className="p-4 rounded-lg bg-bg-primary border border-border-subtle space-y-4">
                                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">System Note</p>
                                          <p className="text-[10px] text-text-secondary leading-normal">
-                                            Assignments exceeding your max travel distance will require manual override and will be flagged for "Extended Travel" pay.
+                                            Jobs exceeding your max travel distance will require manual override and will be flagged for "Extended Travel" pay.
                                          </p>
                                     </div>
                                 </CardContent>
@@ -360,7 +360,7 @@ export default function TechProfilePage() {
                             <Card className="border-accent-gold/20 bg-accent-gold/5">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold uppercase">
-                                        <Gauge size={14}/> Operational Integrity
+                                        <Gauge size={14}/> operational Integrity
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -370,7 +370,7 @@ export default function TechProfilePage() {
                                             <Badge variant={reliabilityScore > 90 ? 'active' : 'onhold'} className="h-6 px-4 text-xs">
                                                 {reliabilityStatus}
                                             </Badge>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Live Reliability Score</p>
+                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Live Job Integrity Score</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -381,7 +381,7 @@ export default function TechProfilePage() {
                                     <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase">
                                         <ShieldAlert size={14} className="text-text-red" /> Penalty Ledger
                                     </CardTitle>
-                                    <CardDescription>Official record of discrepancies and compliance failures.</CardDescription>
+                                    <CardDescription>Official record of discrepancies and low voltage job failures.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/20 border border-border-red">
@@ -393,7 +393,7 @@ export default function TechProfilePage() {
                                     </div>
                                     
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-2">History</h4>
+                                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-2">Job History</h4>
                                          {techPenaltyEvents.map(event => (
                                             <div key={event.id} className="text-[11px] p-4 rounded-md bg-bg-primary border border-border-subtle flex justify-between items-center">
                                                 <div className="space-y-1">
@@ -406,7 +406,7 @@ export default function TechProfilePage() {
                                             </div>
                                         ))}
                                         {techPenaltyEvents.length === 0 && (
-                                            <div className="text-[11px] text-center p-12 border border-dashed border-border-main rounded-md text-text-muted italic">Clear record. No discrepancies logged.</div>
+                                            <div className="text-[11px] text-center p-12 border border-dashed border-border-main rounded-md text-text-muted italic">Clear record. No job discrepancies logged.</div>
                                         )}
                                     </div>
                                 </CardContent>
@@ -419,8 +419,8 @@ export default function TechProfilePage() {
             <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main">
                     <DialogHeader>
-                        <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request Absence</DialogTitle>
-                        <DialogDescription>Submit specific dates for vacation, sick leave, or personal time.</DialogDescription>
+                        <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request absence</DialogTitle>
+                        <DialogDescription>Submit specific dates for vacation or maintenance leave.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleRequestTimeOff} className="space-y-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -447,7 +447,7 @@ export default function TechProfilePage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase tracking-widest text-text-muted">Reason</Label>
-                            <Textarea name="reason" placeholder="Brief explanation..." className="bg-bg-primary" />
+                            <Textarea name="reason" placeholder="Brief explanation for Command Center audit..." className="bg-bg-primary" />
                         </div>
                         <DialogFooter>
                             <Button type="submit">Submit Request</Button>

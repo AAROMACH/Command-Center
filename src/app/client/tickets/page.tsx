@@ -13,9 +13,7 @@ import {
     MapPin,
     Calendar,
     ChevronRight,
-    MessageSquare,
-    AlertTriangle,
-    Eye
+    AlertTriangle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -68,7 +66,7 @@ export default function ClientTicketsPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <ClipboardList size={12} />
-                        Service Funnel
+                        Low Voltage Service Funnel
                     </p>
                     <h1 className="page-title">Support Tickets</h1>
                     <p className="page-subtitle">Submit service requests and track administrative review status.</p>
@@ -138,7 +136,7 @@ export default function ClientTicketsPage() {
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">Admin Review Note</p>
                                         <p className="text-xs text-text-secondary leading-relaxed">
-                                            Assignment pending technician availability check in {ticket.location}. Expected approval within 4 hours.
+                                            Job pending technician availability check in {ticket.location}. Expected approval within 4 hours.
                                         </p>
                                     </div>
                                 </div>
@@ -161,12 +159,12 @@ export default function ClientTicketsPage() {
                             <Plus className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">New Service Intake</DialogTitle>
                         </div>
-                        <DialogDescription>Submit detailed site requirements for administrative audit and dispatch.</DialogDescription>
+                        <DialogDescription>Submit detailed job requirements for administrative audit and dispatch.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateTicket} className="space-y-6 py-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Issue Summary / Subject</Label>
-                            <Input placeholder="e.g., Server Room AC Failure" className="bg-bg-primary" required />
+                            <Input placeholder="e.g., Network Closet Cabling Failure" className="bg-bg-primary" required />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -174,10 +172,10 @@ export default function ClientTicketsPage() {
                                 <Select defaultValue="Repair">
                                     <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Repair">Repair</SelectItem>
-                                        <SelectItem value="Install">New Installation</SelectItem>
-                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                        <SelectItem value="Audit">Audit / Inspection</SelectItem>
+                                        <SelectItem value="Repair">Infrastructure Repair</SelectItem>
+                                        <SelectItem value="Install">Low Voltage Install</SelectItem>
+                                        <SelectItem value="Maintenance">Preventative Maintenance</SelectItem>
+                                        <SelectItem value="Audit">Compliance Audit</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -200,7 +198,7 @@ export default function ClientTicketsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Problem Description & Scope</Label>
-                            <Textarea placeholder="Provide high-fidelity mission details..." className="bg-bg-primary h-24" required />
+                            <Textarea placeholder="Provide high-fidelity job details..." className="bg-bg-primary h-24" required />
                         </div>
                         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
                             <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)}>Abort Submission</Button>

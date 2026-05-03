@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians, invoices, workOrders, projects } from '@/lib/data';
-import type { Invoice, Technician, WorkOrder, Project } from '@/lib/types';
+import { technicians, invoices } from '@/lib/data';
+import type { Invoice, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,7 @@ import {
     Search,
     Coins,
     ArrowUpRight,
-    ArrowDownRight,
     CheckCircle2,
-    Calendar,
-    ChevronRight,
     ExternalLink,
     Banknote,
     Activity,
@@ -60,7 +57,7 @@ export default function ClientFinancialsPage() {
 
     const getInvoiceSource = (invoice: Invoice) => {
         if (invoice.projectId) return { label: 'Project', id: invoice.projectId, icon: Briefcase };
-        if (invoice.workOrderId) return { label: 'Assignment', id: invoice.workOrderId, icon: Wrench };
+        if (invoice.workOrderId) return { label: 'Job', id: invoice.workOrderId, icon: Wrench };
         return { label: 'General', id: 'N/A', icon: FileText };
     };
 
@@ -75,7 +72,7 @@ export default function ClientFinancialsPage() {
                         Financial Settlement
                     </p>
                     <h1 className="page-title">Billing & A/R</h1>
-                    <p className="page-subtitle">Historical invoice audit, current outstanding balances, and job-level cost breakdowns.</p>
+                    <p className="page-subtitle">Invoice audit, current outstanding balances, and low voltage job-level cost breakdowns.</p>
                 </div>
             </header>
 
@@ -110,13 +107,13 @@ export default function ClientFinancialsPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Invoice Ledger</CardTitle>
-                        <CardDescription>Comprehensive record of all mission-critical financial transactions.</CardDescription>
+                        <CardDescription>Comprehensive record of all field critical financial transactions.</CardDescription>
                     </div>
                     <div className="search-wrap !mb-0">
                         <Search />
                         <input 
                             className="search-input !w-[250px]" 
-                            placeholder="Filter by Invoice # or Source..." 
+                            placeholder="Filter by Invoice # or Job..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -137,6 +134,7 @@ export default function ClientFinancialsPage() {
                         <TableBody>
                             {myInvoices.map(invoice => {
                                 const source = getInvoiceSource(invoice);
+                                const SourceIcon = source.icon;
                                 return (
                                     <TableRow key={invoice.id} className="border-border-sub hover:bg-bg-tertiary transition-colors group">
                                         <TableCell className="pl-6">
@@ -144,7 +142,8 @@ export default function ClientFinancialsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub">
+                                                <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub flex items-center gap-1.5">
+                                                    <SourceIcon size={10}/>
                                                     {source.label}
                                                 </Badge>
                                                 <span className="font-mono text-[10px] text-text-muted">{source.id.toUpperCase()}</span>
@@ -196,7 +195,7 @@ export default function ClientFinancialsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-xs text-text-secondary leading-relaxed">
-                            Standard Net-30 payment terms apply to all service assignments. Invoices are generated automatically upon successful administrative audit of field logs.
+                            Standard Net-30 payment terms apply to all low voltage jobs. Invoices are generated automatically upon successful administrative audit of field logs.
                         </p>
                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-2">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Method</p>
@@ -217,7 +216,7 @@ export default function ClientFinancialsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-xs text-text-secondary leading-relaxed">
-                            Monthly service margins and job-level fiscal auditing features are currently in deployment.
+                            Monthly service margins and site-level fiscal auditing features are currently in deployment.
                         </p>
                         <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest opacity-50 cursor-not-allowed">
                             Access Multi-Site Cost Audit

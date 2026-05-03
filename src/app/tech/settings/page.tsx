@@ -2,36 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Bell, 
   Shield, 
-  Smartphone, 
-  Mail, 
   Key, 
   Settings as SettingsIcon, 
   Eye, 
   Monitor, 
-  Globe, 
   Database,
   ShieldCheck,
   History,
-  Lock,
-  MessageSquare,
-  Clock,
   Download,
-  Trash2,
   Moon,
-  Sun,
-  Layout
+  Sun
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -42,7 +33,6 @@ export default function TechSettingsPage() {
     }, []);
 
     const handleToggle = (setting: string) => {
-        // In a real implementation, this would trigger a Firestore updateDoc call
         toast({
             title: "Configuration Synced",
             description: `${setting} has been updated in your master profile.`,
@@ -60,7 +50,7 @@ export default function TechSettingsPage() {
                         Terminal Configuration
                     </p>
                     <h1 className="page-title">System Settings</h1>
-                    <p className="page-subtitle">Manage communication protocols, security layers, and UI preferences.</p>
+                    <p className="page-subtitle">Manage comms settings, security layers, and UI preferences.</p>
                 </div>
              </header>
 
@@ -89,15 +79,15 @@ export default function TechSettingsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Trigger Management</CardTitle>
-                                <CardDescription>Define which operational events generate system alerts.</CardDescription>
+                                <CardDescription>Define which low voltage job events generate system alerts.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {[
-                                    { id: 'n-1', label: 'New Assignments', desc: 'Alert when a new work order is assigned to you.' },
-                                    { id: 'n-2', label: 'Assignment Updates', desc: 'Alert when site details or requirements change.' },
-                                    { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or dates are modified.' },
-                                    { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when manifests are approved or payouts initiated.' },
-                                    { id: 'n-5', label: 'Reliability Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
+                                    { id: 'n-1', label: 'New Jobs', desc: 'Alert when a new low voltage job is assigned to you.' },
+                                    { id: 'n-2', label: 'Job Updates', desc: 'Alert when site details or wiring requirements change.' },
+                                    { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or job dates are modified.' },
+                                    { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when field logs are approved or payouts initiated.' },
+                                    { id: 'n-5', label: 'Job Integrity Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
                                 ].map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                         <div className="space-y-0.5">
@@ -128,10 +118,10 @@ export default function TechSettingsPage() {
                                 </div>
                                 <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-bold uppercase tracking-wider">Critical Bypass</p>
-                                        <p className="text-[10px] text-text-muted">Allow critical assignment alerts to bypass quiet hours.</p>
+                                        <p className="text-xs font-bold uppercase tracking-wider">Field Emergency Bypass</p>
+                                        <p className="text-[10px] text-text-muted">Allow critical field job alerts to bypass quiet hours.</p>
                                     </div>
-                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Critical Bypass")} />
+                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Emergency Bypass")} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] uppercase tracking-widest text-text-muted">Delivery Mode</Label>
@@ -155,7 +145,7 @@ export default function TechSettingsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Authentication Layers</CardTitle>
-                                <CardDescription>Manage credentials and multi-factor security.</CardDescription>
+                                <CardDescription>Manage credentials and Command Center multi-factor security.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-border-alert">
@@ -212,31 +202,6 @@ export default function TechSettingsPage() {
                         </Card>
                     </TabsContent>
 
-                    {/* PRIVACY */}
-                    <TabsContent value="privacy" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Team Visibility</CardTitle>
-                                <CardDescription>Control how your information is displayed to other field personnel.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {[
-                                    { id: 'p-1', label: 'Show Phone to Team', desc: 'Allow other technicians on your project to see your phone number.' },
-                                    { id: 'p-2', label: 'Show Email to Team', desc: 'Allow project leads to see your contact email.' },
-                                    { id: 'p-3', label: 'Allow Direct Messaging', desc: 'Enable the internal team chat for your profile.' },
-                                ].map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
-                                            <p className="text-[10px] text-text-muted">{item.desc}</p>
-                                        </div>
-                                        <Switch defaultChecked onCheckedChange={() => handleToggle(item.label)} />
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
                     {/* EXPERIENCE */}
                     <TabsContent value="experience" className="m-0 space-y-6">
                         <Card>
@@ -257,48 +222,6 @@ export default function TechSettingsPage() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Default Landing Page</Label>
-                                        <Select defaultValue="dashboard" onValueChange={(val) => handleToggle(`Landing Page: ${val}`)}>
-                                            <SelectTrigger className="bg-bg-primary">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="dashboard">Dashboard</SelectItem>
-                                                <SelectItem value="assignments">Assignments</SelectItem>
-                                                <SelectItem value="projects">Projects</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Time Zone</Label>
-                                        <Select defaultValue="est" onValueChange={(val) => handleToggle(`Time Zone: ${val}`)}>
-                                            <SelectTrigger className="bg-bg-primary">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="est">Eastern Standard (UTC-5)</SelectItem>
-                                                <SelectItem value="cst">Central Standard (UTC-6)</SelectItem>
-                                                <SelectItem value="mst">Mountain Standard (UTC-7)</SelectItem>
-                                                <SelectItem value="pst">Pacific Standard (UTC-8)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Time Format</Label>
-                                        <Select defaultValue="12h" onValueChange={(val) => handleToggle(`Time Format: ${val}`)}>
-                                            <SelectTrigger className="bg-bg-primary">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="12h">12-Hour (AM/PM)</SelectItem>
-                                                <SelectItem value="24h">24-Hour (Military)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -309,22 +232,15 @@ export default function TechSettingsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Data Sovereignty</CardTitle>
-                                <CardDescription>Manage your personal data records and local terminal storage.</CardDescription>
+                                <CardDescription>Manage your technician data records and local terminal storage.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-wider">Export My Data</p>
-                                        <p className="text-[10px] text-text-muted">Download a full archive of your assignments and payout history.</p>
+                                        <p className="text-[10px] text-text-muted">Download a full archive of your jobs and payout history.</p>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={() => handleToggle("Data Export")}><Download size={14} className="mr-2"/> Request ZIP</Button>
-                                </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider">Clear Local Cache</p>
-                                        <p className="text-[10px] text-text-muted">Purge locally stored session data and temporary files.</p>
-                                    </div>
-                                    <Button variant="ghost" size="sm" onClick={() => handleToggle("Cache Cleared")}>Clear Now</Button>
                                 </div>
                             </CardContent>
                         </Card>

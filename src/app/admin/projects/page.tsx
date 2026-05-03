@@ -13,15 +13,15 @@ export default function ProjectsPage() {
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <FolderKanban size={12} />
-            Strategic Deployments
+            Low Voltage infrastructure
           </p>
           <h1 className="page-title">Projects</h1>
-          <p className="page-subtitle">Large-scale multi-tech deployments with phase and milestone management.</p>
+          <p className="page-subtitle">Large-scale network and cabling deployments with phase-based job management.</p>
         </div>
         <div className="page-header-right items-center">
             <div className="search-wrap">
               <Search />
-              <input className="search-input !w-[220px]" placeholder="Search mission folders..." />
+              <input className="search-input !w-[220px]" placeholder="Search project folders..." />
             </div>
             <Button variant="outline" size="sm">
               <SlidersHorizontal size={14} className="mr-2"/>

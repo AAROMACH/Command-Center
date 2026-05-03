@@ -73,7 +73,7 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
         { 
             id: 'project_manager', 
             label: 'Project Manager', 
-            desc: 'Strategic deployment oversight.', 
+            desc: 'Strategic project oversight.', 
             icon: Shield,
             permissions: ['Create Projects', 'Phase Management', 'Task Definition', 'Resource Planning']
         },
@@ -82,14 +82,14 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
         { 
             id: 'project_lead', 
             label: 'Project Lead', 
-            desc: 'On-site mission commander.', 
+            desc: 'On-site infrastructure lead.', 
             icon: Hammer,
             permissions: ['Update Project Progress', 'Field Documentation', 'Task Management', 'Site Reporting']
         },
         { 
             id: 'field_technician', 
             label: 'Field Tech', 
-            desc: 'Service execution specialist.', 
+            desc: 'Low voltage service specialist.', 
             icon: User,
             permissions: ['Check In / Check Out', 'Submit Logs', 'Upload Receipts', 'Acknowledge Work']
         },
@@ -167,9 +167,9 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="page-title text-xl">Personnel Update Terminal</DialogTitle>
+          <DialogTitle className="page-title text-xl">Personnel Profile Update</DialogTitle>
           <DialogDescription>
-            Modify operative credentials and adjust mission authorization levels for <span className="text-text-primary font-bold">{person.name}</span>.
+            Modify credentials and adjust low voltage job permissions for <span className="text-text-primary font-bold">{person.name}</span>.
           </DialogDescription>
         </DialogHeader>
 

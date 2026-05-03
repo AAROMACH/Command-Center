@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { projects, technicians, projectDailyLogs } from '@/lib/data';
-import type { Project, Technician, ProjectDailyLog } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import type { Project, ProjectDailyLog } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
     Briefcase, 
     Search,
     MapPin,
     Calendar,
-    ChevronDown,
     Clock,
     User,
     CheckCircle2,
@@ -21,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 export default function ClientProjectsPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -64,7 +63,7 @@ export default function ClientProjectsPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <Briefcase size={12} />
-                        Strategic Deployments
+                        Low Voltage infrastructure
                     </p>
                     <h1 className="page-title">Active Projects</h1>
                     <p className="page-subtitle">Read-only oversight of multi-day field initiatives and phase completion.</p>
@@ -76,7 +75,7 @@ export default function ClientProjectsPage() {
                     <Search />
                     <input 
                         className="search-input" 
-                        placeholder="Search mission folders..." 
+                        placeholder="Search project folders..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -156,7 +155,7 @@ export default function ClientProjectsPage() {
                                     <AccordionItem value="logs" className="border-none">
                                         <AccordionTrigger className="px-6 py-4 hover:bg-bg-tertiary transition-colors hover:no-underline">
                                             <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                                                <ScrollText size={14} className="text-brand-red"/> Field Transparency Logs
+                                                <ScrollText size={14} className="text-brand-red"/> Field activity logs
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="px-6 pb-6 bg-bg-primary/30">
@@ -171,13 +170,13 @@ export default function ClientProjectsPage() {
                                                             <p className="text-xs text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
                                                             <div className="flex items-center gap-2 pt-1 border-t border-border-sub/30">
                                                                 <User size={10} className="text-text-muted"/>
-                                                                <span className="text-[9px] font-bold uppercase text-text-muted tracking-widest">Reporter: {assignedTechs.find(n => n.includes(log.technicianId)) || 'Field Ops'}</span>
+                                                                <span className="text-[9px] font-bold uppercase text-text-muted tracking-widest">Reporter: {assignedTechs.find(n => n?.includes(log.technicianId)) || 'Field Ops'}</span>
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <div className="p-8 text-center text-[10px] text-text-muted uppercase font-bold italic tracking-widest">No daily logs reported yet.</div>
+                                                <div className="p-8 text-center text-[10px] text-text-muted uppercase font-bold italic tracking-widest">No activity reported yet.</div>
                                             )}
                                         </AccordionContent>
                                     </AccordionItem>
@@ -188,8 +187,8 @@ export default function ClientProjectsPage() {
                                         <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">Authorized Support</p>
                                         <div className="flex items-center -space-x-2">
                                             {assignedTechs.map((name, i) => (
-                                                <div key={i} className="h-6 w-6 rounded-full bg-bg-tertiary border border-border-main flex items-center justify-center text-[9px] font-bold" title={name}>
-                                                    {name.charAt(0)}
+                                                <div key={i} className="h-6 w-6 rounded-full bg-bg-tertiary border border-border-main flex items-center justify-center text-[9px] font-bold" title={name || 'Field Tech'}>
+                                                    {name?.charAt(0) || 'T'}
                                                 </div>
                                             ))}
                                         </div>
@@ -206,7 +205,7 @@ export default function ClientProjectsPage() {
                 {myProjects.length === 0 && (
                     <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                         <Briefcase size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No deployments currently active in registry.</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No job folders found in registry.</p>
                     </div>
                 )}
             </div>

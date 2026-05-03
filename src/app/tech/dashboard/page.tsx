@@ -18,8 +18,7 @@ import {
   StickyNote,
   Camera,
   Coins,
-  Navigation,
-  ScrollText
+  Navigation
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO } from 'date-fns';
@@ -31,7 +30,6 @@ import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 import { PendingPayoutDialog } from './components/pending-payout-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
-import { useRouter } from 'next/navigation';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -43,7 +41,6 @@ export default function TechDashboardPage() {
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     
     const { toast } = useToast();
-    const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
@@ -100,11 +97,11 @@ export default function TechDashboardPage() {
         }
 
         if (unfinalizedLogs.length > 0) {
-            alerts.push({ id: 'logs', type: 'warning', text: `${unfinalizedLogs.length} Weekly Log(s) Pending`, icon: ClipboardList });
+            alerts.push({ id: 'logs', type: 'warning', text: `${unfinalizedLogs.length} weekly log(s) Pending`, icon: ClipboardList });
         }
 
         return alerts;
-    }, [techWorkOrders, currentTechId, mounted, unfinalizedLogs]);
+    }, [techWorkOrders, mounted, unfinalizedLogs]);
 
     const summary = useMemo(() => ({
         totalJobs: todaysWorkOrders.length,
@@ -157,7 +154,7 @@ export default function TechDashboardPage() {
                     onClick={() => setIsLogSelectionOpen(true)}
                 >
                     <ClipboardList size={16} className="text-accent-gold mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit Weekly Log</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit weekly log</span>
                 </Button>
 
                 <Button 
@@ -219,7 +216,7 @@ export default function TechDashboardPage() {
                     <Card className="border-2 border-brand-red bg-brand-red-dim/5">
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
-                                <div className="page-eyebrow text-brand-red">Next Assignment Phase</div>
+                                <div className="page-eyebrow text-brand-red">Next Low Voltage Job</div>
                                 <Badge variant="high">Priority</Badge>
                             </div>
                             <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Assignments'}</CardTitle>
@@ -269,7 +266,7 @@ export default function TechDashboardPage() {
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live Assignment</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live assignment</span>
                             </div>
                             <Badge variant="active">On-Site</Badge>
                             <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
@@ -293,7 +290,7 @@ export default function TechDashboardPage() {
                                         <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
                                     </div>
                                 </div>
-                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Assignment finalized."})}>
+                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Job finalized."})}>
                                     <LogOut size={16}/> CHECK OUT / FINALIZE
                                 </Button>
                             </div>
@@ -320,7 +317,7 @@ export default function TechDashboardPage() {
                     setIsOpen={(open) => !open && setSelectedLog(null)} 
                     log={selectedLog}
                     onSubmitted={() => {
-                        toast({ title: "Log Finalized", description: "Your weekly log has been sent to audit." });
+                        toast({ title: "Log Finalized", description: "Your field job log has been sent to audit." });
                         setSelectedLog(null);
                     }}
                 />

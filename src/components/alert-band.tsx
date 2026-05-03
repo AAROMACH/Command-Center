@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { 
   AlertTriangle, 
   Clock, 
-  CopyX, 
   FileCheck, 
   CalendarCheck, 
   FileWarning,
@@ -36,7 +35,7 @@ export function AlertBand() {
     const currentAlerts: Alert[] = [];
 
     if (pathname.startsWith('/tech')) {
-      // 1. Upcoming assignment in 24 hours
+      // 1. Upcoming Job in 24 hours
       const tomorrow = addDays(new Date(), 1);
       const now = new Date();
       const upcomingJobs = workOrders.filter(wo =>
@@ -48,12 +47,12 @@ export function AlertBand() {
       if (upcomingJobs > 0) {
         currentAlerts.push({
           type: 'info',
-          text: `${upcomingJobs} Assignment${upcomingJobs > 1 ? 's' : ''} in next 24h`,
+          text: `${upcomingJobs} field Job${upcomingJobs > 1 ? 's' : ''} in next 24h`,
           icon: CalendarCheck,
         });
       }
 
-      // 2. Pending weekly log
+      // 2. Pending field log
       const pendingLogs = weeklyLogs.filter(log =>
         log.technicianId === userId && log.status === 'Draft'
       ).length;
@@ -61,17 +60,17 @@ export function AlertBand() {
       if (pendingLogs > 0) {
         currentAlerts.push({
           type: 'warning',
-          text: `${pendingLogs} Weekly Log Pending Submission`,
+          text: `${pendingLogs} weekly log Pending Submission`,
           icon: FileWarning,
         });
       }
 
-      // 3. Recent penalty events
+      // 3. Recent Job discrepancies
       const recentPenalties = penaltyEvents.filter(p => p.technicianId === userId).length;
        if (recentPenalties > 0) {
         currentAlerts.push({
           type: 'critical',
-          text: `${recentPenalties} Recent Penalty Event${recentPenalties > 1 ? 's' : ''}`,
+          text: `${recentPenalties} Recent Job Penalty Event${recentPenalties > 1 ? 's' : ''}`,
           icon: AlertTriangle,
         });
       }
@@ -85,7 +84,7 @@ export function AlertBand() {
         if (activeProjects > 0) {
           currentAlerts.push({
             type: 'info',
-            text: `${activeProjects} Active Deployment${activeProjects > 1 ? 's' : ''} in Progress`,
+            text: `${activeProjects} Active low voltage Project${activeProjects > 1 ? 's' : ''} in Progress`,
             icon: Briefcase,
           });
         }
@@ -93,7 +92,7 @@ export function AlertBand() {
         if (pendingRequests > 0) {
           currentAlerts.push({
             type: 'warning',
-            text: `${pendingRequests} New Service Request${pendingRequests > 1 ? 's' : ''} Pending Review`,
+            text: `${pendingRequests} New service Request${pendingRequests > 1 ? 's' : ''} Pending Review`,
             icon: ClipboardList,
           });
         }
@@ -106,7 +105,7 @@ export function AlertBand() {
       if (unassignedJobs > 0) {
         currentAlerts.push({
           type: 'critical',
-          text: `${unassignedJobs} Unassigned Assignment${unassignedJobs > 1 ? 's' : ''}`,
+          text: `${unassignedJobs} Unassigned field job${unassignedJobs > 1 ? 's' : ''}`,
           icon: AlertTriangle
         });
       }
@@ -120,7 +119,7 @@ export function AlertBand() {
       if (logsToAudit > 0) {
         currentAlerts.push({
           type: 'info',
-          text: `${logsToAudit} Log${logsToAudit > 1 ? 's' : ''} Pending Audit`,
+          text: `${logsToAudit} field log${logsToAudit > 1 ? 's' : ''} Pending Audit`,
           icon: FileCheck
         });
       }

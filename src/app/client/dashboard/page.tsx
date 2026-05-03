@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { projects, serviceRequests, technicians, invoices, assignmentTimeLogs, workOrders } from '@/lib/data';
+import { projects, serviceRequests, technicians, invoices, workOrders } from '@/lib/data';
 import type { Project, ServiceRequest, Technician, Invoice } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,6 @@ import {
     Briefcase, 
     ClipboardList, 
     Plus, 
-    ArrowUpRight,
     MapPin,
     Calendar,
     ChevronRight,
@@ -70,10 +69,10 @@ export default function ClientDashboardPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <LayoutDashboard size={12} />
-                        Operational Overview
+                        Low Voltage Site Pulse
                     </p>
                     <h1 className="page-title">Command Dashboard</h1>
-                    <p className="page-subtitle">Real-time engagement tracking for {currentUser?.clientCompany}.</p>
+                    <p className="page-subtitle">Real-time job tracking for {currentUser?.clientCompany}.</p>
                 </div>
                 <div className="page-header-right">
                     <Button variant="default" onClick={() => router.push('/client/tickets')}>
@@ -132,8 +131,8 @@ export default function ClientDashboardPage() {
                 <div className="lg:col-span-2 space-y-8">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Deployment Progress</CardTitle>
-                            <CardDescription>Status tracking for your strategic initiatives.</CardDescription>
+                            <CardTitle>infrastructure Deployment Progress</CardTitle>
+                            <CardDescription>Status tracking for your low voltage projects.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border-sub">
@@ -165,8 +164,8 @@ export default function ClientDashboardPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Recent Activity Terminal</CardTitle>
-                            <CardDescription>Latest assignment updates and historical results.</CardDescription>
+                            <CardTitle>Field Activity Terminal</CardTitle>
+                            <CardDescription>Latest field technician updates and job results.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border-sub">
@@ -187,7 +186,7 @@ export default function ClientDashboardPage() {
                                     </div>
                                 ))}
                                 {recentActivity.length === 0 && (
-                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No recent activity logged.</div>
+                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No recent jobs logged.</div>
                                 )}
                             </div>
                         </CardContent>
@@ -203,7 +202,7 @@ export default function ClientDashboardPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-[10px] text-text-secondary leading-relaxed">
-                                Your dedicated Command staff is standing by to assist with emergency escalations or complex scope adjustments.
+                                Your dedicated Command Center staff is standing by to assist with low voltage escalations or site requirements.
                             </p>
                             <div className="space-y-2">
                                 <div className="p-3 rounded bg-bg-primary border border-border-sub">

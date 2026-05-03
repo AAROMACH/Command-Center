@@ -94,7 +94,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                         </div>
                          {(isTechnician || isStaff) && person.emergencyContact && (
                              <div className="field-group !p-0 !bg-transparent !border-none">
-                                <h3 className="field-group-title flex items-center gap-2"><HeartPulse size={14}/>Emergency Contact</h3>
+                                <h3 className="field-group-title flex items-center gap-2"><HeartPulse size={14}/>Emergency Protocol</h3>
                                 <div className="space-y-1 text-sm p-3 rounded-md bg-bg-secondary border border-border-subtle">
                                     <p><strong className="text-text-muted w-24 inline-block">Name:</strong> <span className="text-text-primary">{person.emergencyContact.name}</span></p>
                                     <p><strong className="text-text-muted w-24 inline-block">Relation:</strong> <span className="text-text-primary">{person.emergencyContact.relation}</span></p>
@@ -121,9 +121,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                            <h3 className="field-group-title">Operational Summary</h3>
                            <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 rounded-md bg-bg-secondary border border-border-subtle">
-                                    <h4 className="field-label flex items-center gap-1.5"><Shield size={14}/> Reliability Score</h4>
+                                    <h4 className="field-label flex items-center gap-1.5"><Shield size={14}/> Reliability</h4>
                                     <p className="text-3xl font-bold text-text-primary">{person.reliabilityScore}%</p>
-                                    <p className="text-xs text-text-muted">On-Time Score</p>
+                                    <p className="text-xs text-text-muted">Job Integrity Score</p>
                                 </div>
                                 <div className="p-4 rounded-md bg-bg-secondary border border-border-subtle">
                                     <h4 className="field-label flex items-center gap-1.5"><BarChart size={14}/> Workload</h4>
@@ -132,7 +132,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                 </div>
                             </div>
                              <div className="mt-4">
-                                <h4 className="field-label">Skills</h4>
+                                <h4 className="field-label">Specializations</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {person.skills.map(skill => (
                                         <Badge key={skill} variant="secondary">{skill}</Badge>
@@ -149,7 +149,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                     {(isTechnician || isStaff) && person.availability && (
                         <>
                         <div className="field-group !p-0 !bg-transparent !border-none">
-                            <h3 className="field-group-title">Weekly Availability</h3>
+                            <h3 className="field-group-title">Job Availability</h3>
                             <div className="space-y-2">
                                 {daysOfWeek.map(day => {
                                     const availability = person.availability[day.toLowerCase() as keyof typeof person.availability];
@@ -167,7 +167,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                             </div>
                         </div>
                         <div className="field-group !p-0 !bg-transparent !border-none">
-                            <h3 className="field-group-title">Time Off Requests</h3>
+                            <h3 className="field-group-title">Absence Logs</h3>
                             <div className="table-wrap">
                                 <Table>
                                     <TableHeader>
@@ -186,7 +186,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                             </TableRow>
                                         ))}
                                         {timeOffRequests.length === 0 && (
-                                            <TableRow><TableCell colSpan={3} className="text-center h-24 text-text-muted">No requests found.</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={3} className="text-center h-24 text-text-muted">No records found.</TableCell></TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
@@ -194,7 +194,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                         </div>
                         </>
                     )}
-                    {isClient && <div className="empty-state col-span-2">Client scheduling information coming soon.</div>}
+                    {isClient && <div className="empty-state col-span-2">Client scheduling records coming soon.</div>}
                  </div>
             </TabsContent>
 
@@ -234,14 +234,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                 </TabsContent>
             )}
             
-            <TabsContent value="financial"><div className="empty-state">Financial Dossier Coming Soon.</div></TabsContent>
-            <TabsContent value="documents"><div className="empty-state">Document Hub Coming Soon.</div></TabsContent>
-            <TabsContent value="notes"><div className="empty-state">Internal Notes Coming Soon.</div></TabsContent>
+            <TabsContent value="financial"><div className="empty-state">Financial Records Hub coming soon.</div></TabsContent>
+            <TabsContent value="documents"><div className="empty-state">Document Hub coming soon.</div></TabsContent>
+            <TabsContent value="notes"><div className="empty-state">Internal Field Notes coming soon.</div></TabsContent>
         </Tabs>
         
         <DialogFooter className="border-t border-border-default pt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-          <Button onClick={onEdit}><Pencil size={14} className="mr-2"/> Edit Personnel</Button>
+          <Button onClick={onEdit}><Pencil size={14} className="mr-2"/> Edit Profile</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

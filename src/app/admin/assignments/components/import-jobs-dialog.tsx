@@ -94,7 +94,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           scheduleTime,
           status: 'unassigned' as const,
           priority: 'medium' as const,
-          projectType: 'General Service',
+          projectType: 'Low Voltage Service',
           requiredSkills: [],
           isAcknowledged: false,
         };
@@ -122,7 +122,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
     
     toast({
         title: "Integration Complete",
-        description: `${finalOrders.length} service assignments synced. ${parsedResults.length - finalOrders.length} duplicates skipped.`,
+        description: `${finalOrders.length} service jobs synced. ${parsedResults.length - finalOrders.length} duplicates skipped.`,
     });
   };
 
@@ -147,8 +147,8 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           </div>
           <DialogDescription>
             {step === 'input' 
-                ? 'Paste unstructured job blocks to convert them into tactical assignments.' 
-                : `Reviewing ${parsedResults.length} parsed assignments for registry integrity.`}
+                ? 'Paste unstructured job blocks to convert them into low voltage field jobs.' 
+                : `Reviewing ${parsedResults.length} parsed jobs for registry integrity.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -158,7 +158,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
               <div className="space-y-2 flex-1">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
                 <Textarea 
-                  placeholder="Paste job details here...&#10;18937200&#10;Troubleshoot monitor...&#10;4/8/2026 at 3:10 PM..."
+                  placeholder="Paste job details here...&#10;18937200&#10;Troubleshoot network cabling...&#10;4/8/2026 at 3:10 PM..."
                   className="h-full min-h-[350px] bg-bg-primary border-border-sub font-mono text-xs leading-relaxed"
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}

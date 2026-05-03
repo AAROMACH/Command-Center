@@ -80,14 +80,14 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
         { 
             id: 'project_lead', 
             label: 'Project Lead', 
-            desc: 'On-site mission commander.', 
+            desc: 'On-site lead technician.', 
             icon: Hammer,
             permissions: ['Update Project Progress', 'Field Documentation', 'Task Management', 'Site Reporting']
         },
         { 
             id: 'field_technician', 
             label: 'Field Tech', 
-            desc: 'Service execution specialist.', 
+            desc: 'Low voltage installation specialist.', 
             icon: User,
             permissions: ['Check In / Check Out', 'Submit Logs', 'Upload Receipts', 'Acknowledge Work']
         },
@@ -202,9 +202,9 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
       <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="page-title text-xl">Personnel Registration Terminal</DialogTitle>
+          <DialogTitle className="page-title text-xl">Technician Registration Terminal</DialogTitle>
           <DialogDescription>
-            Register a new operative and assign mission-specific authorization levels.
+            Register a new field technician and assign job-specific authorization levels.
           </DialogDescription>
         </DialogHeader>
 
@@ -374,7 +374,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="emergencyContactRelation" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Relation</Label>
-                                        <Input id="emergencyContactRelation" value={formData.emergencyContact?.relation || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: ''}), relation: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
+                                        <Input id="emergencyContactRelation" value={formData.emergencyContact?.relation || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: '0'}), relation: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">

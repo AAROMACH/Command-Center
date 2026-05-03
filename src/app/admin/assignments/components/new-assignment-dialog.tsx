@@ -38,7 +38,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [formData, setFormData] = useState<Partial<WorkOrder>>({
     priority: 'medium',
     status: 'unassigned',
-    projectType: 'Maintenance',
+    projectType: 'Low Voltage Maintenance',
     requiredSkills: [],
     pay: 0,
     payType: 'fixed',
@@ -78,7 +78,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Please populate all mission-critical fields.",
+        description: "Please populate all field-critical parameters.",
       });
       return;
     }
@@ -98,7 +98,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       setFormData({
         priority: 'medium',
         status: 'unassigned',
-        projectType: 'Maintenance',
+        projectType: 'Low Voltage Maintenance',
         requiredSkills: [],
         pay: 0,
         payType: 'fixed',
@@ -119,7 +119,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     setIsClientPopoverOpen(false);
     toast({
         title: "Client Selected",
-        description: `${name} has been set as the primary entity.`,
+        description: `${name} has been set as the primary job entity.`,
     });
   };
 
@@ -138,16 +138,16 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Assignment</DialogTitle>
+            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
           </div>
-          <DialogDescription>Manual registration of a new tactical field assignment.</DialogDescription>
+          <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
         </DialogHeader>
 
         <div className="px-6 py-4 space-y-6">
           <div className="space-y-2">
             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
             <Textarea 
-              placeholder="Primary objective and tactical summary..." 
+              placeholder="Primary objective and low voltage requirements..." 
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
               className="bg-bg-primary border-border-sub h-20 text-xs"
@@ -345,10 +345,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
                 <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Repair">Repair</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Installation">Installation</SelectItem>
-                  <SelectItem value="Inspection">Inspection</SelectItem>
+                  <SelectItem value="Infrastructure Repair">Repair</SelectItem>
+                  <SelectItem value="Low Voltage Maintenance">Maintenance</SelectItem>
+                  <SelectItem value="Network Installation">Installation</SelectItem>
+                  <SelectItem value="Site Audit">Inspection</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -358,7 +358,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort</Button>
           <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
-            Create Assignment
+            Create assignment
           </Button>
         </DialogFooter>
       </DialogContent>

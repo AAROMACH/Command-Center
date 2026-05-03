@@ -5,7 +5,7 @@ import type { WeeklyLog, FinancialRecord } from '@/lib/types';
 import { weeklyLogs, workOrders } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Check, Edit, Plus, Coins, ScrollText, Trash2, ChevronLeft, ChevronRight, Eye, FileText, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -96,7 +96,7 @@ export default function TechLogsPage() {
         setAllLogs(prev => prev.map(log => 
             log.id === editingLogId ? { ...log, status: 'Submitted' } : log
         ));
-        toast({ title: "Log Submitted", description: "Your weekly log is now with the admins for audit." });
+        toast({ title: "Log Submitted", description: "Your field job log is now with the admins for audit." });
         setEditingLogId(null);
     }
 
@@ -108,7 +108,7 @@ export default function TechLogsPage() {
                     <div>
                         <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Payroll & Logs</p>
                         <h1 className="page-title">Work Logs</h1>
-                        <p className="page-subtitle">Submit tactical work logs for audit and payroll processing.</p>
+                        <p className="page-subtitle">Submit low voltage job logs for audit and payroll processing.</p>
                     </div>
                 </header>
 
@@ -120,7 +120,7 @@ export default function TechLogsPage() {
                                 <Clock size={14}/>
                                 Pending Audit & Drafts
                             </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.open.length} Log(s)</span>
+                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.open.length} log(s)</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {groupedLogs.open.map(log => (
@@ -134,7 +134,7 @@ export default function TechLogsPage() {
                                         </div>
                                         <CardTitle className="text-lg mt-2 uppercase tracking-wide">Week of {log.weekOf}</CardTitle>
                                         <CardDescription className="text-[10px] uppercase font-bold tracking-widest">
-                                            {log.items.length} Assignments • {log.reimbursements.length} Expenses
+                                            {log.items.length} Jobs • {log.reimbursements.length} Expenses
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -156,7 +156,7 @@ export default function TechLogsPage() {
                             ))}
                             {groupedLogs.open.length === 0 && (
                                 <div className="col-span-full py-12 text-center border border-dashed border-border-main rounded-lg bg-bg-secondary/50">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No pending logs. Your history is clean.</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No pending field logs.</p>
                                 </div>
                             )}
                         </div>
@@ -169,7 +169,7 @@ export default function TechLogsPage() {
                                 <FileText size={14}/>
                                 Finalized History
                             </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.closed.length} Log(s)</span>
+                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.closed.length} log(s)</span>
                         </div>
                         <div className="space-y-2">
                             {groupedLogs.closed.map(log => (
@@ -199,7 +199,7 @@ export default function TechLogsPage() {
                                 </div>
                             ))}
                             {groupedLogs.closed.length === 0 && (
-                                <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No historical logs found.</div>
+                                <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No historical field logs found.</div>
                             )}
                         </div>
                     </section>
@@ -219,14 +219,14 @@ export default function TechLogsPage() {
                         <ChevronLeft size={24}/>
                     </Button>
                     <div>
-                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Log Editor</p>
+                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Field log Editor</p>
                         <h1 className="page-title">Week of {editingLog.weekOf}</h1>
                         <p className="page-subtitle">Status: <span className="font-bold text-text-primary uppercase">{editingLog.status}</span></p>
                     </div>
                 </div>
                 <div className="page-header-right">
                     {!isSubmitted && (
-                        <Button onClick={handleSubmitLog} className="h-11 px-8"><Check size={16} className="mr-2"/> Submit Log</Button>
+                        <Button onClick={handleSubmitLog} className="h-11 px-8"><Check size={16} className="mr-2"/> Submit field log</Button>
                     )}
                     {isSubmitted && (
                         <Button variant="outline" onClick={() => setEditingLogId(null)}>Back to History</Button>
@@ -239,7 +239,7 @@ export default function TechLogsPage() {
                     <div className="flex justify-between items-start">
                         <div>
                             <CardTitle className="text-lg">Audit Verification</CardTitle>
-                            <CardDescription>Review all assignments and add any reimbursements before finalizing the log.</CardDescription>
+                            <CardDescription>Review all field jobs and add any material reimbursements before finalizing the log.</CardDescription>
                         </div>
                         <Badge variant={editingLog.status === 'Approved' ? 'active' : editingLog.status === 'Submitted' ? 'onhold' : 'pending'}>
                             {editingLog.status}
@@ -250,7 +250,7 @@ export default function TechLogsPage() {
                     <div className="space-y-4">
                         <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
                              <Check size={14} className="text-brand-red"/>
-                             Completed Assignments
+                             Completed Field Jobs
                         </h3>
                         <div className="table-wrap border border-border-sub overflow-hidden">
                             <table className="tbl">
@@ -294,7 +294,7 @@ export default function TechLogsPage() {
                                     })}
                                     {editingLog.items.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="text-center py-10 text-text-muted italic text-xs">No assignments logged for this period.</td>
+                                            <td colSpan={3} className="text-center py-10 text-text-muted italic text-xs">No field jobs logged for this period.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -306,7 +306,7 @@ export default function TechLogsPage() {
                         <div className="flex items-center justify-between">
                             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
                                 <Coins size={14} className="text-accent-gold"/>
-                                Reimbursements & Field Expenses
+                                Material Reimbursements & Site Expenses
                             </h3>
                             {!isSubmitted && (
                                 <Button variant="secondary" size="sm" className="h-8 !text-[10px]" onClick={handleAddReimbursement}>
@@ -320,7 +320,7 @@ export default function TechLogsPage() {
                                     <div className="flex-1 space-y-1.5">
                                         <p className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Description</p>
                                         <Input 
-                                            placeholder="e.g., Parking, Emergency Materials" 
+                                            placeholder="e.g., Cable, Connector Materials" 
                                             value={item.description}
                                             disabled={isSubmitted}
                                             className="h-9 text-xs bg-bg-secondary border-border-sub focus:border-brand-red"
@@ -357,7 +357,7 @@ export default function TechLogsPage() {
 
                     <div className="pt-6 border-t border-border-sub">
                          <div className="max-w-xs ml-auto p-4 rounded-lg bg-bg-tertiary border border-border-sub text-center">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Total Log Value</h3>
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Total field log Value</h3>
                             <p className={`text-3xl font-mono font-bold ${editingLog.status === 'Approved' ? 'text-text-green' : 'text-text-primary'}`}>
                                 ${(editingLog.totalPayout || 0).toFixed(2)}
                             </p>

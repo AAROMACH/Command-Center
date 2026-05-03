@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -7,9 +8,10 @@ import type { WorkOrder, Technician } from "@/lib/types";
 type AssignmentsTabsProps = {
   workOrders: WorkOrder[];
   technicians: Technician[];
+  onWorkOrdersChange?: (orders: WorkOrder[]) => void;
 };
 
-export function AssignmentsTabs({ workOrders, technicians }: AssignmentsTabsProps) {
+export function AssignmentsTabs({ workOrders, technicians, onWorkOrdersChange }: AssignmentsTabsProps) {
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned');
   const scheduledWorkOrders = workOrders.filter(wo => ['assigned', 'in-progress', 'completed'].includes(wo.status));
   
@@ -30,13 +32,17 @@ export function AssignmentsTabs({ workOrders, technicians }: AssignmentsTabsProp
       <TabsContent value="unassigned" className="mt-0">
           <WorkOrdersClient
               workOrders={unassignedWorkOrders}
+              allWorkOrders={workOrders}
               technicians={technicians}
+              onWorkOrdersChange={onWorkOrdersChange}
           />
       </TabsContent>
       <TabsContent value="scheduled" className="mt-0">
            <WorkOrdersClient
               workOrders={scheduledWorkOrders}
+              allWorkOrders={workOrders}
               technicians={technicians}
+              onWorkOrdersChange={onWorkOrdersChange}
           />
       </TabsContent>
     </Tabs>

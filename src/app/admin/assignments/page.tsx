@@ -1,11 +1,34 @@
-import { workOrders, technicians } from "@/lib/data";
+
+'use client';
+
+import { useState } from 'react';
+import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
 import { AssignmentsTabs } from "./components/assignments-tabs";
 import { Button } from "@/components/ui/button";
-import { SlidersHorizontal, Upload, Search, Briefcase } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Briefcase, Import } from "lucide-react";
+import { NewAssignmentDialog } from "./components/new-assignment-dialog";
+import { ImportJobsDialog } from "./components/import-jobs-dialog";
+import type { WorkOrder } from "@/lib/types";
 
-export default async function AssignmentsPage() {
-  const allWorkOrders = workOrders;
-  const availableTechnicians = technicians;
+export default function AssignmentsPage() {
+  const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleAddNewOrder = (order: WorkOrder) => {
+    setAllWorkOrders(prev => [order, ...prev]);
+  };
+
+  const handleImportOrders = (newOrders: WorkOrder[]) => {
+    setAllWorkOrders(prev => [...newOrders, ...prev]);
+  };
+
+  const filteredOrders = allWorkOrders.filter(order => 
+    order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div>
@@ -19,23 +42,47 @@ export default async function AssignmentsPage() {
               <p className="page-subtitle">Master schedule management for all active technician engagements.</p>
             </div>
             <div className="page-header-right">
-                <Button variant="outline" size="default">
-                  <Upload size={14} className="mr-2"/>
-                  Import Jobs (CSV)
+                <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>
+                  <Import size={14} className="mr-2"/>
+                  Import Jobs
                 </Button>
-                <Button variant="default" size="default">New Assignment</Button>
+                <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
+                  <Plus size={14} className="mr-2" />
+                  New Assignment
+                </Button>
             </div>
       </header>
 
       <div className="mb-4 flex items-center justify-between">
         <div className="search-wrap">
           <Search />
-          <input className="search-input" placeholder="Search by ID, Project, or Client..." />
+          <input 
+            className="search-input" 
+            placeholder="Search by ID, Project, or Client..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         <Button variant="outline" size="default"><SlidersHorizontal size={14} className="mr-2"/> Filters</Button>
       </div>
 
-       <AssignmentsTabs workOrders={allWorkOrders} technicians={availableTechnicians} />
+       <AssignmentsTabs 
+          workOrders={filteredOrders} 
+          technicians={technicians} 
+          onWorkOrdersChange={setAllWorkOrders}
+       />
+
+       <NewAssignmentDialog 
+          isOpen={isNewDialogOpen} 
+          setIsOpen={setIsNewDialogOpen} 
+          onSave={handleAddNewOrder} 
+       />
+
+       <ImportJobsDialog 
+          isOpen={isImportDialogOpen} 
+          setIsOpen={setIsImportDialogOpen} 
+          onImport={handleImportOrders} 
+       />
     </div>
   );
 }

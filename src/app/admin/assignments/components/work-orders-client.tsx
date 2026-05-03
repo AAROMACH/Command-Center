@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -56,15 +57,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 
 type WorkOrdersClientProps = {
-  workOrders: WorkOrder[];
+  workOrders: WorkOrder[]; // The filtered list for the current tab
+  allWorkOrders: WorkOrder[]; // The complete list from parent state
   technicians: Technician[];
+  onWorkOrdersChange?: (orders: WorkOrder[]) => void;
 };
 
 export function WorkOrdersClient({
-  workOrders: initialWorkOrders,
+  workOrders,
+  allWorkOrders,
   technicians,
+  onWorkOrdersChange,
 }: WorkOrdersClientProps) {
-  const [workOrders, setWorkOrders] = useState(initialWorkOrders);
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,13 +131,14 @@ export function WorkOrdersClient({
   const handleAssign = (technicianId: string) => {
     if (!selectedOrder) return;
 
-    setWorkOrders(currentOrders =>
-      currentOrders.map(order =>
+    if (onWorkOrdersChange) {
+      const updated = allWorkOrders.map(order =>
         order.id === selectedOrder.id
-          ? { ...order, status: 'assigned', assignedTechnicianId: technicianId }
+          ? { ...order, status: 'assigned' as const, assignedTechnicianId: technicianId }
           : order
-      )
-    );
+      );
+      onWorkOrdersChange(updated);
+    }
 
     setIsDialogOpen(false);
 
@@ -150,11 +155,13 @@ export function WorkOrdersClient({
   const handleSaveChanges = () => {
     if (!editedOrder) return;
 
-    setWorkOrders(currentOrders =>
-      currentOrders.map(order =>
+    if (onWorkOrdersChange) {
+      const updated = allWorkOrders.map(order =>
         order.id === editedOrder.id ? editedOrder : order
-      )
-    );
+      );
+      onWorkOrdersChange(updated);
+    }
+    
     setIsEditDialogOpen(false);
     toast({
       title: "Work Order Updated",
@@ -165,9 +172,12 @@ export function WorkOrdersClient({
   const handleDelete = () => {
     if (!editedOrder) return;
     const orderIdToDelete = editedOrder.id;
-    setWorkOrders(currentOrders =>
-      currentOrders.filter(order => order.id !== orderIdToDelete)
-    );
+    
+    if (onWorkOrdersChange) {
+      const updated = allWorkOrders.filter(order => order.id !== orderIdToDelete);
+      onWorkOrdersChange(updated);
+    }
+
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
     toast({
@@ -191,7 +201,7 @@ export function WorkOrdersClient({
     if (!editedOrder) return;
     
     if (name === 'assignedTechnicianId') {
-        const newStatus = value ? 'assigned' : 'in-progress';
+        const newStatus = value ? 'assigned' as const : 'unassigned' as const;
         setEditedOrder({ ...editedOrder, assignedTechnicianId: value || undefined, status: newStatus });
     } else {
         setEditedOrder({ ...editedOrder, [name]: value as any });
@@ -307,6 +317,13 @@ export function WorkOrdersClient({
                 </tr>
               );
             })}
+             {workOrders.length === 0 && (
+                <tr>
+                    <td colSpan={7} className="text-center py-12 text-text-muted italic">
+                        Registry clear. Awaiting tactical engagement data.
+                    </td>
+                </tr>
+            )}
           </tbody>
         </table>
       </div>

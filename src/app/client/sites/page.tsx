@@ -30,14 +30,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
+    const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
     const [localRequests, setLocalSiteRequests] = useState<SiteRequest[]>([]);
     const { toast } = useToast();
     const router = useRouter();
@@ -53,14 +54,12 @@ export default function ClientSitesPage() {
         currentUserId ? technicians.find(t => t.id === currentUserId) : null
     , [currentUserId]);
 
-    // Sites derived from authorized registry + pending submissions
     const sitesData = useMemo(() => {
         if (!currentUser?.clientCompany) return [];
         
         const clientSites = currentUser.managedSites || [];
         const clientWorkOrders = workOrders.filter(wo => wo.clientName === currentUser.clientCompany);
         
-        // 1. Existing Authorized Sites
         const authorizedLocations = Array.from(new Set([
             ...clientSites.map(s => s.location),
             ...clientWorkOrders.map(wo => wo.location)
@@ -84,7 +83,6 @@ export default function ClientSitesPage() {
             };
         });
 
-        // 2. Pending Submissions (To appear in Registry)
         const pendingSites = localRequests
             .filter(req => req.clientName === currentUser.clientCompany && req.status === 'pending')
             .map(req => ({
@@ -145,27 +143,25 @@ export default function ClientSitesPage() {
                     <h1 className="page-title">Service Sites</h1>
                     <p className="page-subtitle">Real-time status tracking and operational intelligence for all managed properties.</p>
                 </div>
-                <div className="page-header-right">
-                    <Button variant="default" onClick={() => setIsAddSiteOpen(true)}>
+                <div className="page-header-right items-center">
+                    <Button variant="outline" onClick={() => setIsPendingRequestsOpen(true)} className="relative h-10 border-border-main bg-bg-secondary">
+                        <History size={14} className="mr-2"/>
+                        Pending Requests
+                        {myPendingSitesList.length > 0 && (
+                            <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 min-w-[20px] flex items-center justify-center p-1 rounded-full border-2 border-bg-primary text-[9px]">
+                                {myPendingSitesList.length}
+                            </Badge>
+                        )}
+                    </Button>
+                    <Button variant="default" onClick={() => setIsAddSiteOpen(true)} className="h-10">
                         <Plus size={14} className="mr-2"/>
                         Add New Site
                     </Button>
                 </div>
             </header>
 
-            <Tabs defaultValue="registry" className="w-full">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
-                        <TabsTrigger value="registry" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Site Registry</TabsTrigger>
-                        <TabsTrigger value="pending" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
-                            Pending Requests
-                            {myPendingSitesList.length > 0 && (
-                                <Badge variant="destructive" className="h-4 px-1.5 text-[8px] animate-pulse">
-                                    {myPendingSitesList.length}
-                                </Badge>
-                            )}
-                        </TabsTrigger>
-                    </TabsList>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
                     <div className="search-wrap !mb-0">
                         <Search />
                         <input 
@@ -177,168 +173,182 @@ export default function ClientSitesPage() {
                     </div>
                 </div>
 
-                <TabsContent value="registry" className="mt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {sitesData.map(site => (
-                            <Card key={site.id} 
-                                onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
-                                className={cn(
-                                "bg-bg-secondary border-border-main transition-all flex flex-col group",
-                                site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
-                            )}>
-                                <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
-                                                {site.status === 'pending' && (
-                                                    <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">Pending Audit</Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                                <MapPin size={12}/> {site.location}
-                                            </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {sitesData.map(site => (
+                        <Card key={site.id} 
+                            onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
+                            className={cn(
+                            "bg-bg-secondary border-border-main transition-all flex flex-col group",
+                            site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
+                        )}>
+                            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
+                                <div className="flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
+                                            {site.status === 'pending' && (
+                                                <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">Pending Audit</Badge>
+                                            )}
                                         </div>
-                                        {site.status === 'authorized' && (
-                                            <Button variant="ghost" size="icon" className="text-text-muted group-hover:text-text-primary transition-colors">
-                                                <Eye size={18} />
-                                            </Button>
-                                        )}
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                            <MapPin size={12}/> {site.location}
+                                        </p>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="p-5 flex-1 space-y-6">
-                                    {site.status === 'pending' ? (
-                                        <div className="p-4 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/20 flex flex-col items-center text-center space-y-2">
-                                            <AlertCircle size={24} className="text-accent-gold opacity-50" />
-                                            <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">Coordinates Under Verification</p>
-                                            <p className="text-[9px] text-text-muted leading-relaxed">This site coordinate has been submitted to the Command Center and is currently undergoing tactical verification.</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="space-y-3">
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
-                                                {site.liveCheckIns.length > 0 ? (
-                                                    <div className="p-3 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="relative">
-                                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
-                                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1" />
-                                                                <UserCheck size={18} className="text-text-green" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
-                                                                <p className="text-[10px] text-text-muted font-mono">{site.liveCheckIns.length} Verified Session(s)</p>
-                                                            </div>
-                                                        </div>
-                                                        <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest">LIVE</Badge>
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-3 grayscale opacity-60">
-                                                        <Activity size={18} className="text-text-muted" />
-                                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
-                                                    <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {site.activeAssignments.slice(0, 2).map(wo => (
-                                                        <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
-                                                            <div className="space-y-0.5">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
-                                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.scheduleTime} • {wo.id.toUpperCase()}</p>
-                                                            </div>
-                                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4">
-                                                                {wo.status.toUpperCase()}
-                                                            </Badge>
-                                                        </div>
-                                                    ))}
-                                                    {site.activeAssignments.length > 2 && (
-                                                        <p className="text-[9px] text-brand-red font-bold uppercase tracking-widest text-center pt-1">
-                                                            +{site.activeAssignments.length - 2} Additional Assignments
-                                                        </p>
-                                                    )}
-                                                    {site.activeAssignments.length === 0 && (
-                                                        <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </>
+                                    {site.status === 'authorized' && (
+                                        <Button variant="ghost" size="icon" className="text-text-muted group-hover:text-text-primary transition-colors">
+                                            <Eye size={18} />
+                                        </Button>
                                     )}
-
-                                    <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4 mt-auto">
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
-                                            <p className="text-[10px] font-bold text-text-primary uppercase">{site.contact}</p>
-                                        </div>
-                                        <div className="space-y-1 text-right">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
-                                            <p className="text-[10px] font-bold text-text-primary uppercase">
-                                                {site.status === 'pending' ? 'Pending Audit' : 'Tier 1 Internal'}
-                                            </p>
-                                        </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-5 flex-1 space-y-6">
+                                {site.status === 'pending' ? (
+                                    <div className="p-4 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/20 flex flex-col items-center text-center space-y-2">
+                                        <AlertCircle size={24} className="text-accent-gold opacity-50" />
+                                        <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">Coordinates Under Verification</p>
+                                        <p className="text-[9px] text-text-muted leading-relaxed">This site coordinate has been submitted to the Command Center and is currently undergoing tactical verification.</p>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                        {sitesData.length === 0 && (
-                             <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                                <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in the registry.</p>
-                                <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsAddSiteOpen(true)}>
-                                    Register New Coordinate
-                                </Button>
+                                ) : (
+                                    <>
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
+                                            {site.liveCheckIns.length > 0 ? (
+                                                <div className="p-3 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative">
+                                                            <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
+                                                            <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1" />
+                                                            <UserCheck size={18} className="text-text-green" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
+                                                            <p className="text-[10px] text-text-muted font-mono">{site.liveCheckIns.length} Verified Session(s)</p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest">LIVE</Badge>
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-3 grayscale opacity-60">
+                                                    <Activity size={18} className="text-text-muted" />
+                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
+                                                <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {site.activeAssignments.slice(0, 2).map(wo => (
+                                                    <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.scheduleTime} • {wo.id.toUpperCase()}</p>
+                                                        </div>
+                                                        <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4">
+                                                            {wo.status.toUpperCase()}
+                                                        </Badge>
+                                                    </div>
+                                                ))}
+                                                {site.activeAssignments.length > 2 && (
+                                                    <p className="text-[9px] text-brand-red font-bold uppercase tracking-widest text-center pt-1">
+                                                        +{site.activeAssignments.length - 2} Additional Assignments
+                                                    </p>
+                                                )}
+                                                {site.activeAssignments.length === 0 && (
+                                                    <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4 mt-auto">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
+                                        <p className="text-[10px] font-bold text-text-primary uppercase">{site.contact}</p>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
+                                        <p className="text-[10px] font-bold text-text-primary uppercase">
+                                            {site.status === 'pending' ? 'Pending Audit' : 'Tier 1 Internal'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {sitesData.length === 0 && (
+                         <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                            <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in the registry.</p>
+                            <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsAddSiteOpen(true)}>
+                                Register New Coordinate
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* PENDING REQUESTS DIALOG */}
+            <Dialog open={isPendingRequestsOpen} onOpenChange={setIsPendingRequestsOpen}>
+                <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default max-h-[80vh] flex flex-col p-0 shadow-2xl">
+                    <DialogHeader className="p-6 pb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <History className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Pending Site Requests</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs">Registry submissions currently undergoing tactical verification by Command Center staff.</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                        {myPendingSitesList.length > 0 ? (
+                            <div className="space-y-4">
+                                {myPendingSitesList.map(req => (
+                                    <Card key={req.id} className="bg-bg-secondary border-border-main">
+                                        <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                            <div className="flex items-center gap-5">
+                                                <div className="p-3 bg-bg-tertiary rounded border border-border-sub">
+                                                    <Building2 size={24} className="text-accent-gold" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{req.siteName}</h3>
+                                                        <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">PENDING AUDIT</Badge>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                        <span className="flex items-center gap-1.5"><MapPin size={12}/> {req.location}</span>
+                                                        <span className="flex items-center gap-1.5"><History size={12}/> Submitted {req.submittedDate}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-8 border-l border-border-sub md:pl-8">
+                                                <div className="space-y-1">
+                                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">On-Site Manager</p>
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase">{req.managerName || 'Awaiting Entry'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Verification Status</p>
+                                                    <p className="text-[10px] font-bold text-accent-gold uppercase animate-pulse">Processing...</p>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
-                        )}
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="pending" className="mt-0">
-                    <div className="space-y-4">
-                        {myPendingSitesList.map(req => (
-                            <Card key={req.id} className="bg-bg-secondary border-border-main">
-                                <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <div className="flex items-center gap-5">
-                                        <div className="p-3 bg-bg-tertiary rounded border border-border-sub">
-                                            <Building2 size={24} className="text-accent-gold" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{req.siteName}</h3>
-                                                <Badge variant="onhold" className="h-4 px-1.5 text-[8px] uppercase tracking-widest">PENDING AUDIT</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                                <span className="flex items-center gap-1.5"><MapPin size={12}/> {req.location}</span>
-                                                <span className="flex items-center gap-1.5"><History size={12}/> Submitted {req.submittedDate}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-8 border-l border-border-sub md:pl-8">
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">On-Site Manager</p>
-                                            <p className="text-[10px] font-bold text-text-primary uppercase">{req.managerName || 'Awaiting Entry'}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Verification Status</p>
-                                            <p className="text-[10px] font-bold text-accent-gold uppercase animate-pulse">Processing Coordinates...</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                        {myPendingSitesList.length === 0 && (
+                        ) : (
                             <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                                 <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No pending site registrations found.</p>
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No pending site registrations found in your account history.</p>
                             </div>
                         )}
                     </div>
-                </TabsContent>
-            </Tabs>
+                    <DialogFooter className="p-6 bg-bg-secondary/30 border-t border-border-default">
+                        <Button variant="outline" onClick={() => setIsPendingRequestsOpen(false)} className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">

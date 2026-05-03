@@ -16,13 +16,23 @@ import {
     Phone,
     UserCheck,
     Navigation,
-    ShieldCheck
+    ShieldCheck,
+    Plus,
+    Building2,
+    X,
+    Check
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
@@ -73,6 +83,15 @@ export default function ClientSitesPage() {
         );
     }, [currentUser, searchQuery]);
 
+    const handleAddSite = (e: React.FormEvent) => {
+        e.preventDefault();
+        toast({
+            title: "Registration Transmitted",
+            description: "New site coordinate has been submitted for administrative audit.",
+        });
+        setIsAddSiteOpen(false);
+    };
+
     if (!mounted || !currentUserId) return null;
 
     return (
@@ -85,6 +104,12 @@ export default function ClientSitesPage() {
                     </p>
                     <h1 className="page-title">Service Sites</h1>
                     <p className="page-subtitle">Real-time status tracking and operational intelligence for all managed properties.</p>
+                </div>
+                <div className="page-header-right">
+                    <Button variant="default" onClick={() => setIsAddSiteOpen(true)}>
+                        <Plus size={14} className="mr-2"/>
+                        Add New Site
+                    </Button>
                 </div>
             </header>
 
@@ -185,9 +210,60 @@ export default function ClientSitesPage() {
                     <div className="col-span-full p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                         <MapPin size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in directory.</p>
+                        <Button variant="outline" className="mt-6" onClick={() => setIsAddSiteOpen(true)}>
+                            <Plus size={14} className="mr-2"/> Add First Site
+                        </Button>
                     </div>
                 )}
             </div>
+
+            <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Building2 className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Site Registration</DialogTitle>
+                        </div>
+                        <DialogDescription>Submit coordinates for a new operational facility to the command registry.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddSite} className="space-y-6 py-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Identifier / Name</Label>
+                            <Input placeholder="e.g., Gotham Data Center, HQ North" className="bg-bg-primary" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Address / Coordinates</Label>
+                            <div className="relative">
+                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                                <Input placeholder="Full tactical address..." className="bg-bg-primary pl-10" required />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">On-Site Manager</Label>
+                                <div className="relative">
+                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                    <Input placeholder="Name" className="bg-bg-primary pl-10" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Direct Line</Label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                    <Input placeholder="555-000-0000" className="bg-bg-primary pl-10" />
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
+                            <Button variant="outline" type="button" onClick={() => setIsAddSiteOpen(false)}>Abort</Button>
+                            <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10">
+                                <Check size={16} className="mr-2" />
+                                Request Registry
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

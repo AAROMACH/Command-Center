@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,7 +22,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Wrench, Search, MapPin, Building2, Check } from 'lucide-react';
+import { Plus, Wrench, Search, MapPin, Building2, Check, ChevronDown } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -51,7 +51,6 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   const [isSitePopoverOpen, setIsSitePopoverOpen] = useState(false);
-  const [clientSearch, setClientSearch] = useState('');
 
   const { toast } = useToast();
 
@@ -68,12 +67,12 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   }, [formData.clientName, clients]);
 
   const filteredClients = useMemo(() => {
-    if (!clientSearch) return clients;
+    if (!formData.clientName) return clients;
     return clients.filter(c => 
-        (c.clientCompany || '').toLowerCase().includes(clientSearch.toLowerCase()) ||
-        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+        (c.clientCompany || '').toLowerCase().includes((formData.clientName || '').toLowerCase()) ||
+        c.name.toLowerCase().includes((formData.clientName || '').toLowerCase())
     );
-  }, [clientSearch, clients]);
+  }, [formData.clientName, clients]);
 
   const handleSave = () => {
     if (!formData.description || !formData.location || !formData.clientName) {
@@ -116,10 +115,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     setFormData(prev => ({
         ...prev,
         clientName: name,
-        location: '' // Reset location when client changes to force site selection or manual entry
+        location: '' // Reset location when client changes
     }));
     setIsClientPopoverOpen(false);
-    setClientSearch('');
   };
 
   const selectSite = (site: { name: string, location: string }) => {
@@ -152,58 +150,60 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
-                    <PopoverTrigger asChild>
-                        <Button 
-                            variant="outline" 
-                            className="w-full h-10 px-3 bg-bg-primary justify-between font-normal text-xs uppercase tracking-wide"
+                <div className="relative">
+                    <Input 
+                        placeholder="Type name or search registry..." 
+                        value={formData.clientName}
+                        onChange={(e) => {
+                            setFormData({...formData, clientName: e.target.value});
+                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
+                        }}
+                        onFocus={() => setIsClientPopoverOpen(true)}
+                        className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide"
+                    />
+                    <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
+                                <ChevronDown size={14} />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent 
+                            className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" 
+                            align="start"
+                            onOpenAutoFocus={(e) => e.preventDefault()}
                         >
-                            {formData.clientName || "Select or enter client..."}
-                            <Search size={14} className="text-text-muted" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main" align="start">
-                        <div className="p-2 border-b border-border-sub">
-                            <Input 
-                                placeholder="Search registry..." 
-                                value={clientSearch}
-                                onChange={(e) => {
-                                    setClientSearch(e.target.value);
-                                    setFormData({...formData, clientName: e.target.value});
-                                }}
-                                className="h-8 text-xs bg-bg-primary"
-                            />
-                        </div>
-                        <ScrollArea className="h-[200px]">
-                            <div className="p-1">
-                                {filteredClients.map(client => (
-                                    <button
-                                        key={client.id}
-                                        onClick={() => selectClient(client)}
-                                        className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group"
-                                    >
-                                        <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red">
-                                            <Building2 size={12} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-xs font-bold text-text-primary uppercase">{client.clientCompany || client.name}</p>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Registry ID: {client.id}</p>
-                                        </div>
-                                        {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green" />}
-                                    </button>
-                                ))}
-                                {filteredClients.length === 0 && clientSearch && (
-                                    <div className="p-3 text-center">
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">New Entity Detected</p>
-                                        <Button variant="ghost" className="h-7 text-[9px] mt-1 w-full" onClick={() => setIsClientPopoverOpen(false)}>
-                                            Use Manual Entry: "{clientSearch}"
-                                        </Button>
-                                    </div>
-                                )}
+                            <div className="p-2 border-b border-border-sub bg-bg-tertiary">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted px-1">Registry Suggestions</p>
                             </div>
-                        </ScrollArea>
-                    </PopoverContent>
-                </Popover>
+                            <ScrollArea className="h-[200px]">
+                                <div className="p-1">
+                                    {filteredClients.map(client => (
+                                        <button
+                                            key={client.id}
+                                            onClick={() => selectClient(client)}
+                                            className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group"
+                                        >
+                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red">
+                                                <Building2 size={12} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-text-primary uppercase">{client.clientCompany || client.name}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">Registry ID: {client.id}</p>
+                                            </div>
+                                            {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green" />}
+                                        </button>
+                                    ))}
+                                    {filteredClients.length === 0 && (
+                                        <div className="p-4 text-center">
+                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No existing matches found</p>
+                                            <p className="text-[9px] text-text-muted mt-1 uppercase tracking-tight">Manual entry mode active</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
 
             <div className="space-y-2">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -39,15 +40,19 @@ export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
   const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const userId = localStorage.getItem('currentUserId');
     if (userId) {
       setCurrentUser(technicians.find(t => t.id === userId));
     }
   }, []);
 
-  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
+  const visibleItems = mounted 
+    ? navItems.filter(item => hasPermission(currentUser, item.permission))
+    : [];
 
   const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
   let leftItems: NavItem[] = [];

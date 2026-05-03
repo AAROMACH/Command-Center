@@ -36,14 +36,18 @@ export function UserNav() {
   const router = useRouter();
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const userId = localStorage.getItem('currentUserId');
     if (userId) {
       const user = technicians.find(t => t.id === userId);
       setCurrentUser(user);
     }
   }, []);
+
+  if (!mounted) return <div className="h-8 w-8 rounded-full bg-bg-secondary animate-pulse" />;
 
   const userAvatarUrl = currentUser?.avatarUrl;
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';

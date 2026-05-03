@@ -36,6 +36,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 import {
   Rocket,
@@ -50,10 +52,13 @@ import {
   DollarSign,
   Trash2,
   UserPlus,
-  Pencil
+  Pencil,
+  Search,
+  Check
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[]; // The filtered list for the current tab
@@ -74,6 +79,7 @@ export function WorkOrdersClient({
   const [recommendation, setRecommendation] = useState<Recommendation | null>(
     null
   );
+  const [techSearchQuery, setTechSearchQuery] = useState("");
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
@@ -84,6 +90,7 @@ export function WorkOrdersClient({
   const handleOpenDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
     setRecommendation(null);
+    setTechSearchQuery("");
     setIsDialogOpen(true);
   };
   
@@ -221,6 +228,17 @@ export function WorkOrdersClient({
       .filter((t): t is Technician => t !== undefined);
   }, [recommendation, technicians]);
 
+  const filteredTechnicians = useMemo(() => {
+    const lowerQuery = techSearchQuery.toLowerCase();
+    return technicians
+      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')) // Internal only
+      .filter(t => 
+        t.name.toLowerCase().includes(lowerQuery) || 
+        t.id.toLowerCase().includes(lowerQuery) ||
+        t.role.toLowerCase().includes(lowerQuery)
+      );
+  }, [technicians, techSearchQuery]);
+
 
   return (
     <>
@@ -330,87 +348,137 @@ export function WorkOrdersClient({
         </table>
       </div>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px] bg-bg-elevated border-border-default">
-          <DialogHeader>
-            <DialogTitle className="page-title text-xl">
-              AI Assignment
+        <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="page-title text-xl flex items-center gap-2">
+              <UserPlus className="text-brand-red" size={20} />
+              Dispatch Terminal
             </DialogTitle>
             <DialogDescription className="page-subtitle">
-              For Work Order: {selectedOrder?.id.toUpperCase()}
+              Authorize technician for Work Order: {selectedOrder?.id.toUpperCase()}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            {!recommendation && !isLoading && (
-              <div className="text-center space-y-4">
-                 <div className="flex justify-center">
-                    <Wand2 size={48} className="text-accent-gold"/>
-                 </div>
-                 <p className="text-text-secondary">Get an AI-powered technician recommendation based on skills, location, and workload.</p>
-                 <Button onClick={handleGetRecommendation} variant="secondary">
-                    <Sparkles className="mr-2 h-4 w-4" /> Get Recommendation
-                </Button>
-              </div>
-            )}
-            {isLoading && (
-              <div className="flex items-center justify-center p-8 space-x-2">
-                <Loader2 className="h-8 w-8 animate-spin text-brand-red" />
-                <p className="text-text-secondary">Analyzing technicians...</p>
-              </div>
-            )}
-            {recommendation && recommendedTechnician && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-accent-gold mb-2">Top Recommendation</h3>
-                  <div className="rounded-lg border border-border-default bg-bg-secondary">
-                    <div className="flex flex-row items-center gap-4 p-4">
-                       <Avatar className="h-12 w-12">
-                         <AvatarImage asChild src={recommendedTechnician.avatarUrl} alt={recommendedTechnician.name}>
-                           <Image src={recommendedTechnician.avatarUrl} alt={recommendedTechnician.name} width={48} height={48} />
-                          </AvatarImage>
-                          <AvatarFallback>{recommendedTechnician.name.charAt(0)}</AvatarFallback>
-                       </Avatar>
-                       <div className="flex-1">
-                         <div className="text-base font-bold tracking-normal text-text-primary">{recommendedTechnician.name}</div>
-                         <div className="text-sm text-text-secondary">Reliability Score: {recommendedTechnician.reliabilityScore}% | Workload: {recommendedTechnician.currentWorkload}</div>
-                       </div>
-                       <Button onClick={() => handleAssign(recommendedTechnician.id)}>
-                         <Rocket className="mr-2 h-4 w-4" /> Assign
-                       </Button>
-                    </div>
-                    <div className="p-4 border-t border-border-default">
-                      <p className="text-sm font-semibold mb-1 text-text-primary">Reasoning:</p>
-                      <p className="text-sm text-text-secondary">{recommendation.reasoning}</p>
-                    </div>
-                  </div>
-                </div>
 
-                {alternativeTechnicians.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-text-primary">Alternatives</h3>
-                    <div className="space-y-2">
-                      {alternativeTechnicians.map(tech => (
-                        <div key={tech.id} className="rounded-lg border border-border-default bg-bg-tertiary">
-                          <div className="flex flex-row items-center gap-4 p-4">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage asChild src={tech.avatarUrl} alt={tech.name}>
-                                 <Image src={tech.avatarUrl} alt={tech.name} width={40} height={40} />
-                              </AvatarImage>
-                              <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+          <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6">
+            {/* AI Segment */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                        <Wand2 size={12} className="text-accent-gold" />
+                        AI Recommendation Engine
+                    </h3>
+                </div>
+                
+                {!recommendation && !isLoading && (
+                    <div className="p-6 rounded-lg border-2 border-dashed border-border-sub bg-bg-primary/50 text-center space-y-3">
+                        <p className="text-xs text-text-secondary">Analyze the technician registry to find the best match based on skills, location, and workload.</p>
+                        <Button onClick={handleGetRecommendation} variant="secondary" className="h-9">
+                            <Sparkles className="mr-2 h-4 w-4" /> Initialize Analysis
+                        </Button>
+                    </div>
+                )}
+
+                {isLoading && (
+                    <div className="p-8 flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-brand-red" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-accent-gold animate-pulse">Running Dispatch Algorithms...</p>
+                    </div>
+                )}
+
+                {recommendation && recommendedTechnician && (
+                    <div className="rounded-lg border border-accent-gold bg-accent-gold-dim/10 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                        <div className="flex flex-row items-center gap-4 p-4">
+                            <Avatar className="h-12 w-12 border border-accent-gold/30">
+                                <AvatarImage src={recommendedTechnician.avatarUrl} />
+                                <AvatarFallback>{recommendedTechnician.name.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
-                              <p className="font-semibold text-text-primary">{tech.name}</p>
-                              <p className="text-xs text-text-secondary">Reliability Score: {tech.reliabilityScore}% | Workload: {tech.currentWorkload}</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base font-bold text-text-primary uppercase tracking-wide">{recommendedTechnician.name}</span>
+                                    <Badge variant="active" className="text-[8px] h-4">TOP MATCH</Badge>
+                                </div>
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-1">
+                                    Reliability: {recommendedTechnician.reliabilityScore}% | Load: {recommendedTechnician.currentWorkload}
+                                </p>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => handleAssign(tech.id)}>Assign</Button>
-                          </div>
+                            <Button onClick={() => handleAssign(recommendedTechnician.id)} className="bg-accent-gold hover:bg-accent-gold/80 text-black">
+                                <Rocket className="mr-2 h-4 w-4" /> Assign Recommendation
+                            </Button>
                         </div>
-                      ))}
+                        <div className="p-3 bg-accent-gold-dim/20 border-t border-accent-gold/20">
+                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest mb-1 italic">Intelligence Logic:</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed">{recommendation.reasoning}</p>
+                        </div>
                     </div>
-                  </div>
                 )}
-              </div>
-            )}
+            </div>
+
+            <Separator className="bg-border-sub" />
+
+            {/* Manual Registry Segment */}
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                        <Search size={12} />
+                        Manual Registry Selection
+                    </h3>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-text-muted" />
+                        <Input 
+                            placeholder="Filter Technicians..."
+                            className="h-8 pl-8 text-[10px] bg-bg-primary border-border-sub w-[200px] uppercase font-bold tracking-widest"
+                            value={techSearchQuery}
+                            onChange={(e) => setTechSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
+                    <div className="divide-y divide-border-sub">
+                        {filteredTechnicians.map(tech => (
+                            <div 
+                                key={tech.id} 
+                                className="p-3 flex items-center justify-between group hover:bg-bg-tertiary transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={tech.avatarUrl} />
+                                        <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{tech.role}</p>
+                                            <span className="text-text-muted opacity-30">•</span>
+                                            <p className={cn("text-[9px] font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>
+                                                {tech.reliabilityScore}% REL
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 text-[9px] uppercase font-black tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleAssign(tech.id)}
+                                >
+                                    <Check size={12} className="mr-1"/> Select
+                                </Button>
+                            </div>
+                        ))}
+                        {filteredTechnicians.length === 0 && (
+                            <div className="py-12 text-center text-[10px] text-text-muted uppercase font-bold italic tracking-widest">
+                                Registry clear. No technicians found.
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </div>
           </div>
+          
+          <DialogFooter className="p-6 border-t border-border-default bg-bg-tertiary/30">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort Dispatch</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       

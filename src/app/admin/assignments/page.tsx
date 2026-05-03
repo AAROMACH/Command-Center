@@ -48,7 +48,7 @@ export default function AssignmentsPage() {
                 </Button>
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
                   <Plus size={14} className="mr-2" />
-                  New Assignment
+                  + New Assignment
                 </Button>
             </div>
       </header>

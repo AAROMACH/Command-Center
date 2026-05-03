@@ -4,7 +4,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Mail, Phone, Plus, Map, UserCheck, Building, ChevronRight, Building2, Globe } from 'lucide-react';
+import { 
+    Search, 
+    Mail, 
+    Phone, 
+    Plus, 
+    Map, 
+    UserCheck, 
+    Building, 
+    ChevronRight, 
+    Building2, 
+    Rows3, 
+    LayoutGrid, 
+    Columns2 
+} from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -15,6 +28,7 @@ import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -22,9 +36,12 @@ type DirectoryClientProps = {
     workOrders: WorkOrder[];
 };
 
+type ViewMode = 'rows' | 'grid' | 'columns';
+
 export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
     const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
+    const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
@@ -166,12 +183,44 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <TabsTrigger value="timeoff" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TIME OFF</TabsTrigger>
                         <TabsTrigger value="map" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MAP</TabsTrigger>
                     </TabsList>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
+
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        {/* View Switcher - Only visible on appropriate tabs if desired, but common for all is also good */}
+                        <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1">
+                            <Button 
+                                variant="ghost" 
+                                size="icon-sm" 
+                                className={cn("h-8 w-8", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                onClick={() => setViewMode('rows')}
+                                title="Row View"
+                            >
+                                <Rows3 size={14} />
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                size="icon-sm" 
+                                className={cn("h-8 w-8", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                onClick={() => setViewMode('grid')}
+                                title="Box View"
+                            >
+                                <LayoutGrid size={14} />
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                size="icon-sm" 
+                                className={cn("h-8 w-8", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
+                                onClick={() => setViewMode('columns')}
+                                title="Column View"
+                            >
+                                <Columns2 size={14} />
+                            </Button>
+                        </div>
+
                         <div className="search-wrap flex-1 md:flex-none">
                             <Search />
                             <input 
-                                className="search-input w-full md:w-[250px]" 
-                                placeholder="Search directory..." 
+                                className="search-input w-full md:w-[200px]" 
+                                placeholder="Filter registry..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -220,6 +269,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             )}
                         </div>
                     </TabsContent>
+                    
                     <TabsContent value="staff">
                         <div className="table-wrap">
                              <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
@@ -253,50 +303,107 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             )}
                         </div>
                     </TabsContent>
+                    
                     <TabsContent value="clients">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredCompanies.map(company => (
-                                <Card key={company.name} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleCompanyClick(company.name)}>
-                                    <CardContent className="p-5">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="p-3 bg-bg-tertiary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red transition-colors">
-                                                <Building2 size={24} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                        {/* ROWS VIEW */}
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                                    <div>CORPORATE ENTITY</div>
+                                    <div>BUSINESS CLASSIFICATION</div>
+                                    <div className="text-center">CONTACT COUNT</div>
+                                    <div className="text-right">REGISTRY</div>
+                                </div>
+                                {filteredCompanies.map(company => (
+                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                                <Building2 size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
-                                            <Badge variant="active" className="text-[8px] uppercase tracking-widest">{company.contacts.length} Contacts</Badge>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide">{company.name}</span>
                                         </div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{company.name}</h3>
-                                            {company.businessType && (
-                                                <p className="text-[10px] text-accent-gold uppercase font-black tracking-widest">{company.businessType}</p>
-                                            )}
+                                        <div>
+                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise Services'}</span>
                                         </div>
-                                        <div className="mt-6 pt-4 border-t border-border-sub flex items-center justify-between">
-                                            <div className="flex -space-x-2">
-                                                {company.contacts.slice(0, 3).map(contact => (
-                                                    <Avatar key={contact.id} className="h-7 w-7 border-2 border-bg-secondary">
-                                                        <AvatarImage src={contact.avatarUrl} />
-                                                        <AvatarFallback className="text-[10px]">{contact.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                ))}
-                                                {company.contacts.length > 3 && (
-                                                    <div className="h-7 w-7 rounded-full bg-bg-tertiary border-2 border-bg-secondary flex items-center justify-center text-[10px] font-bold text-text-muted">
-                                                        +{company.contacts.length - 3}
-                                                    </div>
+                                        <div className="text-center">
+                                            <Badge variant="outline" className="text-[10px]">{company.contacts.length} Contacts</Badge>
+                                        </div>
+                                        <div className="text-right">
+                                            <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all ml-auto" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* BOX/GRID VIEW */}
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredCompanies.map(company => (
+                                    <Card key={company.name} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleCompanyClick(company.name)}>
+                                        <CardContent className="p-5">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="p-3 bg-bg-tertiary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red transition-colors">
+                                                    <Building2 size={24} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                                </div>
+                                                <Badge variant="active" className="text-[8px] uppercase tracking-widest">{company.contacts.length} Contacts</Badge>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{company.name}</h3>
+                                                {company.businessType && (
+                                                    <p className="text-[10px] text-accent-gold uppercase font-black tracking-widest">{company.businessType}</p>
                                                 )}
                                             </div>
-                                            <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                            <div className="mt-6 pt-4 border-t border-border-sub flex items-center justify-between">
+                                                <div className="flex -space-x-2">
+                                                    {company.contacts.slice(0, 3).map(contact => (
+                                                        <Avatar key={contact.id} className="h-7 w-7 border-2 border-bg-secondary">
+                                                            <AvatarImage src={contact.avatarUrl} />
+                                                            <AvatarFallback className="text-[10px]">{contact.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                    ))}
+                                                    {company.contacts.length > 3 && (
+                                                        <div className="h-7 w-7 rounded-full bg-bg-tertiary border-2 border-bg-secondary flex items-center justify-center text-[10px] font-bold text-text-muted">
+                                                            +{company.contacts.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* COLUMN VIEW */}
+                        {viewMode === 'columns' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                {filteredCompanies.map(company => (
+                                    <div key={company.name} className="p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                                    <Building2 size={14} />
+                                                </div>
+                                                <span className="text-[9px] font-mono text-text-muted">{company.contacts.length}C</span>
+                                            </div>
+                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight truncate">{company.name}</p>
+                                            <p className="text-[8px] text-accent-gold uppercase font-black truncate">{company.businessType || 'Service Partner'}</p>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                            {filteredCompanies.length === 0 && (
-                                <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                                    <Building size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No corporate entities found matching your search.</p>
-                                </div>
-                            )}
-                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {filteredCompanies.length === 0 && (
+                            <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                                <Building size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No corporate entities found matching your search.</p>
+                            </div>
+                        )}
                     </TabsContent>
+                    
                     <TabsContent value="timeoff">
                         <div className="table-wrap">
                             <Table>
@@ -344,6 +451,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </Table>
                         </div>
                     </TabsContent>
+                    
                     <TabsContent value="map">
                         <div className="p-4 flex flex-col gap-4 border border-border-default rounded-lg bg-bg-secondary">
                             <div className="flex justify-end items-center gap-4 border-b border-border-default pb-3">

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
 import { AssignmentsTabs } from "./components/assignments-tabs";
 import { Button } from "@/components/ui/button";
-import { SlidersHorizontal, Plus, Search, Briefcase, Import as ImportIcon } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Briefcase, Import as ImportIcon, Wrench } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import type { WorkOrder, Route } from "@/lib/types";
@@ -45,11 +45,11 @@ export default function AssignmentsPage() {
         <header className="page-header">
             <div>
               <p className="page-eyebrow flex items-center gap-2">
-                <Briefcase size={12} />
-                Field Service Logistics
+                <Wrench size={12} />
+                Strategic Deployment Terminal
               </p>
               <h1 className="page-title">Dispatch Command</h1>
-              <p className="page-subtitle">Strategic job pooling, route formation, and field deployment terminal.</p>
+              <p className="page-subtitle">Tactical job pool management, individual dispatch, and route grouping.</p>
             </div>
             <div className="page-header-right">
                 <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>

@@ -32,7 +32,8 @@ import {
   Pencil,
   UserPlus,
   Layers,
-  DollarSign
+  DollarSign,
+  User
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,13 @@ export function WorkOrdersClient({
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const { toast } = useToast();
+
+  const handleOpenAssignDialog = (order: WorkOrder) => {
+    setSelectedOrder(order);
+    setRecommendation(null);
+    setTechSearchQuery("");
+    setIsDialogOpen(true);
+  };
 
   const handleOpenEditDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
@@ -116,8 +124,8 @@ export function WorkOrdersClient({
     onWorkOrdersChange(updated);
     setIsDialogOpen(false);
     toast({
-      title: "Work Order Assigned!",
-      description: `${selectedOrder.id.toUpperCase()} has been assigned.`,
+      title: "Dispatch Confirmed",
+      description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.`,
     });
   }
 
@@ -128,7 +136,7 @@ export function WorkOrdersClient({
     );
     onWorkOrdersChange(updated);
     setIsEditDialogOpen(false);
-    toast({ title: "Work Order Updated" });
+    toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
 
   const filteredTechnicians = useMemo(() => {
@@ -152,10 +160,10 @@ export function WorkOrdersClient({
               <th style={{ width: "130px" }}>ID / Status</th>
               <th>Description & Client</th>
               <th style={{ width: "160px" }}>Schedule</th>
-              <th style={{ width: "120px" }}>Route Status</th>
+              <th style={{ width: "140px" }}>Route Status</th>
               <th style={{ width: "160px" }}>Site Location</th>
               <th style={{ width: "160px" }}>{mode === 'scheduled' ? 'Technician' : 'Pay ($)'}</th>
-              <th style={{ width: "110px" }}></th>
+              <th style={{ width: "140px" }}></th>
             </tr>
           </thead>
           <tbody>
@@ -187,7 +195,7 @@ export function WorkOrdersClient({
                             <Layers size={10}/> {route.name}
                         </Badge>
                     ) : (
-                        <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-tighter">No Route</span>
+                        <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-tighter">Unallocated</span>
                     )}
                   </td>
                   <td>
@@ -197,13 +205,13 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    {mode === 'scheduled' ? (
+                    {mode === 'scheduled' || order.status === 'assigned' || order.status === 'completed' || order.status === 'in-progress' ? (
                        technician ? (
                         <div className="cell-tech-assigned">
                            <Avatar className="h-8 w-8"><AvatarImage src={technician.avatarUrl} /><AvatarFallback>{technician.name.charAt(0)}</AvatarFallback></Avatar>
                            <span className="text-xs font-semibold">{technician.name}</span>
                         </div>
-                      ) : <span className="text-xs text-text-muted italic">Unassigned</span>
+                      ) : <span className="text-xs text-text-muted italic">No ID Match</span>
                     ) : (
                         <div className="cell-pay">
                             <DollarSign />
@@ -216,6 +224,16 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                      <div className="cell-actions">
+                       {order.status === 'unassigned' && (
+                         <Button 
+                            size="sm" 
+                            variant="default" 
+                            className="h-8 !text-[10px] bg-brand-red hover:bg-brand-red-hover"
+                            onClick={() => handleOpenAssignDialog(order)}
+                         >
+                            <UserPlus size={12} className="mr-1.5"/> Assign
+                         </Button>
+                       )}
                        <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
                          <Pencil />
                        </button>
@@ -225,12 +243,13 @@ export function WorkOrdersClient({
               );
             })}
              {workOrders.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-text-muted italic">Job pool clear.</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
+      {/* DISPATCH TERMINAL (Searchable Techs + AI) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">
@@ -238,8 +257,9 @@ export function WorkOrdersClient({
               <UserPlus className="text-brand-red" size={20} />
               Dispatch Terminal
             </DialogTitle>
+            <p className="text-xs text-text-muted">Select operative for individual job deployment: <span className="text-text-primary font-bold uppercase">{selectedOrder?.id}</span></p>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6">
+          <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6 mt-4">
              <div className="relative">
                 <Input 
                     placeholder="Search technician registry..." 
@@ -250,12 +270,20 @@ export function WorkOrdersClient({
             </div>
             <div className="space-y-4">
                 {!recommendation && !isLoading && (
-                    <Button onClick={handleGetRecommendation} variant="secondary" className="w-full">Initialize AI Analysis</Button>
+                    <Button onClick={handleGetRecommendation} variant="secondary" className="w-full h-11">
+                        <User className="mr-2 h-4 w-4"/> Initialize AI Dispatch Analysis
+                    </Button>
+                )}
+                {isLoading && (
+                    <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-center gap-3">
+                         <div className="h-4 w-4 rounded-full border-2 border-accent-gold border-t-transparent animate-spin" />
+                         <span className="text-xs font-bold uppercase tracking-widest text-accent-gold">Calculating optimal operative...</span>
+                    </div>
                 )}
                 {recommendation && (
-                    <div className="rounded-lg border border-accent-gold bg-accent-gold-dim/10 p-4 flex items-center gap-4">
+                    <div className="rounded-lg border border-accent-gold bg-accent-gold-dim/10 p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
                         <div className="flex-1">
-                            <p className="text-[10px] text-accent-gold font-black uppercase tracking-widest mb-1">AI Recommendation</p>
+                            <p className="text-[10px] text-accent-gold font-black uppercase tracking-widest mb-1">AI Recommendation Intelligence</p>
                             <p className="text-xs text-text-primary leading-relaxed uppercase font-bold">{recommendation.reasoning}</p>
                         </div>
                     </div>
@@ -265,21 +293,34 @@ export function WorkOrdersClient({
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
                     {filteredTechnicians.map(tech => (
-                        <div key={tech.id} className="p-3 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 border border-border-sub"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                        <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                 <div>
-                                    <p className="text-xs font-bold uppercase text-text-primary">{tech.name}</p>
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight">{tech.distance.toFixed(1)} MI FROM SITE</p>
+                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
+                                            <MapPin size={10}/> {tech.distance.toFixed(1)} MI FROM SITE
+                                        </p>
                                         <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                        <p className="text-[9px] text-text-green font-bold">{tech.reliabilityScore}% RELIABILITY</p>
+                                        <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>
                                     </div>
                                 </div>
                             </div>
-                            <Button size="sm" onClick={() => handleAssign(tech.id)} className="h-8 text-[10px]">Select</Button>
+                            <Button 
+                                size="sm" 
+                                onClick={() => handleAssign(tech.id)} 
+                                className="h-8 text-[10px] px-6 uppercase font-bold"
+                            >
+                                Select
+                            </Button>
                         </div>
                     ))}
+                    {filteredTechnicians.length === 0 && (
+                        <div className="p-12 text-center">
+                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest italic">No matching operatives in registry</p>
+                        </div>
+                    )}
                 </div>
             </ScrollArea>
           </div>
@@ -289,14 +330,15 @@ export function WorkOrdersClient({
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
             <DialogHeader>
-                <DialogTitle className="uppercase font-bold tracking-widest">Update Assignment</DialogTitle>
+                <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Update Dispatch Parameters</DialogTitle>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
             </DialogHeader>
             {editedOrder && (
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Technician Allocation</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Technician Allocation</Label>
                         <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
-                            <SelectTrigger className="bg-bg-primary h-11">
+                            <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
                                 <SelectValue placeholder="Select Technician" />
                             </SelectTrigger>
                             <SelectContent>
@@ -308,9 +350,9 @@ export function WorkOrdersClient({
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Status Engine</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Operational Status</Label>
                         <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                            <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="unassigned">UNASSIGNED</SelectItem>
                                 <SelectItem value="assigned">ASSIGNED</SelectItem>
@@ -319,7 +361,9 @@ export function WorkOrdersClient({
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button onClick={handleSaveChanges} className="w-full h-11 mt-4">Commit Assignment Updates</Button>
+                    <Button onClick={handleSaveChanges} className="w-full h-11 mt-4 bg-brand-red hover:bg-brand-red-hover">
+                        Commit Assignment Updates
+                    </Button>
                 </div>
             )}
         </DialogContent>

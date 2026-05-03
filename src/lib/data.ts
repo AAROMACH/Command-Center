@@ -197,6 +197,9 @@ export const technicians: Technician[] = [
     skills: [],
     avatarUrl: getImageUrl('technician-4'),
     availability: {},
+    managedSites: [
+      { id: 'site-chi-01', name: 'Chicago North Data Center', location: '100 N LaSalle St, Chicago, IL 60602' }
+    ],
     workPreferences: {
       preferredRadius: 0,
       maxTravelDistance: 0,

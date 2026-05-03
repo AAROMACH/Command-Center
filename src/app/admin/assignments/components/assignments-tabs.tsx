@@ -21,7 +21,6 @@ export function AssignmentsTabs({
   onRoutesChange 
 }: AssignmentsTabsProps) {
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned');
-  const scheduledWorkOrders = workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'completed');
   
   return (
     <Tabs defaultValue="unassigned">
@@ -32,14 +31,11 @@ export function AssignmentsTabs({
         <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Routes <span className="tab-count">({routes.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="scheduled" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
-          Scheduled <span className="tab-count">({scheduledWorkOrders.length})</span>
-        </TabsTrigger>
       </TabsList>
       
       <TabsContent value="unassigned" className="mt-0">
           <WorkOrdersClient
-              workOrders={unassignedWorkOrders}
+              workOrders={workOrders}
               allWorkOrders={workOrders}
               technicians={technicians}
               onWorkOrdersChange={onWorkOrdersChange}
@@ -54,17 +50,6 @@ export function AssignmentsTabs({
             onRoutesChange={onRoutesChange}
             allWorkOrders={workOrders}
             onWorkOrdersChange={onWorkOrdersChange}
-          />
-      </TabsContent>
-      
-      <TabsContent value="scheduled" className="mt-0">
-           <WorkOrdersClient
-              workOrders={scheduledWorkOrders}
-              allWorkOrders={workOrders}
-              technicians={technicians}
-              onWorkOrdersChange={onWorkOrdersChange}
-              routes={routes}
-              mode="scheduled"
           />
       </TabsContent>
     </Tabs>

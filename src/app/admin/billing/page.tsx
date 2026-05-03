@@ -1,3 +1,9 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { technicians } from "@/lib/data";
+import { isClient } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +18,17 @@ const billingHistory = [
 ];
 
 export default function BillingPage() {
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId));
+        }
+    }, []);
+
+    const userIsClient = isClient(currentUser);
+
     return (
         <div>
             <header className="page-header">
@@ -23,13 +40,15 @@ export default function BillingPage() {
                     <h1 className="page-title">Billing</h1>
                     <p className="page-subtitle">Manage your subscription, payment methods, and view your billing history.</p>
                 </div>
-                <div className="page-header-right">
-                    <Button variant="outline">Upgrade Plan</Button>
-                </div>
+                {userIsClient && (
+                    <div className="page-header-right">
+                        <Button variant="outline">Upgrade Plan</Button>
+                    </div>
+                )}
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
+                <div className={userIsClient ? "lg:col-span-2" : "lg:col-span-3"}>
                     <Card>
                         <CardHeader>
                             <CardTitle>Billing History</CardTitle>
@@ -68,41 +87,43 @@ export default function BillingPage() {
                     </Card>
                 </div>
 
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Current Plan</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <h3 className="text-2xl font-bold text-text-primary">Enterprise</h3>
-                            <p className="text-text-muted">Billed at $5,000 per month.</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Button variant="outline" className="w-full">Manage Subscription</Button>
-                        </CardFooter>
-                    </Card>
+                {userIsClient && (
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Current Plan</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <h3 className="text-2xl font-bold text-text-primary">Enterprise</h3>
+                                <p className="text-text-muted">Billed at $5,000 per month.</p>
+                            </CardContent>
+                            <CardFooter>
+                                <Button variant="outline" className="w-full">Manage Subscription</Button>
+                            </CardFooter>
+                        </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Payment Methods</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between rounded-md border border-border-default p-4">
-                                <div className="flex items-center gap-4">
-                                    <CreditCard className="h-6 w-6" />
-                                    <div>
-                                        <p className="font-semibold">Visa ending in 4242</p>
-                                        <p className="text-sm text-text-muted">Expires 12/2026</p>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Payment Methods</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between rounded-md border border-border-default p-4">
+                                    <div className="flex items-center gap-4">
+                                        <CreditCard className="h-6 w-6" />
+                                        <div>
+                                            <p className="font-semibold">Visa ending in 4242</p>
+                                            <p className="text-sm text-text-muted">Expires 12/2026</p>
+                                        </div>
                                     </div>
+                                    <Button variant="ghost" size="sm">Edit</Button>
                                 </div>
-                                <Button variant="ghost" size="sm">Edit</Button>
-                            </div>
-                            <Button variant="outline" className="w-full">
-                                <Plus className="mr-2 h-4 w-4" /> Add Payment Method
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
+                                <Button variant="outline" className="w-full">
+                                    <Plus className="mr-2 h-4 w-4" /> Add Payment Method
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
             </div>
         </div>
     );

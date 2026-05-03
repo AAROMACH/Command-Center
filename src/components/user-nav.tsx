@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -48,6 +49,7 @@ export function UserNav() {
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
   
   const displayIsAdmin = isAdmin(currentUser);
+  const displayIsClient = isClient(currentUser);
   
   const availablePortals = getAvailablePortals(currentUser);
   const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
@@ -113,7 +115,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {displayIsAdmin && (
+          {(displayIsAdmin || displayIsClient) && (
             <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
               <CreditCard className="mr-2 h-4 w-4" />
               <span>Billing</span>

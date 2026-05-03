@@ -38,7 +38,7 @@ export default function AssignmentsPage() {
                 Field Service Schedule
               </p>
               <h1 className="page-title">Assignments</h1>
-              <p className="page-subtitle">Master schedule management for all active technician engagements.</p>
+              <p className="page-subtitle">Master schedule management for all active technician assignments.</p>
             </div>
             <div className="page-header-right">
                 <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>
@@ -46,8 +46,7 @@ export default function AssignmentsPage() {
                   Import Jobs
                 </Button>
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
-                  <Plus size={14} className="mr-2" />
-                  + New Assignment
+                  New Assignment
                 </Button>
             </div>
       </header>

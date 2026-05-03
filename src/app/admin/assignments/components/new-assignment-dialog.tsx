@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -131,7 +130,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Engagement</DialogTitle>
+            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Assignment</DialogTitle>
           </div>
           <DialogDescription>Manual registration of a new tactical field assignment.</DialogDescription>
         </DialogHeader>

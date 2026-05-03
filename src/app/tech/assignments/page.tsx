@@ -59,7 +59,7 @@ export default function TechAssignmentsPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <Wrench size={12} />
-                        Service Engagement Console
+                        Service Assignment Console
                     </p>
                     <h1 className="page-title">Assignments</h1>
                     <p className="page-subtitle">Manage tactical assignments and historical performance audit.</p>

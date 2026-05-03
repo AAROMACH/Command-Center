@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -323,7 +322,7 @@ export function WorkOrdersClient({
              {workOrders.length === 0 && (
                 <tr>
                     <td colSpan={7} className="text-center py-12 text-text-muted italic">
-                        Registry clear. Awaiting tactical engagement data.
+                        Registry clear. Awaiting tactical assignment data.
                     </td>
                 </tr>
             )}

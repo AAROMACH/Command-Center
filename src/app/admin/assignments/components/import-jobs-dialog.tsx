@@ -122,7 +122,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
     
     toast({
         title: "Integration Complete",
-        description: `${finalOrders.length} service engagements synced. ${parsedResults.length - finalOrders.length} duplicates skipped.`,
+        description: `${finalOrders.length} service assignments synced. ${parsedResults.length - finalOrders.length} duplicates skipped.`,
     });
   };
 
@@ -147,8 +147,8 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           </div>
           <DialogDescription>
             {step === 'input' 
-                ? 'Paste unstructured job blocks to convert them into tactical engagements.' 
-                : `Reviewing ${parsedResults.length} parsed engagements for registry integrity.`}
+                ? 'Paste unstructured job blocks to convert them into tactical assignments.' 
+                : `Reviewing ${parsedResults.length} parsed assignments for registry integrity.`}
           </DialogDescription>
         </DialogHeader>
 

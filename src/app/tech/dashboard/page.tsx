@@ -265,42 +265,41 @@ export default function TechDashboardPage() {
                 {activeJob && (
                     <Card className="border-2 border-text-green bg-green-dim/10">
                         <CardHeader className="pb-2">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live Engagement</span>
-                                </div>
-                                <Badge variant="active">On-Site</Badge>
+                            <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live Assignment</span>
                             </div>
-                            <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
-                            <CardDescription className="flex items-center gap-1.5"><MapPin size={14}/> {activeJob.location}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                <div className="space-y-4">
-                                    <div className="flex gap-8">
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Checked In</p>
-                                            <p className="text-lg font-mono text-text-green">{activeJob.scheduleTime}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Duration</p>
-                                            <p className="text-lg font-mono">01:42:15</p>
-                                        </div>
+                            <Badge variant="active">On-Site</Badge>
+                        </div>
+                        <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
+                        <CardDescription className="flex items-center gap-1.5"><MapPin size={14}/> {activeJob.location}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                            <div className="space-y-4">
+                                <div className="flex gap-8">
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-text-muted">Checked In</p>
+                                        <p className="text-lg font-mono text-text-green">{activeJob.scheduleTime}</p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="h-9 gap-2"><StickyNote size={14}/> Add Notes</Button>
-                                        <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-text-muted">Duration</p>
+                                        <p className="text-lg font-mono">01:42:15</p>
                                     </div>
                                 </div>
-                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Assignment finalized."})}>
-                                    <LogOut size={16}/> CHECK OUT / FINALIZE
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="h-9 gap-2"><StickyNote size={14}/> Add Notes</Button>
+                                    <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
+                                </div>
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+                            <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Assignment finalized."})}>
+                                <LogOut size={16}/> CHECK OUT / FINALIZE
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
 
             {/* 5. OPERATIONAL SCHEDULE (Bottom Section) */}
             <div className="opacity-90 grayscale-[0.2] hover:grayscale-0 transition-all">

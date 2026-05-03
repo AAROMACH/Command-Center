@@ -130,15 +130,15 @@ export default function AssignmentsHubPage() {
                                 <Maximize2 size={12} className="opacity-50" />
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[1200px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-8">
-                            <DialogHeader className="mb-6">
+                        <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default p-6 shadow-2xl">
+                            <DialogHeader className="mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-brand-red-dim rounded border border-brand-red/20">
-                                        <CalendarIcon size={20} className="text-brand-red" />
+                                        <CalendarIcon size={16} className="text-brand-red" />
                                     </div>
                                     <div>
-                                        <DialogTitle className="text-xl font-bold uppercase tracking-widest text-text-primary">Date Selector Terminal</DialogTitle>
-                                        <p className="text-xs text-text-muted">Select a temporal coordinate to filter the assignment registry.</p>
+                                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Date Selector</DialogTitle>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Select operational window</p>
                                     </div>
                                 </div>
                             </DialogHeader>
@@ -146,6 +146,7 @@ export default function AssignmentsHubPage() {
                                 workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
                                 technicians={technicians} 
                                 selectedDate={filterDate || undefined}
+                                hideManifest={true}
                                 onDateSelect={(date) => {
                                     setFilterDate(date);
                                     setIsCalendarOpen(false);

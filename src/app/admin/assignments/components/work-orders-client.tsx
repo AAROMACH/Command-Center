@@ -54,7 +54,8 @@ import {
   UserPlus,
   Pencil,
   Search,
-  Check
+  Check,
+  Navigation
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -239,6 +240,21 @@ export function WorkOrdersClient({
       );
   }, [technicians, techSearchQuery]);
 
+  // Simulate proximity data for the Dispatch Terminal
+  const techsWithProximity = useMemo(() => {
+    if (!selectedOrder) return [];
+    return filteredTechnicians.map(tech => {
+      // Logic-based distance simulation for prototyping
+      const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+      const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder.id));
+      const simulatedDistance = (seed % 35) + 1.2;
+      return {
+        ...tech,
+        distance: simulatedDistance
+      };
+    }).sort((a, b) => a.distance - b.distance);
+  }, [filteredTechnicians, selectedOrder]);
+
 
   return (
     <>
@@ -348,7 +364,7 @@ export function WorkOrdersClient({
         </table>
       </div>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+        <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="page-title text-xl flex items-center gap-2">
               <UserPlus className="text-brand-red" size={20} />
@@ -435,7 +451,7 @@ export function WorkOrdersClient({
 
                 <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                     <div className="divide-y divide-border-sub">
-                        {filteredTechnicians.map(tech => (
+                        {techsWithProximity.map(tech => (
                             <div 
                                 key={tech.id} 
                                 className="p-3 flex items-center justify-between group hover:bg-bg-tertiary transition-colors"
@@ -446,13 +462,21 @@ export function WorkOrdersClient({
                                         <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-bg-secondary uppercase font-bold text-text-muted border-border-sub">{tech.id}</Badge>
+                                        </div>
                                         <div className="flex items-center gap-2 mt-0.5">
                                             <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{tech.role}</p>
-                                            <span className="text-text-muted opacity-30">•</span>
+                                            <span className="text-text-muted opacity-30 text-[10px]">•</span>
                                             <p className={cn("text-[9px] font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>
                                                 {tech.reliabilityScore}% REL
                                             </p>
+                                            <span className="text-text-muted opacity-30 text-[10px]">•</span>
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-brand-red uppercase tracking-tight">
+                                                <Navigation size={10} className="fill-current" />
+                                                {tech.distance.toFixed(1)} MI FROM SITE
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -466,7 +490,7 @@ export function WorkOrdersClient({
                                 </Button>
                             </div>
                         ))}
-                        {filteredTechnicians.length === 0 && (
+                        {techsWithProximity.length === 0 && (
                             <div className="py-12 text-center text-[10px] text-text-muted uppercase font-bold italic tracking-widest">
                                 Registry clear. No technicians found.
                             </div>

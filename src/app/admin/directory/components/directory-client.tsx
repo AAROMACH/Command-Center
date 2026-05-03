@@ -16,7 +16,9 @@ import {
     Building2, 
     Rows3, 
     LayoutGrid, 
-    Columns2 
+    Columns2,
+    Shield,
+    Star
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
@@ -185,7 +187,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsList>
 
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                        {/* View Switcher - Only visible on appropriate tabs if desired, but common for all is also good */}
                         <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1">
                             <Button 
                                 variant="ghost" 
@@ -234,78 +235,176 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                 <div className="w-full mt-6">
                     <TabsContent value="technicians">
-                        <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
-                                <div>TECHNICIAN</div>
-                                <div>CONTACT INFORMATION</div>
-                                <div className="text-center">RELIABILITY SCORE</div>
-                                <div>STATUS</div>
-                            </div>
-                            {filteredTechnicians.map(tech => {
-                                const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
-                                return (
-                                <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(tech)}>
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarImage src={tech.avatarUrl} />
-                                            <AvatarFallback>{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide">{tech.name}</span>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{tech.email}</div>
-                                        <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{tech.phone}</div>
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <span className={`font-mono font-bold text-xl ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
-                                    </div>
-                                    <div>
-                                        <Badge variant="active">ACTIVE</Badge>
-                                    </div>
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                                    <div>TECHNICIAN</div>
+                                    <div>CONTACT INFORMATION</div>
+                                    <div className="text-center">RELIABILITY SCORE</div>
+                                    <div>STATUS</div>
                                 </div>
-                            )})}
-                            {filteredTechnicians.length === 0 && (
-                                <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
-                            )}
-                        </div>
+                                {filteredTechnicians.map(tech => {
+                                    const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
+                                    return (
+                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={tech.avatarUrl} />
+                                                <AvatarFallback>{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide">{tech.name}</span>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{tech.email}</div>
+                                            <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{tech.phone}</div>
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <span className={`font-mono font-bold text-xl ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
+                                        </div>
+                                        <div>
+                                            <Badge variant="active">ACTIVE</Badge>
+                                        </div>
+                                    </div>
+                                )})}
+                            </div>
+                        )}
+
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredTechnicians.map(tech => (
+                                    <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
+                                        <CardContent className="p-5">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <Avatar className="h-14 w-14 border-2 border-border-sub">
+                                                    <AvatarImage src={tech.avatarUrl} />
+                                                    <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Reliability</p>
+                                                    <p className={cn("text-xl font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>{tech.reliabilityScore}%</p>
+                                                </div>
+                                            </div>
+                                            <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
+                                            <p className="text-[10px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{tech.role}</p>
+                                            <div className="mt-6 pt-4 border-t border-border-sub flex flex-wrap gap-1">
+                                                {tech.skills.slice(0, 3).map(skill => (
+                                                    <Badge key={skill} variant="secondary" className="text-[8px] uppercase">{skill}</Badge>
+                                                ))}
+                                                {tech.skills.length > 3 && <Badge variant="secondary" className="text-[8px]">+{tech.skills.length - 3}</Badge>}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+
+                        {viewMode === 'columns' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                {filteredTechnicians.map(tech => (
+                                    <div key={tech.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={tech.avatarUrl} />
+                                                <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[11px] font-bold text-text-primary uppercase truncate">{tech.name}</p>
+                                                <p className="text-[8px] text-text-muted uppercase truncate">{tech.id}</p>
+                                            </div>
+                                            <Star size={12} className="text-accent-gold fill-current" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {filteredTechnicians.length === 0 && (
+                            <div className="text-center p-12 text-text-muted italic border border-dashed border-border-main rounded-lg bg-bg-secondary/30">Registry clear. No matching technicians found.</div>
+                        )}
                     </TabsContent>
                     
                     <TabsContent value="staff">
-                        <div className="table-wrap">
-                             <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
-                                <div>STAFF MEMBER</div>
-                                <div>CONTACT INFORMATION</div>
-                                <div>ROLE</div>
-                            </div>
-                            {filteredStaff.map(s => (
-                                <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(s)}>
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarImage src={s.avatarUrl} />
-                                            <AvatarFallback>{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide">{s.name}</span>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{s.email}</div>
-                                        <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{s.phone}</div>
-                                    </div>
-                                    <div>
-                                        <div className="flex flex-wrap gap-1">
-                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[9px] uppercase">{r.replace(/_/g, ' ')}</Badge>)}
-                                            {!s.roles?.length && <Badge variant="secondary">{s.role}</Badge>}
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
+                                    <div>STAFF MEMBER</div>
+                                    <div>CONTACT INFORMATION</div>
+                                    <div>ROLE</div>
+                                </div>
+                                {filteredStaff.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-4 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={s.avatarUrl} />
+                                                <AvatarFallback>{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide">{s.name}</span>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 text-sm text-text-primary"><Mail size={14} className="text-text-muted"/>{s.email}</div>
+                                            <div className="flex items-center gap-2 text-xs text-text-muted mt-1"><Phone size={14} className="text-text-muted"/>{s.phone}</div>
+                                        </div>
+                                        <div>
+                                            <div className="flex flex-wrap gap-1">
+                                                {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[9px] uppercase">{r.replace(/_/g, ' ')}</Badge>)}
+                                                {!s.roles?.length && <Badge variant="secondary">{s.role}</Badge>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                             {filteredStaff.length === 0 && (
-                                <div className="text-center p-12 text-text-muted">No personnel found matching your search.</div>
-                            )}
-                        </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredStaff.map(s => (
+                                    <Card key={s.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(s)}>
+                                        <CardContent className="p-5">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <Avatar className="h-14 w-14 border-2 border-border-sub">
+                                                    <AvatarImage src={s.avatarUrl} />
+                                                    <AvatarFallback>{s.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <Shield size={20} className="text-brand-red opacity-50" />
+                                            </div>
+                                            <h3 className="text-base font-bold text-text-primary uppercase tracking-wide">{s.name}</h3>
+                                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5">{s.role}</p>
+                                            <div className="mt-6 pt-4 border-t border-border-sub flex flex-wrap gap-1">
+                                                {s.roles?.map(r => (
+                                                    <Badge key={r} variant="outline" className="text-[8px] uppercase bg-bg-primary">{r.replace(/_/g, ' ')}</Badge>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+
+                        {viewMode === 'columns' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                {filteredStaff.map(s => (
+                                    <div key={s.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={s.avatarUrl} />
+                                                <AvatarFallback>{s.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[11px] font-bold text-text-primary uppercase truncate">{s.name}</p>
+                                                <p className="text-[8px] text-brand-red font-bold uppercase truncate">{s.roles?.[0]?.replace(/_/g, ' ') || s.role}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {filteredStaff.length === 0 && (
+                            <div className="text-center p-12 text-text-muted italic border border-dashed border-border-main rounded-lg bg-bg-secondary/30">Registry clear. No matching staff found.</div>
+                        )}
                     </TabsContent>
                     
                     <TabsContent value="clients">
-                        {/* ROWS VIEW */}
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
@@ -336,7 +435,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </div>
                         )}
 
-                        {/* BOX/GRID VIEW */}
                         {viewMode === 'grid' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {filteredCompanies.map(company => (
@@ -376,7 +474,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </div>
                         )}
 
-                        {/* COLUMN VIEW */}
                         {viewMode === 'columns' && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                                 {filteredCompanies.map(company => (

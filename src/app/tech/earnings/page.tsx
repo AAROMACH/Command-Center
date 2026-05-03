@@ -5,17 +5,26 @@ import type { WeeklyLog, Expense, Technician } from '@/lib/types';
 import { weeklyLogs, expenses as initialExpenses, technicians, workOrders, projects } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, PiggyBank, FileClock, Receipt, Plus, Download, ArrowUpRight } from 'lucide-react';
+import { Coins, PiggyBank, FileClock, Receipt, Plus, Download, Calendar as CalendarIcon, Check, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { ReceiptUploadDialog } from '../dashboard/components/receipt-upload-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export default function TechEarningsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [exportDates, setExportDates] = useState({
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0]
+    });
+    
     const { toast } = useToast();
 
     useEffect(() => {
@@ -34,7 +43,6 @@ export default function TechEarningsPage() {
 
     const myExpenses = useMemo(() => {
         if (!tech) return [];
-        // Filtering by name as submittedBy in mock data uses names
         return initialExpenses.filter(e => e.submittedBy === tech.name);
     }, [tech]);
 
@@ -59,11 +67,16 @@ export default function TechEarningsPage() {
         }
     };
 
-    const handleExportAuditLog = () => {
+    const handleExportClick = () => {
+        setIsExportDialogOpen(true);
+    };
+
+    const executeExport = () => {
         toast({
             title: "Export Initiated",
-            description: "Generating comprehensive audit log. Your download will begin shortly.",
+            description: `Generating audit log from ${exportDates.from} to ${exportDates.to}. Your download will begin shortly.`,
         });
+        setIsExportDialogOpen(false);
     };
 
     if (!mounted || !currentTechId) {
@@ -93,7 +106,7 @@ export default function TechEarningsPage() {
                 <div className="bg-bg-secondary p-6">
                     <div className="flex justify-between items-start mb-2">
                         <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Paid (YTD)</p>
-                        <PiggyBank className="h-4 w-4 text-text-green" />
+                        <Coins className="h-4 w-4 text-text-green" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
                     <p className="text-[10px] text-text-muted mt-1 uppercase">Across all approved logs</p>
@@ -184,7 +197,7 @@ export default function TechEarningsPage() {
                                 <CardTitle>Expense Tracking Terminal</CardTitle>
                                 <CardDescription>Real-time status tracking for field material and travel reimbursements.</CardDescription>
                             </div>
-                            <Button variant="outline" size="sm" className="h-8" onClick={handleExportAuditLog}>
+                            <Button variant="outline" size="sm" className="h-8" onClick={handleExportClick}>
                                 <Download size={14} className="mr-2"/> Export Audit Log
                             </Button>
                         </CardHeader>
@@ -232,6 +245,64 @@ export default function TechEarningsPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* EXPORT RANGE TERMINAL */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Download className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Export Configuration</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs">Select temporal parameters for comprehensive field log generation.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-6 space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-2">
+                                    <CalendarIcon size={12} />
+                                    Range Start
+                                </Label>
+                                <Input 
+                                    type="date" 
+                                    value={exportDates.from}
+                                    onChange={(e) => setExportDates({...exportDates, from: e.target.value})}
+                                    className="bg-bg-primary h-11 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-2">
+                                    <CalendarIcon size={12} />
+                                    Range End
+                                </Label>
+                                <Input 
+                                    type="date" 
+                                    value={exportDates.to}
+                                    onChange={(e) => setExportDates({...exportDates, to: e.target.value})}
+                                    className="bg-bg-primary h-11 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-center">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Compiling Dataset</p>
+                            <p className="text-[9px] text-text-secondary leading-relaxed uppercase">
+                                This will generate a high-fidelity CSV audit log containing all assignments, payouts, and verified receipts between the specified coordinates.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-secondary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest">
+                            <X size={14} className="mr-2" /> Abort
+                        </Button>
+                        <Button onClick={executeExport} className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                            <Check size={14} className="mr-2" /> Finalize & Download
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <ReceiptUploadDialog 
                 isOpen={isReceiptDialogOpen}

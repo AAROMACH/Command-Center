@@ -41,7 +41,7 @@ import {
   DragEndEvent,
   useDraggable,
   useDroppable,
-} from '@dnd-kit/core';
+} from '@nd-kit/core';
 
 type RoutesViewProps = {
     routes: Route[];

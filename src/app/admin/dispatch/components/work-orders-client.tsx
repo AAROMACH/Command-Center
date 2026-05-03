@@ -361,10 +361,10 @@ export function WorkOrdersClient({
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                 <div>
-                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
-                                            <MapPin size={10}/> {tech.distance.toFixed(1)} MI FROM SITE
+                                            <MapPin size={10}/> {tech.distance.toFixed(1) } MI FROM SITE
                                         </p>
                                         <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                         <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>

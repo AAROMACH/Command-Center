@@ -13,9 +13,11 @@ type AssignmentsTabsProps = {
 
 export function AssignmentsTabs({ workOrders, technicians, onWorkOrdersChange }: AssignmentsTabsProps) {
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned');
-  const scheduledWorkOrders = workOrders.filter(wo => ['assigned', 'in-progress', 'completed'].includes(wo.status));
+  const routesWorkOrders = workOrders.filter(wo => wo.status === 'in-progress');
+  const scheduledWorkOrders = workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'completed');
   
   const unassignedCount = unassignedWorkOrders.length;
+  const routesCount = routesWorkOrders.length;
   const scheduledCount = scheduledWorkOrders.length;
 
   return (
@@ -23,6 +25,9 @@ export function AssignmentsTabs({ workOrders, technicians, onWorkOrdersChange }:
       <TabsList className="tabs">
         <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Unassigned <span className="tab-count">({unassignedCount})</span>
+        </TabsTrigger>
+        <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+          Routes <span className="tab-count">({routesCount})</span>
         </TabsTrigger>
         <TabsTrigger value="scheduled" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Scheduled <span className="tab-count">({scheduledCount})</span>
@@ -32,6 +37,14 @@ export function AssignmentsTabs({ workOrders, technicians, onWorkOrdersChange }:
       <TabsContent value="unassigned" className="mt-0">
           <WorkOrdersClient
               workOrders={unassignedWorkOrders}
+              allWorkOrders={workOrders}
+              technicians={technicians}
+              onWorkOrdersChange={onWorkOrdersChange}
+          />
+      </TabsContent>
+      <TabsContent value="routes" className="mt-0">
+           <WorkOrdersClient
+              workOrders={routesWorkOrders}
               allWorkOrders={workOrders}
               technicians={technicians}
               onWorkOrdersChange={onWorkOrdersChange}

@@ -82,6 +82,7 @@ export default function AssignmentsPage() {
           isOpen={isImportDialogOpen} 
           setIsOpen={setIsImportDialogOpen} 
           onImport={handleImportOrders} 
+          existingOrders={allWorkOrders}
        />
     </div>
   );

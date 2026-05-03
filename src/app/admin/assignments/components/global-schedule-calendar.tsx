@@ -115,8 +115,8 @@ export function GlobalScheduleCalendar({
     return (
         <div className={cn("flex flex-col gap-6", !hideManifest && "xl:flex-row")}>
             {/* THIN CALENDAR NAVIGATION & GRID */}
-            <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-3 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
-                <div className="flex items-center justify-between mb-3">
+            <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-2 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
+                <div className="flex items-center justify-between mb-2">
                     <div className="cal-nav !gap-1">
                         <button className="nav-btn !h-6 !w-6" onClick={handlePrev}><ChevronLeft size={12}/></button>
                         <span className="cal-period !min-w-[110px] !text-[9px] uppercase tracking-tighter text-center font-bold text-text-primary">

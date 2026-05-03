@@ -15,27 +15,16 @@ import {
   User,
   Briefcase,
   Activity,
-  Maximize2,
   X
 } from "lucide-react";
 import type { WorkOrder } from "@/lib/types";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
 import { format, isSameDay, parseISO } from 'date-fns';
 
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDate, setFilterDate] = useState<Date | null>(null);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
@@ -88,10 +77,7 @@ export default function AssignmentsHubPage() {
       <Tabs defaultValue="schedule" className="w-full">
         <TabsList className="tabs">
           <TabsTrigger value="schedule" className="tab">
-            Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="tab">
-            Assignment Calendar
+            Assignments <span className="tab-count">({activeWorkOrders.length})</span>
           </TabsTrigger>
           <TabsTrigger value="archive" className="tab">
             Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
@@ -99,8 +85,8 @@ export default function AssignmentsHubPage() {
         </TabsList>
 
         <TabsContent value="schedule" className="mt-6 space-y-6">
-            {/* IN-PAGE TACTICAL CALENDAR (WEEK VIEW) */}
-            <div className="rounded-lg border border-border-sub bg-bg-secondary/30 p-4 shadow-sm">
+            {/* IN-PAGE TACTICAL CALENDAR (ULTRA-THIN VIEW) */}
+            <div className="rounded-lg border border-border-sub bg-bg-secondary/30 p-2 shadow-sm">
                 <GlobalScheduleCalendar 
                     workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
                     technicians={technicians} 
@@ -130,38 +116,6 @@ export default function AssignmentsHubPage() {
                             </Badge>
                         )}
                     </div>
-                    
-                    <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary" size="sm" className="h-9 px-4 gap-2 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10">
-                                <Maximize2 size={14} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">Expand Calendar</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default p-6 shadow-2xl">
-                            <DialogHeader className="mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-brand-red-dim rounded border border-brand-red/20">
-                                        <CalendarIcon size={16} className="text-brand-red" />
-                                    </div>
-                                    <div>
-                                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Global Date Selector</DialogTitle>
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Select operational window</p>
-                                    </div>
-                                </div>
-                            </DialogHeader>
-                            <GlobalScheduleCalendar 
-                                workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
-                                technicians={technicians} 
-                                selectedDate={filterDate || undefined}
-                                hideManifest={true}
-                                onDateSelect={(date) => {
-                                    setFilterDate(date);
-                                    setIsCalendarOpen(false);
-                                }}
-                            />
-                        </DialogContent>
-                    </Dialog>
                 </div>
 
                 <div className="grid grid-cols-1 gap-8">
@@ -231,13 +185,6 @@ export default function AssignmentsHubPage() {
                     )}
                 </div>
             </div>
-        </TabsContent>
-
-        <TabsContent value="calendar" className="mt-6">
-            <GlobalScheduleCalendar 
-                workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
-                technicians={technicians} 
-            />
         </TabsContent>
 
         <TabsContent value="archive" className="mt-6">

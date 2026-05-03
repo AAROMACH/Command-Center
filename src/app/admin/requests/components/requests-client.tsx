@@ -5,18 +5,18 @@ import type { ServiceRequest } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  FileText, 
-  Hammer, 
   MapPin, 
   Check, 
   X, 
   Eye, 
   Briefcase, 
-  Calendar, 
   ClipboardList, 
   AlertTriangle,
   ArrowRight,
-  Wrench
+  Wrench,
+  Camera,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -123,17 +124,17 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             </table>
 
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                    <DialogHeader className="p-6 pb-2">
                         <div className="flex items-center gap-2 mb-1">
                             <ClipboardList className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Job Intake Audit</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Job Intake Audit</DialogTitle>
                         </div>
-                        <DialogDescription>Review stakeholder requirements and authorize deployment path.</DialogDescription>
+                        <DialogDescription className="text-xs">Review stakeholder requirements and authorize deployment path.</DialogDescription>
                     </DialogHeader>
 
                     {selectedRequest && (
-                        <div className="py-4 space-y-6">
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Stakeholder / Client</p>
@@ -177,6 +178,54 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
                             </div>
 
+                            {/* ATTACHMENTS DISPLAY */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                        <Camera size={14} className="text-brand-red" />
+                                        Evidence Imagery
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {selectedRequest.imageUrls && selectedRequest.imageUrls.length > 0 ? selectedRequest.imageUrls.map((img, i) => (
+                                            <div key={i} className="aspect-video rounded border border-border-sub overflow-hidden relative group">
+                                                <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                                                    <ExternalLink size={14} className="text-white" />
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="col-span-2 py-8 rounded border border-dashed border-border-sub flex items-center justify-center text-[10px] text-text-muted uppercase font-bold">
+                                                No visual evidence provided
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                        <FileText size={14} className="text-accent-gold" />
+                                        Project Documentation
+                                    </p>
+                                    <div className="space-y-2">
+                                        {selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0 ? selectedRequest.documentUrls.map((doc, i) => (
+                                            <div key={i} className="p-2 rounded bg-bg-primary border border-border-sub flex items-center justify-between group hover:border-accent-gold transition-colors">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <FileText size={12} className="text-text-muted shrink-0" />
+                                                    <span className="text-[10px] font-bold text-text-primary uppercase truncate">{doc}</span>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted group-hover:text-accent-gold">
+                                                    <ExternalLink size={12} />
+                                                </Button>
+                                            </div>
+                                        )) : (
+                                            <div className="py-8 rounded border border-dashed border-border-sub flex items-center justify-center text-[10px] text-text-muted uppercase font-bold">
+                                                No documentation attached
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="p-3 rounded bg-brand-red-dim/10 border border-brand-red/20 flex items-start gap-3">
                                 <AlertTriangle size={14} className="text-brand-red shrink-0 mt-0.5" />
                                 <p className="text-[10px] text-text-secondary leading-normal font-bold uppercase tracking-tight">
@@ -186,15 +235,15 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         </div>
                     )}
 
-                    <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default grid grid-cols-3 gap-2">
-                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-10 text-[10px]">
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-3 gap-2 mt-auto">
+                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 text-[10px] uppercase font-bold tracking-widest">
                             <X size={14} className="mr-2" /> Reject
                         </Button>
-                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/assignments')} className="h-10 text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                            <Wrench size={14} className="mr-2" /> Assignment
+                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/assignments')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                            <Wrench size={14} className="mr-2" /> Assign
                         </Button>
-                        <Button onClick={() => handleAction('approved', '/admin/projects')} className="h-10 text-[10px] bg-brand-red hover:bg-brand-red-hover">
-                            <Briefcase size={14} className="mr-2" /> Project
+                        <Button onClick={handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                            <Briefcase size={14} className="mr-2" /> Create Project
                         </Button>
                     </DialogFooter>
                 </DialogContent>

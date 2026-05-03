@@ -13,7 +13,12 @@ import {
     MapPin,
     Calendar,
     ChevronRight,
-    AlertTriangle
+    AlertTriangle,
+    Camera,
+    FileText,
+    X,
+    Trash2,
+    Check
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -21,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function ClientTicketsPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -28,6 +34,10 @@ export default function ClientTicketsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
     const { toast } = useToast();
+
+    // Intake state
+    const [images, setImages] = useState<string[]>([]);
+    const [docs, setDocs] = useState<string[]>([]);
 
     useEffect(() => {
         setMounted(true);
@@ -56,6 +66,36 @@ export default function ClientTicketsPage() {
             description: "Service ticket has been added to the command intake queue.",
         });
         setIsNewTicketOpen(false);
+        handleReset();
+    };
+
+    const handleReset = () => {
+        setImages([]);
+        setDocs([]);
+    };
+
+    const simulateUpload = (type: 'image' | 'doc') => {
+        if (type === 'image') {
+          if (images.length >= 3) {
+            toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 3 images allowed." });
+            return;
+          }
+          setImages([...images, `https://picsum.photos/seed/${Date.now()}/400/300`]);
+        } else {
+          if (docs.length >= 2) {
+            toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 2 documents allowed." });
+            return;
+          }
+          setDocs([...docs, `Blueprint_Revision_${docs.length + 1}.pdf`]);
+        }
+    };
+
+    const removeAttachment = (type: 'image' | 'doc', index: number) => {
+        if (type === 'image') {
+          setImages(images.filter((_, i) => i !== index));
+        } else {
+          setDocs(docs.filter((_, i) => i !== index));
+        }
     };
 
     if (!mounted || !currentUserId) return null;
@@ -152,57 +192,135 @@ export default function ClientTicketsPage() {
                 )}
             </div>
 
-            <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default">
-                    <DialogHeader>
+            <Dialog open={isNewTicketOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsNewTicketOpen(open); }}>
+                <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0">
+                    <DialogHeader className="p-6 pb-2">
                         <div className="flex items-center gap-2 mb-1">
                             <Plus className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">New Service Intake</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
                         </div>
                         <DialogDescription>Submit detailed job requirements for administrative audit and dispatch.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleCreateTicket} className="space-y-6 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Issue Summary / Subject</Label>
-                            <Input placeholder="e.g., Network Closet Cabling Failure" className="bg-bg-primary" required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleCreateTicket}>
+                        <div className="px-6 py-4 space-y-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Request Type</Label>
-                                <Select defaultValue="Repair">
-                                    <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Repair">Infrastructure Repair</SelectItem>
-                                        <SelectItem value="Install">Low Voltage Install</SelectItem>
-                                        <SelectItem value="Maintenance">Preventative Maintenance</SelectItem>
-                                        <SelectItem value="Audit">Compliance Audit</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Issue Summary / Subject</Label>
+                                <Input placeholder="e.g., Network Closet Cabling Failure" className="bg-bg-primary h-10 text-xs" required />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Request Type</Label>
+                                    <Select defaultValue="Repair">
+                                        <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Repair">Infrastructure Repair</SelectItem>
+                                            <SelectItem value="Install">Low Voltage Install</SelectItem>
+                                            <SelectItem value="Maintenance">Preventative Maintenance</SelectItem>
+                                            <SelectItem value="Audit">Compliance Audit</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
+                                    <Select defaultValue="medium">
+                                        <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="low">Low (Standard)</SelectItem>
+                                            <SelectItem value="medium">Medium</SelectItem>
+                                            <SelectItem value="high">High (4h Target)</SelectItem>
+                                            <SelectItem value="critical">Critical (Emergency)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
-                                <Select defaultValue="medium">
-                                    <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low (Standard)</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High (4h Target)</SelectItem>
-                                        <SelectItem value="critical">Critical (Emergency)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location / Coordinates</Label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                                    <Input placeholder="Select site or enter address..." className="bg-bg-primary h-10 text-xs pl-10" required />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Problem Description & Scope</Label>
+                                <Textarea placeholder="Provide high-fidelity job details..." className="bg-bg-primary h-24 text-xs" required />
+                            </div>
+
+                            {/* ATTACHMENTS */}
+                            <div className="space-y-4 border-t border-border-sub pt-4">
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                            <Camera size={14} className="text-brand-red" />
+                                            Visual Evidence (Max 3)
+                                        </Label>
+                                        <span className="text-[9px] font-mono text-text-muted">{images.length}/3</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {images.map((img, i) => (
+                                            <div key={i} className="relative aspect-video rounded border border-border-sub overflow-hidden group bg-bg-primary">
+                                                <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => removeAttachment('image', i)}
+                                                    className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {images.length < 3 && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => simulateUpload('image')}
+                                                className="aspect-video rounded border-2 border-dashed border-border-sub hover:border-brand-red hover:bg-brand-red-dim/5 transition-all flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red"
+                                            >
+                                                <Plus size={16} />
+                                                <span className="text-[8px] font-bold uppercase">Add Photo</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                            <FileText size={14} className="text-accent-gold" />
+                                            Technical Documentation (Max 2)
+                                        </Label>
+                                        <span className="text-[9px] font-mono text-text-muted">{docs.length}/2</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {docs.map((doc, i) => (
+                                            <div key={i} className="flex items-center justify-between p-2.5 rounded bg-bg-primary border border-border-sub">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <FileText size={12} className="text-text-muted shrink-0" />
+                                                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight truncate">{doc}</span>
+                                                </div>
+                                                <button type="button" onClick={() => removeAttachment('doc', i)} className="text-text-muted hover:text-text-red ml-2">
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {docs.length < 2 && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => simulateUpload('doc')}
+                                                className="w-full py-3 rounded border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
+                                            >
+                                                <Plus size={14} />
+                                                <span className="text-[9px] font-bold uppercase">Attach PDF / DOC</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location / Coordinates</Label>
-                            <Input placeholder="Select site or enter address..." className="bg-bg-primary" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Problem Description & Scope</Label>
-                            <Textarea placeholder="Provide high-fidelity job details..." className="bg-bg-primary h-24" required />
-                        </div>
-                        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)}>Abort Submission</Button>
-                            <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10">Transmit Request</Button>
+                        <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default mt-2">
+                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort Submission</Button>
+                            <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10 uppercase font-bold text-[10px] tracking-widest h-10">
+                                <Check size={16} className="mr-2" />
+                                Transmit Request
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

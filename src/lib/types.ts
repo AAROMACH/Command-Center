@@ -148,6 +148,8 @@ export type ServiceRequest = {
   status: 'new' | 'reviewed' | 'approved' | 'rejected' | 'closed';
   submittedDate: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  imageUrls?: string[];
+  documentUrls?: string[];
 };
 
 export type AssignmentTimeLog = {

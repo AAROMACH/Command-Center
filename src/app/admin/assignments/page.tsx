@@ -76,11 +76,11 @@ export default function AssignmentsHubPage() {
         </div>
         <div className="search-wrap">
           <Search className="h-4 w-4" />
-          <Input 
+          <input 
             placeholder="Search Tech, ID, or Description..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-[350px] bg-bg-secondary border-border-main h-10"
+            className="search-input !w-full md:!w-[350px] bg-bg-secondary border-border-main h-10"
           />
         </div>
       </header>
@@ -98,7 +98,18 @@ export default function AssignmentsHubPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="schedule" className="mt-6">
+        <TabsContent value="schedule" className="mt-6 space-y-6">
+            {/* IN-PAGE TACTICAL CALENDAR (WEEK VIEW) */}
+            <div className="rounded-lg border border-border-sub bg-bg-secondary/30 p-4 shadow-sm">
+                <GlobalScheduleCalendar 
+                    workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
+                    technicians={technicians} 
+                    selectedDate={filterDate || undefined}
+                    hideManifest={true}
+                    onDateSelect={(date) => setFilterDate(date)}
+                />
+            </div>
+
             <div className="space-y-6">
                 <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
                     <div className="flex items-center gap-6">
@@ -123,11 +134,8 @@ export default function AssignmentsHubPage() {
                     <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <DialogTrigger asChild>
                             <Button variant="secondary" size="sm" className="h-9 px-4 gap-2 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10">
-                                <CalendarIcon size={14} />
-                                <span className="text-[10px] uppercase font-bold tracking-widest">
-                                    {filterDate ? 'Change Date' : 'Operational Calendar'}
-                                </span>
-                                <Maximize2 size={12} className="opacity-50" />
+                                <Maximize2 size={14} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Expand Calendar</span>
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default p-6 shadow-2xl">
@@ -137,7 +145,7 @@ export default function AssignmentsHubPage() {
                                         <CalendarIcon size={16} className="text-brand-red" />
                                     </div>
                                     <div>
-                                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Date Selector</DialogTitle>
+                                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Global Date Selector</DialogTitle>
                                         <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Select operational window</p>
                                     </div>
                                 </div>
@@ -215,9 +223,9 @@ export default function AssignmentsHubPage() {
                                 }
                             </p>
                             {filterDate && (
-                                <Button variant="ghost" className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red" onClick={() => setFilterDate(null)}>
+                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={() => setFilterDate(null)}>
                                     Reset Date Selection
-                                </Button>
+                                </button>
                             )}
                         </div>
                     )}

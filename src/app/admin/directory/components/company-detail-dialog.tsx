@@ -28,7 +28,8 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  Plus
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';

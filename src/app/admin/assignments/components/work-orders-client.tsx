@@ -208,8 +208,13 @@ export function WorkOrdersClient({
     if (!editedOrder) return;
     
     if (name === 'assignedTechnicianId') {
-        const newStatus = value ? 'assigned' as const : 'unassigned' as const;
-        setEditedOrder({ ...editedOrder, assignedTechnicianId: value || undefined, status: newStatus });
+        const isUnassigned = value === 'unassigned';
+        const newStatus = isUnassigned ? 'unassigned' as const : 'assigned' as const;
+        setEditedOrder({ 
+            ...editedOrder, 
+            assignedTechnicianId: isUnassigned ? undefined : value, 
+            status: newStatus 
+        });
     } else {
         setEditedOrder({ ...editedOrder, [name]: value as any });
     }
@@ -563,12 +568,12 @@ export function WorkOrdersClient({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assignedTechnicianId" className="text-text-muted">Assigned Technician</Label>
-                <Select value={editedOrder.assignedTechnicianId || ''} onValueChange={(value) => handleSelectChange('assignedTechnicianId', value)}>
+                <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(value) => handleSelectChange('assignedTechnicianId', value)}>
                     <SelectTrigger id="assignedTechnicianId" className="bg-bg-primary border-border-subtle">
                         <SelectValue placeholder="Select a technician" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {technicians.map(tech => (
                             <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
                         ))}

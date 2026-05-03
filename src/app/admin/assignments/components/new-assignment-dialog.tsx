@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,8 +22,12 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Wrench } from 'lucide-react';
-import type { WorkOrder } from '@/lib/types';
+import { Plus, Wrench, Search, MapPin, Building2, ChevronDown } from 'lucide-react';
+import type { WorkOrder, Technician } from '@/lib/types';
+import { technicians } from '@/lib/data';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 type NewAssignmentDialogProps = {
   isOpen: boolean;
@@ -39,10 +43,36 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     requiredSkills: [],
     pay: 0,
     scheduleDate: new Date().toISOString().split('T')[0],
-    scheduleTime: '09:00 AM EST'
+    scheduleTime: '09:00 AM EST',
+    clientName: '',
+    location: ''
   });
   
+  const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+  const [isSitePopoverOpen, setIsSitePopoverOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+
   const { toast } = useToast();
+
+  const clients = useMemo(() => {
+    return technicians.filter(t => 
+        t.roles?.includes('client') || 
+        t.role.toLowerCase().includes('client') || 
+        t.clientCompany
+    );
+  }, []);
+
+  const selectedClient = useMemo(() => {
+    return clients.find(c => c.clientCompany === formData.clientName || c.name === formData.clientName);
+  }, [formData.clientName, clients]);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients;
+    return clients.filter(c => 
+        (c.clientCompany || '').toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+    );
+  }, [clientSearch, clients]);
 
   const handleSave = () => {
     if (!formData.description || !formData.location || !formData.clientName) {
@@ -69,13 +99,30 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       requiredSkills: [],
       pay: 0,
       scheduleDate: new Date().toISOString().split('T')[0],
-      scheduleTime: '09:00 AM EST'
+      scheduleTime: '09:00 AM EST',
+      clientName: '',
+      location: ''
     });
+  };
+
+  const selectClient = (client: Technician) => {
+    setFormData(prev => ({
+        ...prev,
+        clientName: client.clientCompany || client.name,
+        location: '' // Reset location when client changes
+    }));
+    setIsClientPopoverOpen(false);
+    setClientSearch('');
+  };
+
+  const selectSite = (site: { name: string, location: string }) => {
+    setFormData(prev => ({ ...prev, location: site.location }));
+    setIsSitePopoverOpen(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default">
+      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="text-brand-red h-5 w-5" />
@@ -97,22 +144,94 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-              <Input 
-                placeholder="Client Name" 
-                value={formData.clientName}
-                onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                className="bg-bg-primary h-10"
-              />
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                <div className="flex gap-1">
+                    <Input 
+                        placeholder="Manual name entry..." 
+                        value={formData.clientName}
+                        onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                        className="bg-bg-primary h-10 flex-1"
+                    />
+                    <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="h-10 px-3 bg-bg-primary">
+                                <Search size={14} />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main" align="end">
+                            <div className="p-2 border-b border-border-sub">
+                                <Input 
+                                    placeholder="Search registry..." 
+                                    value={clientSearch}
+                                    onChange={(e) => setClientSearch(e.target.value)}
+                                    className="h-8 text-xs bg-bg-primary"
+                                />
+                            </div>
+                            <ScrollArea className="h-[200px]">
+                                <div className="p-1">
+                                    {filteredClients.map(client => (
+                                        <button
+                                            key={client.id}
+                                            onClick={() => selectClient(client)}
+                                            className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left"
+                                        >
+                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted">
+                                                <Building2 size={12} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-text-primary uppercase">{client.clientCompany || client.name}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">Client Contact: {client.name}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {filteredClients.length === 0 && (
+                                        <div className="py-8 text-center text-[10px] text-text-muted uppercase font-bold tracking-widest">No matching clients</div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
+
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-              <Input 
-                placeholder="Full address or coordinates" 
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                className="bg-bg-primary h-10"
-              />
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                <div className="flex gap-1">
+                    <Input 
+                        placeholder="Full address or coordinates..." 
+                        value={formData.location}
+                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                        className="bg-bg-primary h-10 flex-1"
+                    />
+                    {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
+                        <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("h-10 px-3 bg-bg-primary", formData.location ? "text-text-green" : "text-text-muted")}>
+                                    <MapPin size={14} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main" align="end">
+                                <div className="p-3 border-b border-border-sub bg-bg-tertiary">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
+                                </div>
+                                <ScrollArea className="h-[180px]">
+                                    <div className="p-1">
+                                        {selectedClient.managedSites.map(site => (
+                                            <button
+                                                key={site.id}
+                                                onClick={() => selectSite(site)}
+                                                className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub"
+                                            >
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-tight">{site.name}</p>
+                                                <p className="text-[10px] text-text-muted mt-0.5">{site.location}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                </div>
             </div>
           </div>
 
@@ -149,7 +268,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Mission Priority</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
               <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
                 <SelectTrigger className="bg-bg-primary h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -179,7 +298,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8">Abort</Button>
           <Button onClick={handleSave} className="h-10 px-10">
             <Plus size={16} className="mr-2" />
-            Commit Engagement
+            Create Assignment
           </Button>
         </DialogFooter>
       </DialogContent>

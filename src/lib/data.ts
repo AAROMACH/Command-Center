@@ -1,3 +1,4 @@
+
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -101,6 +102,10 @@ export const technicians: Technician[] = [
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',
     clientCompany: 'Ki9',
+    managedSites: [
+        { id: 'ki9-det', name: 'Ki9 Warehouse - Detroit', location: 'Detroit, MI 48201' },
+        { id: 'ki9-nwk', name: 'Ki9 Logistics Hub', location: 'Newark, NJ 07102' }
+    ],
     emergencyContact: {
       name: 'Michael Williams',
       relation: 'Father',

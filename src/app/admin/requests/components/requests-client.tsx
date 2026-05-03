@@ -15,7 +15,8 @@ import {
   Calendar, 
   ClipboardList, 
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Wrench
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -190,10 +191,10 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             <X size={14} className="mr-2" /> Reject
                         </Button>
                         <Button variant="outline" onClick={() => handleAction('approved', '/admin/assignments')} className="h-10 text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                            <Hammer size={14} className="mr-2" /> Service Job
+                            <Wrench size={14} className="mr-2" /> Assignment
                         </Button>
                         <Button onClick={() => handleAction('approved', '/admin/projects')} className="h-10 text-[10px] bg-brand-red hover:bg-brand-red-hover">
-                            <Briefcase size={14} className="mr-2" /> Project Path
+                            <Briefcase size={14} className="mr-2" /> Project
                         </Button>
                     </DialogFooter>
                 </DialogContent>

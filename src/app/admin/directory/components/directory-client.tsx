@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
 
 type DirectoryClientProps = {
     technicians: Technician[];

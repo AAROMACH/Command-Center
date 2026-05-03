@@ -192,7 +192,9 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isField = formData.roles?.some(r => ROLE_DATA.tech.map(fr => fr.id).includes(r));
+  const isInternalStaff = formData.roles?.some(r => 
+    [...ROLE_DATA.admin, ...ROLE_DATA.tech].map(role => role.id).includes(r)
+  );
   const isClient = formData.roles?.includes('client');
 
   return (
@@ -361,7 +363,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                             </div>
                         )}
 
-                        {isField && (
+                        {isInternalStaff && (
                             <div className="space-y-4">
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted border-b border-border-sub/20 pb-1">Emergency Contact Protocol</p>
                                 <div className="grid grid-cols-2 gap-4">

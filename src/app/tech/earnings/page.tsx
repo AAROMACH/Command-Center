@@ -1,108 +1,235 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { WeeklyLog } from '@/lib/types';
-import { weeklyLogs } from '@/lib/data';
+import { useState, useEffect, useMemo } from 'react';
+import type { WeeklyLog, Expense, Technician } from '@/lib/types';
+import { weeklyLogs, expenses as initialExpenses, technicians, workOrders, projects } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, PiggyBank, FileClock } from 'lucide-react';
+import { Coins, PiggyBank, FileClock, Receipt, Plus, Download, ArrowUpRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from '@/components/ui/button';
+import { ReceiptUploadDialog } from '../dashboard/components/receipt-upload-dialog';
 
 export default function TechEarningsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [logs, setLogs] = useState<WeeklyLog[]>([]);
+    const [mounted, setMounted] = useState(false);
+    const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
-        if (userId) {
-            setLogs(weeklyLogs.filter(wl => wl.technicianId === userId));
-        }
     }, []);
 
-    const totalPaid = logs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
-    const pendingPayout = logs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+    const tech = useMemo(() => 
+        currentTechId ? technicians.find(t => t.id === currentTechId) : null
+    , [currentTechId]);
 
-    if (!currentTechId) {
-        return <div>Loading...</div>;
+    const logs = useMemo(() => 
+        currentTechId ? weeklyLogs.filter(wl => wl.technicianId === currentTechId) : []
+    , [currentTechId]);
+
+    const myExpenses = useMemo(() => {
+        if (!tech) return [];
+        // Filtering by name as submittedBy in mock data uses names
+        return initialExpenses.filter(e => e.submittedBy === tech.name);
+    }, [tech]);
+
+    const totalPaid = useMemo(() => 
+        logs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0)
+    , [logs]);
+
+    const pendingPayout = useMemo(() => 
+        logs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0)
+    , [logs]);
+
+    const pendingReimbursements = useMemo(() => 
+        myExpenses.filter(e => e.status === 'Pending').reduce((acc, exp) => acc + exp.amount, 0)
+    , [myExpenses]);
+
+    const getStatusVariant = (status: Expense['status']) => {
+        switch (status) {
+            case 'Approved': return 'active';
+            case 'Pending': return 'onhold';
+            case 'Rejected': return 'destructive';
+            default: return 'outline';
+        }
+    };
+
+    if (!mounted || !currentTechId) {
+        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Financial Vault...</div>;
     }
 
     return (
-        <div>
+        <div className="space-y-6">
             <header className="page-header">
                 <div>
-                    <p className="page-eyebrow flex items-center gap-2"><Coins size={12} /> Payroll & Earnings</p>
-                    <h1 className="page-title">My Earnings</h1>
-                    <p className="page-subtitle">Track your log statuses and view your payment history.</p>
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <Coins size={12} />
+                        Financial Intelligence
+                    </p>
+                    <h1 className="page-title">Payroll & Earnings</h1>
+                    <p className="page-subtitle">Historical payout audit and reimbursement tracking for {tech?.name}.</p>
+                </div>
+                <div className="page-header-right">
+                    <Button onClick={() => setIsReceiptDialogOpen(true)}>
+                        <Plus size={14} className="mr-2"/>
+                        Submit Receipt
+                    </Button>
                 </div>
             </header>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Paid (YTD)</CardTitle>
-                        <PiggyBank className="h-4 w-4 text-text-muted" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-text-green">${totalPaid.toFixed(2)}</div>
-                        <p className="text-xs text-text-muted">Across all approved logs.</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Payout</CardTitle>
-                        <FileClock className="h-4 w-4 text-text-muted" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-accent-gold">${pendingPayout.toFixed(2)}</div>
-                        <p className="text-xs text-text-muted">From submitted logs pending approval.</p>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Paid (YTD)</p>
+                        <PiggyBank className="h-4 w-4 text-text-green" />
+                    </div>
+                    <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase">Across all approved logs</p>
+                </div>
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Awaiting Audit</p>
+                        <FileClock className="h-4 w-4 text-accent-gold" />
+                    </div>
+                    <p className="text-3xl font-mono font-bold text-accent-gold">${pendingPayout.toFixed(2)}</p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase">Standard assignment payouts</p>
+                </div>
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Reimbursements</p>
+                        <Receipt className="h-4 w-4 text-text-primary" />
+                    </div>
+                    <p className="text-3xl font-mono font-bold text-text-primary">${pendingReimbursements.toFixed(2)}</p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase">Verified field expenses</p>
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Log History</CardTitle>
-                    <CardDescription>A summary of your submitted weekly logs and their payout status.</CardDescription>
-                </CardHeader>
-                <CardContent className="table-wrap p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Week Of</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Total Payout</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {logs.map(log => (
-                                <TableRow key={log.id}>
-                                    <TableCell className="font-semibold">{log.weekOf}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={log.status === 'Approved' ? 'completed' : log.status === 'Submitted' ? 'onhold' : 'pending'}>
-                                            {log.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono">
-                                        {log.totalPayout ? (
-                                            <span className={log.status === 'Approved' ? 'text-text-green' : 'text-text-primary'}>
-                                                ${log.totalPayout.toFixed(2)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-text-muted">N/A</span>
+            <Tabs defaultValue="history" className="w-full">
+                <TabsList className="tabs !mb-6">
+                    <TabsTrigger value="history" className="tab">
+                        Payout History <span className="tab-count">({logs.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="reimbursements" className="tab">
+                        Reimbursement Tracker <span className="tab-count">({myExpenses.length})</span>
+                    </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="history" className="mt-0">
+                    <Card className="bg-bg-secondary border-border-main">
+                        <CardHeader>
+                            <CardTitle>Log Manifest History</CardTitle>
+                            <CardDescription>Comprehensive audit of submitted weekly logs and their final authorization status.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="table-wrap border-none rounded-none">
+                                <table className="tbl">
+                                    <thead>
+                                        <tr>
+                                            <th>Week Period</th>
+                                            <th>Authorization Status</th>
+                                            <th className="text-right">Final Payout</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {logs.map(log => (
+                                            <TableRow key={log.id} className="hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="font-bold uppercase text-xs tracking-wide">Week of {log.weekOf}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'}>
+                                                        {log.status.toUpperCase()}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {log.totalPayout ? (
+                                                        <div className="flex flex-col items-end">
+                                                            <span className={log.status === 'Approved' ? 'text-text-green font-mono font-bold' : 'text-text-primary font-mono'}>
+                                                                ${log.totalPayout.toFixed(2)}
+                                                            </span>
+                                                            <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">Verified</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-text-muted italic text-xs">Processing...</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {logs.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical manifests found.</td>
+                                            </tr>
                                         )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {logs.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center text-text-muted">No earnings history found.</TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="reimbursements" className="mt-0">
+                    <Card className="bg-bg-secondary border-border-main">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                            <div>
+                                <CardTitle>Expense Tracking Terminal</CardTitle>
+                                <CardDescription>Real-time status tracking for field material and travel reimbursements.</CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" className="h-8">
+                                <Download size={14} className="mr-2"/> Export Audit Log
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                             <div className="table-wrap border-none rounded-none">
+                                <table className="tbl">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction Date</th>
+                                            <th>Description & Category</th>
+                                            <th>Status</th>
+                                            <th className="text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {myExpenses.map(expense => (
+                                            <TableRow key={expense.id} className="hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="text-xs font-mono text-text-muted">{expense.date}</TableCell>
+                                                <TableCell>
+                                                    <div className="font-bold text-text-primary text-xs uppercase tracking-wide">{expense.description}</div>
+                                                    <div className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{expense.category}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getStatusVariant(expense.status)}>
+                                                        {expense.status.toUpperCase()}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-mono font-bold text-text-primary text-sm">${expense.amount.toFixed(2)}</span>
+                                                        <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">USD</span>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {myExpenses.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No active reimbursement claims.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            <ReceiptUploadDialog 
+                isOpen={isReceiptDialogOpen}
+                setIsOpen={setIsReceiptDialogOpen}
+                workOrders={workOrders.filter(wo => wo.assignedTechnicianId === currentTechId)}
+                projects={projects.filter(p => p.assignedTechnicianIds.includes(currentTechId || ''))}
+            />
         </div>
     );
 }

@@ -57,10 +57,10 @@ export default function AssignmentsHubPage() {
       <Tabs defaultValue="schedule" className="w-full">
         <TabsList className="tabs">
           <TabsTrigger value="schedule" className="tab">
-            Live Schedule <span className="tab-count">({activeWorkOrders.length})</span>
+            Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
           </TabsTrigger>
           <TabsTrigger value="calendar" className="tab">
-            Global Calendar
+            Assignment Calendar
           </TabsTrigger>
           <TabsTrigger value="archive" className="tab">
             Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>

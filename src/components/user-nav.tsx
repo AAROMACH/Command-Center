@@ -57,8 +57,12 @@ export function UserNav() {
   const availablePortals = getAvailablePortals(currentUser);
   const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
 
-  const profilePath = pathname.startsWith('/tech') ? '/tech/profile' : '/admin/profile';
-  const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : '/admin/settings';
+  // PORTAL SENSITIVE ROUTING
+  const profilePath = pathname.startsWith('/tech') ? '/tech/profile' : 
+                     pathname.startsWith('/client') ? '/client/profile' : '/admin/profile';
+  
+  const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : 
+                      pathname.startsWith('/client') ? '/client/settings' : '/admin/settings';
 
   return (
     <DropdownMenu>
@@ -69,7 +73,7 @@ export function UserNav() {
                 {currentUser?.name || 'Authorized User'}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
-                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client'}
+                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Stakeholder'}
              </span>
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -119,9 +123,9 @@ export function UserNav() {
             <span>Settings</span>
           </DropdownMenuItem>
           {(displayIsAdmin || displayIsClient) && (
-            <DropdownMenuItem onSelect={() => router.push('/admin/billing')}>
+            <DropdownMenuItem onSelect={() => router.push(displayIsClient ? '/client/financials' : '/admin/billing')}>
               <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing</span>
+              <span>Billing & Plan</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>

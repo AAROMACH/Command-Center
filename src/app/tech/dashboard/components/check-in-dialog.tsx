@@ -51,10 +51,9 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
     const [isLocating, setIsLocating] = useState(false);
     const { toast } = useToast();
 
-    // Simulated distance for prototyping logic (normally calculated from destination lat/lng)
-    const [simulatedDistance, setSimulatedDistance] = useState(0.4); // Miles
+    // Simulated distance for prototyping logic
+    const [simulatedDistance, setSimulatedDistance] = useState(0.4); 
 
-    // Get live location when dialog opens
     useEffect(() => {
         if (isOpen) {
             setIsLocating(true);
@@ -67,7 +66,6 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                             accuracy: position.coords.accuracy
                         });
                         setIsLocating(false);
-                        // For demo: randomly set distance over 1 mile 30% of the time
                         setSimulatedDistance(Math.random() > 0.7 ? 1.4 : 0.4);
                     },
                     (error) => {
@@ -164,7 +162,12 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     <Loader2 size={10} className="animate-spin" /> Retrieving GPS...
                                 </div>
                             ) : (
-                                <Badge variant="active" className="text-[9px] h-5 uppercase">On Site</Badge>
+                                <Badge 
+                                    variant={selectedId && !isOutOfRange ? "active" : "outline"} 
+                                    className={cn("text-[9px] h-5 uppercase tracking-widest px-2", !selectedId || isOutOfRange ? "bg-bg-tertiary text-text-muted border-border-sub" : "")}
+                                >
+                                    {selectedId && !isOutOfRange ? "On Site" : "GPS Locked"}
+                                </Badge>
                             )}
                         </div>
                         {userLocation ? (
@@ -252,7 +255,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                         </p>
                                     ) : (
                                         <p className="text-[10px] font-bold text-text-green uppercase flex items-center gap-1.5">
-                                            <ShieldCheck size={12}/> Proximity Verified
+                                            <ShieldCheck size={12}/> Proximity Verified (On Site)
                                         </p>
                                     )}
                                 </div>

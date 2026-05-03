@@ -14,11 +14,20 @@ import {
   Search,
   User,
   Briefcase,
-  Activity
+  Activity,
+  Maximize2
 } from "lucide-react";
 import type { WorkOrder } from "@/lib/types";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
 
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -81,60 +90,96 @@ export default function AssignmentsHubPage() {
         </TabsList>
 
         <TabsContent value="schedule" className="mt-6">
-            <div className="grid grid-cols-1 gap-8">
-                {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
-                    const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
-                    if (techJobs.length === 0) return null;
+            <div className="space-y-6">
+                <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+                    <div className="flex items-center gap-3">
+                        <Activity size={16} className="text-brand-red" />
+                        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
+                    </div>
+                    
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary" size="sm" className="h-9 px-4 gap-2 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10">
+                                <CalendarIcon size={14} />
+                                <span className="text-[10px] uppercase font-bold tracking-widest">Operational Calendar</span>
+                                <Maximize2 size={12} className="opacity-50" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[1200px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-8">
+                            <DialogHeader className="mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-brand-red-dim rounded border border-brand-red/20">
+                                        <CalendarIcon size={20} className="text-brand-red" />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-xl font-bold uppercase tracking-widest text-text-primary">Global Mission Schedule</DialogTitle>
+                                        <p className="text-xs text-text-muted">Real-time situational awareness across all field coordinates.</p>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+                            <GlobalScheduleCalendar 
+                                workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
+                                technicians={technicians} 
+                            />
+                        </DialogContent>
+                    </Dialog>
+                </div>
 
-                    return (
-                        <div key={tech.id} className="space-y-4">
-                            <div className="flex items-center gap-3 border-b border-border-sub pb-2">
-                                <Avatar className="h-10 w-10 border border-border-sub">
-                                    <AvatarImage src={tech.avatarUrl} />
-                                    <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
+                <div className="grid grid-cols-1 gap-8">
+                    {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
+                        const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
+                        if (techJobs.length === 0) return null;
+
+                        return (
+                            <div key={tech.id} className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-border-sub pb-2">
+                                    <Avatar className="h-10 w-10 border border-border-sub">
+                                        <AvatarImage src={tech.avatarUrl} />
+                                        <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {techJobs.map(job => (
+                                        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
+                                                        {job.status === 'in-progress' && <div className="h-1.5 w-1.5 rounded-full bg-text-green mr-1.5 animate-pulse" />}
+                                                        {job.status}
+                                                    </Badge>
+                                                    <span className="font-mono text-[10px] text-text-muted">ID: {job.id.toUpperCase()}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
+                                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-1">{job.clientName}</p>
+                                                </div>
+                                                <div className="pt-2 border-t border-border-sub space-y-1.5">
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                                        <Clock size={12} className="text-text-muted" />
+                                                        {job.scheduleTime} • {job.scheduleDate}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                                        <MapPin size={12} className="text-text-muted" />
+                                                        <span className="truncate">{job.location}</span>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {techJobs.map(job => (
-                                    <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
-                                        <CardContent className="p-4 space-y-3">
-                                            <div className="flex justify-between items-start">
-                                                <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
-                                                    {job.status === 'in-progress' && <div className="h-1.5 w-1.5 rounded-full bg-text-green mr-1.5 animate-pulse" />}
-                                                    {job.status}
-                                                </Badge>
-                                                <span className="font-mono text-[10px] text-text-muted">ID: {job.id.toUpperCase()}</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
-                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-1">{job.clientName}</p>
-                                            </div>
-                                            <div className="pt-2 border-t border-border-sub space-y-1.5">
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                    <Clock size={12} className="text-text-muted" />
-                                                    {job.scheduleTime} • {job.scheduleDate}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                    <MapPin size={12} className="text-text-muted" />
-                                                    <span className="truncate">{job.location}</span>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
+                        );
+                    })}
+                    {activeWorkOrders.length === 0 && (
+                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">No active missions matching search criteria</p>
                         </div>
-                    );
-                })}
-                {activeWorkOrders.length === 0 && (
-                   <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">No active missions matching search criteria</p>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </TabsContent>
 

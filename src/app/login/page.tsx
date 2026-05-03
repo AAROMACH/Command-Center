@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { isAdmin, isTech } from "@/lib/permissions";
+import { isAdmin, isTech, isClient } from "@/lib/permissions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +57,8 @@ export default function LoginPage() {
       router.push("/admin/dashboard");
     } else if (isTech(user)) {
       router.push("/tech/dashboard");
+    } else if (isClient(user)) {
+      router.push("/client/dashboard");
     } else {
       // Default fallback
       router.push("/admin/dashboard");

@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { technicians } from '@/lib/data';
+import { Badge } from '@/components/ui/badge';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);

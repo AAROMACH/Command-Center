@@ -114,46 +114,46 @@ export function GlobalScheduleCalendar({
 
     return (
         <div className={cn("flex flex-col gap-6", !hideManifest && "xl:flex-row")}>
-            {/* COMPACT CALENDAR NAVIGATION & GRID */}
-            <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-4 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
-                <div className="flex items-center justify-between mb-4">
+            {/* THIN CALENDAR NAVIGATION & GRID */}
+            <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-3 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
+                <div className="flex items-center justify-between mb-3">
                     <div className="cal-nav !gap-1">
-                        <button className="nav-btn !h-7 !w-7" onClick={handlePrev}><ChevronLeft size={14}/></button>
-                        <span className="cal-period !min-w-[120px] !text-[10px] uppercase tracking-tighter text-center font-bold text-text-primary">
+                        <button className="nav-btn !h-6 !w-6" onClick={handlePrev}><ChevronLeft size={12}/></button>
+                        <span className="cal-period !min-w-[110px] !text-[9px] uppercase tracking-tighter text-center font-bold text-text-primary">
                             {viewMode === 'week' 
                                 ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
                                 : format(currentDate, 'MMMM yyyy')
                             }
                         </span>
-                        <button className="nav-btn !h-7 !w-7" onClick={handleNext}><ChevronRight size={14}/></button>
+                        <button className="nav-btn !h-6 !w-6" onClick={handleNext}><ChevronRight size={12}/></button>
                     </div>
                     <div className="view-toggle">
-                        <button className={cn("view-btn !px-2 !py-1 !text-[9px]", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
+                        <button className={cn("view-btn !px-1.5 !py-0.5 !text-[8px]", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
                             Week
                         </button>
-                        <button className={cn("view-btn !px-2 !py-1 !text-[9px]", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
+                        <button className={cn("view-btn !px-1.5 !py-0.5 !text-[8px]", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
                             Month
                         </button>
                     </div>
                 </div>
 
                 {viewMode === 'week' ? (
-                    <div className="week-grid !gap-1.5">
+                    <div className="week-grid !gap-1 !mb-0">
                         {weekDays.map(day => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const hasEvents = eventsByDate[dateStr] && eventsByDate[dateStr].length > 0;
                             return (
                                 <div 
                                   key={day.toString()} 
-                                  className={cn("day-pill !h-16 !p-1.5 justify-center", {
+                                  className={cn("day-pill !h-10 !p-1 justify-center", {
                                     'selected': isSameDay(day, effectiveSelectedDate),
                                     'today': isToday(day)
                                   })}
                                   onClick={() => handleDayClick(day)}
                                 >
-                                    <span className="day-name !text-[8px]">{format(day, 'EEE')}</span>
-                                    <span className="day-num !text-base">{format(day, 'd')}</span>
-                                    {hasEvents && <div className="day-dot !h-1 !w-1" />}
+                                    <span className="day-name !text-[7px] !mb-0">{format(day, 'EEE')}</span>
+                                    <span className="day-num !text-xs !leading-none">{format(day, 'd')}</span>
+                                    {hasEvents && <div className="day-dot !h-0.5 !w-0.5 !mt-0.5" />}
                                 </div>
                             )
                         })}
@@ -162,7 +162,7 @@ export function GlobalScheduleCalendar({
                     <div className="month-grid-wrap !mb-0 border-none bg-transparent">
                         <div className="month-header !border-none">
                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(dayName => (
-                                <div key={dayName} className="month-header-cell !p-1 !text-[8px]">{dayName}</div>
+                                <div key={dayName} className="month-header-cell !p-0.5 !text-[7px]">{dayName}</div>
                             ))}
                         </div>
                         <div className="month-days !grid-cols-7 border border-border-sub rounded-md overflow-hidden">
@@ -172,7 +172,7 @@ export function GlobalScheduleCalendar({
                                 return (
                                     <div 
                                       key={day.toString()}
-                                      className={cn("month-day !h-10 !text-[10px] !border-border-sub", {
+                                      className={cn("month-day !h-8 !text-[9px] !border-border-sub", {
                                         'selected': isSameDay(day, effectiveSelectedDate),
                                         'today': isToday(day),
                                         'other-month': !isSameMonth(day, currentDate)
@@ -189,7 +189,7 @@ export function GlobalScheduleCalendar({
                 )}
             </div>
 
-            {/* PROMINENT DAILY MANIFEST (Hidden if hideManifest is true) */}
+            {/* DAILY MANIFEST */}
             {!hideManifest && (
               <div className="flex-1 flex flex-col gap-4">
                   <div className="p-4 rounded-lg bg-bg-secondary border border-border-main flex items-center justify-between shadow-sm">

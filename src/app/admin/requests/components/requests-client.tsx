@@ -61,12 +61,12 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         if (!selectedRequest) return;
         
         const isProject = destination === '/admin/projects';
-        const isAssignment = destination === '/admin/assignments';
+        const isDispatch = destination === '/admin/dispatch';
         
         // Simulate ID generation as per tactical requirements
         const generatedId = isProject 
             ? `PROJ-${Math.floor(1000 + Math.random() * 9000)}` 
-            : isAssignment 
+            : isDispatch 
                 ? `WO-${Math.floor(100000 + Math.random() * 900000)}`
                 : null;
 
@@ -78,10 +78,10 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             });
         } else {
             toast({
-                title: isProject ? "Project Registry Initialized" : "Assignment Dispatched",
+                title: isProject ? "Project Registry Initialized" : "Job Pool Dispatched",
                 description: isProject 
                     ? `Registry entry created with Project ID: ${generatedId}`
-                    : `Dispatched to work order registry with ID: ${generatedId}`,
+                    : `Dispatched to unassigned pool with ID: ${generatedId}`,
             });
         }
 
@@ -133,7 +133,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                         <Eye size={14} className="mr-2"/> Review
                                     </Button>
                                     {req.status === 'approved' && (
-                                        <Button size="sm" variant="secondary" onClick={() => router.push('/admin/assignments')}>
+                                        <Button size="sm" variant="secondary" onClick={() => router.push('/admin/dispatch')}>
                                             <ArrowRight size={14}/>
                                         </Button>
                                     )}
@@ -199,7 +199,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
                             </div>
 
-                            {/* ATTACHMENTS DISPLAY */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                                 <div className="space-y-3">
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
@@ -260,7 +259,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 text-[10px] uppercase font-bold tracking-widest">
                             <X size={14} className="mr-2" /> Reject
                         </Button>
-                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/assignments')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
                             <Wrench size={14} className="mr-2" /> Assign
                         </Button>
                         <Button onClick={() => handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">

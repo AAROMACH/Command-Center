@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -59,10 +60,30 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const handleAction = (status: ServiceRequest['status'], destination?: string) => {
         if (!selectedRequest) return;
         
-        toast({
-            title: `Request ${status === 'rejected' ? 'Rejected' : 'Processed'}`,
-            description: `Request ${selectedRequest.id.toUpperCase()} has been moved to ${status}.`,
-        });
+        const isProject = destination === '/admin/projects';
+        const isAssignment = destination === '/admin/assignments';
+        
+        // Simulate ID generation as per tactical requirements
+        const generatedId = isProject 
+            ? `PROJ-${Math.floor(1000 + Math.random() * 9000)}` 
+            : isAssignment 
+                ? `WO-${Math.floor(100000 + Math.random() * 900000)}`
+                : null;
+
+        if (status === 'rejected') {
+            toast({
+                variant: "destructive",
+                title: "Intake Terminated",
+                description: `Request ${selectedRequest.id.toUpperCase()} has been rejected and archived.`,
+            });
+        } else {
+            toast({
+                title: isProject ? "Project Registry Initialized" : "Assignment Dispatched",
+                description: isProject 
+                    ? `Registry entry created with Project ID: ${generatedId}`
+                    : `Dispatched to work order registry with ID: ${generatedId}`,
+            });
+        }
 
         setIsReviewOpen(false);
         if (destination) {

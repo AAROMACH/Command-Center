@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -135,7 +136,7 @@ export default function DashboardPage() {
                                     <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : job.priority === 'medium' ? 'medium' : 'low'}>{job.priority}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="default" size="sm">Assign</Button>
+                                    <Button variant="default" size="sm" onClick={() => router.push('/admin/assignments')}>Assign</Button>
                                 </TableCell>
                             </TableRow>
                         ))}

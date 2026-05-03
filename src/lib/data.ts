@@ -181,6 +181,28 @@ export const technicians: Technician[] = [
       preferredJobTypes: [],
       availabilityOverride: true,
     }
+  },
+  {
+    id: 'client-002',
+    name: 'Test Stakeholder',
+    role: 'Client Lead',
+    roles: ['client'],
+    email: 'testclient@org.com',
+    phone: '555-123-9999',
+    clientCompany: 'Test Organization',
+    businessType: 'Consulting',
+    currentLocation: 'Chicago, IL',
+    reliabilityScore: 100,
+    currentWorkload: 0,
+    skills: [],
+    avatarUrl: getImageUrl('technician-4'),
+    availability: {},
+    workPreferences: {
+      preferredRadius: 0,
+      maxTravelDistance: 0,
+      preferredJobTypes: [],
+      availabilityOverride: true,
+    }
   }
 ];
 

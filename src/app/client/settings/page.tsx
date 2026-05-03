@@ -22,11 +22,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
@@ -182,7 +184,11 @@ export default function ClientSettingsPage() {
                                     </div>
                                     <Badge variant="active" className="text-[8px] h-5">Primary</Badge>
                                 </div>
-                                <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest">
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full h-11 uppercase font-bold text-[10px] tracking-widest"
+                                    onClick={() => router.push('/client/financials')}
+                                >
                                     Manage Methods in Financials Portal
                                     <ChevronRight size={14} className="ml-2" />
                                 </Button>

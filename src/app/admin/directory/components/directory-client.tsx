@@ -18,7 +18,8 @@ import {
     LayoutGrid, 
     Columns2,
     Shield,
-    Star
+    Star,
+    ArrowUpDown
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
@@ -31,6 +32,13 @@ import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -39,11 +47,15 @@ type DirectoryClientProps = {
 };
 
 type ViewMode = 'rows' | 'grid' | 'columns';
+type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders }: DirectoryClientProps) {
     const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
+    const [sortBy, setSortBy] = useState<SortOption>('name');
+    const [activeTab, setActiveTab] = useState('technicians');
+    
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
@@ -121,7 +133,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         return p.role.toLowerCase().includes('client');
     });
 
-    // Group clients by company
     const companies = useMemo(() => {
         const grouped: Record<string, { name: string; businessType?: string; contacts: Technician[] }> = {};
         clientsList.forEach(client => {
@@ -140,43 +151,69 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
-    const filteredTechnicians = techniciansList.filter((tech) =>
-        tech.name.toLowerCase().includes(lowercasedQuery) ||
-        tech.email.toLowerCase().includes(lowercasedQuery)
-    );
+    // SORTING & FILTERING
+    const filteredTechnicians = useMemo(() => {
+        return techniciansList
+            .filter((tech) =>
+                tech.name.toLowerCase().includes(lowercasedQuery) ||
+                tech.email.toLowerCase().includes(lowercasedQuery)
+            )
+            .sort((a, b) => {
+                if (sortBy === 'reliability') return b.reliabilityScore - a.reliabilityScore;
+                return a.name.localeCompare(b.name);
+            });
+    }, [techniciansList, lowercasedQuery, sortBy]);
 
-    const filteredStaff = staffList.filter((s) =>
-        s.name.toLowerCase().includes(lowercasedQuery) ||
-        s.email.toLowerCase().includes(lowercasedQuery)
-    );
+    const filteredStaff = useMemo(() => {
+        return staffList
+            .filter((s) =>
+                s.name.toLowerCase().includes(lowercasedQuery) ||
+                s.email.toLowerCase().includes(lowercasedQuery)
+            )
+            .sort((a, b) => {
+                if (sortBy === 'role') return a.role.localeCompare(b.role);
+                return a.name.localeCompare(b.name);
+            });
+    }, [staffList, lowercasedQuery, sortBy]);
 
-    const filteredCompanies = companies.filter((c) =>
-        c.name.toLowerCase().includes(lowercasedQuery) ||
-        c.contacts.some(contact => 
-            contact.name.toLowerCase().includes(lowercasedQuery) || 
-            contact.email.toLowerCase().includes(lowercasedQuery)
-        )
-    );
+    const filteredCompanies = useMemo(() => {
+        return companies
+            .filter((c) =>
+                c.name.toLowerCase().includes(lowercasedQuery) ||
+                c.contacts.some(contact => 
+                    contact.name.toLowerCase().includes(lowercasedQuery) || 
+                    contact.email.toLowerCase().includes(lowercasedQuery)
+                )
+            )
+            .sort((a, b) => {
+                if (sortBy === 'contacts') return b.contacts.length - a.contacts.length;
+                return a.name.localeCompare(b.name);
+            });
+    }, [companies, lowercasedQuery, sortBy]);
     
-    const filteredTimeOffRequests = timeOffRequests.filter(req => {
-        const person = personnel.find(p => p.id === req.technicianId);
-        if (!person) return false;
-        
-        return (
-            person.name.toLowerCase().includes(lowercasedQuery) ||
-            req.startDate.toLowerCase().includes(lowercasedQuery) ||
-            req.endDate.toLowerCase().includes(lowercasedQuery) ||
-            req.type.toLowerCase().includes(lowercasedQuery) ||
-            req.status.toLowerCase().includes(lowercasedQuery)
-        );
-    });
+    const filteredTimeOffRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(req => {
+                const person = personnel.find(p => p.id === req.technicianId);
+                if (!person) return false;
+                
+                return (
+                    person.name.toLowerCase().includes(lowercasedQuery) ||
+                    req.startDate.toLowerCase().includes(lowercasedQuery) ||
+                    req.endDate.toLowerCase().includes(lowercasedQuery) ||
+                    req.type.toLowerCase().includes(lowercasedQuery) ||
+                    req.status.toLowerCase().includes(lowercasedQuery)
+                );
+            })
+            .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+    }, [timeOffRequests, personnel, lowercasedQuery]);
 
     const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
     const personTimeOffRequests = selectedPerson ? timeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
     return (
         <>
-            <Tabs defaultValue="technicians" className="w-full">
+            <Tabs defaultValue="technicians" onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <TabsList className="tabs !p-0 !bg-bg-tertiary w-full md:w-auto">
                         <TabsTrigger value="technicians" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
@@ -187,7 +224,26 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsList>
 
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                        <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1">
+                        {/* Sort Controller */}
+                        <div className="flex items-center gap-2">
+                             <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                                <SelectTrigger className="w-[140px] bg-bg-tertiary border-border-sub h-10 text-[10px] uppercase font-bold tracking-widest">
+                                    <div className="flex items-center gap-2">
+                                        <ArrowUpDown size={12} className="text-text-muted" />
+                                        <SelectValue placeholder="Sort By" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="name" className="text-[10px] uppercase font-bold">Sort: Name</SelectItem>
+                                    {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[10px] uppercase font-bold">Sort: Reliability</SelectItem>}
+                                    {activeTab === 'clients' && <SelectItem value="contacts" className="text-[10px] uppercase font-bold">Sort: Density</SelectItem>}
+                                    {activeTab === 'staff' && <SelectItem value="role" className="text-[10px] uppercase font-bold">Sort: Role</SelectItem>}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* View Switcher */}
+                        <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1 h-10">
                             <Button 
                                 variant="ghost" 
                                 size="icon-sm" 
@@ -220,13 +276,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <div className="search-wrap flex-1 md:flex-none">
                             <Search />
                             <input 
-                                className="search-input w-full md:w-[200px]" 
+                                className="search-input w-full md:w-[200px] h-10" 
                                 placeholder="Filter registry..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <Button variant="default" size="default" onClick={() => setIsAddPersonnelOpen(true)}>
+                        <Button variant="default" size="default" onClick={() => setIsAddPersonnelOpen(true)} className="h-10">
                             <Plus size={14} className="mr-2"/>
                             ADD PERSONNEL
                         </Button>

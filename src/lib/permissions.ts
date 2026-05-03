@@ -78,6 +78,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   field_technician: [
     'view_dashboard',
     'view_assigned_work_only',
+    'view_assigned_projects_only',
     'field_checkin',
     'field_logs',
   ],

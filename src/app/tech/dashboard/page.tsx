@@ -87,22 +87,6 @@ export default function TechDashboardPage() {
         return weeklyLogs.filter(l => l.technicianId === currentTechId && l.status === 'Submitted');
     }, [currentTechId]);
 
-    const criticalAlerts = useMemo(() => {
-        if (!mounted || !currentTechId) return [];
-        const alerts = [];
-        
-        const unacknowledged = techWorkOrders.filter(wo => wo.status === 'assigned' && !wo.isAcknowledged);
-        if (unacknowledged.length > 0) {
-            alerts.push({ id: 'unack', type: 'critical', text: `${unacknowledged.length} Unacknowledged Assignment(s)`, icon: AlertTriangle });
-        }
-
-        if (unfinalizedLogs.length > 0) {
-            alerts.push({ id: 'logs', type: 'warning', text: `${unfinalizedLogs.length} weekly log(s) Pending`, icon: ClipboardList });
-        }
-
-        return alerts;
-    }, [techWorkOrders, mounted, unfinalizedLogs]);
-
     const summary = useMemo(() => ({
         totalJobs: todaysWorkOrders.length,
         remainingJobs: todaysWorkOrders.filter(wo => wo.status !== 'completed').length,
@@ -192,25 +176,7 @@ export default function TechDashboardPage() {
                 </div>
             </div>
 
-            {/* 3. CRITICAL ALERTS */}
-            {criticalAlerts.length > 0 && (
-                <div className="space-y-2">
-                    {criticalAlerts.map(alert => (
-                        <Alert key={alert.id} variant={alert.type === 'critical' ? 'destructive' : 'default'} className="bg-bg-secondary border-l-4 border-l-brand-red py-3">
-                            <alert.icon className="h-4 w-4" />
-                            <div className="flex w-full items-center justify-between">
-                                <div>
-                                    <AlertTitle className="text-xs font-bold uppercase tracking-wider">{alert.text}</AlertTitle>
-                                    <AlertDescription className="text-[10px] text-text-muted">Requires immediate technician attention.</AlertDescription>
-                                </div>
-                                <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => alert.id === 'logs' ? setIsLogSelectionOpen(true) : null}>Resolve</Button>
-                            </div>
-                        </Alert>
-                    ))}
-                </div>
-            )}
-
-            {/* 4. ASSIGNMENT PHASE (Next Action / Active Job) - Middle */}
+            {/* 3. ASSIGNMENT PHASE (Next Action / Active Job) - Middle */}
             <div className="space-y-6">
                 {!activeJob && (
                     <Card className="border-2 border-brand-red bg-brand-red-dim/5">
@@ -268,8 +234,10 @@ export default function TechDashboardPage() {
                                 <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live assignment</span>
                             </div>
-                            <Badge variant="active">On-Site</Badge>
-                            <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="active">On-Site</Badge>
+                                <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
+                            </div>
                             <CardDescription className="flex items-center gap-1.5"><MapPin size={14}/> {activeJob.location}</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -299,7 +267,7 @@ export default function TechDashboardPage() {
                 )}
             </div>
 
-            {/* 5. OPERATIONAL SCHEDULE (Bottom Section) */}
+            {/* 4. OPERATIONAL SCHEDULE (Bottom Section) */}
             <div className="opacity-90 grayscale-[0.2] hover:grayscale-0 transition-all">
                 <ScheduleBox workOrders={techWorkOrders} />
             </div>

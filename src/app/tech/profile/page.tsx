@@ -132,7 +132,7 @@ export default function TechProfilePage() {
                         <Settings2 size={14}/> Work Preferences
                     </TabsTrigger>
                     <TabsTrigger value="reliability" className="flex items-center gap-2">
-                        <Activity size={14}/> Reliability
+                        <Activity size={14}/> Reliability Score
                     </TabsTrigger>
                 </TabsList>
 
@@ -354,7 +354,7 @@ export default function TechProfilePage() {
                         </div>
                     </TabsContent>
 
-                    {/* LAYER D: PERFORMANCE / RELIABILITY */}
+                    {/* LAYER D: PERFORMANCE / RELIABILITY SCORE */}
                     <TabsContent value="reliability" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="border-accent-gold/20 bg-accent-gold/5">

@@ -146,7 +146,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-4 bg-bg-tertiary text-text-muted text-xs font-bold uppercase tracking-wider">
                                 <div>TECHNICIAN</div>
                                 <div>CONTACT INFORMATION</div>
-                                <div className="text-center">RELIABILITY</div>
+                                <div className="text-center">RELIABILITY SCORE</div>
                                 <div>STATUS</div>
                             </div>
                             {filteredTechnicians.map(tech => {

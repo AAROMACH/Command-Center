@@ -121,7 +121,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                            <h3 className="field-group-title">Operational Summary</h3>
                            <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 rounded-md bg-bg-secondary border border-border-subtle">
-                                    <h4 className="field-label flex items-center gap-1.5"><Shield size={14}/> Reliability</h4>
+                                    <h4 className="field-label flex items-center gap-1.5"><Shield size={14}/> Reliability Score</h4>
                                     <p className="text-3xl font-bold text-text-primary">{person.reliabilityScore}%</p>
                                     <p className="text-xs text-text-muted">On-Time Score</p>
                                 </div>

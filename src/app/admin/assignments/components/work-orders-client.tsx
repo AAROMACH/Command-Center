@@ -352,7 +352,7 @@ export function WorkOrdersClient({
                        </Avatar>
                        <div className="flex-1">
                          <div className="text-base font-bold tracking-normal text-text-primary">{recommendedTechnician.name}</div>
-                         <div className="text-sm text-text-secondary">Reliability: {recommendedTechnician.reliabilityScore}% | Workload: {recommendedTechnician.currentWorkload}</div>
+                         <div className="text-sm text-text-secondary">Reliability Score: {recommendedTechnician.reliabilityScore}% | Workload: {recommendedTechnician.currentWorkload}</div>
                        </div>
                        <Button onClick={() => handleAssign(recommendedTechnician.id)}>
                          <Rocket className="mr-2 h-4 w-4" /> Assign
@@ -380,7 +380,7 @@ export function WorkOrdersClient({
                             </Avatar>
                             <div className="flex-1">
                               <p className="font-semibold text-text-primary">{tech.name}</p>
-                              <p className="text-xs text-text-secondary">Reliability: {tech.reliabilityScore}% | Workload: {tech.currentWorkload}</p>
+                              <p className="text-xs text-text-secondary">Reliability Score: {tech.reliabilityScore}% | Workload: {tech.currentWorkload}</p>
                             </div>
                             <Button variant="outline" size="sm" onClick={() => handleAssign(tech.id)}>Assign</Button>
                           </div>

@@ -188,7 +188,7 @@ export default function TechDashboardPage() {
                     <p className="text-2xl font-bold">{summary.expectedHours}h</p>
                 </div>
                 <div className="bg-bg-secondary p-4">
-                    <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Reliability</p>
+                    <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Reliability Score</p>
                     <p className="text-2xl font-bold text-text-green">{tech.reliabilityScore}%</p>
                 </div>
             </div>

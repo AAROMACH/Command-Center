@@ -245,65 +245,68 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     return (
         <>
-            <Tabs defaultValue="technicians" onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <TabsList className="tabs !p-0 !bg-bg-tertiary w-full md:w-auto">
                         <TabsTrigger value="technicians" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
                         <TabsTrigger value="staff" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">STAFF</TabsTrigger>
                         <TabsTrigger value="clients" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">CLIENTS</TabsTrigger>
                         <TabsTrigger value="requests" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">DIRECTORY REQUESTS</TabsTrigger>
-                        <TabsTrigger value="map" className="tab !px-6 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MAP</TabsTrigger>
                     </TabsList>
 
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         {/* Sort Controller */}
-                        <div className="flex items-center gap-2">
-                             <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                <SelectTrigger className="w-[140px] bg-bg-tertiary border-border-sub h-10 text-[10px] uppercase font-bold tracking-widest">
-                                    <div className="flex items-center gap-2">
-                                        <ArrowUpDown size={12} className="text-text-muted" />
-                                        <SelectValue placeholder="Sort By" />
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="name" className="text-[10px] uppercase font-bold">Sort: Name</SelectItem>
-                                    {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[10px] uppercase font-bold">Sort: Reliability</SelectItem>}
-                                    {activeTab === 'clients' && <SelectItem value="contacts" className="text-[10px] uppercase font-bold">Sort: Density</SelectItem>}
-                                    {activeTab === 'staff' && <SelectItem value="role" className="text-[10px] uppercase font-bold">Sort: Role</SelectItem>}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {activeTab !== 'map' && activeTab !== 'requests' && (
+                            <div className="flex items-center gap-2">
+                                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                                    <SelectTrigger className="w-[140px] bg-bg-tertiary border-border-sub h-10 text-[10px] uppercase font-bold tracking-widest">
+                                        <div className="flex items-center gap-2">
+                                            <ArrowUpDown size={12} className="text-text-muted" />
+                                            <SelectValue placeholder="Sort By" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="name" className="text-[10px] uppercase font-bold">Sort: Name</SelectItem>
+                                        {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[10px] uppercase font-bold">Sort: Reliability</SelectItem>}
+                                        {activeTab === 'clients' && <SelectItem value="contacts" className="text-[10px] uppercase font-bold">Sort: Density</SelectItem>}
+                                        {activeTab === 'staff' && <SelectItem value="role" className="text-[10px] uppercase font-bold">Sort: Role</SelectItem>}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         {/* View Switcher */}
-                        <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1 h-10">
-                            <Button 
-                                variant="ghost" 
-                                size="icon-sm" 
-                                className={cn("h-8 w-8", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
-                                onClick={() => setViewMode('rows')}
-                                title="Row View"
-                            >
-                                <Rows3 size={14} />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="icon-sm" 
-                                className={cn("h-8 w-8", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
-                                onClick={() => setViewMode('grid')}
-                                title="Box View"
-                            >
-                                <LayoutGrid size={14} />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="icon-sm" 
-                                className={cn("h-8 w-8", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
-                                onClick={() => setViewMode('columns')}
-                                title="Column View"
-                            >
-                                <Columns2 size={14} />
-                            </Button>
-                        </div>
+                        {activeTab !== 'map' && activeTab !== 'requests' && (
+                            <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-1 h-10">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon-sm" 
+                                    className={cn("h-8 w-8", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                    onClick={() => setViewMode('rows')}
+                                    title="Row View"
+                                >
+                                    <Rows3 size={14} />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon-sm" 
+                                    className={cn("h-8 w-8", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                    onClick={() => setViewMode('grid')}
+                                    title="Box View"
+                                >
+                                    <LayoutGrid size={14} />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon-sm" 
+                                    className={cn("h-8 w-8", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
+                                    onClick={() => setViewMode('columns')}
+                                    title="Column View"
+                                >
+                                    <Columns2 size={14} />
+                                </Button>
+                            </div>
+                        )}
 
                         <div className="search-wrap flex-1 md:flex-none">
                             <Search />
@@ -314,6 +317,17 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
+
+                        <Button 
+                            variant={activeTab === 'map' ? 'default' : 'outline'} 
+                            size="default" 
+                            onClick={() => setActiveTab('map')}
+                            className={cn("h-10", activeTab === 'map' ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
+                        >
+                            <Map size={14} className="mr-2"/>
+                            MAP
+                        </Button>
+
                         <Button variant="default" size="default" onClick={() => setIsAddPersonnelOpen(true)} className="h-10">
                             <Plus size={14} className="mr-2"/>
                             ADD PERSONNEL

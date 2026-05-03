@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -628,7 +627,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 <div className="flex items-center gap-4 mb-4 border-b border-border-sub pb-2">
                                     <TabsList className="bg-transparent h-auto p-0 gap-6">
                                         <TabsTrigger value="site_registry" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2 flex items-center gap-2">
-                                            PENDING SITE REGISTRY
+                                            Pending Site Registry
                                             {siteRequests.filter(s => s.status === 'pending').length > 0 && (
                                                 <Badge variant="destructive" className="h-4 px-1 text-[8px]">
                                                     {siteRequests.filter(s => s.status === 'pending').length}
@@ -636,7 +635,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             )}
                                         </TabsTrigger>
                                         <TabsTrigger value="personnel_absences" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-2 flex items-center gap-2">
-                                            Personnel Absences
+                                            Time-off Request
                                             {timeOffRequests.filter(r => r.status === 'pending').length > 0 && (
                                                 <Badge variant="secondary" className="h-4 px-1 text-[8px]">
                                                     {timeOffRequests.filter(r => r.status === 'pending').length}

@@ -11,6 +11,8 @@ import {
   ClipboardList,
   Users,
   Banknote,
+  MapPin,
+  FileText
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -26,13 +28,21 @@ type NavItem = {
   permission: Permission;
 };
 
-const navItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
   { href: '/admin/requests', label: 'Requests', icon: ClipboardList, permission: 'view_requests' },
   { href: '/admin/assignments', label: 'Assignments', icon: Wrench, permission: 'view_assignments' },
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
+];
+
+const clientNavItems: NavItem[] = [
+  { href: '/client/tickets', label: 'Tickets', icon: ClipboardList, permission: 'client_portal' },
+  { href: '/client/projects', label: 'Projects', icon: Briefcase, permission: 'client_portal' },
+  { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'client_portal' },
+  { href: '/client/sites', label: 'Sites', icon: MapPin, permission: 'client_portal' },
+  { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
 ];
 
 export function Navbar() {
@@ -52,52 +62,42 @@ export function Navbar() {
   if (!mounted) return null;
 
   const isClientPortal = pathname.startsWith('/client');
+  const navItems = isClientPortal ? clientNavItems : adminNavItems;
   
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
-  // Map admin links to client context if viewing client portal
-  const displayItems = visibleItems.map(item => {
-    if (isClient(currentUser) && isClientPortal) {
-        // Clients only have dashboard in their portal currently
-        if (item.label === 'Dashboard') {
-            return { ...item, href: '/client/dashboard' };
-        }
-    }
-    return item;
-  });
-
-  const dashboardIndex = displayItems.findIndex(i => i.label === 'Dashboard');
+  const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
   let leftItems: NavItem[] = [];
   let centerItem: NavItem | null = null;
   let rightItems: NavItem[] = [];
 
   if (dashboardIndex !== -1) {
-    leftItems = displayItems.slice(0, dashboardIndex);
-    centerItem = displayItems[dashboardIndex];
-    rightItems = displayItems.slice(dashboardIndex + 1);
+    leftItems = visibleItems.slice(0, dashboardIndex);
+    centerItem = visibleItems[dashboardIndex];
+    rightItems = visibleItems.slice(dashboardIndex + 1);
   } else {
-    leftItems = displayItems;
+    leftItems = visibleItems;
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 shadow-md">
       <div className="flex w-1/4 items-center">
-        <Link href={isClientPortal ? "/client/dashboard" : "/admin/dashboard"} className="flex items-center gap-2">
+        <Link href={isClientPortal ? "/client/dashboard" : "/admin/dashboard"} className="flex items-center gap-2 group">
           {logo && (
             <Image 
               src={logo.imageUrl} 
               alt="Aaromach Logo" 
               width={100} 
               height={50} 
-              className="object-contain"
+              className="object-contain transition-opacity group-hover:opacity-80"
               data-ai-hint={logo.imageHint}
               priority
-              style={{ height: '50px', width: 'auto' }}
+              style={{ height: '40px', width: 'auto' }}
             />
           )}
           <div className="flex flex-col">
-            <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red">
+            <span className="font-mono text-base font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-red">
                 {isClientPortal ? 'Client Portal' : 'Admin Portal'}
             </span>
           </div>
@@ -111,7 +111,7 @@ export function Navbar() {
             href={item.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all',
-              pathname.startsWith(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+              pathname === item.href ? 'bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <item.icon className="h-3.5 w-3.5" />
@@ -124,7 +124,7 @@ export function Navbar() {
             href={centerItem.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#888888] transition-all border border-transparent',
-              pathname === centerItem.href ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+              pathname === centerItem.href ? 'bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <centerItem.icon className="h-4 w-4" />
@@ -138,7 +138,7 @@ export function Navbar() {
             href={item.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all',
-              pathname.startsWith(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+              pathname === item.href ? 'bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <item.icon className="h-3.5 w-3.5" />

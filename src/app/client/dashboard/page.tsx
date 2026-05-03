@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { projects, serviceRequests, technicians } from '@/lib/data';
-import type { Project, ServiceRequest, Technician } from '@/lib/types';
+import { projects, serviceRequests, technicians, invoices, assignmentTimeLogs, workOrders } from '@/lib/data';
+import type { Project, ServiceRequest, Technician, Invoice } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,18 @@ import {
     ArrowUpRight,
     MapPin,
     Calendar,
-    ChevronRight
+    ChevronRight,
+    Coins,
+    Activity,
+    Clock
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function ClientDashboardPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
@@ -41,6 +46,22 @@ export default function ClientDashboardPage() {
         return serviceRequests.filter(r => r.clientName === currentUser.clientCompany);
     }, [currentUser]);
 
+    const outstandingBalance = useMemo(() => {
+        if (!currentUser?.clientCompany) return 0;
+        return invoices
+            .filter(inv => inv.clientName === currentUser.clientCompany && inv.status !== 'paid' && inv.status !== 'void')
+            .reduce((acc, inv) => acc + inv.total, 0);
+    }, [currentUser]);
+
+    const recentActivity = useMemo(() => {
+        if (!currentUser?.clientCompany) return [];
+        // Combined assignments for client sites
+        return workOrders
+            .filter(wo => wo.clientName === currentUser.clientCompany)
+            .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))
+            .slice(0, 5);
+    }, [currentUser]);
+
     if (!mounted || !currentUserId) return null;
 
     return (
@@ -49,20 +70,20 @@ export default function ClientDashboardPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <LayoutDashboard size={12} />
-                        Client Portal
+                        Operational Overview
                     </p>
-                    <h1 className="page-title">Welcome, {currentUser?.name}</h1>
-                    <p className="page-subtitle">Real-time status for {currentUser?.clientCompany} deployments.</p>
+                    <h1 className="page-title">Command Dashboard</h1>
+                    <p className="page-subtitle">Real-time engagement tracking for {currentUser?.clientCompany}.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="default">
+                    <Button variant="default" onClick={() => router.push('/client/tickets')}>
                         <Plus size={14} className="mr-2"/>
                         Submit Service Request
                     </Button>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
@@ -76,87 +97,149 @@ export default function ClientDashboardPage() {
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                            <ClipboardList size={12} className="text-accent-gold"/> Pending Requests
+                            <ClipboardList size={12} className="text-accent-gold"/> Open Tickets
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-bold text-text-primary">{myRequests.filter(r => r.status === 'new').length}</p>
+                        <p className="text-3xl font-bold text-text-primary">{myRequests.filter(r => r.status === 'new' || r.status === 'reviewed').length}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                            <ArrowUpRight size={12} className="text-text-green"/> Completed (MTD)
+                            <Coins size={12} className="text-text-green"/> Outstanding A/R
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-3xl font-mono font-bold text-text-green">${outstandingBalance.toLocaleString()}</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-bg-secondary border-border-main">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                            <Activity size={12} className="text-brand-red"/> Live Sessions
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-3xl font-bold text-text-primary">
-                            {myProjects.filter(p => p.status === 'completed').length + myRequests.filter(r => r.status === 'closed').length}
+                            {workOrders.filter(wo => wo.clientName === currentUser?.clientCompany && wo.status === 'in-progress').length}
                         </p>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Deployment Progress</CardTitle>
-                        <CardDescription>Status tracking for your strategic initiatives.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y divide-border-sub">
-                            {myProjects.map(project => (
-                                <div key={project.id} className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer">
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{project.name}</p>
-                                        <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold">
-                                            <span className="flex items-center gap-1"><MapPin size={10}/> {project.location}</span>
-                                            <span className="flex items-center gap-1"><Calendar size={10}/> Started {project.startDate}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Deployment Progress</CardTitle>
+                            <CardDescription>Status tracking for your strategic initiatives.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border-sub">
+                                {myProjects.map(project => (
+                                    <Link key={project.id} href={`/client/projects`}>
+                                        <div className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{project.name}</p>
+                                                <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold">
+                                                    <span className="flex items-center gap-1"><MapPin size={10}/> {project.location}</span>
+                                                    <span className="flex items-center gap-1"><Calendar size={10}/> Started {project.startDate}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <Badge variant={project.status === 'active' ? 'active' : 'completed'}>
+                                                    {project.status.toUpperCase()}
+                                                </Badge>
+                                                <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all"/>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <Badge variant={project.status === 'active' ? 'active' : 'completed'}>
-                                            {project.status.toUpperCase()}
-                                        </Badge>
-                                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all"/>
-                                    </div>
-                                </div>
-                            ))}
-                            {myProjects.length === 0 && (
-                                <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No active projects found.</div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                    </Link>
+                                ))}
+                                {myProjects.length === 0 && (
+                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No active projects found.</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Recent Service Requests</CardTitle>
-                        <CardDescription>Review and track individual service tickets.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y divide-border-sub">
-                            {myRequests.map(request => (
-                                <div key={request.id} className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer">
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{request.description}</p>
-                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                            <span>ID: {request.id}</span>
-                                            <span>•</span>
-                                            <span>{request.requestType}</span>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recent Activity Terminal</CardTitle>
+                            <CardDescription>Latest assignment updates and historical results.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border-sub">
+                                {recentActivity.map(activity => (
+                                    <div key={activity.id} className="p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted">
+                                                <Clock size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{activity.description}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">{activity.location} • {activity.scheduleDate}</p>
+                                            </div>
                                         </div>
+                                        <Badge variant={activity.status === 'completed' ? 'active' : activity.status === 'in-progress' ? 'inprogress' : 'scheduled'}>
+                                            {activity.status.toUpperCase()}
+                                        </Badge>
                                     </div>
-                                    <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="normal-case">
-                                        {request.status}
-                                    </Badge>
+                                ))}
+                                {recentActivity.length === 0 && (
+                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No recent activity logged.</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-6">
+                    <Card className="border-brand-red/20 bg-brand-red/5">
+                        <CardHeader>
+                            <CardTitle className="text-brand-red flex items-center gap-2">
+                                <Activity size={14}/> Support Access
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-[10px] text-text-secondary leading-relaxed">
+                                Your dedicated Command staff is standing by to assist with emergency escalations or complex scope adjustments.
+                            </p>
+                            <div className="space-y-2">
+                                <div className="p-3 rounded bg-bg-primary border border-border-sub">
+                                    <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest mb-1">Assigned PM</p>
+                                    <p className="text-xs font-bold text-text-primary uppercase">Sarah Connor</p>
+                                    <p className="text-[10px] text-brand-red font-mono">admin@aaromach.com</p>
                                 </div>
-                            ))}
-                             {myRequests.length === 0 && (
-                                <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No requests submitted.</div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                <Button variant="outline" className="w-full h-9 text-[10px] uppercase tracking-widest font-bold">Open Direct Line</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recent Service Requests</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border-sub">
+                                {myRequests.slice(0, 3).map(request => (
+                                    <div key={request.id} className="p-3 flex flex-col gap-1.5 hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => router.push('/client/tickets')}>
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{request.description}</p>
+                                            <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[8px] h-4">
+                                                {request.status.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">{request.requestType} • {request.submittedDate}</p>
+                                    </div>
+                                ))}
+                                {myRequests.length === 0 && (
+                                    <div className="p-8 text-center text-[9px] text-text-muted uppercase tracking-widest italic">No pending requests.</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

@@ -242,7 +242,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <Button variant="outline" onClick={() => handleAction('approved', '/admin/assignments')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
                             <Wrench size={14} className="mr-2" /> Assign
                         </Button>
-                        <Button onClick={handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                        <Button onClick={() => handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
                             <Briefcase size={14} className="mr-2" /> Create Project
                         </Button>
                     </DialogFooter>

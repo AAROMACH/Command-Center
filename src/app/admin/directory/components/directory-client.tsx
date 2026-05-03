@@ -73,9 +73,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         });
     };
 
-    const techniciansList = personnel.filter(p => p.roles?.some(r => r.includes('tech') || r.includes('lead')) || p.role.toLowerCase().includes('tech'));
-    const staffList = personnel.filter(p => p.roles?.some(r => r.includes('admin') || r.includes('manager')) || p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin');
-    const clientsList = personnel.filter(p => p.roles?.includes('client') || p.role.toLowerCase().includes('client'));
+    // Refined filtering logic to prioritize roles array for tab placement
+    const techniciansList = personnel.filter(p => {
+        if (p.roles && p.roles.length > 0) {
+            return p.roles.some(r => r.includes('tech') || r.includes('lead'));
+        }
+        return p.role.toLowerCase().includes('tech');
+    });
+
+    const staffList = personnel.filter(p => {
+        if (p.roles && p.roles.length > 0) {
+            return p.roles.some(r => r.includes('admin') || r.includes('manager'));
+        }
+        return p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin';
+    });
+
+    const clientsList = personnel.filter(p => {
+        if (p.roles && p.roles.length > 0) {
+            return p.roles.includes('client');
+        }
+        return p.role.toLowerCase().includes('client');
+    });
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
@@ -199,7 +217,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     </div>
                                     <div>
                                         <div className="flex flex-wrap gap-1">
-                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[9px]">{r.replace('_', ' ').toUpperCase()}</Badge>)}
+                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[9px]">{r.replace(/_/g, ' ').toUpperCase()}</Badge>)}
                                             {!s.roles?.length && <Badge variant="secondary">{s.role}</Badge>}
                                         </div>
                                     </div>

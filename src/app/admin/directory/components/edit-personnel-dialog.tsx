@@ -124,7 +124,14 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         });
         return;
     }
-    onSave(formData);
+
+    // Sync legacy role field with the primary selected role to ensure tab filtering integrity
+    const updatedData = {
+        ...formData,
+        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+    };
+
+    onSave(updatedData);
     setIsOpen(false);
   };
 
@@ -297,7 +304,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                         </div>
                         <div className="flex flex-wrap gap-1">
                             {formData.roles?.map(r => (
-                                <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace('_', ' ')}</Badge>
+                                <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace(/_/g, ' ')}</Badge>
                             ))}
                         </div>
                     </div>

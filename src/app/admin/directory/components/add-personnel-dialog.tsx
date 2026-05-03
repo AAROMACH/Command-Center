@@ -136,10 +136,11 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         return;
     }
     
+    // Sync legacy role field with the primary selected role
     const newPerson: Technician = {
         ...formData as Technician,
         id: `oper-${Date.now()}`,
-        role: (formData.roles || [])[0].replace('_', ' ').toUpperCase()
+        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
     };
     
     onSave(newPerson);
@@ -338,7 +339,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                         </div>
                         <div className="flex flex-wrap gap-1">
                             {formData.roles?.map(r => (
-                                <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace('_', ' ')}</Badge>
+                                <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace(/_/g, ' ')}</Badge>
                             ))}
                         </div>
                     </div>

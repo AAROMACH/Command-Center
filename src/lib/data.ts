@@ -17,7 +17,7 @@ export const technicians: Technician[] = [
       relation: 'Spouse',
       phone: '555-111-9999'
     },
-    currentLocation: 'New York, NY',
+    currentLocation: 'Newark, NJ',
     reliabilityScore: 95,
     currentWorkload: 3,
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
@@ -96,7 +96,7 @@ export const technicians: Technician[] = [
     id: 'staff-002',
     name: 'Corey Williams',
     role: 'Dispatcher',
-    roles: ['dispatch_admin', 'project_manager'],
+    roles: ['dispatch_admin', 'project_manager', 'field_technician'],
     email: 'cwilliams@aaromach.com',
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',

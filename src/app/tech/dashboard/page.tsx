@@ -17,7 +17,8 @@ import {
   LogOut,
   StickyNote,
   Camera,
-  Coins
+  Coins,
+  MonitorUp
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO } from 'date-fns';
@@ -29,6 +30,8 @@ import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 import { PendingPayoutDialog } from './components/pending-payout-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
+import { getAvailablePortals } from '@/lib/permissions';
+import { useRouter } from 'next/navigation';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -40,6 +43,7 @@ export default function TechDashboardPage() {
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
@@ -117,12 +121,26 @@ export default function TechDashboardPage() {
         setIsLogSelectionOpen(false);
     };
 
+    const availablePortals = useMemo(() => getAvailablePortals(tech), [tech]);
+    const canSwap = availablePortals.length > 1;
+    const adminPortal = availablePortals.find(p => p.id === 'admin');
+
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
     }
 
     return (
         <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">Operational Terminal</h1>
+                {canSwap && adminPortal && (
+                    <Button variant="outline" size="sm" onClick={() => router.push(adminPortal.path)}>
+                        <MonitorUp size={14} className="mr-2" />
+                        Swap to Admin View
+                    </Button>
+                )}
+            </div>
+
             {/* 1. TOP HORIZONTAL QUICK ACTIONS */}
             <div className="flex flex-wrap items-center gap-2">
                 <Button 

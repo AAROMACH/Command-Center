@@ -49,7 +49,6 @@ export function Navbar() {
 
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
-  // Determine positions for a centered dashboard if possible
   const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
   let leftItems: NavItem[] = [];
   let centerItem: NavItem | null = null;
@@ -79,7 +78,10 @@ export function Navbar() {
               style={{ height: '50px', width: 'auto' }}
             />
           )}
-          <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary">Aaromach</span>
+          <div className="flex flex-col">
+            <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red">Admin Portal</span>
+          </div>
         </Link>
       </div>
 

@@ -1,6 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 import {
   LayoutDashboard,
+  MonitorUp,
+  Wrench,
+  FolderKanban,
+  Clock,
+  CopyX
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -9,8 +16,21 @@ import { workOrders, technicians, projects } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useEffect, useState, useMemo } from 'react';
+import { getAvailablePortals } from '@/lib/permissions';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId));
+        }
+    }, []);
+
     const highPriorityJobs = workOrders.filter(wo => wo.status === 'unassigned' && (wo.priority === 'critical' || wo.priority === 'high'));
 
     const workloadData = technicians.map(tech => ({
@@ -18,10 +38,9 @@ export default function DashboardPage() {
         assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
     }));
 
-    // Mock data for new cards as the data model doesn't support it yet.
-    const lateCheckIns = 1;
-    const revisitsRequired = 3;
-
+    const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
+    const canSwap = availablePortals.length > 1;
+    const techPortal = availablePortals.find(p => p.id === 'tech');
 
   return (
     <div>
@@ -36,6 +55,12 @@ export default function DashboardPage() {
             A high-level overview of all field service operations.
           </p>
         </div>
+        {canSwap && techPortal && (
+            <Button variant="outline" size="sm" onClick={() => router.push(techPortal.path)}>
+                <MonitorUp size={14} className="mr-2" />
+                Swap to Technician View
+            </Button>
+        )}
       </header>
 
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
@@ -60,7 +85,7 @@ export default function DashboardPage() {
         <Link href="/admin/assignments">
             <StatCard 
                 label="Late/Missed Check-ins" 
-                value={lateCheckIns.toString()}
+                value="1"
                 delta="1 tech affected" 
                 deltaType="negative"
                 icon="Clock"
@@ -69,7 +94,7 @@ export default function DashboardPage() {
         <Link href="/admin/assignments">
             <StatCard 
                 label="Revisits Required" 
-                value={revisitsRequired.toString()}
+                value="3"
                 delta="From recent jobs"
                 deltaType="warning"
                 icon="CopyX"

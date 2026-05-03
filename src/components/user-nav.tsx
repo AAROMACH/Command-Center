@@ -24,12 +24,12 @@ import {
   CreditCard,
   LogOut,
   ChevronDown,
-  MonitorCheck,
+  MonitorUp,
   Check
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
-import { isAdmin, isTech, isClient } from '@/lib/permissions';
+import { isAdmin, isTech, isClient, getAvailablePortals } from '@/lib/permissions';
 
 export function UserNav() {
   const router = useRouter();
@@ -48,15 +48,8 @@ export function UserNav() {
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
   
   const displayIsAdmin = isAdmin(currentUser);
-  const displayIsTech = isTech(currentUser);
-  const displayIsClient = isClient(currentUser);
-
-  const availablePortals = [
-    { id: 'admin', label: 'Admin Portal', visible: displayIsAdmin, path: '/admin/dashboard' },
-    { id: 'tech', label: 'Technician Portal', visible: displayIsTech, path: '/tech/dashboard' },
-    { id: 'client', label: 'Client Portal', visible: displayIsClient, path: '/client/dashboard' },
-  ].filter(p => p.visible);
-
+  
+  const availablePortals = getAvailablePortals(currentUser);
   const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
 
   const profilePath = pathname.startsWith('/tech') ? '/tech/profile' : '/admin/profile';
@@ -97,7 +90,7 @@ export function UserNav() {
             <>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-[0.2em] text-text-muted flex items-center gap-2">
-                    <MonitorCheck size={12}/> Switch Portal
+                    <MonitorUp size={12}/> Switch Portal
                 </DropdownMenuLabel>
                 <DropdownMenuGroup>
                     {availablePortals.map(portal => (

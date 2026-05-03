@@ -7,13 +7,13 @@ export type Permission =
   | 'view_requests'
   | 'manage_requests'
   | 'view_assignments'
-  | 'manage_assignments' // Create, Assign, Reschedule
+  | 'manage_assignments'
   | 'view_projects'
-  | 'manage_projects' // Create, Edit details, Manage phases
+  | 'manage_projects'
   | 'view_directory'
   | 'manage_personnel'
   | 'view_financials'
-  | 'manage_payroll' // Approve logs, reimbursements
+  | 'manage_payroll'
   | 'view_settings'
   | 'manage_settings'
   | 'field_checkin'
@@ -21,6 +21,12 @@ export type Permission =
   | 'client_portal'
   | 'view_assigned_projects_only'
   | 'view_assigned_work_only';
+
+export type Portal = {
+  id: 'admin' | 'tech' | 'client';
+  label: string;
+  path: string;
+};
 
 const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   super_admin: [
@@ -65,7 +71,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   project_lead: [
     'view_dashboard',
     'view_assigned_projects_only',
-    'manage_projects', // Within assigned projects
+    'manage_projects',
     'field_checkin',
     'field_logs',
   ],
@@ -81,42 +87,24 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   ],
 };
 
-/**
- * Checks if a user has a specific permission based on their roles.
- * Supports both multi-role array and legacy single role string.
- */
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
   if (!user) return false;
-
-  // Union of roles from array and legacy field
   const userRoles: AppRole[] = [...(user.roles || [])];
   
-  // Backward compatibility: Map legacy role strings to AppRole if not already in array
   const legacyRole = user.role.toLowerCase().replace(/ /g, '_') as AppRole;
   if (legacyRole === 'lead_field_technician' as any) userRoles.push('project_lead');
   else if (legacyRole === 'field_technician' as any) userRoles.push('field_technician');
-  else if (legacyRole === 'appliance_specialist' as any) userRoles.push('field_technician');
-  else if (legacyRole === 'senior_technician' as any) userRoles.push('field_technician');
-  else if (legacyRole === 'smart_home_integrator' as any) userRoles.push('field_technician');
-  else if (legacyRole === 'junior_technician' as any) userRoles.push('field_technician');
   else if (user.role.toLowerCase() === 'admin') userRoles.push('super_admin');
   else if (user.role.toLowerCase() === 'dispatcher') userRoles.push('dispatch_admin');
 
-  // Check if any assigned role grants the permission
-  return userRoles.some(role => {
-    const permissions = ROLE_PERMISSIONS[role];
-    return permissions?.includes(permission);
-  });
+  return userRoles.some(role => ROLE_PERMISSIONS[role]?.includes(permission));
 }
 
 export function isAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
   const userRoles: AppRole[] = user.roles || [];
-  
-  // Legacy check
   const isLegacyAdmin = ['admin', 'dispatcher'].includes(user.role.toLowerCase());
-  
   return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
 }
 
@@ -124,16 +112,22 @@ export function isTech(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const techRoles: AppRole[] = ['project_lead', 'field_technician'];
   const userRoles: AppRole[] = user.roles || [];
-  
-  // Legacy check
   const isLegacyTech = user.role.toLowerCase().includes('tech') || 
                        user.role.toLowerCase().includes('specialist') || 
                        user.role.toLowerCase().includes('integrator');
-  
   return isLegacyTech || userRoles.some(role => techRoles.includes(role));
 }
 
 export function isClient(user: Technician | null | undefined): boolean {
   if (!user) return false;
   return user.roles?.includes('client') || user.role.toLowerCase().includes('client');
+}
+
+export function getAvailablePortals(user: Technician | null | undefined): Portal[] {
+  if (!user) return [];
+  const portals: Portal[] = [];
+  if (isAdmin(user)) portals.push({ id: 'admin', label: 'Admin Portal', path: '/admin/dashboard' });
+  if (isTech(user)) portals.push({ id: 'tech', label: 'Technician Portal', path: '/tech/dashboard' });
+  if (isClient(user)) portals.push({ id: 'client', label: 'Client Portal', path: '/client/dashboard' });
+  return portals;
 }

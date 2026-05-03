@@ -26,7 +26,7 @@ import {
   ChevronRight, 
   Lock, 
   Info,
-  CheckCircle2,
+  CircleCheck,
   Users
 } from 'lucide-react';
 import {
@@ -298,7 +298,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                  <div className="p-5 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6">
                     <div className="flex items-center justify-between border-b border-border-sub pb-4">
                         <div className="flex items-center gap-2 text-text-green">
-                            <CheckCircle2 size={16} />
+                            <CircleCheck size={16} />
                             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorized Permissions</h3>
                         </div>
                         <div className="flex gap-1">

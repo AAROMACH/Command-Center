@@ -106,7 +106,7 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" text-xs font-bold uppercase tracking-widest text-text-muted>Access Key</Label>
+              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Access Key</Label>
               <Input 
                 id="password" 
                 type="password" 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, Clock, CopyX, FileCheck2, CalendarCheck, FileWarning } from "lucide-react";
+import { AlertTriangle, Clock, CopyX, FileCheck, CalendarCheck, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { workOrders, penaltyEvents, weeklyLogs } from '@/lib/data';
 import { addDays, isWithinInterval } from 'date-fns';
@@ -98,7 +98,7 @@ export function AlertBand() {
         adminDynamicAlerts.push({
           type: 'info',
           text: `${logsToAudit} Log${logsToAudit > 1 ? 's' : ''} Pending Audit`,
-          icon: FileCheck2
+          icon: FileCheck
         });
       }
 

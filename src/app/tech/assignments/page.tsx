@@ -10,7 +10,7 @@ import {
   Calendar, 
   MapPin, 
   Clock, 
-  CheckCircle2, 
+  CircleCheck, 
   Wrench, 
   ClipboardCheck,
   FileCheck
@@ -165,7 +165,7 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="cell-desc-title">{wo.description}</div>
                                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
-                                                <CheckCircle2 size={12}/> COMPLETED
+                                                <CircleCheck size={12}/> COMPLETED
                                             </div>
                                         </td>
                                         <td>

@@ -26,7 +26,7 @@ import {
   List, 
   MapPin, 
   Clock, 
-  CheckCircle2
+  CircleCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -219,7 +219,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                                     </div>
                                     <div className="job-right">
                                         {wo.status === 'completed' ? (
-                                            <div className="btn-completed !text-[10px]"><CheckCircle2 size={12}/> Done</div>
+                                            <div className="btn-completed !text-[10px]"><CircleCheck size={12}/> Done</div>
                                         ) : wo.status === 'in-progress' ? (
                                             <button className="btn-checkout !p-1.5 !text-[10px]" onClick={() => handleCheckOut(wo.id)}>
                                                 OUT

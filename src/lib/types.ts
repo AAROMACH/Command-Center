@@ -44,6 +44,7 @@ export type Technician = {
   avatarUrl: string;
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; 
+  businessType?: string; // New field for corporate classification
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
     preferredRadius: number;

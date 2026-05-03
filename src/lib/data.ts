@@ -1,4 +1,3 @@
-
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -102,6 +101,7 @@ export const technicians: Technician[] = [
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',
     clientCompany: 'Ki9',
+    businessType: 'Logistics & Supply Chain',
     managedSites: [
         { id: 'ki9-det', name: 'Ki9 Warehouse - Detroit', location: 'Detroit, MI 48201' },
         { id: 'ki9-nwk', name: 'Ki9 Logistics Hub', location: 'Newark, NJ 07102' }
@@ -156,6 +156,28 @@ export const technicians: Technician[] = [
       maxTravelDistance: 60,
       preferredJobTypes: ['Plumbing', 'Construction'],
       availabilityOverride: false,
+    }
+  },
+  {
+    id: 'client-001',
+    name: 'Jane Smith',
+    role: 'Procurement Manager',
+    roles: ['client'],
+    email: 'jane.smith@globalcorp.com',
+    phone: '555-999-8888',
+    clientCompany: 'Global Corp',
+    businessType: 'Enterprise Technology',
+    currentLocation: 'New York, NY',
+    reliabilityScore: 94,
+    currentWorkload: 0,
+    skills: [],
+    avatarUrl: getImageUrl('technician-5'),
+    availability: {},
+    workPreferences: {
+      preferredRadius: 0,
+      maxTravelDistance: 0,
+      preferredJobTypes: [],
+      availabilityOverride: true,
     }
   }
 ];

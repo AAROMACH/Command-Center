@@ -202,6 +202,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                             </div>
                                             <div className="flex-1 overflow-hidden">
                                                 <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                                {client.businessType && (
+                                                    <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                                )}
                                                 <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id}</p>
                                             </div>
                                             {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green shrink-0" />}

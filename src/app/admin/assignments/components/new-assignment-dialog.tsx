@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, ChevronDown } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, ChevronDown, UserCheck } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -114,19 +114,27 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     setFormData(prev => ({
         ...prev,
         clientName: name,
-        location: '' // Reset location when client changes
+        location: '' 
     }));
     setIsClientPopoverOpen(false);
+    toast({
+        title: "Client Selected",
+        description: `${name} has been set as the primary entity.`,
+    });
   };
 
   const selectSite = (site: { name: string, location: string }) => {
     setFormData(prev => ({ ...prev, location: site.location }));
     setIsSitePopoverOpen(false);
+    toast({
+        title: "Site Selected",
+        description: `Deployment target set to ${site.name}.`,
+    });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="text-brand-red h-5 w-5" />
@@ -161,7 +169,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                         if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
                                     }}
                                     onFocus={() => setIsClientPopoverOpen(true)}
-                                    className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide"
+                                    className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
                                 />
                                 <button 
                                     type="button"
@@ -173,12 +181,12 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                             </div>
                         </PopoverTrigger>
                         <PopoverContent 
-                            className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" 
+                            className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" 
                             align="start"
                             onOpenAutoFocus={(e) => e.preventDefault()}
                         >
                             <div className="p-2 border-b border-border-sub bg-bg-tertiary">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted px-1">Registry Suggestions</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted px-1">Registry Matches</p>
                             </div>
                             <ScrollArea className="h-[200px]">
                                 <div className="p-1">
@@ -187,22 +195,22 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                             key={client.id}
                                             type="button"
                                             onClick={() => selectClient(client)}
-                                            className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group"
+                                            className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim"
                                         >
-                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red">
+                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
                                                 <Building2 size={12} />
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="text-xs font-bold text-text-primary uppercase">{client.clientCompany || client.name}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">Registry ID: {client.id}</p>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id}</p>
                                             </div>
-                                            {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green" />}
+                                            {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green shrink-0" />}
                                         </button>
                                     ))}
                                     {filteredClients.length === 0 && (
                                         <div className="p-4 text-center">
-                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No existing matches found</p>
-                                            <p className="text-[9px] text-text-muted mt-1 uppercase tracking-tight">Manual entry mode active</p>
+                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches</p>
+                                            <p className="text-[9px] text-text-muted mt-1 uppercase tracking-tight">System will record as new entity</p>
                                         </div>
                                     )}
                                 </div>
@@ -227,7 +235,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                             setIsSitePopoverOpen(true);
                                         }
                                     }}
-                                    className="bg-bg-primary h-10 pr-10 text-xs"
+                                    className="bg-bg-primary h-10 pr-10 text-xs focus:border-brand-red transition-all"
                                 />
                                 {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
                                     <button 
@@ -241,9 +249,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                             </div>
                         </PopoverTrigger>
                         {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
-                                <div className="p-3 border-b border-border-sub bg-bg-tertiary">
+                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
+                                <div className="p-3 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
+                                    <UserCheck size={10} className="text-accent-gold" />
                                 </div>
                                 <ScrollArea className="h-[180px]">
                                     <div className="p-1">
@@ -252,13 +261,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                                 key={site.id}
                                                 type="button"
                                                 onClick={() => selectSite(site)}
-                                                className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group"
+                                                className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group active:bg-brand-red-dim"
                                             >
-                                                <div className="flex justify-between items-start">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold">{site.name}</p>
-                                                    {formData.location === site.location && <Check size={12} className="text-text-green" />}
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                                    {formData.location === site.location && <Check size={12} className="text-text-green shrink-0" />}
                                                 </div>
-                                                <p className="text-[10px] text-text-muted mt-0.5">{site.location}</p>
+                                                <p className="text-[10px] text-text-muted mt-0.5 truncate">{site.location}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -284,7 +293,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
               <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fixed">Fixed Rate</SelectItem>
                   <SelectItem value="hourly">Hourly Logic</SelectItem>
@@ -319,7 +328,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
              <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
               <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -331,7 +340,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
              <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
               <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Repair">Repair</SelectItem>
                   <SelectItem value="Maintenance">Maintenance</SelectItem>

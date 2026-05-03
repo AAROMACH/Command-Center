@@ -155,7 +155,7 @@ export default function ClientSitesPage() {
                     </Button>
                     <Button variant="default" onClick={() => setIsAddSiteOpen(true)} className="h-10">
                         <Plus size={14} className="mr-2"/>
-                        Add New Site
+                        Register new site
                     </Button>
                 </div>
             </header>
@@ -285,7 +285,7 @@ export default function ClientSitesPage() {
                             <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in the registry.</p>
                             <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsAddSiteOpen(true)}>
-                                Register New Coordinate
+                                Register new site
                             </Button>
                         </div>
                     )}

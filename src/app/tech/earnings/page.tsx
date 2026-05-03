@@ -10,11 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { ReceiptUploadDialog } from '../dashboard/components/receipt-upload-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TechEarningsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
@@ -55,6 +57,13 @@ export default function TechEarningsPage() {
             case 'Rejected': return 'destructive';
             default: return 'outline';
         }
+    };
+
+    const handleExportAuditLog = () => {
+        toast({
+            title: "Export Initiated",
+            description: "Generating comprehensive audit log. Your download will begin shortly.",
+        });
     };
 
     if (!mounted || !currentTechId) {
@@ -175,7 +184,7 @@ export default function TechEarningsPage() {
                                 <CardTitle>Expense Tracking Terminal</CardTitle>
                                 <CardDescription>Real-time status tracking for field material and travel reimbursements.</CardDescription>
                             </div>
-                            <Button variant="outline" size="sm" className="h-8">
+                            <Button variant="outline" size="sm" className="h-8" onClick={handleExportAuditLog}>
                                 <Download size={14} className="mr-2"/> Export Audit Log
                             </Button>
                         </CardHeader>

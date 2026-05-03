@@ -97,7 +97,7 @@ export const technicians: Technician[] = [
     name: 'Corey Williams',
     role: 'Client Contact',
     roles: ['client'],
-    email: 'corey.cw01@gmail.com',
+    email: 'cwilliams@aaromach.com',
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',
     clientCompany: 'Ki9',

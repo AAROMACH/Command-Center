@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +17,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useState, useEffect } from 'react';
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
-import { hasPermission, type Permission } from '@/lib/permissions';
+import { hasPermission, isClient, type Permission } from '@/lib/permissions';
 
 type NavItem = {
   href: string;
@@ -50,27 +49,40 @@ export function Navbar() {
     }
   }, []);
 
-  const visibleItems = mounted 
-    ? navItems.filter(item => hasPermission(currentUser, item.permission))
-    : [];
+  if (!mounted) return null;
 
-  const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
+  const isClientPortal = pathname.startsWith('/client');
+  
+  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
+
+  // Map admin links to client context if viewing client portal
+  const displayItems = visibleItems.map(item => {
+    if (isClient(currentUser) && isClientPortal) {
+        // Clients only have dashboard in their portal currently
+        if (item.label === 'Dashboard') {
+            return { ...item, href: '/client/dashboard' };
+        }
+    }
+    return item;
+  });
+
+  const dashboardIndex = displayItems.findIndex(i => i.label === 'Dashboard');
   let leftItems: NavItem[] = [];
   let centerItem: NavItem | null = null;
   let rightItems: NavItem[] = [];
 
   if (dashboardIndex !== -1) {
-    leftItems = visibleItems.slice(0, dashboardIndex);
-    centerItem = visibleItems[dashboardIndex];
-    rightItems = visibleItems.slice(dashboardIndex + 1);
+    leftItems = displayItems.slice(0, dashboardIndex);
+    centerItem = displayItems[dashboardIndex];
+    rightItems = displayItems.slice(dashboardIndex + 1);
   } else {
-    leftItems = visibleItems;
+    leftItems = displayItems;
   }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6">
       <div className="flex w-1/4 items-center">
-        <Link href="/admin/dashboard" className="flex items-center gap-2">
+        <Link href={isClientPortal ? "/client/dashboard" : "/admin/dashboard"} className="flex items-center gap-2">
           {logo && (
             <Image 
               src={logo.imageUrl} 
@@ -85,7 +97,9 @@ export function Navbar() {
           )}
           <div className="flex flex-col">
             <span className="font-mono text-lg font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red">Admin Portal</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red">
+                {isClientPortal ? 'Stakeholder Portal' : 'Admin Portal'}
+            </span>
           </div>
         </Link>
       </div>

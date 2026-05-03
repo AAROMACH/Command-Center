@@ -97,6 +97,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           projectType: 'Low Voltage Service',
           requiredSkills: [],
           isAcknowledged: false,
+          isImported: true, // Flag as imported from FieldNation
         };
       }).filter((order): order is WorkOrder => order !== null);
     };

@@ -23,6 +23,7 @@ export type WorkOrder = {
   payType: 'fixed' | 'hourly' | 'blended';
   isAcknowledged?: boolean;
   routeId?: string; // Links job to a specific route
+  isImported?: boolean; // Flag for jobs from FieldNation
 };
 
 export type Route = {

@@ -1,25 +1,22 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Calendar as CalendarIcon, 
-  History, 
   MapPin, 
   Clock, 
   CheckCircle2, 
-  ChevronRight, 
   Search,
   User,
   Briefcase,
-  LayoutGrid
+  Activity
 } from "lucide-react";
-import type { WorkOrder, Technician } from "@/lib/types";
+import type { WorkOrder } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 
@@ -27,23 +24,30 @@ export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const filteredWorkOrders = useMemo(() => {
+    return workOrders.filter(wo => {
+      const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+      const query = searchQuery.toLowerCase();
+      return (
+        wo.id.toLowerCase().includes(query) ||
+        wo.description.toLowerCase().includes(query) ||
+        wo.clientName.toLowerCase().includes(query) ||
+        (tech && tech.name.toLowerCase().includes(query))
+      );
+    });
+  }, [workOrders, searchQuery]);
+
   const activeWorkOrders = useMemo(() => 
-    workOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
-  [workOrders]);
+    filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
+  [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
-    workOrders.filter(wo => wo.status === 'completed'),
-  [workOrders]);
-
-  const filteredArchive = archivedWorkOrders.filter(wo => 
-    wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    wo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    wo.clientName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    filteredWorkOrders.filter(wo => wo.status === 'completed'),
+  [filteredWorkOrders]);
 
   return (
     <div className="space-y-6">
-      <header className="page-header">
+      <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <CalendarIcon size={12} />
@@ -51,6 +55,15 @@ export default function AssignmentsHubPage() {
           </p>
           <h1 className="page-title">Assignments</h1>
           <p className="page-subtitle">Operational schedule oversight and historical mission audit.</p>
+        </div>
+        <div className="search-wrap">
+          <Search className="h-4 w-4" />
+          <Input 
+            placeholder="Search Tech, ID, or Description..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full md:w-[350px] bg-bg-secondary border-border-main h-10"
+          />
         </div>
       </header>
 
@@ -117,6 +130,11 @@ export default function AssignmentsHubPage() {
                         </div>
                     );
                 })}
+                {activeWorkOrders.length === 0 && (
+                   <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">No active missions matching search criteria</p>
+                    </div>
+                )}
             </div>
         </TabsContent>
 
@@ -128,75 +146,61 @@ export default function AssignmentsHubPage() {
         </TabsContent>
 
         <TabsContent value="archive" className="mt-6">
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="search-wrap">
-                        <Search />
-                        <Input 
-                            placeholder="Filter archive..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-[350px] bg-bg-secondary border-border-main"
-                        />
-                    </div>
-                </div>
-
-                <div className="table-wrap">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Work Order</th>
-                                <th>Client & Service Result</th>
-                                <th>Deployment Coordinates</th>
-                                <th>Finalized Date</th>
-                                <th className="text-right">Audit Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredArchive.map(wo => {
-                                const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
-                                return (
-                                    <tr key={wo.id}>
-                                        <td>
-                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
-                                                <Briefcase size={12}/> {wo.clientName}
+            <div className="table-wrap">
+                <table className="tbl">
+                    <thead>
+                        <tr>
+                            <th>Work Order</th>
+                            <th>Client & Service Result</th>
+                            <th>Deployment Coordinates</th>
+                            <th>Finalized Date</th>
+                            <th className="text-right">Audit Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {archivedWorkOrders.map(wo => {
+                            const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+                            return (
+                                <tr key={wo.id}>
+                                    <td>
+                                        <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                    </td>
+                                    <td>
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
+                                            <Briefcase size={12}/> {wo.clientName}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
+                                            <CheckCircle2 size={14}/> Successfully Finalized
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="flex items-start gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                            <MapPin size={12} className="mt-0.5 text-text-muted" />
+                                            <span>{wo.location}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-text-primary uppercase">{wo.scheduleDate}</span>
+                                            <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
+                                                <User size={10}/> {tech?.name || 'Field Ops'}
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
-                                                <CheckCircle2 size={14}/> Successfully Finalized
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-start gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                <MapPin size={12} className="mt-0.5 text-text-muted" />
-                                                <span>{wo.location}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-text-primary uppercase">{wo.scheduleDate}</span>
-                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
-                                                    <User size={10}/> {tech?.name || 'Field Ops'}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="text-right">
-                                            <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                            {filteredArchive.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching criteria.</td>
+                                        </div>
+                                    </td>
+                                    <td className="text-right">
+                                        <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
+                                    </td>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                            )
+                        })}
+                        {archivedWorkOrders.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching criteria.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
         </TabsContent>
       </Tabs>

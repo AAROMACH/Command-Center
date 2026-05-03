@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
   MapPin, 
   Clock, 
-  AlertTriangle, 
   Play,
   ClipboardList,
   Receipt,
@@ -18,11 +17,11 @@ import {
   StickyNote,
   Camera,
   Coins,
-  Navigation
+  Navigation,
+  FileCheck
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO } from 'date-fns';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
@@ -112,7 +111,6 @@ export default function TechDashboardPage() {
                 <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">Operational Terminal</h1>
             </div>
 
-            {/* 1. TOP HORIZONTAL QUICK ACTIONS */}
             <div className="flex flex-wrap items-center gap-2">
                 <Button 
                     variant="outline" 
@@ -156,7 +154,6 @@ export default function TechDashboardPage() {
                 </Button>
             </div>
 
-            {/* 2. TODAY SUMMARY METRICS (Top Level) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
                 <div className="bg-bg-secondary p-4">
                     <p className="text-[10px] uppercase font-bold text-text-muted mb-1">Jobs Today</p>
@@ -176,13 +173,13 @@ export default function TechDashboardPage() {
                 </div>
             </div>
 
-            {/* 3. ASSIGNMENT PHASE (Next Action / Active Job) - Middle */}
             <div className="space-y-6">
                 {!activeJob && (
                     <Card className="border-2 border-brand-red bg-brand-red-dim/5">
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <div className="page-eyebrow text-brand-red">Next Low Voltage Job</div>
+                                {nextAction?.isImported && <Badge variant="secondary" className="uppercase text-[8px]">FieldNation Import</Badge>}
                                 <Badge variant="high">Priority</Badge>
                             </div>
                             <CardTitle className="text-2xl mt-1">{nextAction ? nextAction.description : 'No Upcoming Assignments'}</CardTitle>
@@ -207,8 +204,12 @@ export default function TechDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <Button className="flex-1 h-12 gap-2 text-sm" onClick={() => toast({ title: "Job Started", description: "GPS track initiated."})}>
-                                            <Play size={16} fill="currentColor"/> START JOB
+                                        <Button 
+                                          className="flex-1 h-12 gap-2 text-sm" 
+                                          onClick={() => toast({ title: nextAction.isImported ? "Job Finalization Open" : "Job Started", description: nextAction.isImported ? "Imported job detected. No check-in required." : "GPS track initiated."})}
+                                        >
+                                            {nextAction.isImported ? <FileCheck size={16}/> : <Play size={16} fill="currentColor"/>}
+                                            {nextAction.isImported ? "FINALIZE JOB" : "START JOB"}
                                         </Button>
                                         <Button variant="outline" className="h-12 px-6" asChild>
                                             <Link href={`/tech/assignments`}>
@@ -217,6 +218,11 @@ export default function TechDashboardPage() {
                                         </Button>
                                         <Button variant="secondary" className="h-12 px-6">ACKNOWLEDGE</Button>
                                     </div>
+                                    {nextAction.isImported && (
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest text-center">
+                                            Field Alert: Imported jobs from FieldNation require no GPS check-in.
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="py-8 text-center border border-dashed border-border-main rounded-md">
@@ -267,7 +273,6 @@ export default function TechDashboardPage() {
                 )}
             </div>
 
-            {/* 4. OPERATIONAL SCHEDULE (Bottom Section) */}
             <div className="opacity-90 grayscale-[0.2] hover:grayscale-0 transition-all">
                 <ScheduleBox workOrders={techWorkOrders} />
             </div>

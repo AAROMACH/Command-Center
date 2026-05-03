@@ -232,7 +232,7 @@ export function WorkOrdersClient({
               <th style={{ width: "140px" }}>ID / Status</th>
               <th>Description & Client</th>
               <th style={{ width: "160px" }}>Schedule</th>
-              <th style={{ width: "110px" }}>Pay ($)</th>
+              <th style={{ width: "130px" }}>Pay ($)</th>
               <th style={{ width: "180px" }}>Site Location</th>
               <th style={{ width: "160px" }}>Assigned Technician</th>
               <th style={{ width: "110px" }}></th>
@@ -274,7 +274,10 @@ export function WorkOrdersClient({
                   <td>
                     <div className="cell-pay">
                       <DollarSign />
-                      <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
+                      <div className="flex flex-col">
+                        <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
+                        <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -428,17 +431,30 @@ export function WorkOrdersClient({
                 <Label htmlFor="description" className="text-text-muted">Description</Label>
                 <Textarea id="description" name="description" value={editedOrder.description} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="location" className="text-text-muted">Location</Label>
                   <Input id="location" name="location" value={editedOrder.location} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pay" className="text-text-muted">Pay ($)</Label>
-                  <Input id="pay" name="pay" type="number" value={editedOrder.pay} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
-                </div>
+                    <Label htmlFor="payType" className="text-text-muted">Pay Model</Label>
+                    <Select value={editedOrder.payType} onValueChange={(value) => handleSelectChange('payType', value)}>
+                        <SelectTrigger id="payType" className="bg-bg-primary border-border-subtle">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="fixed">Fixed</SelectItem>
+                            <SelectItem value="hourly">Hourly</SelectItem>
+                            <SelectItem value="blended">Blended</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pay" className="text-text-muted">Settlement Pay ($)</Label>
+                  <Input id="pay" name="pay" type="number" value={editedOrder.pay} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                </div>
                  <div className="space-y-2">
                     <Label htmlFor="priority" className="text-text-muted">Priority</Label>
                     <Select value={editedOrder.priority} onValueChange={(value) => handleSelectChange('priority', value)}>
@@ -453,20 +469,20 @@ export function WorkOrdersClient({
                         </SelectContent>
                     </Select>
                  </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="assignedTechnicianId" className="text-text-muted">Assigned Technician</Label>
-                    <Select value={editedOrder.assignedTechnicianId || ''} onValueChange={(value) => handleSelectChange('assignedTechnicianId', value)}>
-                        <SelectTrigger id="assignedTechnicianId" className="bg-bg-primary border-border-subtle">
-                            <SelectValue placeholder="Select a technician" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
-                            {technicians.map(tech => (
-                                <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assignedTechnicianId" className="text-text-muted">Assigned Technician</Label>
+                <Select value={editedOrder.assignedTechnicianId || ''} onValueChange={(value) => handleSelectChange('assignedTechnicianId', value)}>
+                    <SelectTrigger id="assignedTechnicianId" className="bg-bg-primary border-border-subtle">
+                        <SelectValue placeholder="Select a technician" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="">Unassigned</SelectItem>
+                        {technicians.map(tech => (
+                            <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
               </div>
             </div>
           )}

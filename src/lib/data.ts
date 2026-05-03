@@ -174,6 +174,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-07-20',
     scheduleTime: '11:00 AM EST',
     pay: 150.00,
+    payType: 'fixed',
     isAcknowledged: true,
   },
   {
@@ -189,6 +190,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: new Date().toISOString().split('T')[0], // Today
     scheduleTime: '02:00 PM EST',
     pay: 350.00,
+    payType: 'fixed',
     isAcknowledged: false,
   },
   {
@@ -203,6 +205,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-07-29', 
     scheduleTime: '10:00 AM EST',
     pay: 120.00,
+    payType: 'fixed',
   },
   {
     id: 'wo-104',
@@ -217,6 +220,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-07-25',
     scheduleTime: '4:00 PM EST',
     pay: 475.00,
+    payType: 'fixed',
     isAcknowledged: true,
   },
    {
@@ -231,6 +235,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: '2024-08-01',
     scheduleTime: '09:00 AM EST',
     pay: 600.00,
+    payType: 'fixed',
   },
    {
     id: 'wo-106',
@@ -245,6 +250,7 @@ export const workOrders: WorkOrder[] = [
     scheduleDate: new Date().toISOString().split('T')[0], // Today
     scheduleTime: '01:00 PM EST',
     pay: 750.00,
+    payType: 'fixed',
     isAcknowledged: true,
   },
 ];

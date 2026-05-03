@@ -20,6 +20,7 @@ export type WorkOrder = {
   scheduleDate: string;
   scheduleTime: string;
   pay: number;
+  payType: 'fixed' | 'hourly' | 'blended';
   isAcknowledged?: boolean;
 };
 

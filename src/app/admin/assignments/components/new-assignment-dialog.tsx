@@ -22,7 +22,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Wrench, Search, MapPin, Building2, ChevronDown } from 'lucide-react';
+import { Plus, Wrench, Search, MapPin, Building2 } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -42,6 +42,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     projectType: 'Maintenance',
     requiredSkills: [],
     pay: 0,
+    payType: 'fixed',
     scheduleDate: new Date().toISOString().split('T')[0],
     scheduleTime: '09:00 AM EST',
     clientName: '',
@@ -98,6 +99,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       projectType: 'Maintenance',
       requiredSkills: [],
       pay: 0,
+      payType: 'fixed',
       scheduleDate: new Date().toISOString().split('T')[0],
       scheduleTime: '09:00 AM EST',
       clientName: '',
@@ -235,7 +237,31 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+              <Input 
+                type="number"
+                placeholder="0.00"
+                value={formData.pay || ''}
+                onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
+                className="bg-bg-primary h-10 font-mono text-text-green"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+              <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
+                <SelectTrigger className="bg-bg-primary h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixed Rate</SelectItem>
+                  <SelectItem value="hourly">Hourly Logic</SelectItem>
+                  <SelectItem value="blended">Blended / Complex</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
               <Input 
@@ -252,16 +278,6 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 value={formData.scheduleTime}
                 onChange={(e) => setFormData({...formData, scheduleTime: e.target.value})}
                 className="bg-bg-primary h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-              <Input 
-                type="number"
-                placeholder="0.00"
-                value={formData.pay || ''}
-                onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
-                className="bg-bg-primary h-10 font-mono text-text-green"
               />
             </div>
           </div>

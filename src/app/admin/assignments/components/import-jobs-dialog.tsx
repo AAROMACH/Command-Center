@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { FileText, Import, Loader2, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Import, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -55,11 +55,16 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         const company = lines[4];
         
         let pay = 0;
+        let payType: 'fixed' | 'hourly' | 'blended' = 'fixed';
+
         const payLine = lines.find(l => l.includes('$') && /\d/.test(l));
         if (payLine) {
           if (payLine.toLowerCase().includes('@')) {
             const match = payLine.match(/(\d+)\s*hrs?\s*@\s*\$(\d+)/i);
-            if (match) pay = parseFloat(match[1]) * parseFloat(match[2]);
+            if (match) {
+                pay = parseFloat(match[1]) * parseFloat(match[2]);
+                payType = 'hourly';
+            }
           } else {
             const match = payLine.match(/\$\s*(\d+)/);
             if (match) pay = parseFloat(match[1]);
@@ -85,6 +90,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           location,
           clientName: company,
           pay: pay || 0,
+          payType,
           scheduleDate,
           scheduleTime,
           status: 'unassigned' as const,
@@ -193,14 +199,14 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                         <span>•</span>
                                         <span>{job.location}</span>
                                         <span>•</span>
-                                        <span className="text-text-green">${job.pay.toFixed(2)}</span>
+                                        <span className="text-text-green">${job.pay.toFixed(2)} ({job.payType})</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     {job.isDuplicate ? (
                                         <AlertTriangle className="h-4 w-4 text-brand-red ml-auto" />
                                     ) : (
-                                        <CheckCircle2 className="h-4 w-4 text-text-green ml-auto" />
+                                        <CircleCheck className="h-4 w-4 text-text-green ml-auto" />
                                     )}
                                 </div>
                             </div>
@@ -227,7 +233,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                     Modify Buffer
                 </Button>
                 <Button onClick={handleFinalizeImport} className="h-10 px-10">
-                    <CheckCircle2 size={16} className="mr-2" />
+                    <CircleCheck size={16} className="mr-2" />
                     Confirm & Integrate ({parsedResults.length - duplicateCount})
                 </Button>
             </>

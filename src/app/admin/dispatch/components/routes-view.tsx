@@ -16,7 +16,8 @@ import {
     Wrench,
     Check,
     GripVertical,
-    ClipboardList
+    ClipboardList,
+    Send
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -257,6 +258,38 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         ));
     };
 
+    const handleBatchAssign = () => {
+        const jobsToUpdate: Record<string, string> = {};
+        
+        routes.forEach(route => {
+            if (route.technicianName) {
+                const tech = technicians.find(t => t.name === route.technicianName);
+                if (tech) {
+                    route.workOrderIds.forEach(id => {
+                        jobsToUpdate[id] = tech.id;
+                    });
+                }
+            }
+        });
+
+        const updatedWorkOrders = allWorkOrders.map(wo => {
+            if (jobsToUpdate[wo.id]) {
+                return {
+                    ...wo,
+                    status: 'assigned' as const,
+                    assignedTechnicianId: jobsToUpdate[wo.id]
+                };
+            }
+            return wo;
+        });
+
+        onWorkOrdersChange(updatedWorkOrders);
+        toast({
+            title: "Batch Assignment Executed",
+            description: "Mission data transferred to the Assigned registry.",
+        });
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
@@ -308,6 +341,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             .reduce((acc, wo) => acc + wo.pay, 0);
     };
 
+    const jobsInRoutesCount = useMemo(() => {
+        return routes.reduce((acc, r) => acc + r.workOrderIds.length, 0);
+    }, [routes]);
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-sub">
@@ -322,9 +359,18 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         <span className="text-xs font-mono font-bold text-text-primary">{unassignedJobs.length}</span>
                     </div>
                 </div>
-                <Button onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px]">
-                    <Plus size={14} className="mr-2"/> Initialize Route
-                </Button>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px]">
+                        <Plus size={14} className="mr-2"/> Initialize Route
+                    </Button>
+                    <Button 
+                        onClick={handleBatchAssign} 
+                        disabled={jobsInRoutesCount === 0}
+                        className="h-9 px-6 text-[10px] bg-accent-gold hover:bg-accent-gold/90"
+                    >
+                        <Send size={14} className="mr-2"/> Batch Assign and send to Assigned
+                    </Button>
+                </div>
             </div>
 
             <DndContext 

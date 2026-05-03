@@ -29,11 +29,11 @@ export function DispatchTabs({
         <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="assigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
-          Assigned <span className="tab-count">({assignedWorkOrders.length})</span>
-        </TabsTrigger>
         <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Routes <span className="tab-count">({routes.length})</span>
+        </TabsTrigger>
+        <TabsTrigger value="assigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+          Assigned <span className="tab-count">({assignedWorkOrders.length})</span>
         </TabsTrigger>
       </TabsList>
       
@@ -48,6 +48,16 @@ export function DispatchTabs({
           />
       </TabsContent>
 
+      <TabsContent value="routes" className="mt-0">
+          <RoutesView 
+            routes={routes}
+            onRoutesChange={onRoutesChange}
+            allWorkOrders={workOrders}
+            onWorkOrdersChange={onWorkOrdersChange}
+            technicians={technicians}
+          />
+      </TabsContent>
+      
       <TabsContent value="assigned" className="mt-0">
           <WorkOrdersClient
               workOrders={assignedWorkOrders}
@@ -56,16 +66,6 @@ export function DispatchTabs({
               onWorkOrdersChange={onWorkOrdersChange}
               routes={routes}
               mode="assigned"
-          />
-      </TabsContent>
-      
-      <TabsContent value="routes" className="mt-0">
-          <RoutesView 
-            routes={routes}
-            onRoutesChange={onRoutesChange}
-            allWorkOrders={workOrders}
-            onWorkOrdersChange={onWorkOrdersChange}
-            technicians={technicians}
           />
       </TabsContent>
     </Tabs>

@@ -19,6 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -171,10 +182,29 @@ export function WorkOrdersClient({
                     <p className="text-xs font-bold text-text-primary uppercase">Ready for mission transmission</p>
                 </div>
             </div>
-            <Button onClick={handleConfirmAssignments} className="h-9 bg-text-green hover:bg-text-green/90 px-6">
-                <Send className="mr-2 h-3.5 w-3.5" />
-                Transmit Missions ({workOrders.length})
-            </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6">
+                    <Send className="mr-2 h-3.5 w-3.5" />
+                    Confirm assignments and notify Techs ({workOrders.length})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-bg-elevated border-border-main">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="uppercase tracking-wider">Authorize Mission Transmission?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will broadcast assignment details to {workOrders.length} field operatives. This action initiates the live tracking window.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abort</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmAssignments} className="bg-text-green hover:bg-text-green/90">
+                    Confirm & Notify
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
       )}
 

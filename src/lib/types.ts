@@ -22,6 +22,14 @@ export type WorkOrder = {
   pay: number;
   payType: 'fixed' | 'hourly' | 'blended';
   isAcknowledged?: boolean;
+  routeId?: string; // Links job to a specific route
+};
+
+export type Route = {
+  id: string;
+  name: string;
+  technicianName?: string;
+  workOrderIds: string[];
 };
 
 export type Technician = {

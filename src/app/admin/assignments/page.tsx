@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { SlidersHorizontal, Plus, Search, Briefcase, Import as ImportIcon } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
-import type { WorkOrder } from "@/lib/types";
+import type { WorkOrder, Route } from "@/lib/types";
 
 export default function AssignmentsPage() {
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [routes, setRoutes] = useState<Route[]>([
+    { id: 'route-1', name: 'Detroit North AM', workOrderIds: ['wo-101'], technicianName: 'Alex Johnson' }
+  ]);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,6 +24,14 @@ export default function AssignmentsPage() {
 
   const handleImportOrders = (newOrders: WorkOrder[]) => {
     setAllWorkOrders(prev => [...newOrders, ...prev]);
+  };
+
+  const handleWorkOrdersChange = (updated: WorkOrder[]) => {
+    setAllWorkOrders(updated);
+  };
+
+  const handleRoutesChange = (updated: Route[]) => {
+    setRoutes(updated);
   };
 
   const filteredOrders = allWorkOrders.filter(order => 
@@ -35,10 +46,10 @@ export default function AssignmentsPage() {
             <div>
               <p className="page-eyebrow flex items-center gap-2">
                 <Briefcase size={12} />
-                Field Service Schedule
+                Field Service Logistics
               </p>
-              <h1 className="page-title">Assignments</h1>
-              <p className="page-subtitle">Master schedule management for all active technician assignments.</p>
+              <h1 className="page-title">Dispatch Command</h1>
+              <p className="page-subtitle">Strategic job pooling, route formation, and field deployment terminal.</p>
             </div>
             <div className="page-header-right">
                 <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>
@@ -56,7 +67,7 @@ export default function AssignmentsPage() {
           <Search />
           <input 
             className="search-input" 
-            placeholder="Search by ID, Project, or Client..." 
+            placeholder="Search Job Pool..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -67,7 +78,9 @@ export default function AssignmentsPage() {
        <AssignmentsTabs 
           workOrders={filteredOrders} 
           technicians={technicians} 
-          onWorkOrdersChange={setAllWorkOrders}
+          onWorkOrdersChange={handleWorkOrdersChange}
+          routes={routes}
+          onRoutesChange={handleRoutesChange}
        />
 
        <NewAssignmentDialog 

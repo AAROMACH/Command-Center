@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -219,24 +220,25 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 const person = personnel.find(p => p.id === req.technicianId);
                 if (!person) return false;
                 
-                return (
-                    person.name.toLowerCase().includes(lowercasedQuery) ||
+                const matchesSearch = person.name.toLowerCase().includes(lowercasedQuery) ||
                     req.startDate.toLowerCase().includes(lowercasedQuery) ||
                     req.endDate.toLowerCase().includes(lowercasedQuery) ||
-                    req.type.toLowerCase().includes(lowercasedQuery) ||
-                    req.status.toLowerCase().includes(lowercasedQuery)
-                );
+                    req.type.toLowerCase().includes(lowercasedQuery);
+                
+                return matchesSearch && req.status === 'pending';
             })
             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
     }, [timeOffRequests, personnel, lowercasedQuery]);
 
     const filteredSiteRequests = useMemo(() => {
         return siteRequests
-            .filter(req => 
-                req.clientName.toLowerCase().includes(lowercasedQuery) ||
-                req.siteName.toLowerCase().includes(lowercasedQuery) ||
-                req.location.toLowerCase().includes(lowercasedQuery)
-            )
+            .filter(req => {
+                const matchesSearch = req.clientName.toLowerCase().includes(lowercasedQuery) ||
+                    req.siteName.toLowerCase().includes(lowercasedQuery) ||
+                    req.location.toLowerCase().includes(lowercasedQuery);
+                
+                return matchesSearch && req.status === 'pending';
+            })
             .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime());
     }, [siteRequests, lowercasedQuery]);
 

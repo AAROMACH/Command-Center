@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -41,13 +42,9 @@ export default function ClientSitesPage() {
     useEffect(() => {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
-        setCurrentTechId(userId);
-        
-        // Initialize requests from mock data + any stored in localSession
+        setCurrentUserId(userId);
         setLocalSiteRequests(initialSiteRequests);
     }, []);
-
-    const [currentTechId, setCurrentTechId] = useState<string | null>(null);
 
     const currentUser = useMemo(() => 
         currentUserId ? technicians.find(t => t.id === currentUserId) : null
@@ -127,7 +124,7 @@ export default function ClientSitesPage() {
 
         toast({
             title: "Registration Transmitted",
-            description: "New site coordinate has been submitted for administrative audit and added to your registry buffer.",
+            description: "New site coordinate has been submitted for administrative audit.",
         });
         setIsAddSiteOpen(false);
     };
@@ -211,7 +208,6 @@ export default function ClientSitesPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Live Status Section */}
                                             <div className="space-y-3">
                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
                                                 {site.liveCheckIns.length > 0 ? (
@@ -237,7 +233,6 @@ export default function ClientSitesPage() {
                                                 )}
                                             </div>
 
-                                            {/* Active Assignments */}
                                             <div className="space-y-3">
                                                 <div className="flex justify-between items-center">
                                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
@@ -263,7 +258,6 @@ export default function ClientSitesPage() {
                                         </>
                                     )}
 
-                                    {/* Site Info */}
                                     <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
@@ -279,6 +273,15 @@ export default function ClientSitesPage() {
                                 </CardContent>
                             </Card>
                         ))}
+                        {sitesData.length === 0 && (
+                             <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                                <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites found in the registry.</p>
+                                <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsAddSiteOpen(true)}>
+                                    Register New Coordinate
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
 

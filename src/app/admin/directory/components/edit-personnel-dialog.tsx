@@ -179,17 +179,17 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                     <Input id="fullName" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Secure Email</Label>
+                    <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
                     <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Mobile Comms</Label>
+                    <Label htmlFor="phone" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Phone Number</Label>
                     <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Base Location</Label>
+                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Address</Label>
                     <Input id="address" value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>

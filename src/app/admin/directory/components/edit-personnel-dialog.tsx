@@ -30,13 +30,6 @@ import {
   Users,
   Save
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 
 type EditPersonnelDialogProps = {
@@ -114,16 +107,11 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
 
 export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
   const [formData, setFormData] = useState<Technician>(person);
-  const [selectedCategory, setSelectedCategory] = useState<'admin' | 'tech' | 'client' | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
         setFormData(person);
-        // Determine initial category based on existing roles
-        if (person.roles?.some(r => ROLE_DATA.admin.map(x => x.id).includes(r))) setSelectedCategory('admin');
-        else if (person.roles?.some(r => ROLE_DATA.tech.map(x => x.id).includes(r))) setSelectedCategory('tech');
-        else if (person.roles?.includes('client')) setSelectedCategory('client');
     }
   }, [person, isOpen]);
 
@@ -168,7 +156,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="page-title text-xl">Personnel Update Terminal</DialogTitle>
           <DialogDescription>
@@ -205,53 +193,94 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
              </div>
           </section>
 
-          {/* Section 2: Role Authorization Gating */}
+          {/* Section 2: Unified Permission Matrix */}
           <section className="space-y-6">
              <div className="flex items-center gap-2 text-brand-red mb-2">
                 <Lock size={16} />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Permission Matrix</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
              </div>
 
-             <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Select operative class</Label>
-                    <Select onValueChange={(val: any) => setSelectedCategory(val)} value={selectedCategory || ''}>
-                        <SelectTrigger className="bg-bg-primary border-border-sub h-11 uppercase text-[10px] font-bold tracking-[0.2em]">
-                            <SelectValue placeholder="CHOOSE CATEGORY (ADMIN / TECH / CLIENT)" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-bg-elevated border-border-default">
-                            <SelectItem value="admin" className="uppercase text-[10px] font-bold tracking-widest">Administrative Hierarchy</SelectItem>
-                            <SelectItem value="tech" className="uppercase text-[10px] font-bold tracking-widest">Field Operational Roles</SelectItem>
-                            <SelectItem value="client" className="uppercase text-[10px] font-bold tracking-widest">Client Stakeholders</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {selectedCategory && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-                        {ROLE_DATA[selectedCategory].map(role => {
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Admin Roles Column */}
+                <div className="space-y-4">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Administrative</h4>
+                    <div className="space-y-2">
+                        {ROLE_DATA.admin.map(role => {
                             const isSelected = (formData.roles || []).includes(role.id);
                             return (
                                 <div 
                                     key={role.id} 
                                     onClick={() => toggleRole(role.id)}
-                                    className={`p-3 rounded-lg border transition-all cursor-pointer flex items-start gap-4 ${
+                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
                                         isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
                                     }`}
                                 >
-                                    <div className={`p-2.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
-                                        <role.icon size={18} />
+                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
+                                        <role.icon size={14} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className={`text-[11px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
-                                        <p className="text-[9px] text-text-muted leading-tight mt-1">{role.desc}</p>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
                                     </div>
-                                    <Checkbox checked={isSelected} className="mt-1" />
+                                    <Checkbox checked={isSelected} className="h-3 w-3" />
                                 </div>
                             )
                         })}
                     </div>
-                )}
+                </div>
+
+                {/* Tech Roles Column */}
+                <div className="space-y-4">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Operational</h4>
+                    <div className="space-y-2">
+                        {ROLE_DATA.tech.map(role => {
+                            const isSelected = (formData.roles || []).includes(role.id);
+                            return (
+                                <div 
+                                    key={role.id} 
+                                    onClick={() => toggleRole(role.id)}
+                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
+                                        isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
+                                    }`}
+                                >
+                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
+                                        <role.icon size={14} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
+                                    </div>
+                                    <Checkbox checked={isSelected} className="h-3 w-3" />
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+
+                {/* Client Roles Column */}
+                <div className="space-y-4">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Stakeholder</h4>
+                    <div className="space-y-2">
+                        {ROLE_DATA.client.map(role => {
+                            const isSelected = (formData.roles || []).includes(role.id);
+                            return (
+                                <div 
+                                    key={role.id} 
+                                    onClick={() => toggleRole(role.id)}
+                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
+                                        isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
+                                    }`}
+                                >
+                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
+                                        <role.icon size={14} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
+                                    </div>
+                                    <Checkbox checked={isSelected} className="h-3 w-3" />
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
              </div>
           </section>
 
@@ -264,14 +293,14 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                             <CircleCheck size={16} />
                             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorized Permissions</h3>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex flex-wrap gap-1">
                             {formData.roles?.map(r => (
                                 <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace('_', ' ')}</Badge>
                             ))}
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-4">
                         {currentPermissions.map((perm, idx) => (
                             <div key={idx} className="flex items-center gap-2 text-[10px] font-semibold text-text-secondary">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />

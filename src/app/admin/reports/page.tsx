@@ -130,6 +130,12 @@ export default function ReportsPage() {
         if (!dateStr) return 'TBD';
         try {
           // Standardizing to mm-dd-yyyy
+          const parts = dateStr.split(/[-/]/);
+          if (parts.length === 3) {
+              let m, d, y;
+              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
+              return `${m}-${d}-${y}`;
+          }
           return format(parseISO(dateStr), "MM-dd-yyyy");
         } catch (e) {
           return dateStr;
@@ -412,7 +418,7 @@ export default function ReportsPage() {
                                         
                                         <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
                                             {AUDIT_ACTIONS.map((evt, i) => (
-                                                <div key={i} className="space-y-1 relative group" onClick={() => handleResultClick(evt)}>
+                                                <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
                                                     <div className={cn(
                                                         "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
                                                         evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'

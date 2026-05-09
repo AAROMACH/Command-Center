@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, Timer, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,6 +58,12 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
         if (!dateStr) return 'TBD';
         try {
           // Standardizing to mm-dd-yyyy as requested
+          const parts = dateStr.split(/[-/]/);
+          if (parts.length === 3) {
+              let m, d, y;
+              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
+              return `${m}-${d}-${y}`;
+          }
           return format(parseISO(dateStr), "MM-dd-yyyy");
         } catch (e) {
           return dateStr;
@@ -79,7 +85,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th style={{ width: "450px" }} className="text-left pl-0">Project Intelligence & Status</th>
+                        <th style={{ width: "450px" }} className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-center">Site Coordinates</th>
                         <th className="text-center">Schedule Date</th>

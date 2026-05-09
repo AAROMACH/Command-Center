@@ -60,7 +60,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         if (payLine) {
           const match = payLine.match(/\$\s*(\d+(?:\.\d+)?)/);
           if (match) pay = parseFloat(match[1]);
-          // Keep literal pay, don't perform calculated transformations
         }
 
         let scheduleDate = format(new Date(), 'MM-dd-yyyy');
@@ -233,7 +232,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
             </>
           )}
         </DialogFooter>
-      </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

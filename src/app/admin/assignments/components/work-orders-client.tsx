@@ -246,18 +246,6 @@ export function WorkOrdersClient({
     toast({ title: "Pay Authorized", description: "Technician terminal updated with new settlement rate." });
   };
 
-  const filteredTechnicians = useMemo(() => {
-    return technicians
-      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
-      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .map(tech => {
-        // Simple distance simulation
-        const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-        const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder?.id || ''));
-        return { ...tech, distance: (seed % 35) + 1.2 };
-      }).sort((a, b) => a.distance - b.distance);
-  }, [technicians, selectedOrder, techSearchQuery]);
-
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
@@ -441,7 +429,7 @@ export function WorkOrdersClient({
         {sortedWorkOrders.length > 0 && (
           <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                 <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
                   <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">

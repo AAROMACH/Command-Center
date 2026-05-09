@@ -261,11 +261,7 @@ export function WorkOrdersClient({
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
           let m, d, y;
-          if (parts[0].length === 4) { // yyyy-mm-dd
-              [y, m, d] = parts;
-          } else { // mm-dd-yyyy or similar
-              [m, d, y] = parts;
-          }
+          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
           return `${m}-${d}-${y}`;
       }
       return dateStr;
@@ -400,7 +396,7 @@ export function WorkOrdersClient({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
@@ -518,7 +514,7 @@ export function WorkOrdersClient({
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 className="h-7 w-7 border-border-sub bg-bg-primary"
               >
-                <ChevronLeft size={14} />
+                <ChevronLeft size(14) />
               </Button>
               <div className="flex items-center gap-1 px-2">
                 <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
@@ -531,7 +527,7 @@ export function WorkOrdersClient({
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 className="h-7 w-7 border-border-sub bg-bg-primary"
               >
-                <ChevronRight size={14} />
+                <ChevronRight size(14) />
               </Button>
             </div>
           </div>

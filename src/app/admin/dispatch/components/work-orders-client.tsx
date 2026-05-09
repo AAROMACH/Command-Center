@@ -616,7 +616,6 @@ export function WorkOrdersClient({
         </DialogContent>
       </Dialog>
 
-      {/* FULL EDIT DIALOG */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2">
@@ -818,7 +817,6 @@ export function WorkOrdersClient({
         </DialogContent>
       </Dialog>
 
-      {/* CLIENT REGISTRY POPUP */}
       <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
           <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
               <DialogHeader className="p-6 pb-2">
@@ -874,7 +872,6 @@ export function WorkOrdersClient({
           </DialogContent>
       </Dialog>
 
-      {/* SITE REGISTRY POPUP */}
       <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
           <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
               <DialogHeader className="p-6 pb-2">

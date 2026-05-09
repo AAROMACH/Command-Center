@@ -1,4 +1,3 @@
-
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";
@@ -17,6 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 export default function ProjectsPage() {

@@ -279,14 +279,14 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     return (
         <>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                     {/* Primary Tab & Action Row */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-                        <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary w-full md:w-auto">
-                            <TabsTrigger value="technicians" className="tab !px-5 !py-2 data-[state=active]:bg-brand-red data-[state=active]:text-white">TECHNICIANS</TabsTrigger>
-                            <TabsTrigger value="staff" className="tab !px-5 !py-2 data-[state=active]:bg-brand-red data-[state=active]:text-white">STAFF</TabsTrigger>
-                            <TabsTrigger value="clients" className="tab !px-5 !py-2 data-[state=active]:bg-brand-red data-[state=active]:text-white">CLIENTS</TabsTrigger>
-                            <TabsTrigger value="requests" className="tab !px-5 !py-2 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-2">
+                        <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary w-full md:w-auto h-9">
+                            <TabsTrigger value="technicians" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">TECHNICIANS</TabsTrigger>
+                            <TabsTrigger value="staff" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">STAFF</TabsTrigger>
+                            <TabsTrigger value="clients" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">CLIENTS</TabsTrigger>
+                            <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2 h-full">
                                 REQUESTS
                                 {pendingRequestsCount > 0 && (
                                     <Badge variant="destructive" className="h-3.5 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
@@ -301,70 +301,70 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 variant={activeTab === 'map' ? 'default' : 'outline'} 
                                 size="sm" 
                                 onClick={() => setActiveTab('map')}
-                                className={cn("h-8 px-4", activeTab === 'map' ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
+                                className={cn("h-7 px-3 text-[10px]", activeTab === 'map' ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
                             >
-                                <Map size={12} className="mr-1.5"/>
+                                <Map size={11} className="mr-1.5"/>
                                 MAP
                             </Button>
 
-                            <Button variant="default" size="sm" onClick={() => setIsAddPersonnelOpen(true)} className="h-8 px-4">
-                                <Plus size={12} className="mr-1.5"/>
+                            <Button variant="default" size="sm" onClick={() => setIsAddPersonnelOpen(true)} className="h-7 px-3 text-[10px]">
+                                <Plus size={11} className="mr-1.5"/>
                                 ADD PERSONNEL
                             </Button>
                         </div>
                     </div>
 
                     {/* View/Sort & Search Row */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-border-sub">
-                        <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
+                        <div className="flex items-center gap-2">
                             {/* View Switcher */}
                             {activeTab !== 'map' && activeTab !== 'requests' && (
-                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-8">
+                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className={cn("h-7 w-7", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                        className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
                                         onClick={() => setViewMode('rows')}
                                         title="Row View"
                                     >
-                                        <Rows3 size={12} />
+                                        <Rows3 size={11} />
                                     </Button>
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className={cn("h-7 w-7", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                        className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
                                         onClick={() => setViewMode('grid')}
                                         title="Box View"
                                     >
-                                        <LayoutGrid size={12} />
+                                        <LayoutGrid size={11} />
                                     </Button>
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className={cn("h-7 w-7", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
+                                        className={cn("h-6 w-6", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
                                         onClick={() => setViewMode('columns')}
                                         title="Column View"
                                     >
-                                        <Columns2 size={12} />
+                                        <Columns2 size={11} />
                                     </Button>
                                 </div>
                             )}
 
                             {/* Sort Controller */}
                             {activeTab !== 'map' && activeTab !== 'requests' && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
                                     <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                        <SelectTrigger className="w-[120px] bg-bg-tertiary border-border-sub h-8 text-[9px] uppercase font-bold tracking-widest">
+                                        <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
                                             <div className="flex items-center gap-1.5">
                                                 <ArrowUpDown size={10} className="text-text-muted" />
                                                 <SelectValue placeholder="Sort" />
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="name" className="text-[9px] uppercase font-bold">Name</SelectItem>
-                                            {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[9px] uppercase font-bold">Reliability</SelectItem>}
-                                            {activeTab === 'clients' && <SelectItem value="contacts" className="text-[9px] uppercase font-bold">Density</SelectItem>}
-                                            {activeTab === 'staff' && <SelectItem value="role" className="text-[9px] uppercase font-bold">Role</SelectItem>}
+                                            <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
+                                            {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
+                                            {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
+                                            {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -372,9 +372,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         </div>
 
                         <div className="search-wrap flex-1 md:flex-none">
-                            <Search />
+                            <Search className="h-3 w-3" />
                             <input 
-                                className="search-input w-full md:w-[280px] h-8" 
+                                className="search-input w-full md:w-[240px] h-7 !text-[11px]" 
                                 placeholder="Filter registry..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -383,11 +383,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </div>
                 </div>
 
-                <div className="w-full mt-4">
+                <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-3 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider">
+                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                     <div>TECHNICIAN</div>
                                     <div>CONTACT</div>
                                     <div className="text-center">RELIABILITY</div>
@@ -396,23 +396,23 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8">
+                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center gap-2.5">
+                                            <Avatar className="h-7 w-7">
                                                 <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                <AvatarFallback className="text-[9px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-xs">{tech.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{tech.name}</span>
                                         </div>
-                                        <div>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-primary"><Mail size={12} className="text-text-muted"/>{tech.email}</div>
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted"><Phone size={12} className="text-text-muted"/>{tech.phone}</div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{tech.email}</div>
+                                            <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}</div>
                                         </div>
                                         <div className="flex flex-col items-center">
-                                            <span className={`font-mono font-bold text-base ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
+                                            <span className={`font-mono font-bold text-sm ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
                                         </div>
                                         <div>
-                                            <Badge variant="active" className="text-[9px] h-5">ACTIVE</Badge>
+                                            <Badge variant="active" className="text-[8px] h-4">ACTIVE</Badge>
                                         </div>
                                     </div>
                                 )})}
@@ -420,22 +420,22 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         )}
 
                         {viewMode === 'grid' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                                 {paginatedTechnicians.map(tech => (
                                     <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
-                                        <CardContent className="p-3">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <Avatar className="h-10 w-10 border border-border-sub">
+                                        <CardContent className="p-2">
+                                            <div className="flex justify-between items-start mb-1.5">
+                                                <Avatar className="h-8 w-8 border border-border-sub">
                                                     <AvatarImage src={tech.avatarUrl} />
-                                                    <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                    <AvatarFallback className="text-[10px]">{tech.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="text-right">
-                                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Rel.</p>
-                                                    <p className={cn("text-sm font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>{tech.reliabilityScore}%</p>
+                                                    <p className="text-[7px] font-bold text-text-muted uppercase tracking-widest">Rel.</p>
+                                                    <p className={cn("text-xs font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>{tech.reliabilityScore}%</p>
                                                 </div>
                                             </div>
-                                            <h3 className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{tech.name}</h3>
-                                            <p className="text-[9px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{tech.role}</p>
+                                            <h3 className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">{tech.name}</h3>
+                                            <p className="text-[8px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{tech.role}</p>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -443,9 +443,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         )}
 
                         {viewMode === 'columns' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1.5">
                                 {paginatedTechnicians.map(tech => (
-                                    <div key={tech.id} className="p-2 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
+                                    <div key={tech.id} className="p-1.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
                                         <div className="flex items-center gap-2">
                                             <Avatar className="h-6 w-6">
                                                 <AvatarImage src={tech.avatarUrl} />
@@ -454,7 +454,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-[10px] font-bold text-text-primary uppercase truncate">{tech.name}</p>
                                             </div>
-                                            <Star size={10} className="text-accent-gold fill-current shrink-0" />
+                                            <Star size={9} className="text-accent-gold fill-current shrink-0" />
                                         </div>
                                     </div>
                                 ))}
@@ -465,28 +465,26 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     <TabsContent value="staff" className="m-0">
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,2fr,1fr] items-center p-3 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider">
+                                <div className="grid grid-cols-[2fr,2fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                     <div>STAFF MEMBER</div>
                                     <div>CONTACT</div>
                                     <div>ROLE</div>
                                 </div>
                                 {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8">
+                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center gap-2.5">
+                                            <Avatar className="h-7 w-7">
                                                 <AvatarImage src={s.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-xs">{s.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{s.name}</span>
                                         </div>
-                                        <div>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-primary"><Mail size={12} className="text-text-muted"/>{s.email}</div>
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted"><Phone size={12} className="text-text-muted"/>{s.phone}</div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{s.email}</div>
+                                            <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{s.phone}</div>
                                         </div>
-                                        <div>
-                                            <div className="flex flex-wrap gap-1">
-                                                {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace(/_/g, ' ')}</Badge>)}
-                                            </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[7px] uppercase h-3.5 px-1">{r.replace(/_/g, ' ')}</Badge>)}
                                         </div>
                                     </div>
                                 ))}
@@ -497,28 +495,28 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     <TabsContent value="clients" className="m-0">
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-3 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider">
+                                <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                     <div>CORPORATE ENTITY</div>
-                                    <div>BUSINESS CLASSIFICATION</div>
+                                    <div>CLASSIFICATION</div>
                                     <div className="text-center">CONTACTS</div>
                                     <div className="text-right">REGISTRY</div>
                                 </div>
                                 {paginatedCompanies.map(company => (
-                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
-                                                <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                                <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-xs">{company.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{company.name}</span>
                                         </div>
                                         <div>
-                                            <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
+                                            <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
                                         </div>
                                         <div className="text-center">
-                                            <Badge variant="outline" className="text-[9px] h-5">{company.contacts.length} C</Badge>
+                                            <Badge variant="outline" className="text-[8px] h-4 px-1.5">{company.contacts.length} C</Badge>
                                         </div>
                                         <div className="text-right">
-                                            <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all ml-auto" />
+                                            <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all ml-auto" />
                                         </div>
                                     </div>
                                 ))}
@@ -526,46 +524,46 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         )}
                     </TabsContent>
 
-                    <TabsContent value="requests" className="m-0 space-y-8">
+                    <TabsContent value="requests" className="m-0 space-y-6">
                         {/* Time Off Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 border-b border-border-sub pb-2">
-                                <Clock size={16} className="text-brand-red" />
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
-                                <Badge variant="destructive" className="h-5 px-1.5 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
+                                <Clock size={14} className="text-brand-red" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
+                                <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {filteredTimeOffRequests.map(req => {
                                     const tech = personnel.find(p => p.id === req.technicianId);
                                     return (
                                         <Card key={req.id} className="bg-bg-secondary border-border-main group hover:border-brand-red transition-colors">
-                                            <CardContent className="p-4 space-y-4">
+                                            <CardContent className="p-3 space-y-3">
                                                 <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-8 w-8 border border-border-sub">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-7 w-7 border border-border-sub">
                                                             <AvatarImage src={tech?.avatarUrl} />
-                                                            <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                            <AvatarFallback className="text-[9px]">{tech?.name.charAt(0)}</AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">{req.type}</p>
+                                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight truncate max-w-[120px]">{tech?.name}</p>
+                                                            <p className="text-[8px] text-text-muted uppercase tracking-widest">{req.type}</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Duration</p>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase">{req.startDate} — {req.endDate}</p>
+                                                        <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Duration</p>
+                                                        <p className="text-[9px] font-bold text-text-primary uppercase">{req.startDate} — {req.endDate}</p>
                                                     </div>
                                                 </div>
-                                                <div className="p-2.5 rounded bg-bg-primary border border-border-sub italic text-[11px] text-text-secondary line-clamp-2">
+                                                <div className="p-2 rounded bg-bg-primary border border-border-sub italic text-[10px] text-text-secondary line-clamp-1">
                                                     &quot;{req.reason}&quot;
                                                 </div>
-                                                <div className="flex gap-2 pt-1">
-                                                    <Button variant="outline" size="sm" className="flex-1 h-8 text-[9px] uppercase font-bold text-text-red border-border-alert hover:bg-brand-red-dim" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
-                                                        <X size={12} className="mr-1.5"/> Deny
+                                                <div className="flex gap-1.5 pt-0.5">
+                                                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[8px] uppercase font-bold text-text-red border-border-alert hover:bg-brand-red-dim" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
+                                                        <X size={10} className="mr-1"/> Deny
                                                     </Button>
-                                                    <Button variant="default" size="sm" className="flex-1 h-8 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
-                                                        <Check size={12} className="mr-1.5"/> Approve
+                                                    <Button variant="default" size="sm" className="flex-1 h-7 text-[8px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
+                                                        <Check size={10} className="mr-1"/> Approve
                                                     </Button>
                                                 </div>
                                             </CardContent>
@@ -573,59 +571,57 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     );
                                 })}
                                 {filteredTimeOffRequests.length === 0 && (
-                                    <div className="col-span-full py-12 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                        <Check size={24} className="mx-auto text-text-muted mb-2 opacity-50" />
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
+                                    <div className="col-span-full py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Site Registry Requests */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 border-b border-border-sub pb-2">
-                                <MapPin size={16} className="text-brand-red" />
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
-                                <Badge variant="destructive" className="h-5 px-1.5 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
+                                <MapPin size={14} className="text-brand-red" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
+                                <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 {filteredSiteRequests.map(req => (
-                                    <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                        <div className="flex items-center gap-5 flex-1">
-                                            <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
-                                                <Building2 size={18} />
+                                    <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                                <Building2 size={14} />
                                             </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-3">
-                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
-                                                    <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">{req.clientName}</Badge>
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
+                                                    <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
                                                 </div>
-                                                <p className="text-[10px] text-text-muted font-bold flex items-center gap-1.5">
-                                                    <MapPin size={10}/> {req.location}
+                                                <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
+                                                    <MapPin size={9} className="shrink-0"/> {req.location}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4 mt-4 md:mt-0">
-                                            <div className="text-right hidden md:block mr-4">
-                                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
-                                                <p className="text-[10px] font-bold text-text-primary uppercase">{req.managerName}</p>
+                                        <div className="flex items-center gap-3 mt-2 md:mt-0">
+                                            <div className="text-right hidden md:block mr-2">
+                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
+                                                <p className="text-[9px] font-bold text-text-primary uppercase truncate max-w-[100px]">{req.managerName}</p>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
-                                                    <X size={12} className="mr-1.5"/> Deny Registry
+                                            <div className="flex gap-1.5">
+                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
+                                                    <X size={10} className="mr-1"/> Deny
                                                 </Button>
-                                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
-                                                    <Check size={12} className="mr-1.5"/> Approve Site
+                                                <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
+                                                    <Check size={10} className="mr-1"/> Approve
                                                 </Button>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                                 {filteredSiteRequests.length === 0 && (
-                                    <div className="py-12 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                        <Map size={24} className="mx-auto text-text-muted mb-2 opacity-50" />
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
+                                    <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
                                     </div>
                                 )}
                             </div>
@@ -635,24 +631,24 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                 {/* GLOBAL REGISTRY PAGINATION FOOTER */}
                 {activeTab !== 'map' && activeTab !== 'requests' && totalRecords > 0 && (
-                    <div className="mt-4 flex items-center justify-between p-4 bg-bg-secondary rounded-lg border border-border-sub">
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                    <div className="mt-3 flex items-center justify-between p-2 bg-bg-secondary rounded-lg border border-border-sub">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                                 <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                                    <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                                    <SelectTrigger className="h-6 w-[55px] bg-bg-primary text-[9px] font-bold border-border-sub p-1">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10" className="text-[10px]">10</SelectItem>
+                                        <SelectItem value="25" className="text-[10px]">25</SelectItem>
+                                        <SelectItem value="50" className="text-[10px]">50</SelectItem>
+                                        <SelectItem value="100" className="text-[10px]">100</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                                Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, totalRecords)}</span> of <span className="text-text-primary">{totalRecords}</span> entries
+                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+                                <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalRecords)}</span> / {totalRecords}
                             </p>
                         </div>
                         
@@ -662,22 +658,21 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 size="icon-sm" 
                                 disabled={currentPage === 1}
                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                className="h-7 w-7 border-border-sub bg-bg-primary"
+                                className="h-6 w-6 border-border-sub bg-bg-primary"
                             >
-                                <ChevronLeft size={14} />
+                                <ChevronLeft size={12} />
                             </Button>
-                            <div className="flex items-center gap-1 px-3">
-                                <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
-                                <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+                            <div className="flex items-center gap-1 px-2">
+                                <span className="text-[9px] font-bold text-text-primary uppercase tracking-tighter">P{currentPage} of {totalPages}</span>
                             </div>
                             <Button 
                                 variant="outline" 
                                 size="icon-sm" 
                                 disabled={currentPage === totalPages}
                                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                className="h-7 w-7 border-border-sub bg-bg-primary"
+                                className="h-6 w-6 border-border-sub bg-bg-primary"
                             >
-                                <ChevronRight size={14} />
+                                <ChevronRight size={12} />
                             </Button>
                         </div>
                     </div>

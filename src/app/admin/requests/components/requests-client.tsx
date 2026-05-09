@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -119,49 +118,49 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr className="bg-bg-tertiary/50">
-                        <th style={{ width: "120px" }} className="!py-2">ID</th>
-                        <th className="!py-2">Client & Site</th>
-                        <th style={{ width: "40%" }} className="!py-2">Description</th>
-                        <th style={{ width: "110px" }} className="!py-2">Category</th>
-                        <th style={{ width: "90px" }} className="!py-2 text-center">Priority</th>
-                        <th style={{ width: "120px" }} className="!py-2 text-right">Actions</th>
+                        <th style={{ width: "110px" }} className="!py-1.5">ID</th>
+                        <th className="!py-1.5">Client & Site</th>
+                        <th style={{ width: "40%" }} className="!py-1.5">Description</th>
+                        <th style={{ width: "100px" }} className="!py-1.5">Category</th>
+                        <th style={{ width: "80px" }} className="!py-1.5 text-center">Priority</th>
+                        <th style={{ width: "100px" }} className="!py-1.5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {paginatedRequests.map((req) => (
                         <tr key={req.id} className="group hover:bg-bg-tertiary/80 transition-colors">
-                            <td className="!py-2">
+                            <td className="!py-1">
                                 <div className="cell-id !text-[10px]">{req.id.toUpperCase()}</div>
-                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
+                                <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
                             </td>
-                            <td className="!py-2">
-                                <div className="font-bold text-text-primary text-[11px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
-                                <div className="flex items-center gap-1 text-[9px] text-text-muted font-bold truncate max-w-[150px]">
-                                    <MapPin size={10} className="shrink-0" />
+                            <td className="!py-1">
+                                <div className="font-bold text-text-primary text-[10px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
+                                <div className="flex items-center gap-1 text-[8px] text-text-muted font-bold truncate max-w-[150px]">
+                                    <MapPin size={9} className="shrink-0" />
                                     <span className="truncate">{req.location}</span>
                                 </div>
                             </td>
-                            <td className="!py-2">
-                                <p className="text-[11px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
+                            <td className="!py-1">
+                                <p className="text-[10px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
                             </td>
-                            <td className="!py-2">
-                                <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-widest bg-bg-tertiary border-border-sub text-text-muted">
+                            <td className="!py-1">
+                                <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary border-border-sub text-text-muted">
                                     {req.requestType}
                                 </Badge>
                             </td>
-                            <td className="!py-2 text-center">
-                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">
+                            <td className="!py-1 text-center">
+                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
                                     {req.priority}
                                 </Badge>
                             </td>
-                            <td className="!py-2 text-right">
-                                <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
-                                        <Eye size={14}/>
+                            <td className="!py-1 text-right">
+                                <div className="flex justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
+                                        <Eye size={12}/>
                                     </Button>
                                     {req.status === 'approved' && (
-                                        <Button size="icon-sm" variant="secondary" className="h-7 w-7" onClick={() => router.push('/admin/dispatch')}>
-                                            <ArrowRight size={14}/>
+                                        <Button size="icon-sm" variant="secondary" className="h-6 w-6" onClick={() => router.push('/admin/dispatch')}>
+                                            <ArrowRight size={12}/>
                                         </Button>
                                     )}
                                 </div>
@@ -173,12 +172,12 @@ export function RequestsClient({ requests }: RequestsClientProps) {
 
             {/* COMPACT PAGINATION FOOTER */}
             {requests.length > 0 && (
-              <div className="bg-bg-tertiary/30 px-3 py-2 flex items-center justify-between border-t border-border-sub">
+              <div className="bg-bg-tertiary/30 px-3 py-1.5 flex items-center justify-between border-t border-border-sub">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                     <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                      <SelectTrigger className="h-6 w-[60px] bg-bg-primary text-[9px] font-bold border-border-sub p-1">
+                      <SelectTrigger className="h-5 w-[55px] bg-bg-primary text-[8px] font-bold border-border-sub p-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -200,19 +199,19 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     size="icon-sm" 
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="h-6 w-6 border-border-sub bg-bg-primary"
+                    className="h-5 w-5 border-border-sub bg-bg-primary"
                   >
-                    <ChevronLeft size={12} />
+                    <ChevronLeft size={10} />
                   </Button>
-                  <span className="text-[9px] font-bold text-text-muted px-1 uppercase tracking-tighter">P{currentPage} of {totalPages}</span>
+                  <span className="text-[8px] font-bold text-text-muted px-1 uppercase tracking-tighter">P{currentPage} / {totalPages}</span>
                   <Button 
                     variant="outline" 
                     size="icon-sm" 
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="h-6 w-6 border-border-sub bg-bg-primary"
+                    className="h-5 w-5 border-border-sub bg-bg-primary"
                   >
-                    <ChevronRight size={12} />
+                    <ChevronRight size={10} />
                   </Button>
                 </div>
               </div>
@@ -322,4 +321,3 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </div>
     );
 }
-

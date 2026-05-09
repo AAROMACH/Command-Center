@@ -388,7 +388,6 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                             <p className="font-semibold text-sm text-text-primary">{tech.name}</p>
                                             <p className="text-xs text-text-muted">{member.role}</p>
                                         </div>
-                                        <Badge variant="active" className="!text-xs">Online</Badge>
                                     </div>
                                 )
                             })}

@@ -115,7 +115,10 @@ export default function DispatchPage() {
       <Tabs value={activeMasterTab} onValueChange={setActiveMasterTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <TabsList className="tabs !p-0 !bg-bg-tertiary">
-              <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-transparent data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all">
+              <TabsTrigger 
+                value="dispatch" 
+                className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all"
+              >
                 <Layers size={14} />
                 DISPATCH HUB
                 {unassignedCount > 0 && (
@@ -124,7 +127,10 @@ export default function DispatchPage() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-transparent data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all">
+              <TabsTrigger 
+                value="requests" 
+                className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all"
+              >
                 <ClipboardList size={14} />
                 SERVICE REQUESTS
                 {newRequestsCount > 0 && (

@@ -57,13 +57,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-          const parts = dateStr.split(/[-/]/);
-          if (parts.length === 3) {
-              let m, d, y;
-              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-              return `${m}-${d}-${y}`;
-          }
-          return dateStr;
+          return format(parseISO(dateStr), "MM-dd-yyyy");
         } catch (e) {
           return dateStr;
         }
@@ -101,13 +95,13 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
                         return (
-                            <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
+                            <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
                                 <td className="!py-4 text-left pl-0">
                                     <div className="flex flex-col min-w-0">
-                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{project.name}</div>
+                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
                                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{project.client}</div>
                                       <div className="cell-id !text-[10px] font-mono mt-1.5">{project.id.toUpperCase()}</div>
-                                      <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5 mt-1 w-fit">{project.status}</Badge>
+                                      <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5 mt-1.5 w-fit">{project.status}</Badge>
                                     </div>
                                 </td>
                                 <td>

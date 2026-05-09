@@ -255,17 +255,6 @@ export function WorkOrdersClient({
     });
   }
 
-  const filteredTechnicians = useMemo(() => {
-    return technicians
-      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
-      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .map(tech => {
-        const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-        const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder?.id || ''));
-        return { ...tech, distance: (seed % 35) + 1.2 };
-      }).sort((a, b) => a.distance - b.distance);
-  }, [technicians, selectedOrder, techSearchQuery]);
-
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
@@ -285,6 +274,17 @@ export function WorkOrdersClient({
     const cleanId = id.replace(/^wo-/, '');
     return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
+
+  const filteredTechnicians = useMemo(() => {
+    return technicians
+      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
+      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .map(tech => {
+        const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder?.id || ''));
+        return { ...tech, distance: (seed % 35) + 1.2 };
+      }).sort((a, b) => a.distance - b.distance);
+  }, [technicians, selectedOrder, techSearchQuery]);
 
   const clientsList = useMemo(() => {
     return technicians.filter(t => 
@@ -380,11 +380,18 @@ export function WorkOrdersClient({
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
               
               return (
-                <tr key={order.id}>
+                <tr key={order.id} className="group">
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
+                      <div className="flex flex-col items-start gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
+                          {order.source === 'Imported' && (
+                            <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
+                              <ExternalLink size={10} />
+                            </a>
+                          )}
+                        </div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -807,7 +814,7 @@ export function WorkOrdersClient({
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Close Registry Feed</Button>
                         <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
                             Commit Assignment Updates
                         </Button>

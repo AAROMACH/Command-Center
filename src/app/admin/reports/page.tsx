@@ -91,19 +91,19 @@ export default function ReportsPage() {
         
         technicians.forEach(t => {
             if (t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)) {
-                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'active' });
+                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'bg-green' });
             }
         });
 
         workOrders.forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || wo.description.toLowerCase().includes(q)) {
-                results.push({ type: 'Work order', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: wo.status });
+                results.push({ type: 'Work order', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: 'bg-blue' });
             }
         });
 
         projects.forEach(p => {
             if (p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) {
-                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.startDate} · ${p.status}`, cls: p.status });
+                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.startDate} · ${p.status}`, cls: 'bg-amber' });
             }
         });
 
@@ -129,13 +129,7 @@ export default function ReportsPage() {
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-          const parts = dateStr.split(/[-/]/);
-          if (parts.length === 3) {
-              let m, d, y;
-              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-              return `${m}-${d}-${y}`;
-          }
-          return dateStr;
+          return format(parseISO(dateStr), "MM-dd-yyyy");
         } catch (e) {
           return dateStr;
         }

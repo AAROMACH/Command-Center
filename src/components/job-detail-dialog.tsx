@@ -33,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isPayAdmin } from '@/lib/permissions';
+import { format, parseISO } from 'date-fns';
 
 type JobDetailDialogProps = {
   isOpen: boolean;
@@ -242,7 +243,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                         {mission.reimbursements.map(re => (
                             <div key={re.id} className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
                                 <div className="space-y-0.5">
-                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
+                                    <p key={re.id} className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
                                     <p className="text-[9px] text-text-muted font-mono">{formatDateDisplay(re.date)}</p>
                                 </div>
                                 <p className="text-xs font-mono font-bold text-text-green">+{formatCurrency(re.amount)}</p>

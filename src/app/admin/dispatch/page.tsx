@@ -5,6 +5,7 @@ import { workOrders as initialWorkOrders, technicians, serviceRequests as initia
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Wrench, ClipboardList, Layers } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
@@ -32,6 +33,10 @@ export default function DispatchPage() {
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
 
   const { toast } = useToast();
+
+  // Notification Counts
+  const unassignedCount = useMemo(() => allWorkOrders.filter(wo => wo.status === 'unassigned').length, [allWorkOrders]);
+  const newRequestsCount = useMemo(() => allRequests.filter(req => req.status === 'new').length, [allRequests]);
 
   // Handlers - Dispatch
   const handleAddNewOrder = (order: WorkOrder) => {
@@ -113,10 +118,20 @@ export default function DispatchPage() {
               <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
                 <Layers size={14} />
                 DISPATCH HUB
+                {unassignedCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold">
+                    {unassignedCount}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
                 <ClipboardList size={14} />
                 SERVICE REQUESTS
+                {newRequestsCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold">
+                    {newRequestsCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 

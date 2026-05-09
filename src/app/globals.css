@@ -144,7 +144,7 @@
     @apply border-b border-border-main bg-bg-tertiary;
   }
   .tbl th {
-    @apply px-2 py-1.5 text-left table-header;
+    @apply px-0.5 py-0.5 text-left table-header;
   }
   .tbl tbody tr {
     @apply border-b border-border-sub transition-colors hover:bg-bg-tertiary;
@@ -153,7 +153,7 @@
     @apply border-none;
   }
   .tbl td {
-    @apply px-2 py-1 align-top;
+    @apply px-0.5 py-0.5 align-top;
   }
   .cell-id {
     @apply mb-0 id-text;
@@ -226,7 +226,7 @@
   .tech-avatar { @apply flex h-[18px] w-[18px] items-center justify-center rounded-full border border-bg-secondary bg-bg-tertiary text-[7px] font-bold text-text-secondary; }
   .tech-avatar:not(:first-child) { @apply -ml-1; }
 
-  .btn-folder { @apply inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-red bg-brand-red-dim px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
+  .btn-folder { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
   .btn-folder svg { @apply h-2.5 w-2.5; }
 
   .progress-wrap { @apply flex items-center gap-1.5; }
@@ -258,7 +258,7 @@
   .detail-breadcrumb { @apply text-xs text-text-muted; }
   .detail-breadcrumb span { @apply font-semibold text-text-primary; }
 
-  .detail-tabs { @apply mb-3 flex border-b border-border-main; }
+  .detail-tabs { @apply mb-3 flex justify-center border-b border-border-main; }
   .detail-tab { @apply -mb-px cursor-pointer border-b-2 border-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-muted transition-all hover:text-text-primary; }
   .detail-tab.active { @apply border-brand-red text-text-primary; }
 

@@ -114,6 +114,14 @@ export type Task = {
   name: string;
   isCompleted: boolean;
   requiresPhoto: boolean;
+  requiresText?: boolean;
+  requiresNumeric?: boolean;
+  requiresDropdown?: boolean;
+  dropdownOptions?: string[];
+  requiresSignature?: boolean;
+  requiresFileUpload?: boolean;
+  requiresOther?: boolean;
+  otherRequirementLabel?: string;
 };
 
 export type ProjectDocument = {

@@ -277,149 +277,156 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
             {/* TASK DETAIL DIALOG */}
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default p-0 overflow-hidden flex flex-col max-h-[90vh]">
-                    <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                         <DialogTitle className="uppercase tracking-widest font-bold">Task Parameters</DialogTitle>
-                        <DialogDescription>Define mission requirements for this project action.</DialogDescription>
+                        <DialogDescription className="text-[11px]">Define mission requirements for this project action.</DialogDescription>
                     </DialogHeader>
                     {editingTaskData && (
                         <ScrollArea className="flex-1">
-                            <div className="p-6 space-y-6">
+                            <div className="p-6 space-y-5">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Task Identifier / Name</Label>
                                     <Input 
                                         value={editingTaskData.task.name} 
                                         onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, name: e.target.value }})}
-                                        className="bg-bg-primary h-11 text-xs"
+                                        className="bg-bg-primary h-9 text-xs"
                                     />
                                 </div>
 
-                                <div className="space-y-4">
-                                    <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-2">Submission Requirements</h3>
+                                <div className="space-y-3">
+                                    <h3 className="text-[9px] font-bold text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5">Submission Requirements</h3>
                                     
-                                    <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 gap-2">
                                         {/* Photo Toggle */}
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded text-text-muted"><Camera size={16}/></div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Photo Documentation</p>
-                                                    <p className="text-[10px] text-text-muted leading-tight">Requires field imagery for sign-off.</p>
+                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Camera size={14}/></div>
+                                                <div className="space-y-0">
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Photo Documentation</p>
+                                                    <p className="text-[9px] text-text-muted leading-tight">Requires field imagery for sign-off.</p>
                                                 </div>
                                             </div>
                                             <Switch 
+                                                className="scale-75"
                                                 checked={editingTaskData.task.requiresPhoto} 
                                                 onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresPhoto: val }})}
                                             />
                                         </div>
 
                                         {/* Text Field Toggle */}
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded text-text-muted"><FileText size={16}/></div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Text Feedback</p>
-                                                    <p className="text-[10px] text-text-muted leading-tight">Requires a textual description or report.</p>
+                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-bg-primary rounded text-text-muted"><FileText size={14}/></div>
+                                                <div className="space-y-0">
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Text Feedback</p>
+                                                    <p className="text-[9px] text-text-muted leading-tight">Requires a textual description or report.</p>
                                                 </div>
                                             </div>
                                             <Switch 
+                                                className="scale-75"
                                                 checked={editingTaskData.task.requiresText} 
                                                 onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresText: val }})}
                                             />
                                         </div>
 
                                         {/* Numeric Toggle */}
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded text-text-muted"><Hash size={16}/></div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Numeric Input</p>
-                                                    <p className="text-[10px] text-text-muted leading-tight">Requires numeric data entry (e.g. counts).</p>
+                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Hash size={14}/></div>
+                                                <div className="space-y-0">
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Numeric Input</p>
+                                                    <p className="text-[9px] text-text-muted leading-tight">Requires numeric data entry (e.g. counts).</p>
                                                 </div>
                                             </div>
                                             <Switch 
+                                                className="scale-75"
                                                 checked={editingTaskData.task.requiresNumeric} 
                                                 onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresNumeric: val }})}
                                             />
                                         </div>
 
                                         {/* Dropdown Toggle */}
-                                        <div className="space-y-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <div className="space-y-2 p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-bg-primary rounded text-text-muted"><ListTodo size={16}/></div>
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Dropdown Selection</p>
-                                                        <p className="text-[10px] text-text-muted leading-tight">Requires selection from a list.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-bg-primary rounded text-text-muted"><ListTodo size={14}/></div>
+                                                    <div className="space-y-0">
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Dropdown Selection</p>
+                                                        <p className="text-[9px] text-text-muted leading-tight">Requires selection from a list.</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
+                                                    className="scale-75"
                                                     checked={editingTaskData.task.requiresDropdown} 
                                                     onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresDropdown: val }})}
                                                 />
                                             </div>
-                                            <div className={cn("pt-2 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Options (Comma separated)</Label>
+                                            <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
+                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block">Options (Comma separated)</Label>
                                                 <Input 
                                                     placeholder="e.g. Pass, Fail, N/A"
                                                     value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
                                                     onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, dropdownOptions: e.target.value.split(',').map(s => s.trim()) }})}
-                                                    className="h-8 text-xs bg-bg-primary"
+                                                    className="h-7 text-[10px] bg-bg-primary"
                                                 />
                                             </div>
                                         </div>
 
                                         {/* Signature Toggle */}
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded text-text-muted"><Signature size={16}/></div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Signature Capture</p>
-                                                    <p className="text-[10px] text-text-muted leading-tight">Requires field sign-off signature.</p>
+                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Signature size={14}/></div>
+                                                <div className="space-y-0">
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Signature Capture</p>
+                                                    <p className="text-[9px] text-text-muted leading-tight">Requires field sign-off signature.</p>
                                                 </div>
                                             </div>
                                             <Switch 
+                                                className="scale-75"
                                                 checked={editingTaskData.task.requiresSignature} 
                                                 onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresSignature: val }})}
                                             />
                                         </div>
 
                                         {/* File Upload Toggle */}
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded text-text-muted"><Upload size={16}/></div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">File Upload</p>
-                                                    <p className="text-[10px] text-text-muted leading-tight">Requires technical document upload.</p>
+                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Upload size={14}/></div>
+                                                <div className="space-y-0">
+                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">File Upload</p>
+                                                    <p className="text-[9px] text-text-muted leading-tight">Requires technical document upload.</p>
                                                 </div>
                                             </div>
                                             <Switch 
+                                                className="scale-75"
                                                 checked={editingTaskData.task.requiresFileUpload} 
                                                 onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresFileUpload: val }})}
                                             />
                                         </div>
 
                                         {/* Other Requirement Toggle */}
-                                        <div className="space-y-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <div className="space-y-2 p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-bg-primary rounded text-text-muted"><Plus size={16}/></div>
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">Other Completion Criteria</p>
-                                                        <p className="text-[10px] text-text-muted leading-tight">Custom field requirement.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Plus size={14}/></div>
+                                                    <div className="space-y-0">
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Other Completion Criteria</p>
+                                                        <p className="text-[9px] text-text-muted leading-tight">Custom field requirement.</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
+                                                    className="scale-75"
                                                     checked={editingTaskData.task.requiresOther} 
                                                     onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresOther: val }})}
                                                 />
                                             </div>
-                                            <div className={cn("pt-2 transition-all overflow-hidden", editingTaskData.task.requiresOther ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Requirement Label</Label>
+                                            <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresOther ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
+                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block">Requirement Label</Label>
                                                 <Input 
                                                     placeholder="e.g. Serial Number, ID Verification"
                                                     value={editingTaskData.task.otherRequirementLabel || ''}
                                                     onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, otherRequirementLabel: e.target.value }})}
-                                                    className="h-8 text-xs bg-bg-primary"
+                                                    className="h-7 text-[10px] bg-bg-primary"
                                                 />
                                             </div>
                                         </div>
@@ -429,8 +436,8 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                         </ScrollArea>
                     )}
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setTaskDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
-                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Update Registry</Button>
+                        <Button variant="outline" onClick={() => setTaskDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-10">Discard</Button>
+                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-10">Update Registry</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

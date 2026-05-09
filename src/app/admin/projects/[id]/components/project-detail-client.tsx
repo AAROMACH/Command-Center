@@ -60,6 +60,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
+import { format, parseISO } from 'date-fns';
 
 type ProjectDetailClientProps = {
     project: Project;
@@ -87,6 +88,14 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
     }, [project.phases]);
 
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
+
+    const formatDateDisplay = (dateStr: string) => {
+        try {
+          return format(parseISO(dateStr), "MM-dd-yyyy");
+        } catch (e) {
+          return dateStr;
+        }
+    };
 
     const handleSaveEdit = () => {
         setProject(editedProject);
@@ -131,7 +140,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         </div>
                         <div className="pdh-meta">
                             <div className="pdh-meta-item"><MapPin/>{project.location}</div>
-                            <div className="pdh-meta-item"><Calendar/>Started {project.startDate}</div>
+                            <div className="pdh-meta-item"><Calendar/>Started {formatDateDisplay(project.startDate)}</div>
                             <div className="pdh-meta-item"><Clock/>Est. {project.estimatedDuration}</div>
                             <div className="pdh-meta-item"><Users/>{project.team.length} Technician(s)</div>
                         </div>
@@ -146,7 +155,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                 </div>
             </div>
 
-            <div className="detail-tabs">
+            <div className="detail-tabs justify-center">
                 <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>

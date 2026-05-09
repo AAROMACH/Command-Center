@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 
 function getProgress(project: Project): number {
     const allTasks = project.phases.flatMap(phase => phase.tasks);
@@ -154,6 +155,14 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
     const progress = getProgress(project);
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
+    const formatDateDisplay = (dateStr: string) => {
+        try {
+          return format(parseISO(dateStr), "MM-dd-yyyy");
+        } catch (e) {
+          return dateStr;
+        }
+    };
+
     const handleTaskToggle = (phaseId: string, taskId: string) => {
         setProject(currentProject => ({
             ...currentProject,
@@ -194,7 +203,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                         </div>
                         <div className="pdh-meta">
                             <div className="pdh-meta-item"><MapPin/>{project.location}</div>
-                            <div className="pdh-meta-item"><Calendar/>Started {project.startDate}</div>
+                            <div className="pdh-meta-item"><Calendar/>Started {formatDateDisplay(project.startDate)}</div>
                             <div className="pdh-meta-item"><Users/>{project.team.length} Technician(s)</div>
                         </div>
                     </div>
@@ -208,7 +217,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                 </div>
             </div>
 
-            <div className="detail-tabs">
+            <div className="detail-tabs justify-center">
                 <button className={`detail-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Tasks & Phases</button>
                 <button className={`detail-tab ${activeTab === 'logging' ? 'active' : ''}`} onClick={() => setActiveTab('logging')}>Daily Log</button>
                 <button className={`detail-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Log History</button>
@@ -264,7 +273,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                                             <div className="ts-tech-avatar !h-8 !w-8"><Image src={tech.avatarUrl} alt={tech.name} width={32} height={32}/></div>
                                             <div>
                                                 <div className="ts-tech-name">{tech.name}</div>
-                                                <div className="ts-tech-date">{log.date}</div>
+                                                <div className="ts-tech-date">{formatDateDisplay(log.date)}</div>
                                             </div>
                                         </>
                                     )}

@@ -43,7 +43,7 @@ const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDe
                     </div>
                     <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Download Initiated", description: `${doc.name} transfer handshake complete.` })}><Download size={12} /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => onDelete(id => onDelete(doc.id))}><Trash2 size={12} /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={12} /></Button>
                     </div>
                 </div>
             )) : (
@@ -88,6 +88,9 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
                                                 <div className={cn("h-1.5 w-1.5 rounded-full", task.isCompleted ? "bg-text-green" : "bg-text-muted")} />
                                                 <span className={cn("text-[10px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
                                             </div>
+                                            <Button variant="outline" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Upload terminal ready", description: "Select field imagery for verification." })}>
+                                                <Plus size={10} className="mr-1"/> Add Photo
+                                            </Button>
                                         </div>
                                         
                                         {taskPhotos.length > 0 ? (
@@ -121,7 +124,12 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
                 </div>
 
                 <div className="pt-2 border-t border-border-sub/30">
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted block mb-2">Phase Assets</label>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Phase Assets</label>
+                        <Button variant="ghost" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Registry Handshake", description: "Select document to append to this phase." })}>
+                            Upload to this phase
+                        </Button>
+                    </div>
                     <div className="space-y-1">
                         {otherPhaseDocs.length > 0 ? otherPhaseDocs.map(doc => (
                              <div key={doc.id} className="flex items-center justify-between p-1.5 rounded bg-bg-primary border border-border-sub hover:border-text-muted transition-colors">
@@ -144,7 +152,7 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
                                 </div>
                             </div>
                         )) : (
-                             <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest mb-2">No additional technical assets</p>
+                             <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest mb-2 px-1">No additional technical assets</p>
                         )}
                     </div>
                 </div>
@@ -191,7 +199,7 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
             <div>
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 mb-3 px-1">
                     <FileText size={14}/>
-                    Strategic Repository
+                    Pre-Site Documents
                 </h3>
                 <PreSiteDocumentList docs={preSiteDocs} onDelete={handleDeleteDoc} />
             </div>

@@ -66,6 +66,25 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         return requests.slice(start, start + itemsPerPage);
     }, [requests, currentPage, itemsPerPage]);
 
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+          const parts = dateStr.split(/[-/]/);
+          if (parts.length === 3) {
+              let m, d, y;
+              if (parts[0].length === 4) { // yyyy-mm-dd
+                  [y, m, d] = parts;
+              } else { // mm-dd-yyyy or similar
+                  [m, d, y] = parts;
+              }
+              return `${m}-${d}-${y}`;
+          }
+          return dateStr;
+        } catch (e) {
+          return dateStr;
+        }
+    };
+
     if (requests.length === 0) {
         return (
             <div className="table-wrap">
@@ -119,9 +138,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr className="bg-bg-tertiary/50">
-                        <th style={{ width: "110px" }} className="!py-1.5 text-center">ID</th>
-                        <th className="!py-1.5 text-center">Client & Site</th>
-                        <th style={{ width: "40%" }} className="!py-1.5 text-center">Description</th>
+                        <th style={{ width: "450px" }} className="!py-1.5 text-center">Intake Identification & Description</th>
+                        <th style={{ width: "200px" }} className="!py-1.5 text-center">Site Coordinates</th>
                         <th style={{ width: "100px" }} className="!py-1.5 text-center">Category</th>
                         <th style={{ width: "80px" }} className="!py-1.5 text-center">Priority</th>
                         <th style={{ width: "100px" }} className="!py-1.5 text-center">Actions</th>
@@ -130,41 +148,39 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                 <tbody>
                     {paginatedRequests.map((req) => (
                         <tr key={req.id} className="group hover:bg-bg-tertiary/80 transition-colors">
-                            <td className="!py-1">
-                                <div className="flex flex-col items-center justify-center">
-                                  <div className="cell-id !text-[10px]">{req.id.toUpperCase()}</div>
-                                  <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
-                                </div>
-                            </td>
-                            <td className="!py-1">
-                                <div className="flex flex-col items-center justify-center text-center">
-                                  <div className="font-bold text-text-primary text-[10px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
-                                  <div className="flex items-center justify-center gap-1 text-[8px] text-text-muted font-bold truncate max-w-[150px]">
-                                      <MapPin size={9} className="shrink-0" />
-                                      <span className="truncate">{req.location}</span>
+                            <td className="!py-3">
+                                <div className="flex items-center gap-4 px-4">
+                                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                    <div className="cell-id !text-[10px] font-mono">{req.id.toUpperCase()}</div>
+                                    <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{formatDateDisplay(req.submittedDate)}</span>
+                                  </div>
+                                  <div className="flex flex-col items-start text-left min-w-0">
+                                    <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{req.description}</div>
+                                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{req.clientName}</div>
                                   </div>
                                 </div>
                             </td>
-                            <td className="!py-1">
-                                <div className="flex items-center justify-center text-center px-4">
-                                  <p className="text-[10px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
+                            <td className="!py-3">
+                                <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                  <MapPin size={10} className="text-brand-red shrink-0" />
+                                  <span className="max-w-[150px] text-center">{req.location}</span>
                                 </div>
                             </td>
-                            <td className="!py-1">
+                            <td className="!py-3">
                                 <div className="flex items-center justify-center">
                                   <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary border-border-sub text-text-muted">
                                       {req.requestType}
                                   </Badge>
                                 </div>
                             </td>
-                            <td className="!py-1 text-center">
+                            <td className="!py-3 text-center">
                                 <div className="flex items-center justify-center">
                                   <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
                                       {req.priority}
                                   </Badge>
                                 </div>
                             </td>
-                            <td className="!py-1 text-center">
+                            <td className="!py-3 text-center">
                                 <div className="flex justify-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
                                         <Eye size={12}/>
@@ -248,7 +264,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
                                 <div className="space-y-0.5 text-right">
                                     <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SUBMITTED</p>
-                                    <p className="text-xs font-mono font-bold text-text-primary">{selectedRequest.submittedDate}</p>
+                                    <p className="text-xs font-mono font-bold text-text-primary">{formatDateDisplay(selectedRequest.submittedDate)}</p>
                                 </div>
                             </div>
 

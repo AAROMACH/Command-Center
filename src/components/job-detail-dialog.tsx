@@ -71,12 +71,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
     try {
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
-          if (parts[0].length === 4) {
-              const [y, m, d] = parts;
-              return `${m}-${d}-${y}`;
+          let m, d, y;
+          if (parts[0].length === 4) { // yyyy-mm-dd
+              [y, m, d] = parts;
+          } else { // mm-dd-yyyy or similar
+              [m, d, y] = parts;
           }
-          const [a, b, c] = parts;
-          return `${a}-${b}-${c}`;
+          return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
@@ -114,7 +115,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </DialogTitle>
           <DialogDescription className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
              <span className="flex items-center gap-1.5">
-               <MapPin size={12}/>
+               <MapPin size={12} className="text-brand-red" />
                {mission.location}
              </span>
              <span className="flex items-center gap-1.5"><Calendar size={12}/> {formatDateDisplay(mission.scheduleDate)}</span>
@@ -241,7 +242,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                         {mission.reimbursements.map(re => (
                             <div key={re.id} className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
                                 <div className="space-y-0.5">
-                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
+                                    <p className="textKey={re.id} className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
                                     <p className="text-[9px] text-text-muted font-mono">{formatDateDisplay(re.date)}</p>
                                 </div>
                                 <p className="text-xs font-mono font-bold text-text-green">+{formatCurrency(re.amount)}</p>

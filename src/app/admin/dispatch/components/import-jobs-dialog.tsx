@@ -60,7 +60,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         const payLine = lines.find(l => l.includes('$') && /\d/.test(l));
         if (payLine) {
           const match = payLine.match(/\$\s*(\d+(?:\.\d+)?)/);
-          // Preserve exact pay what it says, don't calculate
+          // Preserve exact pay as literal, do not perform calculation logic
           if (match) pay = parseFloat(match[1]);
           if (payLine.toLowerCase().includes('hr')) payType = 'hourly';
         }

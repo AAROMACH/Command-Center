@@ -272,12 +272,13 @@ export function WorkOrdersClient({
     try {
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
-          if (parts[0].length === 4) {
-              const [y, m, d] = parts;
-              return `${m}-${d}-${y}`;
+          let m, d, y;
+          if (parts[0].length === 4) { // yyyy-mm-dd
+              [y, m, d] = parts;
+          } else { // mm-dd-yyyy or similar
+              [m, d, y] = parts;
           }
-          const [a, b, c] = parts;
-          return `${a}-${b}-${c}`;
+          return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
@@ -366,12 +367,12 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "450px" }}>Work Order & Status</th>
-              <th style={{ width: "160px" }}>Schedule</th>
-              <th style={{ width: "140px" }}>Route Status</th>
-              <th style={{ width: "200px" }}>Site Location</th>
-              <th style={{ width: "180px" }}>{mode === 'assigned' ? 'Assigned Operative' : 'Pay ($)'}</th>
-              <th style={{ width: "140px" }}></th>
+              <th style={{ width: "500px" }} className="text-center">Assignment & Identification</th>
+              <th style={{ width: "160px" }} className="text-center">Schedule</th>
+              <th style={{ width: "140px" }} className="text-center">Route Status</th>
+              <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
+              <th style={{ width: "180px" }} className="text-center">{mode === 'assigned' ? 'Operative' : 'Settlement Pay'}</th>
+              <th style={{ width: "120px" }} className="text-center"></th>
             </tr>
           </thead>
           <tbody>
@@ -381,25 +382,27 @@ export function WorkOrdersClient({
               
               return (
                 <tr key={order.id}>
-                  <td>
-                    <div className="flex items-center gap-3 px-4">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="cell-id">{order.id.toUpperCase()}</div>
-                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
+                  <td className="!py-3">
+                    <div className="flex items-center gap-4 px-4">
+                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                        <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
+                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[7px] h-3.5 px-1.5">{order.status}</Badge>
                       </div>
-                      <div className="flex flex-col items-start text-left flex-1 min-w-0">
-                        <div className="cell-desc-title font-bold leading-tight">{order.description}</div>
-                        <div className="cell-desc-client">
+                      <div className="flex flex-col items-start text-left min-w-0">
+                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
+                        <div className="flex items-center gap-1.5 mt-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                           <Briefcase className="h-2.5 w-2.5" />
-                          <span className="truncate">{order.clientName}</span>
+                          <span>{order.clientName}</span>
+                          <span className="text-brand-red opacity-30">•</span>
+                          <span>{order.projectType}</span>
                         </div>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time"><Clock />{order.scheduleTime}</div>
+                      <div className="cell-sched-date font-mono"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
+                      <div className="cell-sched-time font-mono"><Clock />{order.scheduleTime}</div>
                     </div>
                   </td>
                   <td>
@@ -414,8 +417,8 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="cell-loc flex items-center justify-center gap-2">
-                      <MapPin className="shrink-0" />
+                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                      <MapPin className="h-3 w-3 text-brand-red shrink-0" />
                       <span className="px-1 text-center">{order.location}</span>
                     </div>
                   </td>
@@ -428,45 +431,45 @@ export function WorkOrdersClient({
                                         <AvatarImage src={technician.avatarUrl} />
                                         <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <div className="space-y-0.5">
-                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
-                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
+                                    <div className="text-left">
+                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
+                                        <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
                                     </div>
                                 </div>
                             ) : (
-                                <span className="text-[10px] text-text-red uppercase font-bold tracking-widest">ID Discrepancy</span>
+                                <span className="text-[10px] text-text-red uppercase font-bold tracking-widest">Unallocated</span>
                             )
                         ) : (
-                            <div className="cell-pay">
-                                <DollarSign />
-                                <div className="flex flex-col items-center">
-                                    <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
-                                    <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
+                            <div className="flex items-center gap-1.5 text-text-green">
+                                <DollarSign size={12} />
+                                <div className="flex flex-col items-start leading-none">
+                                    <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
+                                    <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
                                 </div>
                             </div>
                         )}
                         {order.payChangeRequest && (
-                            <Badge variant="missed" className="mt-1 text-[8px] uppercase tracking-widest h-4 gap-1">
-                                <AlertTriangle size={10}/> Pay Pending
+                            <Badge variant="missed" className="mt-1 text-[7px] uppercase tracking-widest h-3.5 gap-1">
+                                <AlertTriangle size={8}/> Pending
                             </Badge>
                         )}
                     </div>
                   </td>
                   <td>
-                     <div className="cell-actions">
+                     <div className="flex items-center justify-center gap-1">
                        {order.status === 'unassigned' && (
                          <button 
-                            className="btn-assign !h-6 !text-[9px] bg-brand-red hover:bg-brand-red-hover px-2 flex items-center gap-1"
+                            className="h-6 rounded bg-brand-red hover:bg-brand-red-hover px-2 text-[9px] font-bold uppercase text-white flex items-center gap-1 transition-colors"
                             onClick={() => handleOpenAssignDialog(order)}
                          >
                             <UserPlus size={10}/> Assign
                          </button>
                        )}
-                       <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
-                         <Pencil size={16} />
+                       <button className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => handleOpenEditDialog(order)}>
+                         <Pencil size={14} />
                        </button>
-                       <button className="btn-edit" onClick={() => handleOpenDetail(order)}>
-                         <Eye size={16} />
+                       <button className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => handleOpenDetail(order)}>
+                         <Eye size={14} />
                        </button>
                      </div>
                   </td>
@@ -474,7 +477,7 @@ export function WorkOrdersClient({
               );
             })}
              {sortedWorkOrders.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>
         </table>

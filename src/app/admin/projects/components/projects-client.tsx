@@ -59,12 +59,13 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
         try {
           const parts = dateStr.split(/[-/]/);
           if (parts.length === 3) {
-              if (parts[0].length === 4) {
-                  const [y, m, d] = parts;
-                  return `${m}-${d}-${y}`;
+              let m, d, y;
+              if (parts[0].length === 4) { // yyyy-mm-dd
+                  [y, m, d] = parts;
+              } else { // mm-dd-yyyy or similar
+                  [m, d, y] = parts;
               }
-              const [a, b, c] = parts;
-              return `${a}-${b}-${c}`;
+              return `${m}-${d}-${y}`;
           }
           return dateStr;
         } catch (e) {
@@ -87,11 +88,10 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th className="text-center">Project ID / Status</th>
-                        <th className="text-center">Title & Client</th>
-                        <th className="text-center">Site Location</th>
-                        <th className="text-center">Scheduled Date</th>
-                        <th style={{ width: "25%" }} className="text-center">Progress</th>
+                        <th style={{ width: "400px" }} className="text-center">Project Intelligence & Status</th>
+                        <th className="text-center">Site Coordinates</th>
+                        <th className="text-center">Schedule Date</th>
+                        <th style={{ width: "25%" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,55 +105,55 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
-                                <td>
-                                    <div className="flex items-center gap-2 justify-center">
-                                      <div className="cell-id">{project.id.toUpperCase()}</div>
-                                      <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
+                                <td className="!py-4">
+                                    <div className="flex items-center gap-4 px-6">
+                                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                        <div className="cell-id !text-[10px] font-mono">{project.id.toUpperCase()}</div>
+                                        <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5">{project.status}</Badge>
+                                      </div>
+                                      <div className="flex flex-col items-start text-left min-w-0">
+                                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{project.name}</div>
+                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
+                                        {lead && (
+                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-2 font-bold uppercase tracking-widest">
+                                                <User className="h-3 w-3" />
+                                                <span>Lead: {lead.name}</span>
+                                            </div>
+                                        )}
+                                      </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex flex-col items-center justify-center text-center">
-                                      <div className="cell-desc-title !normal-case font-bold leading-tight">{project.name}</div>
-                                      <div className="font-semibold text-text-primary text-sm">{project.client}</div>
-                                      {lead && (
-                                          <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
-                                              <User className="h-3.5 w-3.5" />
-                                              <span>Lead: {lead.name}</span>
-                                          </div>
-                                      )}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div className="flex items-center justify-center gap-2 text-sm text-text-secondary text-center">
-                                        <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
-                                        <span className="max-w-[150px]">{project.location}</span>
+                                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                        <MapPin className="h-3 w-3 text-brand-red shrink-0" />
+                                        <span className="max-w-[200px] text-center">{project.location}</span>
                                     </div>
                                 </td>
                                 <td>
                                     <div className="cell-sched">
-                                        <div className="cell-sched-date">
+                                        <div className="cell-sched-date font-mono">
                                             <Calendar size={13}/>
                                             <span>{formatDateDisplay(project.startDate)}</span>
                                         </div>
                                         {project.startTime && (
-                                            <div className="cell-sched-time">
+                                            <div className="cell-sched-time font-mono">
                                                 <Clock size={13}/>
                                                 <span>{project.startTime}</span>
                                             </div>
                                         )}
-                                        <div className="cell-sched-time">
+                                        <div className="cell-sched-time font-mono">
                                             <Timer size={13}/>
                                             <span>{project.estimatedDuration}</span>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex flex-col items-center justify-center">
+                                    <div className="flex flex-col items-center justify-center px-6">
                                       <div className="progress-wrap w-full">
-                                          <div className="progress-track"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
-                                          <div className={`progress-pct !text-${progressColor}`}>{Math.round(progress)}%</div>
+                                          <div className="progress-track !h-[6px]"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
+                                          <div className={`progress-pct !text-${progressColor} font-mono font-bold`}>{Math.round(progress)}%</div>
                                       </div>
-                                      <div className="text-xs text-text-muted mt-1">{completedTasks} of {totalTasks} tasks complete</div>
+                                      <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-2">{completedTasks} / {totalTasks} MISSION TARGETS REACHED</div>
                                     </div>
                                 </td>
                             </tr>

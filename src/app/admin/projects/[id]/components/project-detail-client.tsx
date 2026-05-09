@@ -335,8 +335,8 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-row items-center justify-between gap-4">
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive-outline" className="h-11 px-6">
-                                    <Archive size={16} className="mr-2"/> Archive Project
+                                <Button variant="ghost" className="h-8 px-2 text-[9px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-widest font-bold">
+                                    <Archive size={12} className="mr-1.5"/> Archive Folder
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-bg-elevated border-border-main shadow-2xl">

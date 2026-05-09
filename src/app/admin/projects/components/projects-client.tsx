@@ -120,11 +120,6 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                             </tr>
                         );
                     })}
-                     <tr>
-                      <td colSpan={5} className="text-center text-xs text-text-muted py-4">
-                        + Add more projects with "New Project"
-                      </td>
-                    </tr>
                 </tbody>
             </table>
         </div>

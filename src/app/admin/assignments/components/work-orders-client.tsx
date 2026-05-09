@@ -394,12 +394,11 @@ export function WorkOrdersClient({
                      <div className="cell-actions">
                        {order.status === 'unassigned' && (
                          <Button 
-                            size="sm" 
                             variant="default" 
-                            className="h-8 !text-[10px] bg-brand-red hover:bg-brand-red-hover"
+                            className="h-6 !text-[9px] bg-brand-red hover:bg-brand-red-hover px-2"
                             onClick={() => handleOpenAssignDialog(order)}
                          >
-                            <UserPlus size={12} className="mr-1.5"/> Assign
+                            <UserPlus size={10} className="mr-1"/> Assign
                          </Button>
                        )}
                        <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>

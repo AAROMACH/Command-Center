@@ -168,6 +168,30 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 <DialogDescription>Update master parameters for project <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
                             </div>
                             <div className="flex items-center gap-3">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" className="h-8 px-2 text-[9px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-widest font-bold">
+                                            <Archive size={12} className="mr-1.5"/> Archive Project
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="bg-bg-elevated border-border-main">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="uppercase tracking-widest font-bold">Authorize Archival?</AlertDialogTitle>
+                                            <AlertDialogDescription className="text-xs">
+                                                Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>. The folder will move to historical storage.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold">
+                                                Confirm Archival
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                
+                                <Separator orientation="vertical" className="h-4 bg-border-sub" />
+
                                 <Label className="text-[10px] font-bold uppercase text-text-muted">Master Status</Label>
                                 <Select value={editedProject.status} onValueChange={(val: any) => setEditedProject({...editedProject, status: val})}>
                                     <SelectTrigger className="h-8 w-[140px] bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
@@ -330,37 +354,13 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         </div>
                     </div>
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-row items-center justify-between gap-4">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" className="h-8 px-2 text-[9px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-widest font-bold">
-                                    <Archive size={12} className="mr-1.5"/> Archive Project
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-bg-elevated border-border-main">
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="uppercase tracking-widest font-bold">Authorize Archival?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-xs">
-                                        Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>. The folder will move to historical storage.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold">
-                                        Confirm Archival
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-
-                        <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">
-                                Discard
-                            </Button>
-                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
-                                <Check size={16} className="mr-2"/> Commit Registry Updates
-                            </Button>
-                        </div>
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-row items-center justify-end gap-3">
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">
+                            Discard
+                        </Button>
+                        <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                            <Check size={16} className="mr-2"/> Commit Registry Updates
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

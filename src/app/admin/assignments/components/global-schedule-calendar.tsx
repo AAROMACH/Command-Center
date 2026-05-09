@@ -36,46 +36,51 @@ type ViewMode = 'week' | 'month';
 type GlobalScheduleCalendarProps = {
     workOrders: WorkOrder[];
     technicians: Technician[];
-    selectedDate?: Date;
-    onDateSelect?: (date: Date) => void;
+    selectedDates?: Date[];
+    onDatesChange?: (dates: Date[]) => void;
     hideManifest?: boolean;
 };
 
 export function GlobalScheduleCalendar({ 
   workOrders, 
   technicians, 
-  selectedDate, 
-  onDateSelect,
+  selectedDates = [], 
+  onDatesChange,
   hideManifest = false
 }: GlobalScheduleCalendarProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
-    const [internalSelectedDate, setInternalSelectedDate] = useState<Date | null>(null);
 
     useEffect(() => {
         setCurrentDate(new Date());
-        setInternalSelectedDate(new Date());
     }, []);
 
-    const effectiveSelectedDate = selectedDate || internalSelectedDate || new Date();
-
     const handleDayClick = (day: Date) => {
-        if (onDateSelect) {
-            onDateSelect(day);
+        const isAlreadySelected = selectedDates.some(selected => isSameDay(selected, day));
+        let newDates: Date[];
+
+        if (isAlreadySelected) {
+            newDates = selectedDates.filter(selected => !isSameDay(selected, day));
         } else {
-            setInternalSelectedDate(day);
+            newDates = [...selectedDates, day];
+        }
+
+        if (onDatesChange) {
+            onDatesChange(newDates);
         }
     };
 
-    const assignmentsForSelectedDay = useMemo(() => {
+    const assignmentsForSelectedDays = useMemo(() => {
+        if (selectedDates.length === 0) return [];
         return workOrders.filter(wo => {
             try {
-                return isSameDay(parseISO(wo.scheduleDate), effectiveSelectedDate);
+                const woDate = parseISO(wo.scheduleDate);
+                return selectedDates.some(selected => isSameDay(woDate, selected));
             } catch (e) {
                 return false;
             }
         });
-    }, [workOrders, effectiveSelectedDate]);
+    }, [workOrders, selectedDates]);
     
     const eventsByDate = useMemo(() => {
       return workOrders.reduce((acc, wo) => {
@@ -121,6 +126,8 @@ export function GlobalScheduleCalendar({
         end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
     });
 
+    const isDateSelected = (day: Date) => selectedDates.some(selected => isSameDay(selected, day));
+
     return (
         <div className={cn("flex flex-col gap-6", !hideManifest && "xl:flex-row")}>
             <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-2 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
@@ -154,7 +161,7 @@ export function GlobalScheduleCalendar({
                                 <div 
                                   key={day.toString()} 
                                   className={cn("day-pill !h-10 !p-1 justify-center", {
-                                    'selected': isSameDay(day, effectiveSelectedDate),
+                                    'selected': isDateSelected(day),
                                     'today': isToday(day)
                                   })}
                                   onClick={() => handleDayClick(day)}
@@ -181,7 +188,7 @@ export function GlobalScheduleCalendar({
                                     <div 
                                       key={day.toString()}
                                       className={cn("month-day !h-8 !text-[9px] !border-border-sub", {
-                                        'selected': isSameDay(day, effectiveSelectedDate),
+                                        'selected': isDateSelected(day),
                                         'today': isToday(day),
                                         'other-month': !isSameMonth(day, currentDate)
                                       })}
@@ -206,17 +213,22 @@ export function GlobalScheduleCalendar({
                           </div>
                           <div>
                               <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Manifest</p>
-                              <p className="text-lg font-bold text-text-primary uppercase">{format(effectiveSelectedDate, 'EEEE, MMMM d, yyyy')}</p>
+                              <p className="text-sm font-bold text-text-primary uppercase">
+                                {selectedDates.length > 0 
+                                    ? selectedDates.map(d => format(d, 'MMM d')).join(', ')
+                                    : 'All Dates'
+                                }
+                              </p>
                           </div>
                       </div>
                       <Badge variant="outline" className="bg-bg-tertiary border-border-sub text-[10px] px-4 h-8 uppercase font-bold tracking-widest">
-                          {assignmentsForSelectedDay.length} Active Missions
+                          {assignmentsForSelectedDays.length} Active Missions
                       </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {assignmentsForSelectedDay.length > 0 ? (
-                          assignmentsForSelectedDay.map(wo => {
+                      {assignmentsForSelectedDays.length > 0 ? (
+                          assignmentsForSelectedDays.map(wo => {
                               const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
                               return (
                                   <div key={wo.id} className={cn("job-card !mb-0 transition-all hover:translate-y-[-2px] hover:shadow-xl", { 'border-text-green bg-green-dim/5': wo.status === 'in-progress'})}>

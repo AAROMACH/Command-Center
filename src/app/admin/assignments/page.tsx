@@ -24,7 +24,7 @@ import { format, isSameDay, parseISO } from 'date-fns';
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [filterDates, setFilterDates] = useState<Date[]>([]);
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
@@ -38,11 +38,11 @@ export default function AssignmentsHubPage() {
         (tech && tech.name.toLowerCase().includes(query))
       );
 
-      const matchesDate = !filterDate || (wo.scheduleDate && isSameDay(parseISO(wo.scheduleDate), filterDate));
+      const matchesDate = filterDates.length === 0 || (wo.scheduleDate && filterDates.some(d => isSameDay(parseISO(wo.scheduleDate), d)));
 
       return matchesSearch && matchesDate;
     }).sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
-  }, [workOrders, searchQuery, filterDate]);
+  }, [workOrders, searchQuery, filterDates]);
 
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
@@ -58,6 +58,10 @@ export default function AssignmentsHubPage() {
     } catch (e) {
       return dateStr;
     }
+  };
+
+  const handleRemoveDate = (dateToRemove: Date) => {
+    setFilterDates(filterDates.filter(d => !isSameDay(d, dateToRemove)));
   };
 
   return (
@@ -98,9 +102,9 @@ export default function AssignmentsHubPage() {
                 <GlobalScheduleCalendar 
                     workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
                     technicians={technicians} 
-                    selectedDate={filterDate || undefined}
+                    selectedDates={filterDates}
                     hideManifest={true}
-                    onDateSelect={(date) => setFilterDate(date)}
+                    onDatesChange={(dates) => setFilterDates(dates)}
                 />
             </div>
 
@@ -111,18 +115,20 @@ export default function AssignmentsHubPage() {
                             <Activity size={16} className="text-brand-red" />
                             <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
                         </div>
-                        {filterDate && (
-                            <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                                <CalendarIcon size={12} />
-                                <span className="text-[10px] uppercase font-bold tracking-widest">{format(filterDate, 'MMM d, yyyy')}</span>
-                                <button 
-                                    onClick={() => setFilterDate(null)}
-                                    className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                                >
-                                    <X size={12} />
-                                </button>
-                            </Badge>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                            {filterDates.map((date, idx) => (
+                                <Badge key={idx} variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                                    <CalendarIcon size={12} />
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">{format(date, 'MM-dd-yyyy')}</span>
+                                    <button 
+                                        onClick={() => handleRemoveDate(date)}
+                                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </Badge>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -179,13 +185,13 @@ export default function AssignmentsHubPage() {
                         <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
                             <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">
-                                {filterDate 
-                                    ? `No active missions found for ${format(filterDate, 'MMMM d, yyyy')}`
+                                {filterDates.length > 0 
+                                    ? `No active missions found for selected dates`
                                     : "No active missions matching search criteria"
                                 }
                             </p>
-                            {filterDate && (
-                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={() => setFilterDate(null)}>
+                            {filterDates.length > 0 && (
+                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={() => setFilterDates([])}>
                                     Reset Date Selection
                                 </button>
                             )}

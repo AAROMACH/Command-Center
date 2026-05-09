@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Project, ProjectDailyLog, Task, Technician } from '@/lib/types';
+import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -19,6 +19,8 @@ import {
   ListTodo,
   Signature,
   Upload,
+  User,
+  Trash2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 function getProgress(project: Project): number {
     const allTasks = project.phases.flatMap(phase => phase.tasks);
@@ -38,18 +41,24 @@ function getProgress(project: Project): number {
 const PhaseBlock = ({
   phase,
   onTaskToggle,
-  onPhotoUpload,
+  documents,
 }: {
   phase: Project['phases'][0];
   onTaskToggle: (phaseId: string, taskId: string) => void;
-  onPhotoUpload: (taskId: string, file: File) => void;
+  documents: ProjectDocument[];
 }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const { toast } = useToast();
+  
   const completedTasks = phase.tasks.filter((t) => t.isCompleted).length;
   const totalTasks = phase.tasks.length;
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   const status =
     progress === 100 ? 'completed' : progress > 0 ? 'inprogress' : 'pending';
+
+  const findPhotosForTask = (taskId: string) => {
+    return documents.filter(doc => doc.taskId === taskId && doc.type === 'img');
+  };
 
   return (
     <div className="phase-block">
@@ -75,40 +84,60 @@ const PhaseBlock = ({
             </div>
           </div>
           <div className="tasks-list">
-            {phase.tasks.map((task) => (
-              <div key={task.id} className="task-row">
-                <Checkbox
-                  id={`task-${task.id}`}
-                  checked={task.isCompleted}
-                  onCheckedChange={() => onTaskToggle(phase.id, task.id)}
-                  className="task-check"
-                />
-                <div className="flex-1 min-w-0">
-                    <label
-                      htmlFor={`task-${task.id}`}
-                      className={`task-name ${task.isCompleted ? 'done' : ''}`}
-                    >
-                      {task.name}
-                    </label>
-                    
-                    <div className="flex flex-wrap gap-1 mt-1">
-                        {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
-                        {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
-                        {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
-                        {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
-                        {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
-                        {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
-                        {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
+            {phase.tasks.map((task) => {
+              const taskPhotos = findPhotosForTask(task.id);
+              return (
+                <div key={task.id} className="p-3 border-b border-border-sub hover:bg-bg-tertiary/50 transition-colors">
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id={`task-${task.id}`}
+                      checked={task.isCompleted}
+                      onCheckedChange={() => onTaskToggle(phase.id, task.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                        <label
+                          htmlFor={`task-${task.id}`}
+                          className={cn("text-[13px] font-semibold text-text-primary block", task.isCompleted ? 'text-text-muted line-through' : '')}
+                        >
+                          {task.name}
+                        </label>
+                        
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                            {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
+                            {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
+                            {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
+                            {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
+                            {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
+                            {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
+                            {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
+                        </div>
+
+                        {/* Task specific Evidence Display */}
+                        {taskPhotos.length > 0 && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                                {taskPhotos.map(photo => (
+                                    <div key={photo.id} className="relative group aspect-video rounded border border-border-sub overflow-hidden bg-bg-primary">
+                                        <Image src={photo.url || ''} alt={photo.name} fill className="object-cover" />
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                                            <p className="text-[8px] text-white font-bold uppercase truncate">{photo.name}</p>
+                                            <p className="text-[7px] text-text-secondary flex items-center gap-1"><User size={8}/> {photo.uploader}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
+                    
+                    {task.requiresPhoto && (
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Camera Terminal Initialized", description: "Hardware handshake complete. Awaiting capture."})}>
+                        <Camera size={13} className="mr-1.5"/> Add Photo
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                
-                {task.requiresPhoto && (
-                  <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-widest px-2">
-                    <Camera size={13} className="mr-1.5"/> Upload Photo
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -117,7 +146,7 @@ const PhaseBlock = ({
 };
 
 
-export function ProjectDetailClient({ project: initialProject, dailyLogs, technicians }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[] }) {
+export function ProjectDetailClient({ project: initialProject, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [project, setProject] = useState(initialProject);
     const [activeTab, setActiveTab] = useState('tasks');
     const { toast } = useToast();
@@ -140,11 +169,6 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                 return phase;
             })
         }));
-    };
-    
-    const handlePhotoUpload = (taskId: string, file: File) => {
-        console.log(`Uploading photo for task ${taskId}:`, file.name);
-        toast({ title: 'Photo Uploaded', description: 'Your photo has been attached to the task.' });
     };
 
     const handleSubmitLog = () => {
@@ -194,7 +218,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                 {activeTab === 'tasks' && (
                     <div className="space-y-3">
                         {project.phases.map(phase => (
-                           <PhaseBlock key={phase.id} phase={phase} onTaskToggle={handleTaskToggle} onPhotoUpload={handlePhotoUpload} />
+                           <PhaseBlock key={phase.id} phase={phase} onTaskToggle={handleTaskToggle} documents={documents} />
                         ))}
                     </div>
                 )}

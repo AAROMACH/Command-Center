@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -12,6 +13,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -22,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -34,10 +38,16 @@ import {
   UserPlus,
   Layers,
   DollarSign,
-  User
+  User,
+  Search,
+  Building2,
+  Check,
+  Users,
+  Navigation
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -66,6 +76,11 @@ export function WorkOrdersClient({
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+
+  // Registry Popup States for Edit Flow
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
+  const [registrySearch, setRegistrySearch] = useState("");
 
   const { toast } = useToast();
 
@@ -162,6 +177,46 @@ export function WorkOrdersClient({
     } catch (e) {
       return dateStr;
     }
+  };
+
+  // Registry Selection Logic
+  const clients = useMemo(() => {
+    return technicians.filter(t => 
+        t.roles?.includes('client') || 
+        t.role.toLowerCase().includes('client') || 
+        t.clientCompany
+    );
+  }, []);
+
+  const selectedClient = useMemo(() => {
+    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
+  }, [editedOrder?.clientName, clients]);
+
+  const filteredRegistry = useMemo(() => {
+    return clients.filter(c => 
+        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(registrySearch.toLowerCase())
+    );
+  }, [registrySearch, clients]);
+
+  const selectClientFromRegistry = (client: Technician) => {
+    const name = client.clientCompany || client.name;
+    if (editedOrder) {
+        setEditedOrder({
+            ...editedOrder,
+            clientName: name,
+            location: '' 
+        });
+    }
+    setIsRegistryOpen(false);
+  };
+
+  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
+    if (editedOrder) {
+        setEditedOrder({ ...editedOrder, location: site.location });
+    }
+    setIsSiteRegistryOpen(false);
   };
 
   return (
@@ -262,7 +317,7 @@ export function WorkOrdersClient({
         </table>
       </div>
 
-      {/* DISPATCH TERMINAL (Searchable Techs + AI) */}
+      {/* DISPATCH TERMINAL */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">
@@ -340,46 +395,289 @@ export function WorkOrdersClient({
         </DialogContent>
       </Dialog>
 
+      {/* FULL EDIT DIALOG */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
-            <DialogHeader>
-                <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Update Dispatch Parameters</DialogTitle>
+        <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
+            <DialogHeader className="p-6 pb-2">
+                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
                 <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
             </DialogHeader>
             {editedOrder && (
-                <div className="space-y-4 py-4">
+                <div className="px-6 py-4 space-y-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Technician Allocation</Label>
-                        <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
-                            <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
-                                <SelectValue placeholder="Select Technician" />
-                            </SelectTrigger>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                        <Textarea 
+                            placeholder="Primary objective and requirements..." 
+                            value={editedOrder.description}
+                            onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})}
+                            className="bg-bg-primary border-border-sub h-20 text-xs"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                            <div className="space-y-1.5">
+                                <Input 
+                                    placeholder="Type client name..." 
+                                    value={editedOrder.clientName}
+                                    onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
+                                    className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                                    onClick={() => setIsRegistryOpen(true)}
+                                >
+                                    <Search size={12}/> Search Registry
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                            <div className="space-y-1.5">
+                                <Input 
+                                    placeholder="Full address or coordinates..." 
+                                    value={editedOrder.location}
+                                    onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
+                                    className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
+                                    className={cn(
+                                        "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                                        (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
+                                            ? "text-text-muted opacity-50 cursor-not-allowed" 
+                                            : "text-accent-gold hover:bg-accent-gold/10"
+                                    )}
+                                    onClick={() => setIsSiteRegistryOpen(true)}
+                                >
+                                    <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                        <Input 
+                            type="number"
+                            placeholder="0.00"
+                            value={editedOrder.pay || ''}
+                            onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})}
+                            className="bg-bg-primary h-10 font-mono text-text-green text-sm"
+                        />
+                        </div>
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                        <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
+                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
-                                    <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                                ))}
+                                <SelectItem value="fixed">Fixed Rate</SelectItem>
+                                <SelectItem value="hourly">Hourly Logic</SelectItem>
+                                <SelectItem value="blended">Blended / Complex</SelectItem>
                             </SelectContent>
                         </Select>
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Operational Status</Label>
-                        <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                            <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
+                        <Input 
+                            type="date"
+                            value={editedOrder.scheduleDate}
+                            onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})}
+                            className="bg-bg-primary h-10 text-xs"
+                        />
+                        </div>
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
+                        <Input 
+                            placeholder="e.g. 10:00 AM EST"
+                            value={editedOrder.scheduleTime}
+                            onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})}
+                            className="bg-bg-primary h-10 text-xs"
+                        />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
+                        <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
+                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="unassigned">UNASSIGNED</SelectItem>
-                                <SelectItem value="assigned">ASSIGNED</SelectItem>
-                                <SelectItem value="in-progress">IN PROGRESS</SelectItem>
-                                <SelectItem value="completed">COMPLETED</SelectItem>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="critical">Critical</SelectItem>
                             </SelectContent>
                         </Select>
+                        </div>
+                        <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                        <Select value={editedOrder.projectType} onValueChange={(val: any) => setEditedOrder({...editedOrder, projectType: val})}>
+                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Installation">Installation</SelectItem>
+                                <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                <SelectItem value="Survey">Survey</SelectItem>
+                                <SelectItem value="Repair">Repair</SelectItem>
+                                <SelectItem value="Decommission">Decommission</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        </div>
                     </div>
-                    <Button onClick={handleSaveChanges} className="w-full h-11 mt-4 bg-brand-red hover:bg-brand-red-hover">
-                        Commit Assignment Updates
-                    </Button>
+
+                    <Separator className="bg-border-sub" />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Technician Allocation</Label>
+                            <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
+                                    <SelectValue placeholder="Select Technician" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                                    {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
+                                        <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Operational Status</Label>
+                            <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned">UNASSIGNED</SelectItem>
+                                    <SelectItem value="assigned">ASSIGNED</SelectItem>
+                                    <SelectItem value="in-progress">IN PROGRESS</SelectItem>
+                                    <SelectItem value="completed">COMPLETED</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                            Commit Assignment Updates
+                        </Button>
+                    </DialogFooter>
                 </div>
             )}
         </DialogContent>
+      </Dialog>
+
+      {/* CLIENT REGISTRY POPUP */}
+      <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                      <Users className="text-brand-red h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Stakeholder Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-2">
+                  <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                      <Input 
+                          placeholder="Filter registry by name or ID..." 
+                          value={registrySearch}
+                          onChange={(e) => setRegistrySearch(e.target.value)}
+                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                      />
+                  </div>
+              </div>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {filteredRegistry.map(client => (
+                          <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => selectClientFromRegistry(client)}
+                              className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                                  <Building2 size={16} />
+                              </div>
+                              <div className="flex-1 overflow-hidden">
+                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                  {client.businessType && (
+                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                  )}
+                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                              </div>
+                              <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                      ))}
+                      {filteredRegistry.length === 0 && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* SITE REGISTRY POPUP */}
+      <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                      <Navigation className="text-accent-gold h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{editedOrder?.clientName}</span>.</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {selectedClient?.managedSites?.map(site => (
+                          <button
+                              key={site.id}
+                              type="button"
+                              onClick={() => selectSiteFromRegistry(site)}
+                              className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="flex justify-between items-start gap-3">
+                                  <div className="space-y-0.5">
+                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                      <p className="text-[10px] text-text-muted flex items-center gap-1.5">
+                                          <MapPin size={10} className="text-brand-red" />
+                                          {site.location}
+                                      </p>
+                                  </div>
+                                  <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                              </div>
+                          </button>
+                      ))}
+                      {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this stakeholder</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+              </DialogFooter>
+          </DialogContent>
       </Dialog>
     </>
   );

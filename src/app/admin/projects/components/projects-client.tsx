@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type ProjectsClientProps = {
     projects: Project[];
@@ -59,11 +60,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
           const parts = dateStr.split(/[-/]/);
           if (parts.length === 3) {
               let m, d, y;
-              if (parts[0].length === 4) { // yyyy-mm-dd
-                  [y, m, d] = parts;
-              } else { // mm-dd-yyyy or similar
-                  [m, d, y] = parts;
-              }
+              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
               return `${m}-${d}-${y}`;
           }
           return dateStr;
@@ -87,10 +84,11 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th style={{ width: "400px" }} className="text-center">Project Intelligence & Status</th>
+                        <th style={{ width: "450px" }} className="text-left pl-6">Project Intelligence & Status</th>
+                        <th className="text-center">Project Lead</th>
                         <th className="text-center">Site Coordinates</th>
                         <th className="text-center">Schedule Date</th>
-                        <th style={{ width: "25%" }} className="text-center">Operational Progress</th>
+                        <th style={{ width: "22%" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,21 +103,30 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td className="!py-4">
-                                    <div className="flex items-center gap-4 px-6">
-                                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                    <div className="flex items-center gap-4 pl-6 text-left">
+                                      <div className="flex items-center gap-2 shrink-0">
                                         <div className="cell-id !text-[10px] font-mono">{project.id.toUpperCase()}</div>
                                         <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5">{project.status}</Badge>
                                       </div>
-                                      <div className="flex flex-col items-start text-left min-w-0">
+                                      <div className="flex flex-col min-w-0">
                                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{project.name}</div>
-                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
-                                        {lead && (
-                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-2 font-bold uppercase tracking-widest">
-                                                <User className="h-3 w-3" />
-                                                <span>Lead: {lead.name}</span>
-                                            </div>
-                                        )}
+                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{project.client}</div>
                                       </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="flex flex-col items-center justify-center">
+                                        {lead ? (
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6 border border-border-sub">
+                                                    <AvatarImage src={lead.avatarUrl} />
+                                                    <AvatarFallback>{lead.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[100px]">{lead.name}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unassigned</span>
+                                        )}
                                     </div>
                                 </td>
                                 <td>
@@ -140,10 +147,6 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                                 <span>{project.startTime}</span>
                                             </div>
                                         )}
-                                        <div className="cell-sched-time font-mono">
-                                            <Timer size={13}/>
-                                            <span>{project.estimatedDuration}</span>
-                                        </div>
                                     </div>
                                 </td>
                                 <td>
@@ -152,7 +155,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                           <div className="progress-track !h-[6px]"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
                                           <div className={`progress-pct !text-${progressColor} font-mono font-bold`}>{Math.round(progress)}%</div>
                                       </div>
-                                      <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-2">{completedTasks} / {totalTasks} MISSION TARGETS REACHED</div>
+                                      <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-2">{completedTasks} / {totalTasks} TARGETS</div>
                                     </div>
                                 </td>
                             </tr>

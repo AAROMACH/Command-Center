@@ -298,7 +298,7 @@ export function WorkOrdersClient({
     return clientsList.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
   }, [editedOrder?.clientName, clientsList]);
 
-  const filteredRegistry = useMemo(() => {
+  const filteredRegistryList = useMemo(() => {
     return clientsList.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
@@ -366,7 +366,7 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "500px" }} className="text-center">Assignment & Identification</th>
+              <th style={{ width: "500px" }} className="text-left pl-6">Assignment Identification & Status</th>
               <th style={{ width: "160px" }} className="text-center">Schedule</th>
               <th style={{ width: "140px" }} className="text-center">Route Status</th>
               <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
@@ -382,7 +382,7 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td className="!py-3">
-                    <div className="flex items-center gap-4 px-4 justify-center">
+                    <div className="flex items-center gap-4 pl-6 text-left">
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
@@ -393,14 +393,17 @@ export function WorkOrdersClient({
                             )}
                         </div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
+                      </div>
+                      <div className="flex flex-col min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date font-mono"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time font-mono"><Clock />{order.scheduleTime}</div>
+                      <div className="cell-sched-date font-mono"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
+                      <div className="cell-sched-time font-mono"><Clock size={13} />{order.scheduleTime}</div>
                     </div>
                   </td>
                   <td>
@@ -844,7 +847,7 @@ export function WorkOrdersClient({
               </div>
               <ScrollArea className="flex-1 px-6 py-4">
                   <div className="space-y-1">
-                      {filteredRegistry.map(client => (
+                      {filteredRegistryList.map(client => (
                           <button
                               key={client.id}
                               type="button"
@@ -864,7 +867,7 @@ export function WorkOrdersClient({
                               <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                       ))}
-                      {filteredRegistry.length === 0 && (
+                      {filteredRegistryList.length === 0 && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
                               <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
                           </div>

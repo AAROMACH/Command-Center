@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils';
 import { PersonnelDetailDialog } from '../directory/components/personnel-detail-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder } from '@/lib/types';
+import { format, parseISO } from 'date-fns';
 
 // ── Mock Audit Data ───────────────────────────────────────────────────────────
 const AUDIT_ACTIONS = [
@@ -241,27 +242,27 @@ export default function ReportsPage() {
 
                                         <div className="space-y-4">
                                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Assignment history</h3>
-                                            <div className="relative pl-6 space-y-6 border-l border-border-sub ml-2">
+                                            <div className="relative pl-6 space-y-6 border-l border-border-sub ml-2 text-left">
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Follow-up camera adjustment <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Ann Arbor, MI · completed · aaro_wo_001</p>
+                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Ann Arbor, MI · completed · aaro_wo_001</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Front camera offline <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Detroit, MI · completed · client_wo_001</p>
+                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Detroit, MI · completed · client_wo_001</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-accent-gold ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Aarons AP Refresh <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-17-2026</span>
                                                     </p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Toledo, OH · scheduled · WO 18889221 · $70</p>
+                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Toledo, OH · scheduled · WO 18889221 · $70</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-red ring-4 ring-bg-primary" />
@@ -315,7 +316,7 @@ export default function ReportsPage() {
                                         <AlertTriangle size={14} className="text-text-red" />
                                     </h3>
                                     <div className="space-y-2">
-                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4">
+                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">5 Malformed assignment documents — swapped fields</p>
@@ -324,7 +325,7 @@ export default function ReportsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4">
+                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema inconsistency — project daily logs field mismatch</p>
@@ -342,7 +343,7 @@ export default function ReportsPage() {
                                         <Clock size={14} className="text-accent-gold" />
                                     </h3>
                                     <div className="space-y-2">
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4">
+                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">4 Scheduled assignments unallocated</p>
@@ -351,7 +352,7 @@ export default function ReportsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4">
+                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">1 Weekly log overdue — not submitted</p>
@@ -360,7 +361,7 @@ export default function ReportsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4">
+                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">2 Session check-ins remain open</p>
@@ -399,7 +400,7 @@ export default function ReportsPage() {
                                     <div className="space-y-6 animate-in fade-in duration-500">
                                         <div className="flex items-center justify-between px-1">
                                             <div className="flex gap-3">
-                                                <Select value={clDays} onValueChange={setClDays}>
+                                                <Select value={clDays} onValueChange={(val) => setClDays(val)}>
                                                     <SelectTrigger className="w-[160px] bg-bg-secondary h-9 text-[10px] uppercase font-bold tracking-widest border-border-sub">
                                                         <SelectValue />
                                                     </SelectTrigger>
@@ -414,7 +415,7 @@ export default function ReportsPage() {
                                             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{AUDIT_ACTIONS.length} events retrieved</span>
                                         </div>
                                         
-                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2">
+                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
                                             {AUDIT_ACTIONS.map((evt, i) => (
                                                 <div key={i} className="space-y-1 relative group">
                                                     <div className={cn(
@@ -439,7 +440,7 @@ export default function ReportsPage() {
                         </div>
                         <div className="space-y-2">
                             {searchResults.length > 0 ? searchResults.map((r, i) => (
-                                <div key={i} onClick={() => handleResultClick(r)} className="p-4 rounded-xl border border-border-main bg-bg-secondary hover:border-text-muted transition-all flex gap-4 group cursor-pointer">
+                                <div key={i} onClick={() => handleResultClick(r)} className="p-4 rounded-xl border border-border-main bg-bg-secondary hover:border-text-muted transition-all flex gap-4 group cursor-pointer text-left">
                                     <Badge variant="outline" className={cn(
                                         "h-5 text-[8px] uppercase tracking-widest shrink-0 mt-0.5",
                                         r.type === 'Technician' ? 'bg-green-dim text-text-green border-green-border' :

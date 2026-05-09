@@ -291,7 +291,7 @@ export function WorkOrdersClient({
     return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
   }, [editedOrder?.clientName, clients]);
 
-  const filteredRegistry = useMemo(() => {
+  const filteredRegistryList = useMemo(() => {
     return clients.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
@@ -324,7 +324,7 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "500px" }} className="text-center">Assignment & Identification</th>
+              <th style={{ width: "500px" }} className="text-left pl-6">Assignment Identification & Status</th>
               <th style={{ width: "160px" }} className="text-center">Schedule</th>
               <th style={{ width: "140px" }} className="text-center">Route Status</th>
               <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
@@ -339,8 +339,8 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td className="!py-3">
-                    <div className="flex items-center gap-4 px-4">
-                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-4 pl-6 text-left">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
                             {order.source === 'Imported' && (
@@ -351,9 +351,9 @@ export function WorkOrdersClient({
                         </div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
-                      <div className="flex flex-col items-start text-left min-w-0">
+                      <div className="flex flex-col min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="flex items-center gap-1.5 mt-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                           <Briefcase className="h-2.5 w-2.5" />
                           <span>{order.clientName}</span>
                         </div>
@@ -362,8 +362,8 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date font-mono"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time font-mono"><Clock />{order.scheduleTime}</div>
+                      <div className="cell-sched-date font-mono"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
+                      <div className="cell-sched-time font-mono"><Clock size={13} />{order.scheduleTime}</div>
                     </div>
                   </td>
                   <td>
@@ -380,7 +380,7 @@ export function WorkOrdersClient({
                   <td>
                     <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                       <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span className="px-1 text-center">{order.location}</span>
+                      <span className="text-center">{order.location}</span>
                     </div>
                   </td>
                   <td>
@@ -804,7 +804,7 @@ export function WorkOrdersClient({
               </div>
               <ScrollArea className="flex-1 px-6 py-4">
                   <div className="space-y-1">
-                      {filteredRegistry.map(client => (
+                      {filteredRegistryList.map(client => (
                           <button
                               key={client.id}
                               type="button"
@@ -824,7 +824,7 @@ export function WorkOrdersClient({
                               <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                       ))}
-                      {filteredRegistry.length === 0 && (
+                      {filteredRegistryList.length === 0 && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
                               <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
                           </div>

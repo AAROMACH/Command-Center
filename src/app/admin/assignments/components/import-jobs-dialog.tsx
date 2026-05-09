@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -191,6 +190,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                     <div className="flex items-center gap-4 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                         <span>{job.clientName}</span>
                                         <span>•</span>
+                                        <MapPin size={10} className="text-brand-red inline mr-1" />
                                         <span>{job.location}</span>
                                         <span>•</span>
                                         <span className="text-text-green">${job.pay.toFixed(2)} ({job.payType})</span>

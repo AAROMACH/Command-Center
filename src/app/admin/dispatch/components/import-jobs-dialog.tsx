@@ -196,6 +196,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                         <span>•</span>
                                         <span className="text-text-green">${job.pay.toFixed(2)} ({job.payType})</span>
                                         <span>•</span>
+                                        <MapPin size={10} className="text-brand-red inline mr-1" />
                                         <span>{job.location}</span>
                                     </div>
                                 </div>

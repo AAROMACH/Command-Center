@@ -67,7 +67,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [sortBy, setSortBy] = useState<SortOption>('name');
     const [activeTab, setActiveTab] = useState('technicians');
     
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -83,7 +82,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     
     const { toast } = useToast();
 
-    // Reset pagination on search or tab change
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, activeTab, itemsPerPage]);
@@ -186,7 +184,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
-    // FILTERED & SORTED LISTS
     const filteredTechnicians = useMemo(() => {
         return techniciansList
             .filter((tech) =>
@@ -226,7 +223,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             });
     }, [companies, lowercasedQuery, sortBy]);
     
-    // Paginated Slices
     const paginatedTechnicians = useMemo(() => {
         const start = (currentPage - 1) * itemsPerPage;
         return filteredTechnicians.slice(start, start + itemsPerPage);
@@ -295,7 +291,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         <>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col gap-2">
-                    {/* Primary Tab & Action Row */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-2">
                         <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary w-full md:w-auto h-9">
                             <TabsTrigger value="technicians" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">TECHNICIANS</TabsTrigger>
@@ -329,10 +324,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         </div>
                     </div>
 
-                    {/* View/Sort & Search Row */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
                         <div className="flex items-center gap-2">
-                            {/* View Switcher */}
                             {activeTab !== 'map' && activeTab !== 'requests' && (
                                 <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
                                     <Button 
@@ -365,7 +358,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 </div>
                             )}
 
-                            {/* Sort Controller */}
                             {activeTab !== 'map' && activeTab !== 'requests' && (
                                 <div className="flex items-center gap-1">
                                     <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
@@ -403,7 +395,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-center">TECHNICIAN</div>
+                                    <div className="text-left pl-0">TECHNICIAN</div>
                                     <div className="text-center">CONTACT</div>
                                     <div className="text-center">RELIABILITY</div>
                                     <div className="text-center">STATUS</div>
@@ -411,13 +403,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors text-center" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center justify-center gap-2.5">
+                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center justify-start gap-2.5 pl-0">
                                             <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage src={tech.avatarUrl} />
                                                 <AvatarFallback className="text-[9px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{tech.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{tech.name}</span>
                                         </div>
                                         <div className="min-w-0 flex flex-col items-center justify-center">
                                             <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{tech.email}</div>
@@ -481,18 +473,18 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-center">STAFF MEMBER</div>
+                                    <div className="text-left pl-0">STAFF MEMBER</div>
                                     <div className="text-center">CONTACT</div>
                                     <div className="text-center">ROLE</div>
                                 </div>
                                 {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors text-center" onClick={() => handleRowClick(s)}>
-                                        <div className="flex items-center justify-center gap-2.5">
+                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center justify-start gap-2.5 pl-0">
                                             <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage src={s.avatarUrl} />
                                                 <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{s.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
                                         </div>
                                         <div className="min-w-0 flex flex-col items-center justify-center">
                                             <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{s.email}</div>
@@ -511,18 +503,18 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-center">CORPORATE ENTITY</div>
+                                    <div className="text-left pl-0">CORPORATE ENTITY</div>
                                     <div className="text-center">CLASSIFICATION</div>
                                     <div className="text-center">CONTACTS</div>
                                     <div className="text-center">REGISTRY</div>
                                 </div>
                                 {paginatedCompanies.map(company => (
-                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors text-center" onClick={() => handleCompanyClick(company.name)}>
-                                        <div className="flex items-center justify-center gap-2.5">
+                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex items-center justify-start gap-2.5 pl-0">
                                             <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
                                                 <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{company.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
                                         </div>
                                         <div className="flex items-center justify-center">
                                             <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
@@ -541,7 +533,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                     <TabsContent value="requests" className="m-0">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
-                            {/* Left Side: Personnel Absence Requests */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
                                     <Clock size={14} className="text-brand-red" />
@@ -591,7 +582,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 </div>
                             </div>
 
-                            {/* Right Side: Site Registry Audit */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
                                     <MapPin size={14} className="text-brand-red" />
@@ -643,7 +633,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsContent>
                 </div>
 
-                {/* GLOBAL REGISTRY PAGINATION FOOTER */}
                 {activeTab !== 'map' && activeTab !== 'requests' && totalRecords > 0 && (
                     <div className="mt-3 flex items-center justify-between p-2 bg-bg-secondary rounded-lg border border-border-sub">
                         <div className="flex items-center gap-4">
@@ -728,3 +717,4 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         </>
     );
 }
+

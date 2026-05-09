@@ -1,3 +1,4 @@
+
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";
@@ -24,7 +25,6 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   
-  // Filter State
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
 
@@ -180,3 +180,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

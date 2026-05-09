@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -79,8 +80,8 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                         <th className="text-center w-[120px]">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
-                        <th className="text-left">Site Coordinates</th>
-                        <th className="text-left">Schedule Date</th>
+                        <th className="text-center">Site Coordinates</th>
+                        <th className="text-center">Schedule Date</th>
                         <th style={{ width: "220px" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
@@ -123,13 +124,13 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                        <MapPin className="h-3.5 w-3.5 text-brand-red shrink-0" />
-                                        <span>{project.location}</span>
+                                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                        <MapPin size={10} className="text-brand-red shrink-0" />
+                                        <span className="truncate max-w-[180px]">{project.location}</span>
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col items-center justify-center gap-1">
                                         <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
                                             <Calendar size={13} className="text-text-muted shrink-0" />
                                             <span>{formatDateDisplay(project.startDate)}</span>
@@ -208,3 +209,4 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
         </div>
     );
 }
+

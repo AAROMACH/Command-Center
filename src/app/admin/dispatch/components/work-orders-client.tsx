@@ -275,7 +275,7 @@ export function WorkOrdersClient({
     return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
-  const filteredTechnicians = useMemo(() => {
+  const filteredTechniciansRegistry = useMemo(() => {
     return technicians
       .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
       .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
@@ -383,7 +383,7 @@ export function WorkOrdersClient({
                 <tr key={order.id} className="group">
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-col items-center gap-1.5 shrink-0">
                         <div className="flex items-center gap-1.5">
                           <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
                           {order.source === 'Imported' && (
@@ -487,7 +487,7 @@ export function WorkOrdersClient({
         {sortedWorkOrders.length > 0 && (
           <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                 <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
                   <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
@@ -514,7 +514,7 @@ export function WorkOrdersClient({
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 className="h-7 w-7 border-border-sub bg-bg-primary"
               >
-                <ChevronLeft size(14) />
+                <ChevronLeft size={14} />
               </Button>
               <div className="flex items-center gap-1 px-2">
                 <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
@@ -527,7 +527,7 @@ export function WorkOrdersClient({
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 className="h-7 w-7 border-border-sub bg-bg-primary"
               >
-                <ChevronRight size(14) />
+                <ChevronRight size={14} />
               </Button>
             </div>
           </div>
@@ -587,7 +587,7 @@ export function WorkOrdersClient({
             <Separator className="bg-border-sub" />
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
-                    {filteredRegistryList.map(tech => (
+                    {filteredTechniciansRegistry.map(tech => (
                         <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
@@ -611,7 +611,7 @@ export function WorkOrdersClient({
                             </Button>
                         </div>
                     ))}
-                    {filteredRegistryList.length === 0 && (
+                    {filteredTechniciansRegistry.length === 0 && (
                         <div className="p-12 text-center">
                             <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest italic">No matching operatives in registry</p>
                         </div>

@@ -306,6 +306,17 @@ export function WorkOrdersClient({
     setIsSiteRegistryOpen(false);
   };
 
+  const filteredTechniciansRegistry = useMemo(() => {
+    return technicians
+      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
+      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .map(tech => {
+        const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder?.id || ''));
+        return { ...tech, distance: (seed % 35) + 1.2 };
+      }).sort((a, b) => a.distance - b.distance);
+  }, [technicians, selectedOrder, techSearchQuery]);
+
   return (
     <>
       <div className="table-wrap">
@@ -327,8 +338,8 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id} className="group">
                   <td className="!py-3">
-                    <div className="flex items-center gap-3 pl-6 text-left">
-                      <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-4 pl-6 text-left">
+                      <div className="flex flex-col items-center gap-1.5 shrink-0">
                         <div className="flex items-center gap-1.5">
                           <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
                           {order.source === 'Imported' && (
@@ -341,7 +352,7 @@ export function WorkOrdersClient({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
@@ -529,7 +540,7 @@ export function WorkOrdersClient({
             <Separator className="bg-border-sub" />
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
-                    {filteredRegistryList.map(tech => (
+                    {filteredTechniciansRegistry.map(tech => (
                         <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
@@ -553,7 +564,7 @@ export function WorkOrdersClient({
                             </Button>
                         </div>
                     ))}
-                    {filteredRegistryList.length === 0 && (
+                    {filteredTechniciansRegistry.length === 0 && (
                         <div className="p-12 text-center">
                             <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest italic">No matching operatives in registry</p>
                         </div>

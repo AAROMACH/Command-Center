@@ -129,14 +129,13 @@ export default function ReportsPage() {
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-          // Standardizing to mm-dd-yyyy
           const parts = dateStr.split(/[-/]/);
           if (parts.length === 3) {
               let m, d, y;
               if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
               return `${m}-${d}-${y}`;
           }
-          return format(parseISO(dateStr), "MM-dd-yyyy");
+          return dateStr;
         } catch (e) {
           return dateStr;
         }

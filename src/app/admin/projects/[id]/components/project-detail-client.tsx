@@ -193,7 +193,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 
                                 <Separator orientation="vertical" className="h-4 bg-border-sub" />
 
-                                <Label className="text-[10px] font-bold uppercase text-text-muted">Master Status</Label>
+                                <Label className="text-[10px] font-bold uppercase text-text-muted">Status</Label>
                                 <Select value={editedProject.status} onValueChange={(val: any) => setEditedProject({...editedProject, status: val})}>
                                     <SelectTrigger className="h-8 w-[140px] bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
                                         <SelectValue />

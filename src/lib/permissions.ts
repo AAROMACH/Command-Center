@@ -21,7 +21,8 @@ export type Permission =
   | 'client_portal'
   | 'view_assigned_projects_only'
   | 'view_assigned_work_only'
-  | 'approve_pay_changes';
+  | 'approve_pay_changes'
+  | 'view_reports';
 
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
@@ -47,6 +48,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'field_checkin',
     'field_logs',
     'approve_pay_changes',
+    'view_reports',
   ],
   dispatch_admin: [
     'view_dashboard',
@@ -55,6 +57,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'manage_assignments',
     'view_projects',
     'view_directory',
+    'view_reports',
   ],
   payroll_admin: [
     'view_dashboard',
@@ -63,6 +66,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'manage_payroll',
     'view_directory',
     'approve_pay_changes',
+    'view_reports',
   ],
   project_manager: [
     'view_dashboard',
@@ -70,6 +74,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'view_projects',
     'manage_projects',
     'view_assignments',
+    'view_reports',
   ],
   project_lead: [
     'view_dashboard',

@@ -13,7 +13,8 @@ import {
   Banknote,
   MapPin,
   FileText,
-  Calendar
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -30,12 +31,13 @@ type NavItem = {
 };
 
 const adminNavItems: NavItem[] = [
-  { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'view_assignments' },
+  { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'manage_assignments' },
   { href: '/admin/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assignments' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
+  { href: '/admin/reports', label: 'Reports', icon: BarChart3, permission: 'view_reports' },
 ];
 
 const clientNavItems: NavItem[] = [

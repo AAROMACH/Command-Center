@@ -233,6 +233,33 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
+                            {/* Section 4: Operational Instructions */}
+                            <div className="space-y-6">
+                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                    <ShieldAlert size={12}/> Operational Briefing
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
+                                        <Textarea 
+                                            value={editedProject.scope} 
+                                            onChange={e => setEditedProject({...editedProject, scope: e.target.value})}
+                                            className="bg-bg-primary h-24 text-[11px] leading-relaxed resize-none"
+                                            placeholder="Define primary objectives and technical requirements..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Access Instructions</Label>
+                                        <Textarea 
+                                            value={editedProject.siteAccessInstructions || ''} 
+                                            onChange={e => setEditedProject({...editedProject, siteAccessInstructions: e.target.value})}
+                                            className="bg-bg-primary h-20 text-[11px] leading-relaxed resize-none"
+                                            placeholder="Parking, entry codes, badge requirements..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Section 2: Schedule & Duration */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
@@ -296,33 +323,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             value={editedProject.estimatedHours || 0} 
                                             onChange={e => setEditedProject({...editedProject, estimatedHours: parseFloat(e.target.value) || 0})}
                                             className="bg-bg-primary h-10 text-xs font-mono"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Section 4: Operational Instructions */}
-                            <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
-                                    <ShieldAlert size={12}/> Operational Briefing
-                                </h3>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
-                                        <Textarea 
-                                            value={editedProject.scope} 
-                                            onChange={e => setEditedProject({...editedProject, scope: e.target.value})}
-                                            className="bg-bg-primary h-24 text-[11px] leading-relaxed resize-none"
-                                            placeholder="Define primary objectives and technical requirements..."
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Access Instructions</Label>
-                                        <Textarea 
-                                            value={editedProject.siteAccessInstructions || ''} 
-                                            onChange={e => setEditedProject({...editedProject, siteAccessInstructions: e.target.value})}
-                                            className="bg-bg-primary h-20 text-[11px] leading-relaxed resize-none"
-                                            placeholder="Parking, entry codes, badge requirements..."
                                         />
                                     </div>
                                 </div>

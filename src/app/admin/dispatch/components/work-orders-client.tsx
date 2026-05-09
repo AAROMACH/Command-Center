@@ -198,7 +198,7 @@ export function WorkOrdersClient({
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6">
+                <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6 border-none shadow-none text-white">
                     <Send className="mr-2 h-3.5 w-3.5" />
                     Send Out Assignments
                 </Button>
@@ -212,7 +212,7 @@ export function WorkOrdersClient({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Abort</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmAssignments} className="bg-text-green hover:bg-text-green/90">
+                  <AlertDialogAction onClick={handleConfirmAssignments} className="bg-text-green hover:bg-text-green/90 border-none">
                     Confirm & Notify
                   </AlertDialogAction>
                 </AlertDialogFooter>

@@ -383,15 +383,8 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1.5">
-                            <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
-                            {order.source === 'Imported' && (
-                                <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
-                                    <ExternalLink size={10} />
-                                </a>
-                            )}
-                        </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex flex-col min-w-0">

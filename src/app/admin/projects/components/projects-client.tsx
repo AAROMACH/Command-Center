@@ -84,7 +84,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th style={{ width: "450px" }} className="text-left pl-6">Project Intelligence & Status</th>
+                        <th style={{ width: "450px" }} className="text-left pl-0">Project Intelligence & Status</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-center">Site Coordinates</th>
                         <th className="text-center">Schedule Date</th>
@@ -102,16 +102,12 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
-                                <td className="!py-4">
-                                    <div className="flex items-center gap-4 pl-6 text-left">
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <div className="cell-id !text-[10px] font-mono">{project.id.toUpperCase()}</div>
-                                        <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5">{project.status}</Badge>
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{project.name}</div>
-                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{project.client}</div>
-                                      </div>
+                                <td className="!py-4 text-left pl-0">
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{project.name}</div>
+                                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{project.client}</div>
+                                      <div className="cell-id !text-[10px] font-mono mt-1.5">{project.id.toUpperCase()}</div>
+                                      <Badge variant={project.status} className="capitalize text-[7px] h-3.5 px-1.5 mt-1 w-fit">{project.status}</Badge>
                                     </div>
                                 </td>
                                 <td>

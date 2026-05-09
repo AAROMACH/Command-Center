@@ -66,6 +66,24 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
     }
   };
 
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    try {
+      const parts = dateStr.split(/[-/]/);
+      if (parts.length === 3) {
+          if (parts[0].length === 4) {
+              const [y, m, d] = parts;
+              return `${m}-${d}-${y}`;
+          }
+          const [a, b, c] = parts;
+          return `${a}-${b}-${c}`;
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh] shadow-2xl">
@@ -95,8 +113,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
             {mission.description}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
-             <span className="flex items-center gap-1.5"><MapPin size={12}/> {mission.location}</span>
-             <span className="flex items-center gap-1.5"><Calendar size={12}/> {mission.scheduleDate}</span>
+             <span className="flex items-center gap-1.5">
+               {mission.location}
+               <MapPin size={12}/>
+             </span>
+             <span className="flex items-center gap-1.5"><Calendar size={12}/> {formatDateDisplay(mission.scheduleDate)}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -175,7 +196,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                       <div className="w-px flex-1 bg-border-sub group-last:bg-transparent mt-1" />
                     </div>
                     <div className="pb-4 space-y-1">
-                      <p className="text-[9px] font-mono font-bold text-text-muted uppercase">{evt.date} • {evt.user}</p>
+                      <p className="text-[9px] font-mono font-bold text-text-muted uppercase">{formatDateDisplay(evt.date)} • {evt.user}</p>
                       <div className="flex items-center gap-2">
                          <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-tighter bg-bg-tertiary px-1.5">
                             {evt.type.replace('_', ' ')}
@@ -221,7 +242,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                             <div key={re.id} className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
                                 <div className="space-y-0.5">
                                     <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
-                                    <p className="text-[9px] text-text-muted font-mono">{re.date}</p>
+                                    <p className="text-[9px] text-text-muted font-mono">{formatDateDisplay(re.date)}</p>
                                 </div>
                                 <p className="text-xs font-mono font-bold text-text-green">+{formatCurrency(re.amount)}</p>
                             </div>

@@ -55,12 +55,16 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     }, [projects, currentPage, itemsPerPage]);
 
     const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
         try {
-          const parts = dateStr.split('-');
+          const parts = dateStr.split(/[-/]/);
           if (parts.length === 3) {
-              const [m, d, y] = parts;
-              if (m.length === 4) return `${d}-${y}-${m}`;
-              return `${m}-${d}-${y}`;
+              if (parts[0].length === 4) {
+                  const [y, m, d] = parts;
+                  return `${m}-${d}-${y}`;
+              }
+              const [a, b, c] = parts;
+              return `${a}-${b}-${c}`;
           }
           return dateStr;
         } catch (e) {
@@ -102,14 +106,14 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td>
-                                    <div className="flex flex-col items-center justify-center">
+                                    <div className="flex items-center gap-2 justify-center">
                                       <div className="cell-id">{project.id.toUpperCase()}</div>
                                       <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
                                     </div>
                                 </td>
                                 <td>
                                     <div className="flex flex-col items-center justify-center text-center">
-                                      <div className="cell-desc-title !normal-case">{project.name}</div>
+                                      <div className="cell-desc-title !normal-case font-bold leading-tight">{project.name}</div>
                                       <div className="font-semibold text-text-primary text-sm">{project.client}</div>
                                       {lead && (
                                           <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
@@ -120,9 +124,9 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex flex-col items-center justify-center text-center gap-1.5 text-sm text-text-secondary">
-                                        <MapPin className="h-3.5 w-3.5 text-text-muted" />
+                                    <div className="flex items-center justify-center gap-2 text-sm text-text-secondary text-center">
                                         <span className="max-w-[150px]">{project.location}</span>
+                                        <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                     </div>
                                 </td>
                                 <td>

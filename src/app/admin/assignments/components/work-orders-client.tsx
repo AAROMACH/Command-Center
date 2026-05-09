@@ -262,12 +262,17 @@ export function WorkOrdersClient({
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
-      const parts = dateStr.split('-');
+      // Split on either - or / to handle multiple potential sources
+      const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
-          const [m, d, y] = parts;
-          // Ensure it's mm-dd-yyyy regardless of incoming format
-          if (m.length === 4) return `${d}-${y}-${m}`; // was yyyy-mm-dd
-          return `${m}-${d}-${y}`;
+          // If first part is 4 digits, assume yyyy-mm-dd
+          if (parts[0].length === 4) {
+              const [y, m, d] = parts;
+              return `${m}-${d}-${y}`;
+          }
+          // Already in a 3-part format, just ensure hyphens
+          const [a, b, c] = parts;
+          return `${a}-${b}-${c}`;
       }
       return dateStr;
     } catch (e) {
@@ -321,10 +326,10 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "350px" }}>Work Order & Status</th>
+              <th style={{ width: "450px" }}>Work Order & Status</th>
               <th style={{ width: "160px" }}>Schedule</th>
               <th style={{ width: "140px" }}>Route Status</th>
-              <th style={{ width: "160px" }}>Site Location</th>
+              <th style={{ width: "200px" }}>Site Location</th>
               <th style={{ width: "160px" }}>{mode === 'scheduled' ? 'Technician' : 'Pay ($)'}</th>
               <th style={{ width: "140px" }}></th>
             </tr>
@@ -337,12 +342,12 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td>
                     <div className="flex items-center gap-3 px-4">
-                      <div className="flex flex-col items-start min-w-[85px]">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="cell-id">{order.id.toUpperCase()}</div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex flex-col items-start text-left flex-1 min-w-0">
-                        <div className="cell-desc-title line-clamp-1">{order.description}</div>
+                        <div className="cell-desc-title font-bold leading-tight">{order.description}</div>
                         <div className="cell-desc-client">
                           <Briefcase className="h-2.5 w-2.5" />
                           <span className="truncate">{order.clientName}</span>
@@ -368,9 +373,9 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="cell-loc">
-                      <MapPin />
-                      <span className="line-clamp-1 px-2">{order.location}</span>
+                    <div className="cell-loc flex items-center justify-center gap-2">
+                      <span className="line-clamp-2 px-1 text-center">{order.location}</span>
+                      <MapPin className="shrink-0" />
                     </div>
                   </td>
                   <td>

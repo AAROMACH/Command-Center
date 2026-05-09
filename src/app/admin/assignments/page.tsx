@@ -97,11 +97,14 @@ export default function AssignmentsHubPage() {
 
   const formatDateDisplay = (dateStr: string) => {
     try {
-      const parts = dateStr.split('-');
+      const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
-          const [m, d, y] = parts;
-          if (m.length === 4) return `${d}-${y}-${m}`;
-          return `${m}-${d}-${y}`;
+          if (parts[0].length === 4) {
+              const [y, m, d] = parts;
+              return `${m}-${d}-${y}`;
+          }
+          const [a, b, c] = parts;
+          return `${a}-${b}-${c}`;
       }
       return dateStr;
     } catch (e) {
@@ -274,7 +277,7 @@ export default function AssignmentsHubPage() {
                                                             </Badge>
                                                         </div>
                                                         <div className="flex flex-col min-w-0">
-                                                            <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
+                                                            <p className="text-xs font-bold text-text-primary uppercase leading-tight">{job.description}</p>
                                                             <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
                                                         </div>
                                                     </div>
@@ -284,9 +287,9 @@ export default function AssignmentsHubPage() {
                                                         <Clock size={12} className="text-text-muted" />
                                                         {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                        <MapPin size={12} className="text-text-muted" />
-                                                        <span className="truncate">{job.location}</span>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-center">
+                                                        <span className="max-w-[200px]">{job.location}</span>
+                                                        <MapPin size={12} className="text-text-muted shrink-0" />
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -353,9 +356,9 @@ export default function AssignmentsHubPage() {
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="flex flex-col items-center justify-center text-center gap-1 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                            <MapPin size={12} className="text-text-muted" />
-                                            <span>{wo.location}</span>
+                                        <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                            <span className="max-w-[150px]">{wo.location}</span>
+                                            <MapPin size={12} className="text-text-muted shrink-0" />
                                         </div>
                                     </td>
                                     <td>
@@ -424,15 +427,13 @@ export default function AssignmentsHubPage() {
                                     onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
                                     className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
                                 />
-                                <Button 
+                                <button 
                                     type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5 bg-transparent"
                                     onClick={() => setIsRegistryOpen(true)}
                                 >
                                     <Search size={12}/> Search Registry
-                                </Button>
+                                </button>
                             </div>
                         </div>
 
@@ -445,13 +446,11 @@ export default function AssignmentsHubPage() {
                                     onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
                                     className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
                                 />
-                                <Button 
+                                <button 
                                     type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
                                     disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
                                     className={cn(
-                                        "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                                        "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5 bg-transparent",
                                         (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
                                             ? "text-text-muted opacity-50 cursor-not-allowed" 
                                             : "text-accent-gold hover:bg-accent-gold/10"
@@ -459,7 +458,7 @@ export default function AssignmentsHubPage() {
                                     onClick={() => setIsSiteRegistryOpen(true)}
                                 >
                                     <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     </div>

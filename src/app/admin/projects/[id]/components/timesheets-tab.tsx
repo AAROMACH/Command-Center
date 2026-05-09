@@ -15,7 +15,7 @@ import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LogAssignmentDialog } from './log-assignment-dialog';
-
+import { useToast } from '@/hooks/use-toast';
 
 const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
     <div className="ts-log-section">
@@ -128,6 +128,7 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+    const { toast } = useToast();
 
     const getTechnician = useCallback((id: string) => technicians.find(t => t.id === id), [technicians]);
 
@@ -249,7 +250,7 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                           />
                         </PopoverContent>
                       </Popover>
-                    <Button variant="outline" size="sm">Export CSV</Button>
+                    <Button variant="outline" size="sm" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>Export CSV</Button>
                     <Button variant="default" size="sm" onClick={() => setIsLogDialogOpen(true)}>
                         <Plus size={14} className="mr-2"/> New Log
                     </Button>

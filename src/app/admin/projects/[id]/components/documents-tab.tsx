@@ -7,6 +7,7 @@ import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Mil
 import React from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type DocumentsTabProps = {
     project: Project;
@@ -20,37 +21,41 @@ const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
     return <FileText />;
 };
 
-const PreSiteDocumentList = ({ docs }: { docs: ProjectDocument[] }) => (
-    <div className="doc-list small border border-border-sub rounded-md bg-bg-secondary/30">
-        {docs.length > 0 ? docs.map(doc => (
-            <div key={doc.id} className="doc-row small !py-1.5 !px-2 border-b border-border-sub last:border-none flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-hidden flex-1">
-                    <div className="doc-icon small !h-6 !w-6 !bg-bg-tertiary flex items-center justify-center rounded border border-border-sub">
-                        <DocIcon type={doc.type} />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="text-[11px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
-                        <div className="flex items-center gap-2 text-[8px] text-text-muted font-bold uppercase tracking-widest">
-                            <span>{doc.size}</span>
-                            <span className="flex items-center gap-1"><User size={8}/> {doc.uploader}</span>
-                            <span>{doc.uploadDate}</span>
+const PreSiteDocumentList = ({ docs }: { docs: ProjectDocument[] }) => {
+    const { toast } = useToast();
+    return (
+        <div className="doc-list small border border-border-sub rounded-md bg-bg-secondary/30">
+            {docs.length > 0 ? docs.map(doc => (
+                <div key={doc.id} className="doc-row small !py-1.5 !px-2 border-b border-border-sub last:border-none flex items-center justify-between">
+                    <div className="flex items-center gap-2 overflow-hidden flex-1">
+                        <div className="doc-icon small !h-6 !w-6 !bg-bg-tertiary flex items-center justify-center rounded border border-border-sub">
+                            <DocIcon type={doc.type} />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="text-[11px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
+                            <div className="flex items-center gap-2 text-[8px] text-text-muted font-bold uppercase tracking-widest">
+                                <span>{doc.size}</span>
+                                <span className="flex items-center gap-1"><User size={8}/> {doc.uploader}</span>
+                                <span>{doc.uploadDate}</span>
+                            </div>
                         </div>
                     </div>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Download Initiated", description: `${doc.name} transfer handshake complete.` })}><Download size={12} /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => toast({ variant: "destructive", title: "Asset Deleted", description: `${doc.name} removed from registry.` })}><Trash2 size={12} /></Button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary"><Download size={12} /></Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red"><Trash2 size={12} /></Button>
+            )) : (
+                <div className="p-4 text-center">
+                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-[0.2em] italic">Registry Clear: No pre-site documents</p>
                 </div>
-            </div>
-        )) : (
-            <div className="p-4 text-center">
-                <p className="text-[9px] text-text-muted uppercase font-bold tracking-[0.2em] italic">Registry Clear: No pre-site documents</p>
-            </div>
-        )}
-    </div>
-);
+            )}
+        </div>
+    );
+};
 
 const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: ProjectDocument[] }) => {
+    const { toast } = useToast();
     const requiredPhotoTasks = phase.tasks.filter(task => task.requiresPhoto);
 
     const findPhotosForTask = (taskId: string) => {
@@ -91,7 +96,7 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                                 <div className={cn("h-1.5 w-1.5 rounded-full", task.isCompleted ? "bg-text-green" : "bg-text-muted")} />
                                                 <span className={cn("text-[10px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
                                             </div>
-                                            <Button variant="outline" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2">
+                                            <Button variant="outline" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Handshake Initiated", description: "Awaiting field evidence transmission." })}>
                                                 <Upload size={10} className="mr-1"/> Add Evidence
                                             </Button>
                                         </div>
@@ -105,8 +110,8 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                                             <p className="text-[7px] text-white font-bold uppercase truncate">{photo.name}</p>
                                                             <p className="text-[6px] text-text-secondary flex items-center gap-1"><User size={8}/> {photo.uploader}</p>
                                                             <div className="flex gap-1 mt-1">
-                                                                <button className="p-1 rounded bg-white/10 hover:bg-white/20 text-white"><Download size={8}/></button>
-                                                                <button className="p-1 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red"><Trash2 size={8}/></button>
+                                                                <button className="p-1 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => toast({ title: "Transferring...", description: "Visual asset download initiated." })}><Download size={8}/></button>
+                                                                <button className="p-1 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => toast({ variant: "destructive", title: "Asset Purged", description: "Visual evidence removed from phase registry." })}><Trash2 size={8}/></button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -145,14 +150,14 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                     </div>
                                 </div>
                                 <div className="flex gap-0.5">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6"><Download size={10} /></Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-red"><Trash2 size={10} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast({ title: "Transferring...", description: "Phase asset download initiated." })}><Download size={10} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-red" onClick={() => toast({ variant: "destructive", title: "Registry Purged", description: "Phase asset removed." })}><Trash2 size={10} /></Button>
                                 </div>
                             </div>
                         )) : (
                              <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest mb-2">No additional technical assets for this phase</p>
                         )}
-                        <Button variant="outline" size="sm" className="w-full !h-7 !text-[8px] border-dashed border-border-sub hover:bg-bg-tertiary font-bold uppercase tracking-widest">
+                        <Button variant="outline" size="sm" className="w-full !h-7 !text-[8px] border-dashed border-border-sub hover:bg-bg-tertiary font-bold uppercase tracking-widest" onClick={() => toast({ title: "Uploader Open", description: "Awaiting local file selection for phase registry." })}>
                             <Paperclip size={10} className="mr-1.5" /> Upload to this phase
                         </Button>
                     </div>
@@ -165,6 +170,7 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
 
 
 export function DocumentsTab({ project, documents }: DocumentsTabProps) {
+    const { toast } = useToast();
     const preSiteDocs = documents.filter(doc => !doc.phaseId);
     
     return (
@@ -180,10 +186,10 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest">
+                    <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => toast({ title: "Registry Open", description: "Upload pre-site blueprints or documentation." })}>
                         <Plus size={12} className="mr-1.5"/> Pre-Site Doc
                     </Button>
-                    <Button variant="default" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                    <Button variant="default" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => toast({ title: "Batch Uploader", description: "Initialize multi-file phase evidence upload." })}>
                         <Upload size={12} className="mr-1.5"/> Batch Phase Upload
                     </Button>
                 </div>

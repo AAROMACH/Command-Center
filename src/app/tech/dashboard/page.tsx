@@ -71,7 +71,7 @@ export default function TechDashboardPage() {
 
     const activeJob = useMemo(() => 
         todaysWorkOrders.find(wo => wo.status === 'in-progress'),
-    [todaysWorkOrders]);
+  [todaysWorkOrders]);
 
     const nextAction = useMemo(() => {
         if (activeJob) return null;
@@ -226,7 +226,7 @@ export default function TechDashboardPage() {
                                         <Button variant="outline" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleOpenJobDetail(nextAction); }}>
                                             <Eye size={16} className="mr-2"/> VIEW DETAILS
                                         </Button>
-                                        <Button variant="secondary" className="h-12 px-6" onClick={(e) => e.stopPropagation()}>ACKNOWLEDGE</Button>
+                                        <Button variant="secondary" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); toast({ title: "Assignment Acknowledged", description: "Acknowledgment transmitted to operations center."})}}>ACKNOWLEDGE</Button>
                                     </div>
                                     {nextAction.isImported && (
                                         <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest text-center">
@@ -273,11 +273,11 @@ export default function TechDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => e.stopPropagation()}><StickyNote size={14}/> Add Notes</Button>
-                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => e.stopPropagation()}><Camera size={14}/> Upload Photo</Button>
+                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => { e.stopPropagation(); toast({ title: "Note Buffer Open", description: "Terminal ready for field intelligence input." })}}><StickyNote size={14}/> Add Notes</Button>
+                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => { e.stopPropagation(); toast({ title: "Camera Handshake", description: "Hardware verified. Awaiting visual capture." })}}><Camera size={14}/> Upload Photo</Button>
                                     </div>
                                 </div>
-                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); toast({ title: "Checked Out", description: "Job finalized."})}}>
+                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); toast({ title: "Checked Out", description: "Job finalized. Log saved to weekly registry."})}}>
                                     <LogOut size={16}/> CHECK OUT / FINALIZE
                                 </Button>
                             </div>

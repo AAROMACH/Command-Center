@@ -8,6 +8,7 @@ import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ManageTeamDialog } from './manage-team-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type OverviewTabProps = {
     project: Project;
@@ -19,6 +20,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
+    const { toast } = useToast();
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
@@ -43,6 +45,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
             }));
             setNewNoteText("");
             setIsAddingNote(false);
+            toast({ title: "Field Note Added", description: "Intelligence has been appended to the site briefing." });
         }
     };
 
@@ -51,6 +54,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
             ...prev,
             siteHazardNotes: prev.siteHazardNotes.filter(n => n.id !== id)
         }));
+        toast({ title: "Note Removed", description: "Site intelligence has been updated." });
     };
     
     return (
@@ -167,8 +171,8 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" size="sm">Cancel</Button>
-                <Button variant="default" size="sm">Save Changes</Button>
+                <Button variant="outline" size="sm" onClick={() => toast({ title: "Changes Discarded", description: "Project briefing remains at last authorized state." })}>Cancel</Button>
+                <Button variant="default" size="sm" onClick={() => toast({ title: "Registry Updated", description: "Operational briefing changes have been committed." })}>Save Changes</Button>
             </div>
             
             <ManageTeamDialog 

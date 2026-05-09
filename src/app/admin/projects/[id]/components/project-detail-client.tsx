@@ -233,7 +233,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 4: Operational Instructions */}
+                            {/* Section 2: Operational Instructions */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
                                     <ShieldAlert size={12}/> Operational Briefing
@@ -260,7 +260,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 2: Schedule & Duration */}
+                            {/* Section 3: Schedule & Duration */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
                                     <Clock size={12}/> Schedule & Duration
@@ -301,7 +301,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 3: Economics */}
+                            {/* Section 4: Economics */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
                                     <DollarSign size={12}/> Project Economics

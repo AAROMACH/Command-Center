@@ -340,16 +340,13 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
-                      <div className="flex flex-col min-w-0">
+                      <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                          <Briefcase className="h-2.5 w-2.5" />
-                          <span>{order.clientName}</span>
-                        </div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
@@ -764,7 +761,7 @@ export function WorkOrdersClient({
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Close Registry Feed</Button>
                         <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
                             Commit Assignment Updates
                         </Button>

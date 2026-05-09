@@ -383,11 +383,11 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
-                      <div className="flex flex-col min-w-0">
+                      <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
                         <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
                       </div>

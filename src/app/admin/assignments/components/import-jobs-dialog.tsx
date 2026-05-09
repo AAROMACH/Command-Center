@@ -81,7 +81,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           description: title,
           location,
           clientName: company,
-          pay: pay || 0,
+          pay: pay,
           payType,
           scheduleDate,
           scheduleTime,

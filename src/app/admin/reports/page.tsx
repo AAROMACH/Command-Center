@@ -17,7 +17,8 @@ import {
     DollarSign,
     ShieldAlert,
     ChevronRight,
-    ArrowUpRight
+    ArrowUpRight,
+    ExternalLink
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -27,16 +28,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { 
     technicians, 
     workOrders, 
     projects, 
-    weeklyLogs, 
-    expenses, 
-    timeOffRequests, 
     penaltyEvents 
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
 
 // ── Mock Audit Data ───────────────────────────────────────────────────────────
 const AUDIT_ACTIONS = [
@@ -94,21 +98,6 @@ export default function ReportsPage() {
 
         return results;
     }, [searchQuery]);
-
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split(/[-/]/);
-            if (parts.length === 3) {
-                let m, d, y;
-                if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-                return `${m}-${d}-${y}`;
-            }
-            return dateStr;
-        } catch (e) {
-            return dateStr;
-        }
-    };
 
     return (
         <div className="max-w-[900px] mx-auto space-y-6">
@@ -171,7 +160,7 @@ export default function ReportsPage() {
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <div className="grid grid-cols-3 gap-2">
+                                                <div className="grid grid-cols-3 gap-2 text-center">
                                                     <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
                                                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Assignments</p>
                                                         <p className="text-xl font-bold text-text-primary">{techStats.total}</p>
@@ -211,7 +200,7 @@ export default function ReportsPage() {
                                         </Card>
 
                                         <div className="space-y-4">
-                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Assignment history</h3>
+                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Assignment history</h3>
                                             <div className="relative pl-6 space-y-6 border-l border-border-sub ml-2">
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
@@ -245,7 +234,7 @@ export default function ReportsPage() {
                                         </div>
 
                                         <div className="space-y-3">
-                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Linked records</h3>
+                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Linked records</h3>
                                             <div className="space-y-1.5">
                                                 <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                                                     <span className="text-[11px] font-bold text-text-primary uppercase">Weekly log — week of 03-30-2026</span>

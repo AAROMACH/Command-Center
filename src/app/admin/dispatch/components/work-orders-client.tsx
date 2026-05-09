@@ -383,7 +383,7 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td className="!py-3">
-                    <div className="flex items-center gap-4 px-4">
+                    <div className="flex items-center gap-4 px-4 justify-center">
                       <div className="flex flex-col items-center gap-1.5 shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
@@ -395,7 +395,7 @@ export function WorkOrdersClient({
                         </div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
-                      <div className="flex flex-col items-start text-left min-w-0">
+                      <div className="flex flex-col items-center text-center min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
                         <div className="flex items-center gap-1.5 mt-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                           <Briefcase className="h-2.5 w-2.5" />
@@ -426,7 +426,7 @@ export function WorkOrdersClient({
                   <td>
                     <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                       <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span className="px-1 text-center">{order.location}</span>
+                      <span className="max-w-[150px] text-center">{order.location}</span>
                     </div>
                   </td>
                   <td>

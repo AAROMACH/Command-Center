@@ -524,103 +524,105 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         )}
                     </TabsContent>
 
-                    <TabsContent value="requests" className="m-0 space-y-6">
-                        {/* Time Off Section - List Format */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
-                                <Clock size={14} className="text-brand-red" />
-                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
-                                <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
+                    <TabsContent value="requests" className="m-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
+                            {/* Left Side: Personnel Absence Requests */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
+                                    <Clock size={14} className="text-brand-red" />
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
+                                    <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
+                                </div>
+                                
+                                <div className="space-y-1.5">
+                                    {filteredTimeOffRequests.map(req => {
+                                        const tech = personnel.find(p => p.id === req.technicianId);
+                                        return (
+                                            <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
+                                                <div className="flex items-center gap-4 flex-1">
+                                                    <Avatar className="h-7 w-7 border border-border-sub group-hover:border-brand-red transition-colors">
+                                                        <AvatarImage src={tech?.avatarUrl} />
+                                                        <AvatarFallback className="text-[9px]">{tech?.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
+                                                            <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
+                                                        </div>
+                                                        <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
+                                                            <Calendar size={9} className="shrink-0" /> {req.startDate} — {req.endDate}
+                                                        </p>
+                                                    </div>
+                                                    <div className="hidden lg:block ml-6 flex-1 max-w-[300px]">
+                                                        <p className="text-[10px] text-text-secondary leading-tight line-clamp-1 italic">&quot;{req.reason}&quot;</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-2 md:mt-0">
+                                                    <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
+                                                        <X size={10} className="mr-1"/> Deny
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
+                                                        <Check size={10} className="mr-1"/> Approve
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {filteredTimeOffRequests.length === 0 && (
+                                        <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            
-                            <div className="space-y-1.5">
-                                {filteredTimeOffRequests.map(req => {
-                                    const tech = personnel.find(p => p.id === req.technicianId);
-                                    return (
-                                        <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
+
+                            {/* Right Side: Site Registry Audit */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
+                                    <MapPin size={14} className="text-brand-red" />
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
+                                    <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    {filteredSiteRequests.map(req => (
+                                        <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
                                             <div className="flex items-center gap-4 flex-1">
-                                                <Avatar className="h-7 w-7 border border-border-sub group-hover:border-brand-red transition-colors">
-                                                    <AvatarImage src={tech?.avatarUrl} />
-                                                    <AvatarFallback className="text-[9px]">{tech?.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
+                                                <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                                    <Building2 size={14} />
+                                                </div>
                                                 <div className="space-y-0.5">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
-                                                        <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
+                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
+                                                        <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
                                                     </div>
                                                     <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                         <Calendar size={9} className="shrink-0" /> {req.startDate} — {req.endDate}
+                                                        <MapPin size={9} className="shrink-0"/> {req.location}
                                                     </p>
                                                 </div>
-                                                <div className="hidden lg:block ml-6 flex-1 max-w-[300px]">
-                                                    <p className="text-[10px] text-text-secondary leading-tight line-clamp-1 italic">&quot;{req.reason}&quot;</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-2 md:mt-0">
+                                                <div className="text-right hidden md:block mr-2">
+                                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
+                                                    <p className="text-[9px] font-bold text-text-primary uppercase truncate max-w-[100px]">{req.managerName}</p>
+                                                </div>
+                                                <div className="flex gap-1.5">
+                                                    <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
+                                                        <X size={10} className="mr-1"/> Deny
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
+                                                        <Check size={10} className="mr-1"/> Approve
+                                                    </Button>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5 mt-2 md:mt-0">
-                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
-                                                    <X size={10} className="mr-1"/> Deny
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
-                                                    <Check size={10} className="mr-1"/> Approve
-                                                </Button>
-                                            </div>
                                         </div>
-                                    );
-                                })}
-                                {filteredTimeOffRequests.length === 0 && (
-                                    <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Site Registry Requests */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
-                                <MapPin size={14} className="text-brand-red" />
-                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
-                                <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                {filteredSiteRequests.map(req => (
-                                    <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                        <div className="flex items-center gap-4 flex-1">
-                                            <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
-                                                <Building2 size={14} />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
-                                                    <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
-                                                </div>
-                                                <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                    <MapPin size={9} className="shrink-0"/> {req.location}
-                                                </p>
-                                            </div>
+                                    ))}
+                                    {filteredSiteRequests.length === 0 && (
+                                        <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
                                         </div>
-                                        <div className="flex items-center gap-3 mt-2 md:mt-0">
-                                            <div className="text-right hidden md:block mr-2">
-                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
-                                                <p className="text-[9px] font-bold text-text-primary uppercase truncate max-w-[100px]">{req.managerName}</p>
-                                            </div>
-                                            <div className="flex gap-1.5">
-                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
-                                                    <X size={10} className="mr-1"/> Deny
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
-                                                    <Check size={10} className="mr-1"/> Approve
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {filteredSiteRequests.length === 0 && (
-                                    <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </TabsContent>

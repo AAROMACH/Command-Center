@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { MissionDetailDialog } from '@/components/mission-detail-dialog';
 
 type ViewMode = 'week' | 'month';
 
@@ -42,6 +43,8 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+    const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
 
     const activeSession = useMemo(() => {
@@ -88,7 +91,8 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
         }
     };
     
-    const handleCheckIn = (workOrderId: string) => {
+    const handleCheckIn = (e: React.MouseEvent, workOrderId: string) => {
+      e.stopPropagation();
       if (activeSession) {
         toast({
           variant: 'destructive',
@@ -101,9 +105,15 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
       toast({ title: 'Checked In', description: 'Your session has started.' });
     };
 
-    const handleCheckOut = (workOrderId: string) => {
+    const handleCheckOut = (e: React.MouseEvent, workOrderId: string) => {
+      e.stopPropagation();
       setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'completed'} : wo));
       toast({ title: 'Checked Out', description: 'Your session has ended.' });
+    };
+
+    const handleCardClick = (wo: WorkOrder) => {
+        setSelectedMission(wo);
+        setIsDetailOpen(true);
     };
 
     const weekDays = eachDayOfInterval({
@@ -117,133 +127,144 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     });
 
     return (
-        <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
-             <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-main">
-                <div>
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                        <CalendarIcon size={14} className="text-brand-red"/>
-                        Operational Schedule
-                    </h3>
-                </div>
-                <div className="view-toggle">
-                    <button className={cn("view-btn", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
-                        <List size={11}/> Week
-                    </button>
-                    <button className={cn("view-btn", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
-                        <LayoutGrid size={11}/> Month
-                    </button>
-                </div>
-            </div>
-
-            <div className="cal-controls !mb-6">
-                <div className="cal-nav">
-                    <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
-                    <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest">
-                        {viewMode === 'week' 
-                            ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
-                            : format(currentDate, 'MMMM yyyy')
-                        }
-                    </span>
-                    <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
-                </div>
-                <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                   {format(selectedDate, 'EEEE, MMM d')}
-                </div>
-            </div>
-
-            {viewMode === 'week' ? (
-                <div className="week-grid !mb-6">
-                    {weekDays.map(day => {
-                        const dateStr = format(day, 'yyyy-MM-dd');
-                        return (
-                            <div 
-                              key={day.toString()} 
-                              className={cn("day-pill", {
-                                'selected': isSameDay(day, selectedDate),
-                                'today': isToday(day)
-                              })}
-                              onClick={() => setSelectedDate(day)}
-                            >
-                                <span className="day-name">{format(day, 'EEE')}</span>
-                                <span className="day-num">{format(day, 'd')}</span>
-                                {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="day-dot"></div>}
-                            </div>
-                        )
-                    })}
-                </div>
-            ) : (
-                <div className="month-grid-wrap !mb-6">
-                    <div className="month-header">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(dayName => (
-                            <div key={dayName} className="month-header-cell">{dayName}</div>
-                        ))}
+        <>
+            <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
+                 <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-main">
+                    <div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                            <CalendarIcon size={14} className="text-brand-red"/>
+                            Operational Schedule
+                        </h3>
                     </div>
-                    <div className="month-days">
-                        {monthDays.map(day => {
+                    <div className="view-toggle">
+                        <button className={cn("view-btn", { active: viewMode === 'week' })} onClick={() => setViewMode('week')}>
+                            <List size={11}/> Week
+                        </button>
+                        <button className={cn("view-btn", { active: viewMode === 'month' })} onClick={() => setViewMode('month')}>
+                            <LayoutGrid size={11}/> Month
+                        </button>
+                    </div>
+                </div>
+
+                <div className="cal-controls !mb-6">
+                    <div className="cal-nav">
+                        <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
+                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest">
+                            {viewMode === 'week' 
+                                ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
+                                : format(currentDate, 'MMMM yyyy')
+                            }
+                        </span>
+                        <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
+                    </div>
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                       {format(selectedDate, 'EEEE, MMM d')}
+                    </div>
+                </div>
+
+                {viewMode === 'week' ? (
+                    <div className="week-grid !mb-6">
+                        {weekDays.map(day => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             return (
                                 <div 
-                                  key={day.toString()}
-                                  className={cn("month-day !h-10 !text-xs", {
+                                  key={day.toString()} 
+                                  className={cn("day-pill", {
                                     'selected': isSameDay(day, selectedDate),
-                                    'today': isToday(day),
-                                    'other-month': !isSameMonth(day, currentDate)
+                                    'today': isToday(day)
                                   })}
                                   onClick={() => setSelectedDate(day)}
                                 >
-                                    {format(day, 'd')}
-                                    {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="month-day-dot"></div>}
+                                    <span className="day-name">{format(day, 'EEE')}</span>
+                                    <span className="day-num">{format(day, 'd')}</span>
+                                    {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="day-dot"></div>}
                                 </div>
                             )
                         })}
                     </div>
-                </div>
-            )}
-
-            <div className="space-y-2 mt-4">
-                {assignmentsForSelectedDay.length > 0 ? (
-                    assignmentsForSelectedDay.map(wo => (
-                        <div key={wo.id} className={cn("job-card !mb-0", { 'active': wo.status === 'in-progress'})}>
-                            <div className="job-card-inner">
-                                <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
-                                <div className="job-body !p-3">
-                                    <div className="job-left">
-                                        <div className="job-title-row !mb-1">
-                                            <span className="job-title !text-[11px]">{wo.description}</span>
-                                            <span className="job-wo !text-[9px] !px-1.5">{wo.id.toUpperCase()}</span>
-                                        </div>
-                                        <div className="job-meta !gap-3">
-                                            <div className="job-meta-item !text-[10px]"><Clock size={11}/> {wo.scheduleTime}</div>
-                                            <div className="job-meta-item !text-[10px]"><MapPin size={11}/> {wo.location}</div>
-                                        </div>
+                ) : (
+                    <div className="month-grid-wrap !mb-6">
+                        <div className="month-header">
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(dayName => (
+                                <div key={dayName} className="month-header-cell">{dayName}</div>
+                            ))}
+                        </div>
+                        <div className="month-days">
+                            {monthDays.map(day => {
+                                const dateStr = format(day, 'yyyy-MM-dd');
+                                return (
+                                    <div 
+                                      key={day.toString()}
+                                      className={cn("month-day !h-10 !text-xs", {
+                                        'selected': isSameDay(day, selectedDate),
+                                        'today': isToday(day),
+                                        'other-month': !isSameMonth(day, currentDate)
+                                      })}
+                                      onClick={() => setSelectedDate(day)}
+                                    >
+                                        {format(day, 'd')}
+                                        {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="month-day-dot"></div>}
                                     </div>
-                                    <div className="job-right">
-                                        {wo.status === 'completed' ? (
-                                            <div className="btn-completed !text-[10px]"><CircleCheck size={12}/> Done</div>
-                                        ) : wo.status === 'in-progress' ? (
-                                            <button className="btn-checkout !p-1.5 !text-[10px]" onClick={() => handleCheckOut(wo.id)}>
-                                                OUT
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                className="btn-checkin !p-1.5 !text-[10px]"
-                                                disabled={!!activeSession}
-                                                onClick={() => handleCheckIn(wo.id)}
-                                            >
-                                                IN
-                                            </button>
-                                        )}
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                <div className="space-y-2 mt-4">
+                    {assignmentsForSelectedDay.length > 0 ? (
+                        assignmentsForSelectedDay.map(wo => (
+                            <div key={wo.id} 
+                                className={cn("job-card !mb-0 cursor-pointer", { 'active': wo.status === 'in-progress'})}
+                                onClick={() => handleCardClick(wo)}
+                            >
+                                <div className="job-card-inner">
+                                    <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
+                                    <div className="job-body !p-3">
+                                        <div className="job-left">
+                                            <div className="job-title-row !mb-1">
+                                                <span className="job-title !text-[11px]">{wo.description}</span>
+                                                <span className="job-wo !text-[9px] !px-1.5">{wo.id.toUpperCase()}</span>
+                                            </div>
+                                            <div className="job-meta !gap-3">
+                                                <div className="job-meta-item !text-[10px]"><Clock size={11}/> {wo.scheduleTime}</div>
+                                                <div className="job-meta-item !text-[10px]"><MapPin size={11}/> {wo.location}</div>
+                                            </div>
+                                        </div>
+                                        <div className="job-right">
+                                            {wo.status === 'completed' ? (
+                                                <div className="btn-completed !text-[10px]"><CircleCheck size={12}/> Done</div>
+                                            ) : wo.status === 'in-progress' ? (
+                                                <button className="btn-checkout !p-1.5 !text-[10px]" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                    OUT
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="btn-checkin !p-1.5 !text-[10px]"
+                                                    disabled={!!activeSession}
+                                                    onClick={(e) => handleCheckIn(e, wo.id)}
+                                                >
+                                                    IN
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center border border-dashed border-border-main rounded-md">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments for this date</div>
                         </div>
-                    ))
-                ) : (
-                    <div className="p-8 text-center border border-dashed border-border-main rounded-md">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments for this date</div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
-        </div>
+
+            <MissionDetailDialog 
+                isOpen={isDetailOpen} 
+                setIsOpen={setIsDetailOpen} 
+                mission={selectedMission} 
+            />
+        </>
     );
 }

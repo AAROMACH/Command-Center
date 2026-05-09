@@ -20,11 +20,14 @@ import {
 import type { WorkOrder } from "@/lib/types";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 import { format, isSameDay, parseISO } from 'date-fns';
+import { MissionDetailDialog } from '@/components/mission-detail-dialog';
 
 export default function AssignmentsHubPage() {
   const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDates, setFilterDates] = useState<Date[]>([]);
+  const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
@@ -62,6 +65,11 @@ export default function AssignmentsHubPage() {
 
   const handleRemoveDate = (dateToRemove: Date) => {
     setFilterDates(filterDates.filter(d => !isSameDay(d, dateToRemove)));
+  };
+
+  const handleCardClick = (wo: WorkOrder) => {
+    setSelectedMission(wo);
+    setIsDetailOpen(true);
   };
 
   return (
@@ -151,7 +159,11 @@ export default function AssignmentsHubPage() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {techJobs.map(job => (
-                                        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
+                                        <Card 
+                                            key={job.id} 
+                                            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
+                                            onClick={() => handleCardClick(job)}
+                                        >
                                             <CardContent className="p-4 space-y-3">
                                                 <div className="flex justify-between items-start">
                                                     <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
@@ -217,7 +229,7 @@ export default function AssignmentsHubPage() {
                         {archivedWorkOrders.map(wo => {
                             const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
                             return (
-                                <tr key={wo.id}>
+                                <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
                                     <td>
                                         <div className="cell-id">{wo.id.toUpperCase()}</div>
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
@@ -260,6 +272,12 @@ export default function AssignmentsHubPage() {
             </div>
         </TabsContent>
       </Tabs>
+
+      <MissionDetailDialog 
+        isOpen={isDetailOpen} 
+        setIsOpen={setIsDetailOpen} 
+        mission={selectedMission} 
+      />
     </div>
   );
 }

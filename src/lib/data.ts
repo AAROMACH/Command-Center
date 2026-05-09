@@ -225,6 +225,9 @@ export const workOrders: WorkOrder[] = [
     pay: 150.00,
     payType: 'fixed',
     isAcknowledged: true,
+    history: [
+      { type: 'tech_swap', date: '2024-07-19', details: 'Technician swapped from tech-001 to tech-003 due to scheduling conflict.', user: 'Corey Williams' }
+    ]
   },
   {
     id: 'wo-102',
@@ -241,6 +244,9 @@ export const workOrders: WorkOrder[] = [
     pay: 350.00,
     payType: 'fixed',
     isAcknowledged: false,
+    history: [
+        { type: 'note', date: '2024-07-27', details: 'Site access confirmed with building manager. Parking permit staged.', user: 'Sarah Connor' }
+    ]
   },
   {
     id: 'wo-103',
@@ -271,6 +277,13 @@ export const workOrders: WorkOrder[] = [
     pay: 475.00,
     payType: 'fixed',
     isAcknowledged: true,
+    finalPay: 500.50,
+    reimbursements: [
+        { id: 're-1', technicianId: 'tech-002', date: '2024-07-25', type: 'reimbursement', amount: 25.50, description: 'Emergency parts courier' }
+    ],
+    history: [
+        { type: 'status_change', date: '2024-07-25', details: 'Mission finalized. Site verified clean.', user: 'Maria Garcia' }
+    ]
   },
    {
     id: 'wo-105',
@@ -301,6 +314,9 @@ export const workOrders: WorkOrder[] = [
     pay: 750.00,
     payType: 'fixed',
     isAcknowledged: true,
+    history: [
+        { type: 'note', date: '2024-07-28', details: 'Technician on-site. Began draining existing unit.', user: 'Alex Johnson' }
+    ]
   },
 ];
 

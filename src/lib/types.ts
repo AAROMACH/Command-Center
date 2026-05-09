@@ -24,6 +24,11 @@ export type WorkOrder = {
   isAcknowledged?: boolean;
   routeId?: string; // Links job to a specific route
   isImported?: boolean; // Flag for jobs from FieldNation
+  // Enhanced detail fields
+  history?: { type: 'tech_swap' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
+  notes?: string[];
+  reimbursements?: FinancialRecord[];
+  finalPay?: number;
 };
 
 export type Route = {

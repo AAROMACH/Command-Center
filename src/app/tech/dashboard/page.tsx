@@ -29,6 +29,7 @@ import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 import { PendingPayoutDialog } from './components/pending-payout-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
+import { MissionDetailDialog } from '@/components/mission-detail-dialog';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -38,6 +39,9 @@ export default function TechDashboardPage() {
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
     const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false);
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
+    
+    const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
 
@@ -99,6 +103,11 @@ export default function TechDashboardPage() {
     const handleLogSelect = (log: WeeklyLog) => {
         setSelectedLog(log);
         setIsLogSelectionOpen(false);
+    };
+
+    const handleOpenMissionDetail = (wo: WorkOrder) => {
+        setSelectedMission(wo);
+        setIsDetailOpen(true);
     };
 
     if (!mounted || !currentTechId || !tech) {
@@ -175,7 +184,10 @@ export default function TechDashboardPage() {
 
             <div className="space-y-6">
                 {!activeJob && (
-                    <Card className="border-2 border-brand-red bg-brand-red-dim/5">
+                    <Card 
+                        className="border-2 border-brand-red bg-brand-red-dim/5 cursor-pointer hover:bg-brand-red-dim/10 transition-colors"
+                        onClick={() => nextAction && handleOpenMissionDetail(nextAction)}
+                    >
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <div className="page-eyebrow text-brand-red">Next Low Voltage Job</div>
@@ -206,17 +218,15 @@ export default function TechDashboardPage() {
                                     <div className="flex gap-3">
                                         <Button 
                                           className="flex-1 h-12 gap-2 text-sm" 
-                                          onClick={() => toast({ title: nextAction.isImported ? "Job Finalization Open" : "Job Started", description: nextAction.isImported ? "Imported job detected. No check-in required." : "GPS track initiated."})}
+                                          onClick={(e) => { e.stopPropagation(); toast({ title: nextAction.isImported ? "Job Finalization Open" : "Job Started", description: nextAction.isImported ? "Imported job detected. No check-in required." : "GPS track initiated."})}}
                                         >
                                             {nextAction.isImported ? <FileCheck size={16}/> : <Play size={16} fill="currentColor"/>}
                                             {nextAction.isImported ? "FINALIZE JOB" : "START JOB"}
                                         </Button>
-                                        <Button variant="outline" className="h-12 px-6" asChild>
-                                            <Link href={`/tech/assignments`}>
-                                                <Eye size={16} className="mr-2"/> VIEW DETAILS
-                                            </Link>
+                                        <Button variant="outline" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleOpenMissionDetail(nextAction); }}>
+                                            <Eye size={16} className="mr-2"/> VIEW DETAILS
                                         </Button>
-                                        <Button variant="secondary" className="h-12 px-6">ACKNOWLEDGE</Button>
+                                        <Button variant="secondary" className="h-12 px-6" onClick={(e) => e.stopPropagation()}>ACKNOWLEDGE</Button>
                                     </div>
                                     {nextAction.isImported && (
                                         <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest text-center">
@@ -234,7 +244,10 @@ export default function TechDashboardPage() {
                 )}
 
                 {activeJob && (
-                    <Card className="border-2 border-text-green bg-green-dim/10">
+                    <Card 
+                        className="border-2 border-text-green bg-green-dim/10 cursor-pointer hover:bg-green-dim/15 transition-colors"
+                        onClick={() => handleOpenMissionDetail(activeJob)}
+                    >
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
@@ -260,11 +273,11 @@ export default function TechDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="h-9 gap-2"><StickyNote size={14}/> Add Notes</Button>
-                                        <Button variant="outline" size="sm" className="h-9 gap-2"><Camera size={14}/> Upload Photo</Button>
+                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => e.stopPropagation()}><StickyNote size={14}/> Add Notes</Button>
+                                        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={(e) => e.stopPropagation()}><Camera size={14}/> Upload Photo</Button>
                                     </div>
                                 </div>
-                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={() => toast({ title: "Checked Out", description: "Job finalized."})}>
+                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); toast({ title: "Checked Out", description: "Job finalized."})}}>
                                     <LogOut size={16}/> CHECK OUT / FINALIZE
                                 </Button>
                             </div>
@@ -315,6 +328,12 @@ export default function TechDashboardPage() {
                 setIsOpen={setIsPayoutDialogOpen}
                 pendingAmount={pendingEarnings}
                 submittedLogs={submittedLogs}
+            />
+
+            <MissionDetailDialog 
+                isOpen={isDetailOpen} 
+                setIsOpen={setIsDetailOpen} 
+                mission={selectedMission} 
             />
         </div>
     );

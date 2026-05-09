@@ -335,27 +335,31 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td>
-                    <div className="flex items-center gap-1.5">
-                      <div className="cell-id">{order.id.toUpperCase()}</div>
-                      {order.source === 'Imported' && (
-                        <a 
-                          href={`https://app.fieldnation.com/workorders/${order.id.replace('wo-', '')}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-text-muted hover:text-brand-red transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink size={10} />
-                        </a>
-                      )}
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="flex items-center gap-1.5">
+                        <div className="cell-id">{order.id.toUpperCase()}</div>
+                        {order.source === 'Imported' && (
+                          <a 
+                            href={`https://app.fieldnation.com/workorders/${order.id.replace('wo-', '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-text-muted hover:text-brand-red transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                     </div>
-                    <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                   </td>
                   <td>
-                    <div className="cell-desc-title">{order.description}</div>
-                    <div className="cell-desc-client">
-                      <Briefcase />
-                      <span>{order.clientName}</span>
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="cell-desc-title">{order.description}</div>
+                      <div className="cell-desc-client">
+                        <Briefcase />
+                        <span>{order.clientName}</span>
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -365,13 +369,15 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    {route ? (
-                        <Badge variant="outline" className="bg-bg-tertiary border-accent-gold/30 text-accent-gold text-[8px] uppercase tracking-widest gap-1 h-4 px-1.5">
-                            <Layers size={10}/> {route.name}
-                        </Badge>
-                    ) : (
-                        <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-tighter">Unallocated</span>
-                    )}
+                    <div className="flex flex-col items-center justify-center">
+                      {route ? (
+                          <Badge variant="outline" className="bg-bg-tertiary border-accent-gold/30 text-accent-gold text-[8px] uppercase tracking-widest gap-1 h-4 px-1.5">
+                              <Layers size={10}/> {route.name}
+                          </Badge>
+                      ) : (
+                          <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-tighter">Unallocated</span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <div className="cell-loc">
@@ -380,7 +386,7 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col items-center justify-center">
                         {mode === 'scheduled' || order.status === 'assigned' || order.status === 'completed' || order.status === 'in-progress' ? (
                         technician ? (
                             <div className="cell-tech-assigned">
@@ -391,7 +397,7 @@ export function WorkOrdersClient({
                         ) : (
                             <div className="cell-pay">
                                 <DollarSign />
-                                <div className="flex flex-col">
+                                <div className="flex flex-col items-center">
                                     <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
                                     <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
                                 </div>

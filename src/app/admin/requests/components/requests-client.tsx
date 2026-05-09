@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -68,7 +69,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     if (requests.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-8">
+                <div className="empty-state !py-8 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted italic opacity-40">No requests found in this category.</p>
                 </div>
             </div>
@@ -118,43 +119,53 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr className="bg-bg-tertiary/50">
-                        <th style={{ width: "110px" }} className="!py-1.5">ID</th>
-                        <th className="!py-1.5">Client & Site</th>
-                        <th style={{ width: "40%" }} className="!py-1.5">Description</th>
-                        <th style={{ width: "100px" }} className="!py-1.5">Category</th>
+                        <th style={{ width: "110px" }} className="!py-1.5 text-center">ID</th>
+                        <th className="!py-1.5 text-center">Client & Site</th>
+                        <th style={{ width: "40%" }} className="!py-1.5 text-center">Description</th>
+                        <th style={{ width: "100px" }} className="!py-1.5 text-center">Category</th>
                         <th style={{ width: "80px" }} className="!py-1.5 text-center">Priority</th>
-                        <th style={{ width: "100px" }} className="!py-1.5 text-right">Actions</th>
+                        <th style={{ width: "100px" }} className="!py-1.5 text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {paginatedRequests.map((req) => (
                         <tr key={req.id} className="group hover:bg-bg-tertiary/80 transition-colors">
                             <td className="!py-1">
-                                <div className="cell-id !text-[10px]">{req.id.toUpperCase()}</div>
-                                <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
-                            </td>
-                            <td className="!py-1">
-                                <div className="font-bold text-text-primary text-[10px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
-                                <div className="flex items-center gap-1 text-[8px] text-text-muted font-bold truncate max-w-[150px]">
-                                    <MapPin size={9} className="shrink-0" />
-                                    <span className="truncate">{req.location}</span>
+                                <div className="flex flex-col items-center justify-center">
+                                  <div className="cell-id !text-[10px]">{req.id.toUpperCase()}</div>
+                                  <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
                                 </div>
                             </td>
                             <td className="!py-1">
-                                <p className="text-[10px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
+                                <div className="flex flex-col items-center justify-center text-center">
+                                  <div className="font-bold text-text-primary text-[10px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
+                                  <div className="flex items-center justify-center gap-1 text-[8px] text-text-muted font-bold truncate max-w-[150px]">
+                                      <MapPin size={9} className="shrink-0" />
+                                      <span className="truncate">{req.location}</span>
+                                  </div>
+                                </div>
                             </td>
                             <td className="!py-1">
-                                <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary border-border-sub text-text-muted">
-                                    {req.requestType}
-                                </Badge>
+                                <div className="flex items-center justify-center text-center px-4">
+                                  <p className="text-[10px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
+                                </div>
+                            </td>
+                            <td className="!py-1">
+                                <div className="flex items-center justify-center">
+                                  <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary border-border-sub text-text-muted">
+                                      {req.requestType}
+                                  </Badge>
+                                </div>
                             </td>
                             <td className="!py-1 text-center">
-                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
-                                    {req.priority}
-                                </Badge>
+                                <div className="flex items-center justify-center">
+                                  <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
+                                      {req.priority}
+                                  </Badge>
+                                </div>
                             </td>
-                            <td className="!py-1 text-right">
-                                <div className="flex justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <td className="!py-1 text-center">
+                                <div className="flex justify-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
                                         <Eye size={12}/>
                                     </Button>
@@ -272,8 +283,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                                <div className="space-y-2 text-center">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-1.5">
                                         <Camera size={10} className="text-brand-red" /> VISUALS
                                     </p>
                                     <div className="grid grid-cols-2 gap-1.5">
@@ -286,8 +297,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                                <div className="space-y-2 text-center">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-1.5">
                                         <FileText size={10} className="text-accent-gold" /> ASSETS
                                     </p>
                                     <div className="space-y-1.5">

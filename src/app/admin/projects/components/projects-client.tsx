@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -76,11 +77,11 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th>Project ID / Status</th>
-                        <th>Title & Client</th>
-                        <th>Site Location</th>
-                        <th>Scheduled Date</th>
-                        <th style={{ width: "25%" }}>Progress</th>
+                        <th className="text-center">Project ID / Status</th>
+                        <th className="text-center">Title & Client</th>
+                        <th className="text-center">Site Location</th>
+                        <th className="text-center">Scheduled Date</th>
+                        <th style={{ width: "25%" }} className="text-center">Progress</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,49 +96,55 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td>
-                                    <div className="cell-id">{project.id.toUpperCase()}</div>
-                                    <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
+                                    <div className="flex flex-col items-center justify-center">
+                                      <div className="cell-id">{project.id.toUpperCase()}</div>
+                                      <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
+                                    </div>
                                 </td>
                                 <td>
-                                    <div className="cell-desc-title !normal-case">{project.name}</div>
-                                    <div className="font-semibold text-text-primary text-sm">{project.client}</div>
-                                     {lead && (
-                                        <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
-                                            <User className="h-3.5 w-3.5" />
-                                            <span>Lead: {lead.name}</span>
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col items-center justify-center text-center">
+                                      <div className="cell-desc-title !normal-case">{project.name}</div>
+                                      <div className="font-semibold text-text-primary text-sm">{project.client}</div>
+                                      {lead && (
+                                          <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
+                                              <User className="h-3.5 w-3.5" />
+                                              <span>Lead: {lead.name}</span>
+                                          </div>
+                                      )}
+                                    </div>
                                 </td>
                                 <td>
-                                    <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+                                    <div className="flex flex-col items-center justify-center text-center gap-1.5 text-sm text-text-secondary">
                                         <MapPin className="h-3.5 w-3.5 text-text-muted" />
-                                        <span>{project.location}</span>
+                                        <span className="max-w-[150px]">{project.location}</span>
                                     </div>
                                 </td>
                                 <td>
                                     <div className="cell-sched">
                                         <div className="cell-sched-date">
-                                            <Calendar />
+                                            <Calendar size={13}/>
                                             <span>{formatDateDisplay(project.startDate)}</span>
                                         </div>
                                         {project.startTime && (
                                             <div className="cell-sched-time">
-                                                <Clock />
+                                                <Clock size={13}/>
                                                 <span>{project.startTime}</span>
                                             </div>
                                         )}
                                         <div className="cell-sched-time">
-                                            <Timer />
+                                            <Timer size={13}/>
                                             <span>{project.estimatedDuration}</span>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="progress-wrap">
-                                        <div className="progress-track"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
-                                        <div className={`progress-pct !text-${progressColor}`}>{Math.round(progress)}%</div>
+                                    <div className="flex flex-col items-center justify-center">
+                                      <div className="progress-wrap w-full">
+                                          <div className="progress-track"><div className={`progress-fill ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
+                                          <div className={`progress-pct !text-${progressColor}`}>{Math.round(progress)}%</div>
+                                      </div>
+                                      <div className="text-xs text-text-muted mt-1">{completedTasks} of {totalTasks} tasks complete</div>
                                     </div>
-                                    <div className="text-xs text-text-muted mt-1">{completedTasks} of {totalTasks} tasks complete</div>
                                 </td>
                             </tr>
                         );
@@ -149,7 +156,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             {projects.length > 0 && (
               <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                     <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
                       <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">

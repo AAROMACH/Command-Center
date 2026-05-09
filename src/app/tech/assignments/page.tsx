@@ -96,28 +96,32 @@ export default function TechAssignmentsPage() {
                         <table className="tbl">
                             <thead>
                                 <tr>
-                                    <th>Work Order / Status</th>
-                                    <th>Assignment Description</th>
-                                    <th>Site Location</th>
-                                    <th>Schedule Window</th>
-                                    <th className="text-right">Action</th>
+                                    <th className="text-center">Work Order / Status</th>
+                                    <th className="text-center">Assignment Description</th>
+                                    <th className="text-center">Site Location</th>
+                                    <th className="text-center">Schedule Window</th>
+                                    <th className="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {activeAssignments.map((wo) => (
                                     <tr key={wo.id}>
                                         <td>
-                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5">{wo.status}</Badge>
+                                            <div className="flex flex-col items-center justify-center">
+                                              <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                              <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5">{wo.status}</Badge>
+                                            </div>
                                         </td>
                                         <td>
-                                            <div className="cell-desc-title">{wo.description}</div>
-                                            <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                              <div className="cell-desc-title">{wo.description}</div>
+                                              <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                            </div>
                                         </td>
                                         <td>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                                                <MapPin className="h-3.5 w-3.5 text-brand-red" />
-                                                <span>{wo.location}</span>
+                                            <div className="flex items-center justify-center gap-1.5 text-xs text-text-secondary text-center">
+                                                <MapPin className="h-3.5 w-3.5 text-brand-red shrink-0" />
+                                                <span className="max-w-[150px]">{wo.location}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -132,19 +136,21 @@ export default function TechAssignmentsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="text-right">
-                                            {wo.status === 'assigned' && (
-                                                <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => handleConfirmSchedule(wo.id)}>
-                                                    <ClipboardCheck size={14} className="mr-2"/>
-                                                    Confirm Schedule
-                                                </Button>
-                                            )}
-                                            {wo.status === 'in-progress' && (
-                                                <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-end gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
-                                                    Assignment Active
-                                                </div>
-                                            )}
+                                        <td>
+                                            <div className="flex items-center justify-center">
+                                              {wo.status === 'assigned' && (
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => handleConfirmSchedule(wo.id)}>
+                                                      <ClipboardCheck size={14} className="mr-2"/>
+                                                      Confirm Schedule
+                                                  </Button>
+                                              )}
+                                              {wo.status === 'in-progress' && (
+                                                  <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-center gap-2">
+                                                      <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
+                                                      Assignment Active
+                                                  </div>
+                                              )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -163,40 +169,50 @@ export default function TechAssignmentsPage() {
                         <table className="tbl">
                             <thead>
                                 <tr>
-                                    <th>Work Order</th>
-                                    <th>Service Result</th>
-                                    <th>Date Completed</th>
-                                    <th>Payroll Status</th>
-                                    <th className="text-right">Approved Payout</th>
+                                    <th className="text-center">Work Order</th>
+                                    <th className="text-center">Service Result</th>
+                                    <th className="text-center">Date Completed</th>
+                                    <th className="text-center">Payroll Status</th>
+                                    <th className="text-center">Approved Payout</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {completedAssignments.map((wo) => (
                                     <tr key={wo.id}>
                                         <td>
-                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                            <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
-                                        </td>
-                                        <td>
-                                            <div className="cell-desc-title">{wo.description}</div>
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
-                                                <CircleCheck size={12}/> COMPLETED
+                                            <div className="flex flex-col items-center justify-center">
+                                              <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                              <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                              <div className="cell-desc-title">{wo.description}</div>
+                                              <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
+                                                  <CircleCheck size={12}/> COMPLETED
+                                              </div>
+                                            </div>
                                         </td>
                                         <td>
-                                            <Badge variant="completed" className="uppercase text-[8px] h-4 px-1.5">
-                                                <FileCheck size={11} className="mr-1"/>
-                                                Audit Passed
-                                            </Badge>
-                                        </td>
-                                        <td className="text-right">
-                                            <div className="text-sm font-bold text-text-green font-mono">
-                                                ${wo.pay.toFixed(2)}
+                                            <div className="text-center">
+                                              <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
                                             </div>
-                                            <div className="text-[9px] text-text-muted uppercase tracking-widest">Final Approved</div>
+                                        </td>
+                                        <td>
+                                            <div className="flex items-center justify-center">
+                                              <Badge variant="completed" className="uppercase text-[8px] h-4 px-1.5">
+                                                  <FileCheck size={11} className="mr-1"/>
+                                                  Audit Passed
+                                              </Badge>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="text-center">
+                                              <div className="text-sm font-bold text-text-green font-mono">
+                                                  ${wo.pay.toFixed(2)}
+                                              </div>
+                                              <div className="text-[9px] text-text-muted uppercase tracking-widest">Final Approved</div>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

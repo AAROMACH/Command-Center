@@ -242,12 +242,12 @@ export default function AssignmentsHubPage() {
 
                         return (
                             <div key={tech.id} className="space-y-4">
-                                <div className="flex items-center gap-3 border-b border-border-sub pb-2">
+                                <div className="flex items-center justify-center gap-3 border-b border-border-sub pb-2">
                                     <Avatar className="h-10 w-10 border border-border-sub">
                                         <AvatarImage src={tech.avatarUrl} />
                                         <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <div>
+                                    <div className="text-center">
                                         <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
                                         <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
                                     </div>
@@ -259,7 +259,7 @@ export default function AssignmentsHubPage() {
                                             className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
                                             onClick={() => handleCardClick(job)}
                                         >
-                                            <CardContent className="p-4 space-y-3">
+                                            <CardContent className="p-4 space-y-3 text-center">
                                                 <div className="flex justify-between items-start">
                                                     <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
                                                         {job.status === 'in-progress' && <div className="h-1.5 w-1.5 rounded-full bg-text-green mr-1.5 animate-pulse" />}
@@ -280,11 +280,11 @@ export default function AssignmentsHubPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div>
+                                                <div className="flex flex-col items-center">
                                                     <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
                                                     <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-1">{job.clientName}</p>
                                                 </div>
-                                                <div className="pt-2 border-t border-border-sub space-y-1.5">
+                                                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-center">
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
                                                         <Clock size={12} className="text-text-muted" />
                                                         {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
@@ -326,11 +326,11 @@ export default function AssignmentsHubPage() {
                 <table className="tbl">
                     <thead>
                         <tr>
-                            <th>Work Order</th>
-                            <th>Client & Service Result</th>
-                            <th>Deployment Coordinates</th>
-                            <th>Finalized Date</th>
-                            <th className="text-right">Audit Status</th>
+                            <th className="text-center">Work Order</th>
+                            <th className="text-center">Client & Service Result</th>
+                            <th className="text-center">Deployment Coordinates</th>
+                            <th className="text-center">Finalized Date</th>
+                            <th className="text-center">Audit Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -339,46 +339,52 @@ export default function AssignmentsHubPage() {
                             return (
                                 <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
                                     <td>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                            {wo.source === 'Imported' && (
-                                                <a 
-                                                    href={`https://app.fieldnation.com/workorders/${wo.id.replace('wo-', '')}`} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="text-text-muted hover:text-brand-red transition-colors"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <ExternalLink size={10} />
-                                                </a>
-                                            )}
-                                        </div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                    </td>
-                                    <td>
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
-                                            <Briefcase size={12}/> {wo.clientName}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
-                                            <CheckCircle2 size={14}/> Successfully Finalized
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                {wo.source === 'Imported' && (
+                                                    <a 
+                                                        href={`https://app.fieldnation.com/workorders/${wo.id.replace('wo-', '')}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-text-muted hover:text-brand-red transition-colors"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <ExternalLink size={10} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="flex items-start gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                            <MapPin size={12} className="mt-0.5 text-text-muted" />
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
+                                                <Briefcase size={12}/> {wo.clientName}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
+                                                <CheckCircle2 size={14}/> Successfully Finalized
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="flex flex-col items-center justify-center text-center gap-1 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                            <MapPin size={12} className="text-text-muted" />
                                             <span>{wo.location}</span>
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col items-center justify-center text-center">
                                             <span className="text-xs font-bold text-text-primary uppercase">{formatDateDisplay(wo.scheduleDate)}</span>
                                             <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
                                                 <User size={10}/> {tech?.name || 'Field Ops'}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="text-right">
-                                        <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
+                                    <td className="text-center">
+                                        <div className="flex items-center justify-center">
+                                          <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
+                                        </div>
                                     </td>
                                 </tr>
                             )
@@ -551,7 +557,7 @@ export default function AssignmentsHubPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Technician Allocation</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
                             <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                                 <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
                                     <SelectValue placeholder="Select Technician" />
@@ -565,7 +571,7 @@ export default function AssignmentsHubPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Operational Status</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
                             <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
                                 <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                                 <SelectContent>

@@ -301,7 +301,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <TabsTrigger value="technicians" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">TECHNICIANS</TabsTrigger>
                             <TabsTrigger value="staff" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">STAFF</TabsTrigger>
                             <TabsTrigger value="clients" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">CLIENTS</TabsTrigger>
-                            <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2 h-full">
+                            <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center justify-center gap-2 h-full">
                                 REQUESTS
                                 {pendingRequestsCount > 0 && (
                                     <Badge variant="destructive" className="h-3.5 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
@@ -403,30 +403,30 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div>TECHNICIAN</div>
-                                    <div>CONTACT</div>
+                                    <div className="text-center">TECHNICIAN</div>
+                                    <div className="text-center">CONTACT</div>
                                     <div className="text-center">RELIABILITY</div>
-                                    <div>STATUS</div>
+                                    <div className="text-center">STATUS</div>
                                 </div>
                                 {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center gap-2.5">
-                                            <Avatar className="h-7 w-7">
+                                    <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors text-center" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center justify-center gap-2.5">
+                                            <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage src={tech.avatarUrl} />
                                                 <AvatarFallback className="text-[9px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{tech.name}</span>
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex flex-col items-center justify-center">
                                             <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{tech.email}</div>
                                             <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}</div>
                                         </div>
-                                        <div className="flex flex-col items-center">
+                                        <div className="flex flex-col items-center justify-center">
                                             <span className={`font-mono font-bold text-sm ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
                                         </div>
-                                        <div>
+                                        <div className="flex items-center justify-center">
                                             <Badge variant="active" className="text-[8px] h-4">ACTIVE</Badge>
                                         </div>
                                     </div>
@@ -438,7 +438,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                                 {paginatedTechnicians.map(tech => (
                                     <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
-                                        <CardContent className="p-2">
+                                        <CardContent className="p-2 text-center">
                                             <div className="flex justify-between items-start mb-1.5">
                                                 <Avatar className="h-8 w-8 border border-border-sub">
                                                     <AvatarImage src={tech.avatarUrl} />
@@ -461,12 +461,12 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1.5">
                                 {paginatedTechnicians.map(tech => (
                                     <div key={tech.id} className="p-1.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Avatar className="h-6 w-6 shrink-0">
                                                 <AvatarImage src={tech.avatarUrl} />
                                                 <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <div className="min-w-0 flex-1">
+                                            <div className="min-w-0 flex-1 text-center">
                                                 <p className="text-[10px] font-bold text-text-primary uppercase truncate">{tech.name}</p>
                                             </div>
                                             <Star size={9} className="text-accent-gold fill-current shrink-0" />
@@ -481,24 +481,24 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div>STAFF MEMBER</div>
-                                    <div>CONTACT</div>
-                                    <div>ROLE</div>
+                                    <div className="text-center">STAFF MEMBER</div>
+                                    <div className="text-center">CONTACT</div>
+                                    <div className="text-center">ROLE</div>
                                 </div>
                                 {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
-                                        <div className="flex items-center gap-2.5">
-                                            <Avatar className="h-7 w-7">
+                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors text-center" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center justify-center gap-2.5">
+                                            <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage src={s.avatarUrl} />
                                                 <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{s.name}</span>
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex flex-col items-center justify-center">
                                             <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{s.email}</div>
                                             <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{s.phone}</div>
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
+                                        <div className="flex flex-wrap gap-1 justify-center">
                                             {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[7px] uppercase h-3.5 px-1">{r.replace(/_/g, ' ')}</Badge>)}
                                         </div>
                                     </div>
@@ -511,27 +511,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div>CORPORATE ENTITY</div>
-                                    <div>CLASSIFICATION</div>
+                                    <div className="text-center">CORPORATE ENTITY</div>
+                                    <div className="text-center">CLASSIFICATION</div>
                                     <div className="text-center">CONTACTS</div>
-                                    <div className="text-right">REGISTRY</div>
+                                    <div className="text-center">REGISTRY</div>
                                 </div>
                                 {paginatedCompanies.map(company => (
-                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
-                                        <div className="flex items-center gap-2.5">
+                                    <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors text-center" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex items-center justify-center gap-2.5">
                                             <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
                                                 <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate">{company.name}</span>
                                         </div>
-                                        <div>
+                                        <div className="flex items-center justify-center">
                                             <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
                                         </div>
-                                        <div className="text-center">
+                                        <div className="text-center flex items-center justify-center">
                                             <Badge variant="outline" className="text-[8px] h-4 px-1.5">{company.contacts.length} C</Badge>
                                         </div>
-                                        <div className="text-right">
-                                            <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all ml-auto" />
+                                        <div className="text-center flex items-center justify-center">
+                                            <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
                                         </div>
                                     </div>
                                 ))}
@@ -554,25 +554,25 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         const tech = personnel.find(p => p.id === req.technicianId);
                                         return (
                                             <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <Avatar className="h-7 w-7 border border-border-sub group-hover:border-brand-red transition-colors">
+                                                <div className="flex items-center justify-center gap-4 flex-1 text-center">
+                                                    <Avatar className="h-7 w-7 border border-border-sub group-hover:border-brand-red transition-colors shrink-0">
                                                         <AvatarImage src={tech?.avatarUrl} />
                                                         <AvatarFallback className="text-[9px]">{tech?.name.charAt(0)}</AvatarFallback>
                                                     </Avatar>
-                                                    <div className="space-y-0.5">
+                                                    <div className="space-y-0.5 flex flex-col items-center">
                                                         <div className="flex items-center gap-2">
                                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
                                                             <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
                                                         </div>
-                                                        <p className="text-[11px] text-text-primary font-bold flex items-center gap-1.5">
+                                                        <p className="text-[11px] text-text-primary font-bold flex items-center justify-center gap-1.5">
                                                             <Calendar size={11} className="shrink-0 text-brand-red" /> {formatDateStr(req.startDate)} — {formatDateStr(req.endDate)}
                                                         </p>
                                                     </div>
-                                                    <div className="hidden lg:block ml-6 flex-1 max-w-[300px]">
+                                                    <div className="hidden lg:block ml-6 flex-1 max-w-[300px] text-center">
                                                         <p className="text-[10px] text-text-secondary leading-tight line-clamp-1 italic">&quot;{req.reason}&quot;</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 mt-2 md:mt-0">
+                                                <div className="flex items-center justify-center gap-1.5 mt-2 md:mt-0">
                                                     <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
                                                         <X size={10} className="mr-1"/> Deny
                                                     </Button>
@@ -602,26 +602,26 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 <div className="space-y-1.5">
                                     {filteredSiteRequests.map(req => (
                                         <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                            <div className="flex items-center justify-center gap-4 flex-1 text-center">
+                                                <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors shrink-0">
                                                     <Building2 size={14} />
                                                 </div>
-                                                <div className="space-y-0.5">
+                                                <div className="space-y-0.5 flex flex-col items-center">
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
                                                         <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
                                                     </div>
-                                                    <p className="text-[11px] text-text-primary font-bold flex items-center gap-1.5">
+                                                    <p className="text-[11px] text-text-primary font-bold flex items-center justify-center gap-1.5">
                                                         <MapPin size={11} className="shrink-0 text-brand-red"/> {req.location}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3 mt-2 md:mt-0">
-                                                <div className="text-right hidden md:block mr-2">
+                                            <div className="flex items-center justify-center gap-3 mt-2 md:mt-0">
+                                                <div className="text-center hidden md:block mr-2">
                                                     <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
                                                     <p className="text-[9px] font-bold text-text-primary uppercase truncate max-w-[100px]">{req.managerName}</p>
                                                 </div>
-                                                <div className="flex gap-1.5">
+                                                <div className="flex gap-1.5 justify-center">
                                                     <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
                                                         <X size={10} className="mr-1"/> Deny
                                                     </Button>

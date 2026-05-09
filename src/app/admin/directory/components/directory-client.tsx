@@ -549,8 +549,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
                                                             <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
                                                         </div>
-                                                        <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                            <Calendar size={9} className="shrink-0" /> {req.startDate} — {req.endDate}
+                                                        <p className="text-[10px] text-text-primary font-bold flex items-center gap-1.5">
+                                                            <Calendar size={11} className="shrink-0 text-brand-red" /> {req.startDate} — {req.endDate}
                                                         </p>
                                                     </div>
                                                     <div className="hidden lg:block ml-6 flex-1 max-w-[300px]">
@@ -596,8 +596,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
                                                         <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
                                                     </div>
-                                                    <p className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                        <MapPin size={9} className="shrink-0"/> {req.location}
+                                                    <p className="text-[10px] text-text-primary font-bold flex items-center gap-1.5">
+                                                        <MapPin size={11} className="shrink-0 text-brand-red"/> {req.location}
                                                     </p>
                                                 </div>
                                             </div>

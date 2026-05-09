@@ -16,7 +16,7 @@ export type WorkOrder = {
   status: 'unassigned' | 'assigned' | 'in-progress' | 'completed';
   assignedTechnicianId?: string;
   clientName: string;
-  projectType: string;
+  projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Upgrade' | 'Repair' | 'Decommission' | string;
   scheduleDate: string;
   scheduleTime: string;
   pay: number;
@@ -158,7 +158,7 @@ export type ServiceRequest = {
   id: string;
   clientName: string;
   location: string;
-  requestType: 'New Install' | 'Repair' | 'Inspection' | 'Quote';
+  requestType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Upgrade' | 'Repair' | 'Decommission';
   description: string;
   status: 'new' | 'reviewed' | 'approved' | 'rejected' | 'closed';
   submittedDate: string;

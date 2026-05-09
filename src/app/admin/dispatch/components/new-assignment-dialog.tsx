@@ -37,7 +37,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [formData, setFormData] = useState<Partial<WorkOrder>>({
     priority: 'medium',
     status: 'unassigned',
-    projectType: 'Low Voltage Maintenance',
+    projectType: 'Installation',
     requiredSkills: [],
     pay: 0,
     payType: 'fixed',
@@ -98,7 +98,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       setFormData({
         priority: 'medium',
         status: 'unassigned',
-        projectType: 'Low Voltage Maintenance',
+        projectType: 'Installation',
         requiredSkills: [],
         pay: 0,
         payType: 'fixed',
@@ -269,10 +269,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Infrastructure Repair">Repair</SelectItem>
-                      <SelectItem value="Low Voltage Maintenance">Maintenance</SelectItem>
-                      <SelectItem value="Network Installation">Installation</SelectItem>
-                      <SelectItem value="Site Audit">Inspection</SelectItem>
+                      <SelectItem value="Installation">Installation</SelectItem>
+                      <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                      <SelectItem value="Maintenance">Maintenance</SelectItem>
+                      <SelectItem value="Survey">Survey</SelectItem>
+                      <SelectItem value="Upgrade">Upgrade</SelectItem>
+                      <SelectItem value="Repair">Repair</SelectItem>
+                      <SelectItem value="Decommission">Decommission</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

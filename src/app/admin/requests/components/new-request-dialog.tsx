@@ -34,7 +34,7 @@ type NewRequestDialogProps = {
 export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialogProps) {
   const [formData, setFormData] = useState<Partial<ServiceRequest>>({
     priority: 'medium',
-    requestType: 'Repair',
+    requestType: 'Installation',
     status: 'new',
     clientName: '',
     location: '',
@@ -72,7 +72,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   const handleReset = () => {
     setFormData({
       priority: 'medium',
-      requestType: 'Repair',
+      requestType: 'Installation',
       status: 'new',
       clientName: '',
       location: '',
@@ -149,10 +149,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
                 <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="New Install">New Install</SelectItem>
-                  <SelectItem value="Repair">Repair / Maintenance</SelectItem>
-                  <SelectItem value="Inspection">Compliance Audit</SelectItem>
-                  <SelectItem value="Quote">Service Quote</SelectItem>
+                  <SelectItem value="Installation">Installation</SelectItem>
+                  <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  <SelectItem value="Survey">Survey</SelectItem>
+                  <SelectItem value="Upgrade">Upgrade</SelectItem>
+                  <SelectItem value="Repair">Repair</SelectItem>
+                  <SelectItem value="Decommission">Decommission</SelectItem>
                 </SelectContent>
               </Select>
             </div>

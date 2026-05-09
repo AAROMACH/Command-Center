@@ -18,6 +18,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+const SERVICE_CATEGORIES = [
+    'Installation',
+    'Troubleshooting',
+    'Maintenance',
+    'Survey',
+    'Upgrade',
+    'Repair',
+    'Decommission'
+];
+
 export default function DispatchPage() {
   // Master Tab State
   const [activeMasterTab, setActiveMasterTab] = useState('dispatch');
@@ -232,10 +242,7 @@ export default function DispatchPage() {
                     <div className="space-y-3">
                       <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Service Category</p>
                       <div className="space-y-2">
-                        {(activeMasterTab === 'dispatch' 
-                          ? ['Maintenance', 'Repair', 'Installation', 'Inspection', 'Low Voltage Service']
-                          : ['New Install', 'Repair', 'Inspection', 'Quote']
-                        ).map(type => (
+                        {SERVICE_CATEGORIES.map(type => (
                           <div key={type} className="flex items-center space-x-2">
                             <Checkbox 
                               id={`type-${type}`} 

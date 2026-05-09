@@ -155,7 +155,7 @@ function DroppableRoute({
 
             <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Manifest ({routeJobs.length})</p>
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Assignments ({routeJobs.length})</p>
                 </div>
                 <div className="space-y-1 min-h-[80px] max-h-[180px] overflow-y-auto pr-1">
                     {routeJobs.map(job => (

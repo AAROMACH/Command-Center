@@ -160,18 +160,18 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleAddTask = (phaseId: string, name: string) => {
-        const newPhases = editablePhases.map(phase => {
-            if (phase.id === phaseId) {
-                const newTask: Task = {
-                    id: `task-${Date.now()}`,
-                    name,
-                    isCompleted: false,
-                    requiresPhoto: false
-                };
-                return { ...phase, tasks: [...phase.tasks, newTask] };
-            }
-            return phase;
-        });
+        const i = editablePhases.findIndex(p => p.id === phaseId);
+        if (i === -1) return;
+
+        const newTask: Task = {
+            id: `task-${Date.now()}`,
+            name,
+            isCompleted: false,
+            requiresPhoto: false
+        };
+
+        const newPhases = [...editablePhases];
+        newPhases[i] = { ...newPhases[i], tasks: [...newPhases[i].tasks, newTask] };
         setEditablePhases(newPhases);
     };
 

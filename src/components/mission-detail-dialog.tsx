@@ -28,6 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type MissionDetailDialogProps = {
   isOpen: boolean;
@@ -46,7 +47,7 @@ export function MissionDetailDialog({ isOpen, setIsOpen, mission }: MissionDetai
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh]">
+      <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh] shadow-2xl">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">

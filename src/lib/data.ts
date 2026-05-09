@@ -513,7 +513,7 @@ export const weeklyLogs: WeeklyLog[] = [
     id: 'wl-1',
     technicianId: 'tech-001',
     weekOf: 'July 22, 2024',
-    status: 'Draft', // Changed to draft for alert demo
+    status: 'Draft',
     items: [
       { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
       { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },

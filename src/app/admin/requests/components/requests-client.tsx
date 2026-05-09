@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -158,17 +157,17 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Stakeholder / Client</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">STAKEHOLDER / CLIENT</p>
                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Submission Date</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SUBMISSION DATE</p>
                                     <p className="text-sm font-mono text-text-primary">{selectedRequest.submittedDate}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SITE LOCATION</p>
                                 <div className="flex items-center gap-2 text-sm text-text-primary">
                                     <MapPin size={14} className="text-brand-red" />
                                     <span>{selectedRequest.location}</span>
@@ -177,11 +176,11 @@ export function RequestsClient({ requests }: RequestsClientProps) {
 
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SERVICE CATEGORY</p>
                                     <Badge variant="secondary" className="mt-1">{selectedRequest.requestType}</Badge>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">PRIORITY LEVEL</p>
                                     <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="mt-1 uppercase">
                                         {selectedRequest.priority}
                                     </Badge>
@@ -191,7 +190,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             <Separator className="bg-border-sub" />
 
                             <div className="space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Scope & Description</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">JOB SCOPE & DESCRIPTION</p>
                                 <div className="p-4 rounded bg-bg-primary border border-border-sub">
                                     <p className="text-sm text-text-secondary leading-relaxed">
                                         {selectedRequest.description}
@@ -249,11 +248,15 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             <div className="p-3 rounded bg-brand-red-dim/10 border border-brand-red/20 flex items-start gap-3">
                                 <AlertTriangle size={14} className="text-brand-red shrink-0 mt-0.5" />
                                 <p className="text-[10px] text-text-secondary leading-normal font-bold uppercase tracking-tight">
-                                    Audit required: Verify technician availability in {selectedRequest.location.split(',')[0]} before approving conversion to live job.
+                                    Audit required: Verify technician availability before approving conversion to live job.
                                 </p>
                             </div>
                         </div>
                     )}
+
+                    <div className="px-6 py-2 bg-bg-tertiary/20">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Convert to a(n):</p>
+                    </div>
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-3 gap-2 mt-auto">
                         <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 text-[10px] uppercase font-bold tracking-widest">

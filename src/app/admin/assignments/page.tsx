@@ -57,7 +57,8 @@ export default function AssignmentsHubPage() {
 
   const formatDateDisplay = (dateStr: string) => {
     try {
-      return format(parseISO(dateStr), "MM-dd-yyyy");
+      const [year, month, day] = dateStr.split('-');
+      return `${month}-${day}-${year}`;
     } catch (e) {
       return dateStr;
     }

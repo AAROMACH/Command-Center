@@ -47,10 +47,12 @@ import {
   DollarSign,
   User,
   Send,
-  ShieldCheck
+  ShieldCheck,
+  Eye
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { MissionDetailDialog } from "@/components/mission-detail-dialog";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -80,6 +82,9 @@ export function WorkOrdersClient({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailMission, setDetailMission] = useState<WorkOrder | null>(null);
+
   const { toast } = useToast();
 
   const sortedWorkOrders = useMemo(() => {
@@ -97,6 +102,11 @@ export function WorkOrdersClient({
     setSelectedOrder(order);
     setEditedOrder({ ...order });
     setIsEditDialogOpen(true);
+  };
+
+  const handleOpenDetail = (order: WorkOrder) => {
+    setDetailMission(order);
+    setIsDetailOpen(true);
   };
 
   const handleGetRecommendation = async () => {
@@ -169,7 +179,6 @@ export function WorkOrdersClient({
       .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
       .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
       .map(tech => {
-        // Simple distance simulation
         const charSum = (str: string) => str.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
         const seed = Math.abs(charSum(tech.id) - charSum(selectedOrder?.id || ''));
         return { ...tech, distance: (seed % 35) + 1.2 };
@@ -178,7 +187,8 @@ export function WorkOrdersClient({
 
   const formatDateDisplay = (dateStr: string) => {
     try {
-      return format(parseISO(dateStr), "MM-dd-yyyy");
+      const [year, month, day] = dateStr.split('-');
+      return `${month}-${day}-${year}`;
     } catch (e) {
       return dateStr;
     }
@@ -198,7 +208,7 @@ export function WorkOrdersClient({
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6 border-none shadow-none text-white">
+                <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6 border-none shadow-none text-white font-bold uppercase text-[10px] tracking-widest">
                     <Send className="mr-2 h-3.5 w-3.5" />
                     Send Out Assignments
                 </Button>
@@ -301,6 +311,9 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                      <div className="cell-actions">
+                       <button className="btn-edit" onClick={() => handleOpenDetail(order)}>
+                         <Eye size={16} />
+                       </button>
                        {order.status === 'unassigned' && (
                          <Button 
                             size="sm" 
@@ -325,6 +338,12 @@ export function WorkOrdersClient({
           </tbody>
         </table>
       </div>
+
+      <MissionDetailDialog 
+        isOpen={isDetailOpen} 
+        setIsOpen={setIsDetailOpen} 
+        mission={detailMission} 
+      />
 
       {/* DISPATCH TERMINAL (Searchable Techs + AI) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -377,7 +396,7 @@ export function WorkOrdersClient({
                                     <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
-                                            <MapPin size={10}/> {tech.distance.toFixed(1) } MI FROM SITE
+                                            <MapPin size={10}/> {tech.distance.toFixed(1)} MI FROM SITE
                                         </p>
                                         <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                         <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>

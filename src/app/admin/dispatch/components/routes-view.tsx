@@ -355,7 +355,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     </h3>
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <ClipboardList size={12} className="text-accent-gold" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Jobs Pool Remaining:</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Jobs Remaining:</span>
                         <span className="text-xs font-mono font-bold text-text-primary">{unassignedJobs.length}</span>
                     </div>
                 </div>

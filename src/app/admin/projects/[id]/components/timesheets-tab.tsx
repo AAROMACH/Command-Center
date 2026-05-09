@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Circle, Calendar as CalendarIcon, ChevronsUpDown } from 'lucide-react';
+import { Search, Plus, Check, Circle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,38 +18,40 @@ import { LogAssignmentDialog } from './log-assignment-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
-    <div className="ts-log-section">
-      <div className="ts-log-label">Daily Work Log</div>
-      <p className="ts-log-summary">{log.logSummary}</p>
-      <div className="ts-log-tasks">
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Field Activity Report</div>
+        <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.logSummary}&quot;</p>
+      </div>
+      
+      <div className="flex flex-wrap gap-1">
         {log.completedTasks.map((task) => (
-          <div key={task} className="ts-task-pill done">
-            <Check size={11} /> {task}
+          <div key={task} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[9px] font-bold text-text-green uppercase tracking-tighter">
+            <Check size={10} /> {task}
           </div>
         ))}
         {log.inProgressTasks.map((task) => (
-          <div key={task} className="ts-task-pill progress">
-            <Circle size={11} fill="currentColor" /> {task}
+          <div key={task} className="inline-flex items-center gap-1 rounded-full bg-accent-gold-dim border border-border-gold px-2 py-0.5 text-[9px] font-bold text-accent-gold uppercase tracking-tighter">
+            <Circle size={8} fill="currentColor" /> {task}
           </div>
         ))}
       </div>
 
-      <div className="mt-4">
-        <div className="ts-log-label">Site Photos</div>
-        <div className="ts-photos">
+      <div className="space-y-2">
+        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Site Evidence</div>
+        <div className="flex flex-wrap gap-2">
           {log.photos.map((photoUrl, index) => (
-            <div key={index} className="ts-photo">
+            <div key={index} className="relative h-14 w-20 rounded border border-border-sub bg-bg-tertiary overflow-hidden group cursor-pointer hover:border-brand-red transition-colors">
               <Image
                 src={photoUrl}
                 alt={`Site photo ${index + 1}`}
-                width={60}
-                height={60}
-                className="h-full w-full rounded-[inherit] object-cover"
+                fill
+                className="object-cover"
               />
             </div>
           ))}
-          <button className="ts-photo !border-dashed">
-            <Plus size={24} />
+          <button className="h-14 w-14 rounded border-2 border-dashed border-border-sub flex items-center justify-center text-text-muted hover:border-brand-red hover:text-brand-red transition-all">
+            <Plus size={16} />
           </button>
         </div>
       </div>
@@ -61,56 +63,54 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className="ts-card">
-            <header className="ts-card-header">
+        <div className="ts-card hover:border-border-default transition-colors">
+            <div className="flex items-center gap-4 p-2">
                 {tech && (
-                    <>
-                        <Avatar className="ts-tech-avatar">
+                    <div className="flex items-center gap-2 min-w-[150px]">
+                        <Avatar className="h-6 w-6 border border-border-sub">
                             <AvatarImage src={tech.avatarUrl} alt={tech.name}/>
-                            <AvatarFallback>{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <div>
-                            <div className="ts-tech-name">{tech.name}</div>
-                            {viewBy === 'tech' && <div className="ts-tech-date">{log.date}</div>}
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight truncate">{tech.name}</span>
+                            {viewBy === 'tech' && <span className="text-[8px] text-text-muted font-bold uppercase">{log.date}</span>}
                         </div>
-                    </>
+                    </div>
                 )}
-                <div className="ts-badge-wrap">
-                    <Badge variant="active">Checked Out</Badge>
-                    <div className="font-semibold text-sm text-text-primary">{log.totalHours}</div>
-                </div>
-            </header>
-            <div className="ts-body">
-                <div className="ts-checkin-row">
-                    <div className="ts-field">
-                        <div className="ts-field-label">Check-In</div>
-                        <div className="ts-field-val text-text-green">{log.checkInTime}</div>
-                        <div className="text-xs text-text-muted mt-0.5">On-site · GPS verified</div>
-                    </div>
-                    <div className="ts-field">
-                        <div className="ts-field-label">Check-Out</div>
-                        <div className="ts-field-val text-accent-gold">{log.checkOutTime}</div>
-                         <div className="text-xs text-text-muted mt-0.5">On-site · GPS verified</div>
-                    </div>
-                    <div className="ts-field">
-                        <div className="ts-field-label">Total Hours</div>
-                        <div className="ts-field-val">{log.totalHours}</div>
-                        <div className="text-xs text-text-muted mt-0.5">{log.totalMinutes} minutes</div>
-                    </div>
-                </div>
                 
-                <div className="border-t border-border-subtle pt-2 mt-2">
-                    <button className="flex w-full items-center justify-between rounded-md p-2 text-xs font-bold uppercase tracking-wider text-text-muted transition-colors hover:bg-bg-tertiary hover:text-text-primary" onClick={() => setIsExpanded(!isExpanded)}>
-                        <span>{isExpanded ? 'Hide' : 'Show'} Daily Work Log</span>
-                        <ChevronsUpDown className={`h-4 w-4 text-text-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                <div className="flex-1 grid grid-cols-3 gap-6">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Check-In</span>
+                        <span className="text-[11px] font-mono font-bold text-text-green">{log.checkInTime}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Check-Out</span>
+                        <span className="text-[11px] font-mono font-bold text-accent-gold">{log.checkOutTime}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Badge variant="active" className="h-5 text-[8px] uppercase tracking-widest px-2">Verified</Badge>
+                    <button 
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="p-1 hover:bg-bg-tertiary rounded transition-colors text-text-muted hover:text-text-primary"
+                    >
+                        {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                     </button>
-                    {isExpanded && (
-                        <div className="pt-2">
-                             <TimesheetLogDetails log={log} />
-                        </div>
-                    )}
                 </div>
             </div>
+            
+            {isExpanded && (
+                <div className="px-4 pb-4 border-t border-border-sub bg-bg-primary/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="pt-4">
+                        <TimesheetLogDetails log={log} />
+                    </div>
+                </div>
+            )}
         </div>
     )
 };
@@ -202,16 +202,17 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
     }, [filteredTimesheets, viewBy, getTechnician]);
 
     return (
-        <div>
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                    <Button onClick={() => setViewBy('date')} variant={viewBy === 'date' ? 'default' : 'outline'} size="sm">Group by Date</Button>
-                    <Button onClick={() => setViewBy('tech')} variant={viewBy === 'tech' ? 'default' : 'outline'} size="sm">Group by Tech</Button>
+        <div className="space-y-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 p-2 bg-bg-secondary/30 rounded-lg border border-border-sub">
+                <div className="flex items-center gap-1.5 bg-bg-tertiary p-0.5 rounded border border-border-sub">
+                    <Button onClick={() => setViewBy('date')} variant="ghost" className={cn("h-7 px-3 text-[10px] uppercase font-bold", viewBy === 'date' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Date</Button>
+                    <Button onClick={() => setViewBy('tech')} variant="ghost" className={cn("h-7 px-3 text-[10px] uppercase font-bold", viewBy === 'tech' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Tech</Button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="search-wrap">
+                
+                <div className="flex items-center gap-3 flex-1 md:flex-none">
+                    <div className="search-wrap !mb-0 flex-1 md:w-[180px]">
                         <Search />
-                        <Input className="search-input !w-[200px]" placeholder="Filter..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <Input className="search-input !w-full !h-8" placeholder="Filter logs..." value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
                      <Popover>
                         <PopoverTrigger asChild>
@@ -220,26 +221,25 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                             variant={"outline"}
                             size="sm"
                             className={cn(
-                              "w-[240px] justify-start text-left font-normal",
+                              "h-8 w-[200px] justify-start text-left font-normal text-[10px] uppercase tracking-widest",
                               !date && "text-text-muted"
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                             {date?.from ? (
                               date.to ? (
                                 <>
-                                  {format(date.from, "LLL dd, y")} -{" "}
-                                  {format(date.to, "LLL dd, y")}
+                                  {format(date.from, "MMM dd")} - {format(date.to, "MMM dd")}
                                 </>
                               ) : (
-                                format(date.from, "LLL dd, y")
+                                format(date.from, "MMM dd")
                               )
                             ) : (
-                              <span>Pick a date range</span>
+                              <span>Pick range</span>
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-bg-elevated" align="end">
+                        <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                           <Calendar
                             initialFocus
                             mode="range"
@@ -250,37 +250,47 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                           />
                         </PopoverContent>
                       </Popover>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>Export CSV</Button>
-                    <Button variant="default" size="sm" onClick={() => setIsLogDialogOpen(true)}>
-                        <Plus size={14} className="mr-2"/> New Log
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>
+                            <Download size={14} className="mr-1.5"/> CSV
+                        </Button>
+                        <Button variant="default" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => setIsLogDialogOpen(true)}>
+                            <Plus size={14} className="mr-1.5"/> Log Session
+                        </Button>
+                    </div>
                 </div>
             </div>
             
             {groupedData.length > 0 ? (
-                 <Accordion type="multiple" defaultValue={groupedData.map(g => g.id)} className="w-full space-y-2">
+                 <Accordion type="multiple" defaultValue={groupedData.map(g => g.id)} className="w-full space-y-3">
                     {groupedData.map((group : any) => (
-                        <AccordionItem key={group.id} value={group.id} className="accordion-item">
-                            <AccordionTrigger className="accordion-trigger">
+                        <AccordionItem key={group.id} value={group.id} className="accordion-item border border-border-sub bg-bg-secondary/40">
+                            <AccordionTrigger className="accordion-trigger px-4 py-3 hover:bg-bg-tertiary/50 hover:no-underline border-none">
                                 <div className="flex items-center gap-3">
-                                    {viewBy === 'tech' && group.avatarUrl && <Avatar className="h-6 w-6"><AvatarImage src={group.avatarUrl}/></Avatar>}
-                                    {group.title}
+                                    <div className="flex items-center gap-2">
+                                        {viewBy === 'tech' && group.avatarUrl && (
+                                            <Avatar className="h-5 w-5 border border-border-sub">
+                                                <AvatarImage src={group.avatarUrl}/>
+                                            </Avatar>
+                                        )}
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.title}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
-                                <span className="text-xs text-text-muted">{group.logs.length} log(s) · <span className="font-bold text-text-primary">{group.totalTime}</span></span>
+                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Total Time: <span className="text-text-primary font-mono text-xs">{group.totalTime}</span></span>
                             </AccordionTrigger>
-                            <AccordionContent className="accordion-content">
-                                <div className="space-y-2">
+                            <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: TimesheetLog) => (
                                     <TimesheetCard key={log.assignmentId} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
                                 ))}
-                                </div>
                             </AccordionContent>
                         </AccordionItem>
                     ))}
                  </Accordion>
             ) : (
-                 <div className="empty-state">
-                    No timesheets match your filters.
+                 <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                    <CalendarIcon size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No temporal records match the current filter parameters.</p>
                 </div>
             )}
 

@@ -332,31 +332,31 @@
   .doc-btn { @apply inline-flex h-6 items-center gap-1 rounded-md border border-border-main bg-bg-tertiary px-1.5 text-[9px] font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
   .doc-btn svg { @apply h-3 w-3; }
 
-  .ts-card { @apply mb-1.5 overflow-hidden rounded-md border border-border-main bg-bg-secondary; }
-  .ts-card-header { @apply flex items-center gap-2 border-b border-border-main p-1.5; }
-  .ts-tech-avatar { @apply flex h-7 w-7 items-center justify-center rounded-full border border-border-main bg-bg-tertiary text-[10px] font-bold; }
-  .ts-tech-name { @apply text-[13px] font-bold text-text-primary; }
-  .ts-tech-date { @apply text-[10px] text-text-muted; }
-  .ts-badge-wrap { @apply ml-auto flex items-center gap-1.5; }
-  .ts-body { @apply p-1.5; }
-  .ts-checkin-row { @apply grid grid-cols-3 gap-2; }
-  .ts-field-label { @apply mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-text-muted; }
-  .ts-field-val { @apply text-xs font-semibold text-text-primary; }
-  .ts-log-label { @apply mb-1.5 block text-[9px] font-bold uppercase tracking-wider text-text-muted; }
-  .ts-log-summary { @apply text-xs leading-normal text-text-secondary; }
-  .ts-log-tasks { @apply mt-2 flex flex-wrap gap-1; }
-  .ts-task-pill { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold; }
+  .ts-card { @apply mb-1 overflow-hidden rounded-md border border-border-main bg-bg-secondary; }
+  .ts-card-header { @apply flex items-center gap-2 border-b border-border-main p-1; }
+  .ts-tech-avatar { @apply flex h-6 w-6 items-center justify-center rounded-full border border-border-main bg-bg-tertiary text-[9px] font-bold; }
+  .ts-tech-name { @apply text-[12px] font-bold text-text-primary; }
+  .ts-tech-date { @apply text-[9px] text-text-muted; }
+  .ts-badge-wrap { @apply ml-auto flex items-center gap-1; }
+  .ts-body { @apply p-1; }
+  .ts-checkin-row { @apply grid grid-cols-3 gap-1.5; }
+  .ts-field-label { @apply mb-0.5 block text-[8px] font-bold uppercase tracking-wider text-text-muted; }
+  .ts-field-val { @apply text-[11px] font-semibold text-text-primary; }
+  .ts-log-label { @apply mb-1 block text-[8px] font-bold uppercase tracking-wider text-text-muted; }
+  .ts-log-summary { @apply text-[11px] leading-snug text-text-secondary; }
+  .ts-log-tasks { @apply mt-1.5 flex flex-wrap gap-1; }
+  .ts-task-pill { @apply inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[8px] font-semibold; }
   .ts-task-pill.done { @apply border-green-border bg-green-dim text-text-green; }
   .ts-task-pill.progress { @apply border-border-gold bg-accent-gold-dim text-accent-gold; }
-  .ts-task-pill svg { @apply h-2.5 w-2.5; }
-  .ts-photos { @apply mt-2.5 flex flex-wrap gap-1.5; }
-  .ts-photo { @apply h-12 w-12 cursor-pointer rounded-md border border-border-main bg-bg-tertiary p-0.5; }
+  .ts-task-pill svg { @apply h-2 w-2; }
+  .ts-photos { @apply mt-1.5 flex flex-wrap gap-1; }
+  .ts-photo { @apply h-10 w-10 cursor-pointer rounded-md border border-border-main bg-bg-tertiary p-0.5; }
   .ts-photo:hover { @apply border-brand-red; }
 
   /* Accordion styles for timesheets */
   .accordion-item { @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
-  .accordion-trigger { @apply flex w-full items-center justify-between p-2.5 text-xs font-bold text-text-primary transition-colors hover:bg-bg-tertiary; }
-  .accordion-content { @apply p-2.5 pt-0; }
+  .accordion-trigger { @apply flex w-full items-center justify-between p-2 text-xs font-bold text-text-primary transition-colors hover:bg-bg-tertiary; }
+  .accordion-content { @apply p-2 pt-0; }
 
   /* New Document Tab Styles */
   .doc-list.small {

@@ -368,7 +368,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         disabled={jobsInRoutesCount === 0}
                         className="h-9 px-6 text-[10px] bg-accent-gold hover:bg-accent-gold/90"
                     >
-                        <Send size={14} className="mr-2"/> Batch Assign and send to Assigned
+                        <Send size={14} className="mr-2"/> Send to Assigned
                     </Button>
                 </div>
             </div>

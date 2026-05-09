@@ -14,6 +14,11 @@ import {
   Plus,
   Paperclip,
   Send,
+  FileText,
+  Hash,
+  ListTodo,
+  Signature,
+  Upload,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,18 +85,30 @@ const PhaseBlock = ({
                   onCheckedChange={() => onTaskToggle(phase.id, task.id)}
                   className="task-check"
                 />
-                <label
-                  htmlFor={`task-${task.id}`}
-                  className={`task-name ${task.isCompleted ? 'done' : ''}`}
-                >
-                  {task.name}
-                </label>
+                <div className="flex-1 min-w-0">
+                    <label
+                      htmlFor={`task-${task.id}`}
+                      className={`task-name ${task.isCompleted ? 'done' : ''}`}
+                    >
+                      {task.name}
+                    </label>
+                    
+                    {/* Requirement Visibility for Techs */}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
+                        {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
+                        {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
+                        {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
+                        {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
+                        {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
+                        {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
+                    </div>
+                </div>
+                
                 {task.requiresPhoto && (
-                  <>
-                    <Button variant="outline" size="sm" className="ml-auto h-7 text-xs">
-                        <Camera size={13} className="mr-1.5"/> Upload Photo
-                    </Button>
-                  </>
+                  <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-widest px-2">
+                    <Camera size={13} className="mr-1.5"/> Upload Photo
+                  </Button>
                 )}
               </div>
             ))}
@@ -186,7 +203,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                 )}
                 {activeTab === 'logging' && (
                     <div className="field-group">
-                        <h3 className="field-group-title">Submit Daily Log for {format(new Date(), 'EEEE, MMMM d')}</h3>
+                        <h3 className="field-group-title">Submit Daily Log for {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="field-label">Hours Worked Today</label>
@@ -226,7 +243,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                                             <div className="ts-tech-avatar !h-8 !w-8"><Image src={tech.avatarUrl} alt={tech.name} width={32} height={32}/></div>
                                             <div>
                                                 <div className="ts-tech-name">{tech.name}</div>
-                                                <div className="ts-tech-date">{format(new Date(log.date), 'EEEE, MMMM d')}</div>
+                                                <div className="ts-tech-date">{log.date}</div>
                                             </div>
                                         </>
                                     )}

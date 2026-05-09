@@ -102,10 +102,20 @@ const PhaseBlock = ({
                     {phase.tasks.map(task => (
                         <div key={task.id} className="task-row group/task">
                             <Checkbox id={`task-${task.id}`} checked={task.isCompleted} onCheckedChange={() => onTaskToggle(phase.id, task.id)} className="task-check" disabled={!isEditing} />
-                            <label htmlFor={`task-${task.id}`} className={`task-name ${task.isCompleted ? 'done' : ''}`}>{task.name}</label>
-                            {task.requiresPhoto && (
-                                <div className="task-photo-req"><Camera size={13}/> Photo Req.</div>
-                            )}
+                            <div className="flex-1 min-w-0">
+                                <label htmlFor={`task-${task.id}`} className={`task-name ${task.isCompleted ? 'done' : ''}`}>{task.name}</label>
+                                
+                                {/* Requirements Badges */}
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
+                                    {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
+                                    {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
+                                    {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
+                                    {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
+                                    {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
+                                    {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
+                                </div>
+                            </div>
                             {isEditing && (
                                 <div className="task-actions opacity-0 group-hover/task:opacity-100 transition-opacity">
                                     <button className="task-action-btn" onClick={() => onEditTask(phase.id, task)}><Pencil size={14}/></button>
@@ -298,7 +308,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                     
                                     <div className="grid grid-cols-1 gap-2">
                                         {/* Photo Toggle */}
-                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Camera size={14}/></div>
                                                 <div className="space-y-0">
@@ -314,7 +324,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* Text Field Toggle */}
-                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><FileText size={14}/></div>
                                                 <div className="space-y-0">
@@ -330,7 +340,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* Numeric Toggle */}
-                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Hash size={14}/></div>
                                                 <div className="space-y-0">
@@ -346,7 +356,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* Dropdown Toggle */}
-                                        <div className="space-y-2 p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <div className="space-y-2 p-2 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><ListTodo size={14}/></div>
@@ -373,7 +383,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* Signature Toggle */}
-                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Signature size={14}/></div>
                                                 <div className="space-y-0">
@@ -389,7 +399,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* File Upload Toggle */}
-                                        <div className="p-2.5 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Upload size={14}/></div>
                                                 <div className="space-y-0">
@@ -405,7 +415,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                         </div>
 
                                         {/* Other Requirement Toggle */}
-                                        <div className="space-y-2 p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <div className="space-y-2 p-2 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Plus size={14}/></div>

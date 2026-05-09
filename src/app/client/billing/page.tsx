@@ -159,7 +159,7 @@ export default function ClientBillingPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-green">
-                                            <Landau size={18} />
+                                            <Landmark size={18} />
                                         </div>
                                         <div>
                                             <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">ACH Transfer</p>
@@ -196,7 +196,6 @@ export default function ClientBillingPage() {
                 </div>
             </div>
 
-            {/* MODIFY SUBSCRIPTION TERMINAL */}
             <Dialog open={isModifyOpen} onOpenChange={setIsModifyOpen}>
                 <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30">
@@ -264,24 +263,4 @@ export default function ClientBillingPage() {
             </Dialog>
         </div>
     );
-}
-
-function Landau(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m3 11 18-5v12L3 14v-3z" />
-            <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-        </svg>
-    )
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { 
   addMonths, 
@@ -49,10 +49,15 @@ export function GlobalScheduleCalendar({
   hideManifest = false
 }: GlobalScheduleCalendarProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [internalSelectedDate, setInternalSelectedDate] = useState(new Date());
+    const [currentDate, setCurrentDate] = useState<Date | null>(null);
+    const [internalSelectedDate, setInternalSelectedDate] = useState<Date | null>(null);
 
-    const effectiveSelectedDate = selectedDate || internalSelectedDate;
+    useEffect(() => {
+        setCurrentDate(new Date());
+        setInternalSelectedDate(new Date());
+    }, []);
+
+    const effectiveSelectedDate = selectedDate || internalSelectedDate || new Date();
 
     const handleDayClick = (day: Date) => {
         if (onDateSelect) {
@@ -87,6 +92,7 @@ export function GlobalScheduleCalendar({
     }, [workOrders]);
 
     const handlePrev = () => {
+        if (!currentDate) return;
         if (viewMode === 'week') {
             setCurrentDate(subDays(currentDate, 7));
         } else {
@@ -95,12 +101,15 @@ export function GlobalScheduleCalendar({
     };
 
     const handleNext = () => {
+        if (!currentDate) return;
         if (viewMode === 'week') {
             setCurrentDate(addDays(currentDate, 7));
         } else {
             setCurrentDate(addMonths(currentDate, 1));
         }
     };
+
+    if (!currentDate) return null;
 
     const weekDays = eachDayOfInterval({
         start: startOfWeek(currentDate, { weekStartsOn: 0 }),
@@ -114,7 +123,6 @@ export function GlobalScheduleCalendar({
 
     return (
         <div className={cn("flex flex-col gap-6", !hideManifest && "xl:flex-row")}>
-            {/* THIN CALENDAR NAVIGATION & GRID */}
             <div className={cn("w-full flex-shrink-0 rounded-lg border border-border-main bg-bg-secondary p-2 shadow-sm h-fit", !hideManifest && "xl:w-[400px]")}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="cal-nav !gap-1">
@@ -189,7 +197,6 @@ export function GlobalScheduleCalendar({
                 )}
             </div>
 
-            {/* DAILY MANIFEST */}
             {!hideManifest && (
               <div className="flex-1 flex flex-col gap-4">
                   <div className="p-4 rounded-lg bg-bg-secondary border border-border-main flex items-center justify-between shadow-sm">

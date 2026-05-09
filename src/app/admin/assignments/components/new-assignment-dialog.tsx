@@ -42,11 +42,20 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     requiredSkills: [],
     pay: 0,
     payType: 'fixed',
-    scheduleDate: new Date().toISOString().split('T')[0],
+    scheduleDate: '',
     scheduleTime: '09:00 AM EST',
     clientName: '',
     location: ''
   });
+
+  useEffect(() => {
+      if (isOpen && !formData.scheduleDate) {
+          setFormData(prev => ({
+              ...prev,
+              scheduleDate: new Date().toISOString().split('T')[0]
+          }));
+      }
+  }, [isOpen, formData.scheduleDate]);
   
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   const [isSitePopoverOpen, setIsSitePopoverOpen] = useState(false);

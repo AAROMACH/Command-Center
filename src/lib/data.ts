@@ -236,7 +236,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Commercial Property',
     projectType: 'Repair',
-    scheduleDate: new Date().toISOString().split('T')[0], // Today
+    scheduleDate: '2024-07-28',
     scheduleTime: '02:00 PM EST',
     pay: 350.00,
     payType: 'fixed',
@@ -296,7 +296,7 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Apartment Complex',
     projectType: 'Replacement',
-    scheduleDate: new Date().toISOString().split('T')[0], // Today
+    scheduleDate: '2024-07-28',
     scheduleTime: '01:00 PM EST',
     pay: 750.00,
     payType: 'fixed',

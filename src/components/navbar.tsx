@@ -34,7 +34,6 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assignments' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-  { href: '/admin/requests', label: 'Requests', icon: ClipboardList, permission: 'view_requests' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
 ];

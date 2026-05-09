@@ -59,6 +59,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
 
 type ProjectDetailClientProps = {
     project: Project;

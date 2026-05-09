@@ -38,9 +38,13 @@ import {
     technicians, 
     workOrders, 
     projects, 
-    penaltyEvents 
+    penaltyEvents,
+    timeOffRequests
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { PersonnelDetailDialog } from '../directory/components/personnel-detail-dialog';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
+import type { Technician, WorkOrder } from '@/lib/types';
 
 // ── Mock Audit Data ───────────────────────────────────────────────────────────
 const AUDIT_ACTIONS = [
@@ -59,6 +63,12 @@ export default function ReportsPage() {
     const [selectedTechId, setSelectedTechId] = useState("tech-001");
     const [clDays, setClDays] = useState("30");
     const [isClLoaded, setIsClLoaded] = useState(false);
+
+    // Detail States
+    const [isPersonnelOpen, setIsPersonnelOpen] = useState(false);
+    const [selectedPersonnel, setSelectedPersonnel] = useState<Technician | null>(null);
+    const [isJobOpen, setIsJobOpen] = useState(false);
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId]);
 
@@ -80,28 +90,59 @@ export default function ReportsPage() {
         
         technicians.forEach(t => {
             if (t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)) {
-                results.push({ type: 'Technician', label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'active' });
+                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'active' });
             }
         });
 
         workOrders.forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || wo.description.toLowerCase().includes(q)) {
-                results.push({ type: 'Work order', label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: wo.status });
+                results.push({ type: 'Work order', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: wo.status });
             }
         });
 
         projects.forEach(p => {
             if (p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) {
-                results.push({ type: 'Project', label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.startDate} · ${p.status}`, cls: p.status });
+                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.startDate} · ${p.status}`, cls: p.status });
             }
         });
 
         return results;
     }, [searchQuery]);
 
+    const handleResultClick = (result: any) => {
+        if (result.type === 'Technician') {
+            const tech = technicians.find(t => t.id === result.id);
+            if (tech) {
+                setSelectedPersonnel(tech);
+                setIsPersonnelOpen(true);
+            }
+        } else if (result.type === 'Work order') {
+            const wo = workOrders.find(w => w.id === result.id);
+            if (wo) {
+                setSelectedJob(wo);
+                setIsJobOpen(true);
+            }
+        }
+    };
+
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+          const parts = dateStr.split(/[-/]/);
+          if (parts.length === 3) {
+              let m, d, y;
+              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
+              return `${m}-${d}-${y}`;
+          }
+          return dateStr;
+        } catch (e) {
+          return dateStr;
+        }
+    };
+
     return (
         <div className="max-w-[900px] mx-auto space-y-6">
-            <header className="space-y-1">
+            <header className="space-y-1 text-center">
                 <h1 className="text-xl font-bold uppercase tracking-widest text-text-primary">Operational Intelligence</h1>
                 <p className="text-xs text-text-muted uppercase font-bold tracking-widest">Historical oversight & cross-system lookup terminal</p>
             </header>
@@ -127,7 +168,7 @@ export default function ReportsPage() {
 
                 {!searchQuery ? (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8">
+                        <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center">
                             <TabsTrigger value="tech" className="tab-trigger-report">Technician profile</TabsTrigger>
                             <TabsTrigger value="sites" className="tab-trigger-report">Site history</TabsTrigger>
                             <TabsTrigger value="flags" className="tab-trigger-report flex items-center gap-2">
@@ -137,7 +178,6 @@ export default function ReportsPage() {
                         </TabsList>
 
                         <div className="mt-6">
-                            {/* TECHNICIAN PROFILE VIEW */}
                             <TabsContent value="tech" className="m-0 space-y-8">
                                 {activeTech && techStats && (
                                     <>
@@ -164,17 +204,17 @@ export default function ReportsPage() {
                                                     <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
                                                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Assignments</p>
                                                         <p className="text-xl font-bold text-text-primary">{techStats.total}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">Lifetime</p>
+                                                        <p className="text-[8px] text-text-muted uppercase">lifetime</p>
                                                     </div>
                                                     <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
                                                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Completed</p>
                                                         <p className="text-xl font-bold text-text-primary">{techStats.completed}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">Verified</p>
+                                                        <p className="text-[8px] text-text-muted uppercase">confirmed</p>
                                                     </div>
                                                     <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
                                                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Reliability</p>
                                                         <p className={cn("text-xl font-bold", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">Job Integrity</p>
+                                                        <p className="text-[8px] text-text-muted uppercase">at risk</p>
                                                     </div>
                                                 </div>
                                                 
@@ -192,8 +232,8 @@ export default function ReportsPage() {
                                                     <div className="flex justify-between items-center text-[8px] font-bold text-text-muted uppercase tracking-tighter">
                                                         <span>0 — Reliable</span>
                                                         <span>2.5</span>
-                                                        <span>7.5 — At Risk</span>
-                                                        <span>10+ Restricted</span>
+                                                        <span>7.5 — At risk</span>
+                                                        <span>8+ Restricted</span>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -236,19 +276,19 @@ export default function ReportsPage() {
                                         <div className="space-y-3">
                                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Linked records</h3>
                                             <div className="space-y-1.5">
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
-                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Weekly log — week of 03-30-2026</span>
+                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
+                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Weekly log — week of Mar 30, 2026</span>
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">draft · due 04-06</span>
                                                 </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                     <span className="text-[11px] font-bold text-text-primary uppercase">Reimbursement — materials</span>
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">$45 · pending</span>
                                                 </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                     <span className="text-[11px] font-bold text-text-primary uppercase">Time-off · 04-23-2026</span>
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">pending</span>
                                                 </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                     <span className="text-[11px] font-bold text-text-primary uppercase">Project: Refresh</span>
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">project lead · ACTIVE</span>
                                                 </div>
@@ -258,7 +298,6 @@ export default function ReportsPage() {
                                 )}
                             </TabsContent>
 
-                            {/* SITE HISTORY VIEW */}
                             <TabsContent value="sites" className="m-0">
                                 <div className="py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                                     <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-10" />
@@ -269,7 +308,6 @@ export default function ReportsPage() {
                                 </div>
                             </TabsContent>
 
-                            {/* ANOMALY FLAGS VIEW */}
                             <TabsContent value="flags" className="m-0 space-y-8">
                                 <div className="space-y-4">
                                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
@@ -335,7 +373,6 @@ export default function ReportsPage() {
                                 </div>
                             </TabsContent>
 
-                            {/* CHANGE LOG VIEW */}
                             <TabsContent value="changelog" className="m-0">
                                 {!isClLoaded ? (
                                     <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-xl space-y-6">
@@ -402,7 +439,7 @@ export default function ReportsPage() {
                         </div>
                         <div className="space-y-2">
                             {searchResults.length > 0 ? searchResults.map((r, i) => (
-                                <div key={i} className="p-4 rounded-xl border border-border-main bg-bg-secondary hover:border-text-muted transition-all flex gap-4 group cursor-pointer">
+                                <div key={i} onClick={() => handleResultClick(r)} className="p-4 rounded-xl border border-border-main bg-bg-secondary hover:border-text-muted transition-all flex gap-4 group cursor-pointer">
                                     <Badge variant="outline" className={cn(
                                         "h-5 text-[8px] uppercase tracking-widest shrink-0 mt-0.5",
                                         r.type === 'Technician' ? 'bg-green-dim text-text-green border-green-border' :
@@ -427,6 +464,20 @@ export default function ReportsPage() {
                     </div>
                 )}
             </div>
+
+            <PersonnelDetailDialog 
+                isOpen={isPersonnelOpen} 
+                setIsOpen={setIsPersonnelOpen} 
+                person={selectedPersonnel} 
+                workOrders={workOrders.filter(wo => wo.assignedTechnicianId === selectedPersonnel?.id)} 
+                timeOffRequests={timeOffRequests.filter(tor => tor.technicianId === selectedPersonnel?.id)}
+            />
+
+            <JobDetailDialog 
+                isOpen={isJobOpen} 
+                setIsOpen={setIsJobOpen} 
+                mission={selectedJob} 
+            />
             
             <style jsx global>{`
                 .tab-trigger-report {

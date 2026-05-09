@@ -286,8 +286,7 @@ export function WorkOrdersClient({
     return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
-  // Registry Selection Logic
-  const clients = useMemo(() => {
+  const clientsList = useMemo(() => {
     return technicians.filter(t => 
         t.roles?.includes('client') || 
         t.role.toLowerCase().includes('client') || 
@@ -296,16 +295,16 @@ export function WorkOrdersClient({
   }, []);
 
   const selectedClient = useMemo(() => {
-    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clients]);
+    return clientsList.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
+  }, [editedOrder?.clientName, clientsList]);
 
   const filteredRegistry = useMemo(() => {
-    return clients.filter(c => 
+    return clientsList.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.id.toLowerCase().includes(registrySearch.toLowerCase())
     );
-  }, [registrySearch, clients]);
+  }, [registrySearch, clientsList]);
 
   const selectClientFromRegistry = (client: Technician) => {
     const name = client.clientCompany || client.name;
@@ -384,7 +383,7 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td className="!py-3">
                     <div className="flex items-center gap-4 px-4 justify-center">
-                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
                             {order.source === 'Imported' && (
@@ -394,15 +393,7 @@ export function WorkOrdersClient({
                             )}
                         </div>
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
-                      </div>
-                      <div className="flex flex-col items-center text-center min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="flex items-center gap-1.5 mt-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                          <Briefcase className="h-2.5 w-2.5" />
-                          <span>{order.clientName}</span>
-                          <span className="text-brand-red opacity-30">•</span>
-                          <span>{order.projectType}</span>
-                        </div>
                       </div>
                     </div>
                   </td>
@@ -426,7 +417,7 @@ export function WorkOrdersClient({
                   <td>
                     <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                       <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span className="max-w-[150px] text-center">{order.location}</span>
+                      <span className="text-center">{order.location}</span>
                     </div>
                   </td>
                   <td>

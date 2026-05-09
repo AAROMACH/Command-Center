@@ -53,14 +53,17 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         const location = lines[3];
         const company = lines[4];
         
+        let payStr = "0.00";
         let pay = 0;
         let payType: 'fixed' | 'hourly' | 'blended' = 'fixed';
 
         const payLine = lines.find(l => l.includes('$') && /\d/.test(l));
         if (payLine) {
           const match = payLine.match(/\$\s*(\d+(?:\.\d+)?)/);
-          // Preserve exact pay as literal, do not perform calculation logic
-          if (match) pay = parseFloat(match[1]);
+          if (match) {
+              pay = parseFloat(match[1]);
+              payStr = match[1];
+          }
           if (payLine.toLowerCase().includes('hr')) payType = 'hourly';
         }
 
@@ -82,7 +85,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           description: title,
           location,
           clientName: company,
-          pay: pay || 0,
+          pay: pay,
           payType,
           scheduleDate,
           scheduleTime,

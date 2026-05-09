@@ -97,8 +97,13 @@ export default function AssignmentsHubPage() {
 
   const formatDateDisplay = (dateStr: string) => {
     try {
-      const [year, month, day] = dateStr.split('-');
-      return `${month}-${day}-${year}`;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+          const [m, d, y] = parts;
+          if (m.length === 4) return `${d}-${y}-${m}`;
+          return `${m}-${d}-${y}`;
+      }
+      return dateStr;
     } catch (e) {
       return dateStr;
     }
@@ -259,30 +264,20 @@ export default function AssignmentsHubPage() {
                                             className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
                                             onClick={() => handleCardClick(job)}
                                         >
-                                            <CardContent className="p-4 space-y-3 text-center">
+                                            <CardContent className="p-4 space-y-3">
                                                 <div className="flex justify-between items-start">
-                                                    <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
-                                                        {job.status === 'in-progress' && <div className="h-1.5 w-1.5 rounded-full bg-text-green mr-1.5 animate-pulse" />}
-                                                        {job.status}
-                                                    </Badge>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-mono text-[10px] text-text-muted">ID: {job.id.toUpperCase()}</span>
-                                                        {job.source === 'Imported' && (
-                                                            <a 
-                                                                href={`https://app.fieldnation.com/workorders/${job.id.replace('wo-', '')}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="text-text-muted hover:text-brand-red transition-colors"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <ExternalLink size={10} />
-                                                            </a>
-                                                        )}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
+                                                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">
+                                                                {job.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex flex-col items-center">
-                                                    <p className="text-xs font-bold text-text-primary uppercase leading-tight line-clamp-1">{job.description}</p>
-                                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-1">{job.clientName}</p>
                                                 </div>
                                                 <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-center">
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
@@ -339,22 +334,12 @@ export default function AssignmentsHubPage() {
                             return (
                                 <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
                                     <td>
-                                        <div className="flex flex-col items-center justify-center">
-                                            <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-3 px-6">
+                                            <div className="flex flex-col items-start">
                                                 <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                                {wo.source === 'Imported' && (
-                                                    <a 
-                                                        href={`https://app.fieldnation.com/workorders/${wo.id.replace('wo-', '')}`} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        className="text-text-muted hover:text-brand-red transition-colors"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <ExternalLink size={10} />
-                                                    </a>
-                                                )}
+                                                <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                             </div>
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
                                         </div>
                                     </td>
                                     <td>

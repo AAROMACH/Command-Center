@@ -56,7 +56,13 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
 
     const formatDateDisplay = (dateStr: string) => {
         try {
-          return format(parseISO(dateStr), "MM-dd-yyyy");
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+              const [m, d, y] = parts;
+              if (m.length === 4) return `${d}-${y}-${m}`;
+              return `${m}-${d}-${y}`;
+          }
+          return dateStr;
         } catch (e) {
           return dateStr;
         }

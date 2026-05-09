@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -58,28 +59,21 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
 
         const payLine = lines.find(l => l.includes('$') && /\d/.test(l));
         if (payLine) {
-          if (payLine.toLowerCase().includes('@')) {
-            const match = payLine.match(/(\d+)\s*hrs?\s*@\s*\$(\d+)/i);
-            if (match) {
-                pay = parseFloat(match[1]) * parseFloat(match[2]);
-                payType = 'hourly';
-            }
-          } else {
-            const match = payLine.match(/\$\s*(\d+)/);
-            if (match) pay = parseFloat(match[1]);
-          }
+          const match = payLine.match(/\$\s*(\d+(?:\.\d+)?)/);
+          if (match) pay = parseFloat(match[1]);
+          if (payLine.toLowerCase().includes('hr')) payType = 'hourly';
         }
 
-        let scheduleDate = format(new Date(), 'yyyy-MM-dd');
+        let scheduleDate = format(new Date(), 'MM-dd-yyyy');
         let scheduleTime = 'TBD';
         
         if (timeRaw.includes('at')) {
            const [d, t] = timeRaw.split(' at ');
-           try { scheduleDate = format(new Date(d), 'yyyy-MM-dd'); } catch(e) {}
+           try { scheduleDate = format(new Date(d), 'MM-dd-yyyy'); } catch(e) {}
            scheduleTime = t;
         } else if (timeRaw.includes(',')) {
            const [d, t] = timeRaw.split(', ');
-           try { scheduleDate = format(new Date(d), 'yyyy-MM-dd'); } catch(e) {}
+           try { scheduleDate = format(new Date(d), 'MM-dd-yyyy'); } catch(e) {}
            scheduleTime = t.split(' → ')[0];
         }
 
@@ -97,6 +91,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           projectType: 'Low Voltage Service',
           requiredSkills: [],
           isAcknowledged: false,
+          source: 'Imported',
         };
       }).filter((order): order is WorkOrder => order !== null);
     };

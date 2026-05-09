@@ -458,7 +458,7 @@ export const timesheetLogs: TimesheetLog[] = [
     assignmentId: 'ts-1',
     projectId: 'proj-001',
     technicianId: 'tech-003', 
-    date: 'Saturday, April 18, 2026',
+    date: '04-18-2026',
     checkInTime: '8:04 AM',
     checkOutTime: '12:31 PM',
     totalHours: '4h 27m',
@@ -472,7 +472,7 @@ export const timesheetLogs: TimesheetLog[] = [
     assignmentId: 'ts-2',
     projectId: 'proj-001',
     technicianId: 'tech-001', 
-    date: 'Saturday, April 18, 2026',
+    date: '04-18-2026',
     checkInTime: '8:01 AM',
     checkOutTime: '5:05 PM',
     totalHours: '9h 04m',
@@ -486,7 +486,7 @@ export const timesheetLogs: TimesheetLog[] = [
     assignmentId: 'ts-3',
     projectId: 'proj-001',
     technicianId: 'tech-003', 
-    date: 'Sunday, April 19, 2026',
+    date: '04-19-2026',
     checkInTime: '8:30 AM',
     checkOutTime: '4:45 PM',
     totalHours: '8h 15m',
@@ -522,7 +522,7 @@ export const weeklyLogs: WeeklyLog[] = [
   {
     id: 'wl-1',
     technicianId: 'tech-001',
-    weekOf: 'July 22, 2024',
+    weekOf: '07-22-2024',
     status: 'Draft',
     items: [
       { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
@@ -536,7 +536,7 @@ export const weeklyLogs: WeeklyLog[] = [
   {
     id: 'wl-2',
     technicianId: 'tech-002',
-    weekOf: 'July 22, 2024',
+    weekOf: '07-22-2024',
     status: 'Submitted',
     items: [],
     reimbursements: [],
@@ -545,7 +545,7 @@ export const weeklyLogs: WeeklyLog[] = [
   {
     id: 'wl-3',
     technicianId: 'tech-003',
-    weekOf: 'July 15, 2024',
+    weekOf: '07-15-2024',
     status: 'Approved',
     items: [],
     reimbursements: [],

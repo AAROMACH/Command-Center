@@ -264,8 +264,10 @@ export function WorkOrdersClient({
     try {
       const parts = dateStr.split('-');
       if (parts.length === 3) {
-          const [year, month, day] = parts;
-          return `${month}-${day}-${year}`;
+          const [m, d, y] = parts;
+          // Ensure it's mm-dd-yyyy regardless of incoming format
+          if (m.length === 4) return `${d}-${y}-${m}`; // was yyyy-mm-dd
+          return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
@@ -319,8 +321,7 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "130px" }}>ID / Status</th>
-              <th>Description & Client</th>
+              <th style={{ width: "350px" }}>Work Order & Status</th>
               <th style={{ width: "160px" }}>Schedule</th>
               <th style={{ width: "140px" }}>Route Status</th>
               <th style={{ width: "160px" }}>Site Location</th>
@@ -335,30 +336,17 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td>
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-3 px-4">
+                      <div className="flex flex-col items-start min-w-[85px]">
                         <div className="cell-id">{order.id.toUpperCase()}</div>
-                        {order.source === 'Imported' && (
-                          <a 
-                            href={`https://app.fieldnation.com/workorders/${order.id.replace('wo-', '')}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-text-muted hover:text-brand-red transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink size={10} />
-                          </a>
-                        )}
+                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
-                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="cell-desc-title">{order.description}</div>
-                      <div className="cell-desc-client">
-                        <Briefcase />
-                        <span>{order.clientName}</span>
+                      <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                        <div className="cell-desc-title line-clamp-1">{order.description}</div>
+                        <div className="cell-desc-client">
+                          <Briefcase className="h-2.5 w-2.5" />
+                          <span className="truncate">{order.clientName}</span>
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -382,7 +370,7 @@ export function WorkOrdersClient({
                   <td>
                     <div className="cell-loc">
                       <MapPin />
-                      <span>{order.location}</span>
+                      <span className="line-clamp-1 px-2">{order.location}</span>
                     </div>
                   </td>
                   <td>
@@ -432,7 +420,7 @@ export function WorkOrdersClient({
               );
             })}
              {sortedWorkOrders.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>
         </table>

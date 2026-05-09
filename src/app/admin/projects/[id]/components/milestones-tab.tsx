@@ -356,17 +356,15 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                                     onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresDropdown: val }})}
                                                 />
                                             </div>
-                                            {editingTaskData.task.requiresDropdown && (
-                                                <div className="pt-2">
-                                                    <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Options (Comma separated)</Label>
-                                                    <Input 
-                                                        placeholder="e.g. Pass, Fail, N/A"
-                                                        value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
-                                                        onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, dropdownOptions: e.target.value.split(',').map(s => s.trim()) }})}
-                                                        className="h-8 text-xs bg-bg-primary"
-                                                    />
-                                                </div>
-                                            )}
+                                            <div className={cn("pt-2 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
+                                                <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Options (Comma separated)</Label>
+                                                <Input 
+                                                    placeholder="e.g. Pass, Fail, N/A"
+                                                    value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
+                                                    onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, dropdownOptions: e.target.value.split(',').map(s => s.trim()) }})}
+                                                    className="h-8 text-xs bg-bg-primary"
+                                                />
+                                            </div>
                                         </div>
 
                                         {/* Signature Toggle */}
@@ -414,17 +412,15 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                                     onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresOther: val }})}
                                                 />
                                             </div>
-                                            {editingTaskData.task.requiresOther && (
-                                                <div className="pt-2">
-                                                    <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Requirement Label</Label>
-                                                    <Input 
-                                                        placeholder="e.g. Serial Number, ID Verification"
-                                                        value={editingTaskData.task.otherRequirementLabel || ''}
-                                                        onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, otherRequirementLabel: e.target.value }})}
-                                                        className="h-8 text-xs bg-bg-primary"
-                                                    />
-                                                </div>
-                                            )}
+                                            <div className={cn("pt-2 transition-all overflow-hidden", editingTaskData.task.requiresOther ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
+                                                <Label className="text-[9px] uppercase font-bold text-text-muted mb-1 block">Requirement Label</Label>
+                                                <Input 
+                                                    placeholder="e.g. Serial Number, ID Verification"
+                                                    value={editingTaskData.task.otherRequirementLabel || ''}
+                                                    onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, otherRequirementLabel: e.target.value }})}
+                                                    className="h-8 text-xs bg-bg-primary"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

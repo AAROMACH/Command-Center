@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -271,7 +270,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </div>
         </div>
 
-        <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-2 gap-3">
+        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 text-[10px] uppercase font-bold tracking-widest">Close Registry Feed</Button>
             {isCompleted ? (
               <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">

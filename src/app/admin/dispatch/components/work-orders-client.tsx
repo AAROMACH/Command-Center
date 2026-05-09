@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -359,9 +358,9 @@ export function WorkOrdersClient({
           <thead>
             <tr>
               <th style={{ width: "200px" }} className="text-center">ID & Status</th>
-              <th style={{ width: "450px" }} className="text-left pl-0">Assignment Intelligence</th>
-              <th style={{ width: "160px" }} className="text-center">Schedule</th>
-              <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
+              <th className="text-left pl-0">Assignment Intelligence</th>
+              <th style={{ width: "160px" }} className="text-left pl-0">Schedule</th>
+              <th style={{ width: "250px" }} className="text-left pl-0">Site Coordinates</th>
               <th style={{ width: "180px" }} className="text-center">{mode === 'assigned' ? 'Operative' : 'Settlement Pay'}</th>
               <th style={{ width: "120px" }} className="text-center"></th>
             </tr>
@@ -392,7 +391,7 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="flex flex-col items-center justify-center gap-1">
+                    <div className="flex flex-col items-start justify-center gap-1 pl-0">
                       <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
                         <Calendar size={13} className="text-text-muted shrink-0" />
                         <span>{formatDateDisplay(order.scheduleDate)}</span>
@@ -404,7 +403,7 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0">
                       <MapPin size={10} className="text-brand-red shrink-0" />
                       <span className="truncate max-w-[200px]">{order.location}</span>
                     </div>

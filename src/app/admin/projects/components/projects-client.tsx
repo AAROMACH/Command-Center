@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,7 +76,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th className="text-center w-[140px]">Status & ID</th>
+                        <th className="text-center w-[160px] pl-0">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-left">Site Coordinates</th>
@@ -96,10 +95,10 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
-                                <td>
+                                <td className="pl-0">
                                     <div className="flex flex-col items-center justify-center gap-1">
                                         <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
-                                        <div className="cell-id !text-[10px] font-mono !text-center">{project.id.toUpperCase()}</div>
+                                        <div className="cell-id !text-[10px] font-mono !text-center !mt-1">{project.id.toUpperCase()}</div>
                                     </div>
                                 </td>
                                 <td className="!py-4 text-left pl-0">

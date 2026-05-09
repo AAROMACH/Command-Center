@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -421,8 +420,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <div className="table-wrap">
                                 <div className="grid grid-cols-[2fr,1.5fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                     <div className="text-left pl-0">TECHNICIAN</div>
-                                    <div className="text-left">ROLE</div>
-                                    <div className="text-left">CONTACT</div>
+                                    <div className="text-left pl-0">ROLE</div>
+                                    <div className="text-left pl-0">CONTACT</div>
                                     <div className="text-center">RELIABILITY</div>
                                     <div className="text-center">STATUS</div>
                                 </div>
@@ -437,10 +436,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             </Avatar>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{tech.name}</span>
                                         </div>
-                                        <div className="text-left">
+                                        <div className="text-left pl-0">
                                             <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
                                         </div>
-                                        <div className="min-w-0 flex flex-col items-start justify-center">
+                                        <div className="min-w-0 flex flex-col items-start justify-center pl-0">
                                             <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
                                                 <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
                                             </div>
@@ -506,8 +505,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <div className="table-wrap">
                             <div className="grid grid-cols-[2fr,1.5fr,2fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                 <div className="text-left pl-0">STAFF MEMBER</div>
-                                <div className="text-left">ROLE</div>
-                                <div className="text-left">CONTACT</div>
+                                <div className="text-left pl-0">ROLE</div>
+                                <div className="text-left pl-0">CONTACT</div>
                             </div>
                             {paginatedStaff.map(s => (
                                 <div key={s.id} className="grid grid-cols-[2fr,1.5fr,2fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
@@ -518,10 +517,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         </Avatar>
                                         <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
                                     </div>
-                                    <div className="text-left">
+                                    <div className="text-left pl-0">
                                         <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
                                     </div>
-                                    <div className="min-w-0 flex flex-col items-start justify-center">
+                                    <div className="min-w-0 flex flex-col items-start justify-center pl-0">
                                         <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
                                             <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
                                         </div>
@@ -538,7 +537,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <div className="table-wrap">
                             <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                 <div className="text-left pl-0">CORPORATE ENTITY</div>
-                                <div className="text-left">CLASSIFICATION</div>
+                                <div className="text-left pl-0">CLASSIFICATION</div>
                                 <div className="text-center">CONTACTS</div>
                                 <div className="text-center">REGISTRY</div>
                             </div>
@@ -550,7 +549,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         </div>
                                         <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
                                     </div>
-                                    <div className="flex items-center justify-start">
+                                    <div className="flex items-center justify-start pl-0">
                                         <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
                                     </div>
                                     <div className="text-center flex items-center justify-center">
@@ -659,12 +658,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
-                                    <div className="absolute top-4 left-4 z-10 space-y-2">
-                                        <div className="flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-md border border-white/10 shadow-2xl">
-                                            <div className="h-2 w-2 rounded-full bg-brand-red animate-pulse" />
-                                            <p className="text-[10px] font-black uppercase text-white tracking-[0.2em]">Michigan Tactical View</p>
-                                        </div>
-                                    </div>
                                     <div className="absolute bottom-4 left-4 z-10 bg-black/80 backdrop-blur-md p-3 rounded-md border border-white/10 shadow-2xl">
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2">

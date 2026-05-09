@@ -21,13 +21,34 @@ import type { WorkOrder } from "@/lib/types";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 import { format, isSameDay, parseISO } from 'date-fns';
 import { MissionDetailDialog } from '@/components/mission-detail-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AssignmentsHubPage() {
-  const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDates, setFilterDates] = useState<Date[]>([]);
   const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Edit Logic
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+  const { toast } = useToast();
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
@@ -71,6 +92,20 @@ export default function AssignmentsHubPage() {
   const handleCardClick = (wo: WorkOrder) => {
     setSelectedMission(wo);
     setIsDetailOpen(true);
+  };
+
+  const handleOpenEditDialog = (order: WorkOrder) => {
+    setEditedOrder({ ...order });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveChanges = () => {
+    if (!editedOrder) return;
+    setWorkOrders(prev => prev.map(order =>
+      order.id === editedOrder.id ? editedOrder : order
+    ));
+    setIsEditDialogOpen(false);
+    toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
 
   return (
@@ -278,7 +313,53 @@ export default function AssignmentsHubPage() {
         isOpen={isDetailOpen} 
         setIsOpen={setIsDetailOpen} 
         mission={selectedMission} 
+        onEdit={(m) => {
+          setIsDetailOpen(false);
+          handleOpenEditDialog(m);
+        }}
       />
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
+            <DialogHeader>
+                <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Update Dispatch Parameters</DialogTitle>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedMission?.id.toUpperCase()}</span></p>
+            </DialogHeader>
+            {editedOrder && (
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Technician Allocation</Label>
+                        <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                            <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
+                                <SelectValue placeholder="Select Technician" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                                {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
+                                    <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Operational Status</Label>
+                        <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                            <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unassigned">UNASSIGNED</SelectItem>
+                                <SelectItem value="assigned">ASSIGNED</SelectItem>
+                                <SelectItem value="in-progress">IN PROGRESS</SelectItem>
+                                <SelectItem value="completed">COMPLETED</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button onClick={handleSaveChanges} className="w-full h-11 mt-4 bg-brand-red hover:bg-brand-red-hover">
+                        Commit Assignment Updates
+                    </Button>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

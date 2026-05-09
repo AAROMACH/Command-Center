@@ -343,6 +343,10 @@ export function WorkOrdersClient({
         isOpen={isDetailOpen} 
         setIsOpen={setIsDetailOpen} 
         mission={detailMission} 
+        onEdit={(m) => {
+          setIsDetailOpen(false);
+          handleOpenEditDialog(m);
+        }}
       />
 
       {/* DISPATCH TERMINAL (Searchable Techs + AI) */}

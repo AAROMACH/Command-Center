@@ -34,9 +34,10 @@ type MissionDetailDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   mission: WorkOrder | null;
+  onEdit?: (mission: WorkOrder) => void;
 };
 
-export function MissionDetailDialog({ isOpen, setIsOpen, mission }: MissionDetailDialogProps) {
+export function MissionDetailDialog({ isOpen, setIsOpen, mission, onEdit }: MissionDetailDialogProps) {
   if (!mission) return null;
 
   const tech = technicians.find(t => t.id === mission.assignedTechnicianId);
@@ -44,6 +45,12 @@ export function MissionDetailDialog({ isOpen, setIsOpen, mission }: MissionDetai
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+
+  const handleModifyClick = () => {
+    if (onEdit && mission) {
+      onEdit(mission);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -190,11 +197,15 @@ export function MissionDetailDialog({ isOpen, setIsOpen, mission }: MissionDetai
         <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 text-[10px] uppercase font-bold tracking-widest">Close Intelligence Feed</Button>
             {isCompleted ? (
-              <Button variant="active" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">
+              <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">
                 <FileCheck size={16} className="mr-2"/> Mission Archived
               </Button>
             ) : (
-              <Button className="h-11 bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold tracking-widest">
+              <Button 
+                onClick={handleModifyClick}
+                className="h-11 bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold tracking-widest"
+                disabled={!onEdit}
+              >
                  Modify Assignment <ChevronRight size={14} className="ml-2"/>
               </Button>
             )}

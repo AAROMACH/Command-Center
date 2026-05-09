@@ -6,13 +6,17 @@ import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Wrench, ClipboardList, Layers } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Wrench, ClipboardList, Layers, X } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest } from "@/lib/types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export default function DispatchPage() {
   // Master Tab State
@@ -31,6 +35,10 @@ export default function DispatchPage() {
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>(initialServiceRequests);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
+
+  // Filter State
+  const [activePriorities, setActivePriorities] = useState<string[]>([]);
+  const [activeTypes, setActiveTypes] = useState<string[]>([]);
 
   const { toast } = useToast();
 
@@ -64,22 +72,53 @@ export default function DispatchPage() {
     });
   };
 
+  // Filter Logic
+  const togglePriority = (priority: string) => {
+    setActivePriorities(prev => 
+      prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]
+    );
+  };
+
+  const toggleType = (type: string) => {
+    setActiveTypes(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const resetFilters = () => {
+    setActivePriorities([]);
+    setActiveTypes([]);
+    toast({ title: "Filters Cleared", description: "All search constraints have been removed." });
+  };
+
   // Filtered Data
   const filteredOrders = useMemo(() => 
-    allWorkOrders.filter(order => 
-      order.id.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-      order.description.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-      order.clientName.toLowerCase().includes(dispatchSearchQuery.toLowerCase())
-    )
-  , [allWorkOrders, dispatchSearchQuery]);
+    allWorkOrders.filter(order => {
+      const matchesSearch = order.id.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
+        order.description.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
+        order.clientName.toLowerCase().includes(dispatchSearchQuery.toLowerCase());
+      
+      const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
+      const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
+      
+      return matchesSearch && matchesPriority && matchesType;
+    })
+  , [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes]);
 
   const filteredRequests = useMemo(() => 
-    allRequests.filter(req => 
-      req.id.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-      req.clientName.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-      req.description.toLowerCase().includes(requestSearchQuery.toLowerCase())
-    )
-  , [allRequests, requestSearchQuery]);
+    allRequests.filter(req => {
+      const matchesSearch = req.id.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
+        req.clientName.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
+        req.description.toLowerCase().includes(requestSearchQuery.toLowerCase());
+      
+      const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
+      const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
+      
+      return matchesSearch && matchesPriority && matchesType;
+    })
+  , [allRequests, requestSearchQuery, activePriorities, activeTypes]);
+
+  const hasActiveFilters = activePriorities.length > 0 || activeTypes.length > 0;
 
   return (
     <div className="space-y-6">
@@ -151,9 +190,71 @@ export default function DispatchPage() {
                   onChange={(e) => activeMasterTab === 'dispatch' ? setDispatchSearchQuery(e.target.value) : setRequestSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="default" className="h-10">
-                <SlidersHorizontal size={14} className="mr-2"/> Filters
-              </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="default" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
+                    <SlidersHorizontal size={14} className="mr-2"/>
+                    Filters
+                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activePriorities.length + activeTypes.length}</Badge>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                  <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                      {hasActiveFilters && (
+                        <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                          <X size={10} /> Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-6">
+                    {/* Priority Filter */}
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Level</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['critical', 'high', 'medium', 'low'].map(priority => (
+                          <div key={priority} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`prio-${priority}`} 
+                              checked={activePriorities.includes(priority)}
+                              onCheckedChange={() => togglePriority(priority)}
+                            />
+                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Category Filter */}
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Service Category</p>
+                      <div className="space-y-2">
+                        {(activeMasterTab === 'dispatch' 
+                          ? ['Maintenance', 'Repair', 'Installation', 'Inspection', 'Low Voltage Service']
+                          : ['New Install', 'Repair', 'Inspection', 'Quote']
+                        ).map(type => (
+                          <div key={type} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`type-${type}`} 
+                              checked={activeTypes.includes(type)}
+                              onCheckedChange={() => toggleType(type)}
+                            />
+                            <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-bg-tertiary/50 border-t border-border-sub">
+                    <p className="text-[8px] text-text-muted uppercase font-medium leading-tight">
+                      Constraints are applied globally to the {activeMasterTab === 'dispatch' ? 'Job Pool' : 'Mission Funnel'}.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
         </div>
 

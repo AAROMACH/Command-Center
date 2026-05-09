@@ -18,7 +18,6 @@ import {
     Rows3, 
     LayoutGrid, 
     Columns2,
-    Star,
     ArrowUpDown,
     MapPin,
     Calendar,
@@ -27,7 +26,6 @@ import {
     Clock,
     Navigation,
     User,
-    ShieldCheck
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -35,7 +33,6 @@ import { EditPersonnelDialog } from './edit-personnel-dialog';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { 
     Select, 

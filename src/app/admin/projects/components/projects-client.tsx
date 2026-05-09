@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {

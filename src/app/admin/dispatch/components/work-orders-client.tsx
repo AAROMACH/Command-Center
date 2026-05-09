@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -50,9 +49,6 @@ import {
   Send,
   ShieldCheck,
   Eye,
-  Building2,
-  Check,
-  Navigation,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
@@ -94,10 +90,6 @@ export function WorkOrdersClient({
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
-  const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
-  const [registrySearch, setRegistrySearch] = useState("");
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailJob, setDetailJob] = useState<WorkOrder | null>(null);
@@ -276,45 +268,6 @@ export function WorkOrdersClient({
         return { ...tech, distance: (seed % 35) + 1.2 };
       }).sort((a, b) => a.distance - b.distance);
   }, [technicians, selectedOrder, techSearchQuery]);
-
-  const clientsList = useMemo(() => {
-    return technicians.filter(t => 
-        t.roles?.includes('client') || 
-        t.role.toLowerCase().includes('client') || 
-        t.clientCompany
-    );
-  }, [technicians]);
-
-  const selectedClient = useMemo(() => {
-    return clientsList.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clientsList]);
-
-  const filteredRegistry = useMemo(() => {
-    return clientsList.filter(c => 
-        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.id.toLowerCase().includes(registrySearch.toLowerCase())
-    );
-  }, [registrySearch, clientsList]);
-
-  const selectClientFromRegistry = (client: Technician) => {
-    const name = client.clientCompany || client.name;
-    if (editedOrder) {
-        setEditedOrder({
-            ...editedOrder,
-            clientName: name,
-            location: '' 
-        });
-    }
-    setIsRegistryOpen(false);
-  };
-
-  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
-    if (editedOrder) {
-        setEditedOrder({ ...editedOrder, location: site.location });
-    }
-    setIsSiteRegistryOpen(false);
-  };
 
   return (
     <>
@@ -645,15 +598,6 @@ export function WorkOrdersClient({
                                     onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
                                     className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
                                 />
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
-                                    onClick={() => setIsRegistryOpen(true)}
-                                >
-                                    <Search size={12}/> Search Registry
-                                </Button>
                             </div>
                         </div>
 
@@ -666,21 +610,6 @@ export function WorkOrdersClient({
                                     onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
                                     className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
                                 />
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
-                                    className={cn(
-                                        "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
-                                        (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
-                                            ? "text-text-muted opacity-50 cursor-not-allowed" 
-                                            : "text-accent-gold hover:bg-accent-gold/10"
-                                    )}
-                                    onClick={() => setIsSiteRegistryOpen(true)}
-                                >
-                                    <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                                </Button>
                             </div>
                         </div>
                     </div>
@@ -799,104 +728,6 @@ export function WorkOrdersClient({
                 </div>
             )}
         </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
-          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-              <DialogHeader className="p-6 pb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="text-brand-red h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
-                  </div>
-                  <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
-              </DialogHeader>
-              <div className="px-6 py-2">
-                  <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                      <Input 
-                          placeholder="Filter registry by name or ID..." 
-                          value={registrySearch}
-                          onChange={(e) => setRegistrySearch(e.target.value)}
-                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
-                      />
-                  </div>
-              </div>
-              <ScrollArea className="flex-1 px-6 py-4">
-                  <div className="space-y-1">
-                      {filteredRegistry.map(client => (
-                          <button
-                              key={client.id}
-                              type="button"
-                              onClick={() => selectClientFromRegistry(client)}
-                              className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
-                          >
-                              <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
-                                  <Building2 size={16} />
-                              </div>
-                              <div className="flex-1 overflow-hidden">
-                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
-                                  {client.businessType && (
-                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
-                                  )}
-                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
-                              </div>
-                              <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </button>
-                      ))}
-                      {filteredRegistry.length === 0 && (
-                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
-                          </div>
-                      )}
-                  </div>
-              </ScrollArea>
-              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
-          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-              <DialogHeader className="p-6 pb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                      <Navigation className="text-accent-gold h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
-                  </div>
-                  <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{editedOrder?.clientName}</span>.</DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="flex-1 px-6 py-4">
-                  <div className="space-y-1">
-                      {selectedClient?.managedSites?.map(site => (
-                          <button
-                              key={site.id}
-                              type="button"
-                              onClick={() => selectSiteFromRegistry(site)}
-                              className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
-                          >
-                              <div className="flex justify-between items-start gap-3">
-                                  <div className="space-y-0.5">
-                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                      <p className="text-[10px] text-text-muted flex items-center gap-1.5">
-                                          <MapPin size={10} className="text-brand-red" />
-                                          {site.location}
-                                      </p>
-                                  </div>
-                                  <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-                              </div>
-                          </button>
-                      ))}
-                      {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
-                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">No verified sites on record for this client</p>
-                          </div>
-                      )}
-                  </div>
-              </ScrollArea>
-              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
-              </DialogFooter>
-          </DialogContent>
       </Dialog>
     </>
   );

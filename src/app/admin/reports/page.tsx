@@ -25,13 +25,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
     technicians, 
     workOrders, 
     projects, 
     penaltyEvents,
-    timeOffRequests
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { PersonnelDetailDialog } from '../directory/components/personnel-detail-dialog';
@@ -113,19 +113,6 @@ export default function ReportsPage() {
                 setSelectedJob(wo);
                 setIsJobOpen(true);
             }
-        }
-    };
-
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-          const parts = dateStr.split(/[-/]/);
-          let d;
-          if (parts[0].length === 4) { d = new Date(dateStr); } 
-          else { d = parseISO(dateStr); }
-          return format(d, 'MM-dd-yyyy');
-        } catch (e) {
-          return dateStr;
         }
     };
 
@@ -487,7 +474,7 @@ export default function ReportsPage() {
                 setIsOpen={setIsPersonnelOpen} 
                 person={selectedPersonnel} 
                 workOrders={workOrders.filter(wo => wo.assignedTechnicianId === selectedPersonnel?.id)} 
-                timeOffRequests={timeOffRequests.filter(tor => tor.technicianId === selectedPersonnel?.id)}
+                timeOffRequests={[]}
             />
 
             <JobDetailDialog 

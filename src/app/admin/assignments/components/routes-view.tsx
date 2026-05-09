@@ -314,7 +314,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 <div className="flex items-center gap-6">
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                         <Layers size={14} className="text-brand-red" />
-                        Tactical Formations
+                        Batch Assign
                     </h3>
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <ClipboardList size={12} className="text-accent-gold" />

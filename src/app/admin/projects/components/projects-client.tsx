@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -177,7 +176,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     className="h-7 w-7 border-border-sub bg-bg-primary"
                   >
-                    <ChevronLeft size(14) />
+                    <ChevronLeft size={14} />
                   </Button>
                   <div className="flex items-center gap-1 px-2">
                     <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>

@@ -3,7 +3,25 @@
 import { useState, useMemo } from 'react';
 import type { Project, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
 import Link from 'next/link';
-import { ChevronLeft, MapPin, Calendar, Clock, Users, Edit, Archive, Check, X, ShieldAlert, DollarSign, Timer, Building2, User } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  Users, 
+  Edit, 
+  Archive, 
+  Check, 
+  X, 
+  ShieldAlert, 
+  DollarSign, 
+  Timer, 
+  Building2, 
+  User,
+  FileText,
+  Phone,
+  LayoutDashboard
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { OverviewTab } from './overview-tab';
@@ -41,6 +59,13 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+
+type ProjectDetailClientProps = {
+    project: Project;
+    technicians: Technician[];
+    documents: ProjectDocument[];
+    timesheets: TimesheetLog[];
+};
 
 export function ProjectDetailClient({ project: initialProject, technicians, documents: initialDocuments, timesheets: initialTimesheets }: ProjectDetailClientProps) {
     const [project, setProject] = useState(initialProject);
@@ -135,24 +160,37 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
             </div>
 
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-[850px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[95vh]">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                         <div className="flex items-center justify-between">
                             <div>
                                 <DialogTitle className="uppercase tracking-widest font-bold text-lg">Modify Project Registry</DialogTitle>
-                                <DialogDescription>Update parameters for project <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
+                                <DialogDescription>Update master parameters for project <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
                             </div>
-                            <Badge variant={editedProject.status} className="h-6 px-3">{editedProject.status.toUpperCase()}</Badge>
+                            <div className="flex items-center gap-3">
+                                <Label className="text-[10px] font-bold uppercase text-text-muted">Master Status</Label>
+                                <Select value={editedProject.status} onValueChange={(val: any) => setEditedProject({...editedProject, status: val})}>
+                                    <SelectTrigger className="h-8 w-[140px] bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="on-hold">On Hold</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto px-6 py-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                            {/* Section 1: Identity & Location */}
                             <div className="space-y-6">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                    <Building2 size={12}/> Identity & Coordinates
+                                </h3>
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Building2 size={12}/> Identity & Coordinates
-                                    </h3>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Project Name</Label>
                                         <Input 
@@ -180,19 +218,111 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             />
                                         </div>
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact</Label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                            <Input 
+                                                placeholder="Name and phone number..."
+                                                value={editedProject.onsiteContact || ''} 
+                                                onChange={e => setEditedProject({...editedProject, onsiteContact: e.target.value})}
+                                                className="bg-bg-primary h-10 text-xs pl-10"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* Section 2: Schedule & Duration */}
                             <div className="space-y-6">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                    <Clock size={12}/> Schedule & Duration
+                                </h3>
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <ShieldAlert size={12} className="text-brand-red"/> Operational Briefing
-                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-text-muted">Start Date</Label>
+                                            <Input 
+                                                type="date"
+                                                value={editedProject.startDate} 
+                                                onChange={e => setEditedProject({...editedProject, startDate: e.target.value})}
+                                                className="bg-bg-primary h-10 text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-text-muted">Daily Start Time</Label>
+                                            <Input 
+                                                placeholder="e.g. 9:00 AM EDT"
+                                                value={editedProject.startTime || ''} 
+                                                onChange={e => setEditedProject({...editedProject, startTime: e.target.value})}
+                                                className="bg-bg-primary h-10 text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Estimated Project Duration</Label>
+                                        <div className="relative">
+                                            <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                            <Input 
+                                                placeholder="e.g. 3 weeks"
+                                                value={editedProject.estimatedDuration} 
+                                                onChange={e => setEditedProject({...editedProject, estimatedDuration: e.target.value})}
+                                                className="bg-bg-primary h-10 text-xs pl-10"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Economics */}
+                            <div className="space-y-6">
+                                <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                    <DollarSign size={12}/> Project Economics
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Project Budget ($)</Label>
+                                        <Input 
+                                            type="number"
+                                            value={editedProject.projectBudget || 0} 
+                                            onChange={e => setEditedProject({...editedProject, projectBudget: parseFloat(e.target.value) || 0})}
+                                            className="bg-bg-primary h-10 text-xs font-mono"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Allocated Hours</Label>
+                                        <Input 
+                                            type="number"
+                                            value={editedProject.estimatedHours || 0} 
+                                            onChange={e => setEditedProject({...editedProject, estimatedHours: parseFloat(e.target.value) || 0})}
+                                            className="bg-bg-primary h-10 text-xs font-mono"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 4: Operational Instructions */}
+                            <div className="space-y-6">
+                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                    <ShieldAlert size={12}/> Operational Briefing
+                                </h3>
+                                <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
                                         <Textarea 
                                             value={editedProject.scope} 
                                             onChange={e => setEditedProject({...editedProject, scope: e.target.value})}
                                             className="bg-bg-primary h-24 text-[11px] leading-relaxed resize-none"
+                                            placeholder="Define primary objectives and technical requirements..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Access Instructions</Label>
+                                        <Textarea 
+                                            value={editedProject.siteAccessInstructions || ''} 
+                                            onChange={e => setEditedProject({...editedProject, siteAccessInstructions: e.target.value})}
+                                            className="bg-bg-primary h-20 text-[11px] leading-relaxed resize-none"
+                                            placeholder="Parking, entry codes, badge requirements..."
                                         />
                                     </div>
                                 </div>
@@ -204,19 +334,19 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" className="h-8 px-2 text-[9px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-widest font-bold">
-                                    <Archive size={12} className="mr-1.5"/> Archive Folder
+                                    <Archive size={12} className="mr-1.5"/> Archive Project Folder
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-bg-elevated border-border-main">
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle className="uppercase tracking-widest">Authorize Archival?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>.
+                                    <AlertDialogTitle className="uppercase tracking-widest font-bold">Authorize Archival?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-xs">
+                                        Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>. The folder will move to historical storage.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover">
+                                    <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold">
                                         Confirm Archival
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
@@ -224,10 +354,10 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         </AlertDialog>
 
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px]">
+                            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">
                                 Discard
                             </Button>
-                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px]">
+                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
                                 <Check size={16} className="mr-2"/> Commit Registry Updates
                             </Button>
                         </div>
@@ -237,10 +367,3 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
         </div>
     );
 }
-
-type ProjectDetailClientProps = {
-    project: Project;
-    technicians: Technician[];
-    documents: ProjectDocument[];
-    timesheets: TimesheetLog[];
-};

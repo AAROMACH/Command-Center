@@ -362,9 +362,9 @@ export function WorkOrdersClient({
           <thead>
             <tr>
               <th style={{ width: "500px" }} className="text-left pl-6">Assignment Identification & Status</th>
-              <th style={{ width: "160px" }} className="text-center">Schedule</th>
+              <th style={{ width: "160px" }} className="text-left">Schedule</th>
               <th style={{ width: "140px" }} className="text-center">Route Status</th>
-              <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
+              <th style={{ width: "250px" }} className="text-left">Site Coordinates</th>
               <th style={{ width: "180px" }} className="text-center">{mode === 'assigned' ? 'Operative' : 'Settlement Pay'}</th>
               <th style={{ width: "120px" }} className="text-center"></th>
             </tr>
@@ -396,9 +396,15 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="cell-sched">
-                      <div className="cell-sched-date font-mono justify-center"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time font-mono justify-center"><Clock size={13} />{order.scheduleTime}</div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                        <Calendar size={13} className="text-text-muted shrink-0" />
+                        <span>{formatDateDisplay(order.scheduleDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                        <Clock size={13} className="text-text-muted shrink-0" />
+                        <span>{order.scheduleTime}</span>
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -413,9 +419,9 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                       <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span className="text-center">{order.location}</span>
+                      <span>{order.location}</span>
                     </div>
                   </td>
                   <td>
@@ -437,7 +443,7 @@ export function WorkOrdersClient({
                             )
                         ) : (
                             <div className="flex items-center gap-1.5 text-text-green">
-                                <DollarSign size={12} />
+                                <DollarSign size={12} className="shrink-0" />
                                 <div className="flex flex-col items-start leading-none">
                                     <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
                                     <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
@@ -538,7 +544,6 @@ export function WorkOrdersClient({
         }}
       />
 
-      {/* DISPATCH TERMINAL */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">

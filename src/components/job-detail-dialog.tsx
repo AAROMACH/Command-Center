@@ -114,10 +114,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </DialogTitle>
           <div className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
              <span className="flex items-center gap-1.5">
-               <MapPin size={12} className="text-brand-red" />
-               {mission.location}
+               <MapPin size={12} className="text-brand-red shrink-0" />
+               <span>{mission.location}</span>
              </span>
-             <span className="flex items-center gap-1.5"><Calendar size={12}/> {formatDateDisplay(mission.scheduleDate)}</span>
+             <span className="flex items-center gap-1.5">
+               <Calendar size={12} className="text-text-muted shrink-0" />
+               <span>{formatDateDisplay(mission.scheduleDate)}</span>
+             </span>
           </div>
         </DialogHeader>
 
@@ -153,7 +156,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
 
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <User size={14} className="text-brand-red"/> Primary Operative
+                <User size={14} className="text-brand-red shrink-0"/> 
+                <span>Primary Operative</span>
              </h3>
              <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                 {tech ? (
@@ -183,7 +187,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
 
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <History size={14} className="text-accent-gold"/> History Ledger
+                <History size={14} className="text-accent-gold shrink-0"/> 
+                <span>History Ledger</span>
              </h3>
              <div className="space-y-3">
                 {mission.history && mission.history.length > 0 ? mission.history.map((evt, idx) => (
@@ -212,7 +217,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
 
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <Coins size={14} className="text-text-green"/> Financial Audit
+                <Coins size={14} className="text-text-green shrink-0"/> 
+                <span>Financial Audit</span>
              </h3>
              <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-1">
@@ -249,7 +255,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
 
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <StickyNote size={14} className="text-accent-gold"/> Internal Briefing Notes
+                <StickyNote size={14} className="text-accent-gold shrink-0"/> 
+                <span>Internal Briefing Notes</span>
              </h3>
              <div className="space-y-2">
                 {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (

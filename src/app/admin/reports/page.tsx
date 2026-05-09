@@ -244,21 +244,30 @@ export default function ReportsPage() {
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Follow-up camera adjustment <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
-                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Ann Arbor, MI · completed · aaro_wo_001</div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
+                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <span>Ann Arbor, MI · completed · aaro_wo_001</span>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Front camera offline <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
-                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Detroit, MI · completed · client_wo_001</div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
+                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <span>Detroit, MI · completed · client_wo_001</span>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-accent-gold ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Aarons AP Refresh <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-17-2026</span>
                                                     </p>
-                                                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Toledo, OH · scheduled · WO 18889221 · $70</div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
+                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <span>Toledo, OH · scheduled · WO 18889221 · $70</span>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1 relative">
                                                     <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-red ring-4 ring-bg-primary" />

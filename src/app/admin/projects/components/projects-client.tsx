@@ -79,8 +79,8 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                         <th className="text-center w-[120px]">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
-                        <th className="text-center">Site Coordinates</th>
-                        <th className="text-center">Schedule Date</th>
+                        <th className="text-left">Site Coordinates</th>
+                        <th className="text-left">Schedule Date</th>
                         <th style={{ width: "220px" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
@@ -123,20 +123,20 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin className="h-3.5 w-3.5 text-brand-red shrink-0" />
-                                        <span className="text-center">{project.location}</span>
+                                        <span>{project.location}</span>
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="cell-sched">
-                                        <div className="cell-sched-date font-mono justify-center">
-                                            <Calendar size={13}/>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                                            <Calendar size={13} className="text-text-muted shrink-0" />
                                             <span>{formatDateDisplay(project.startDate)}</span>
                                         </div>
                                         {project.startTime && (
-                                            <div className="cell-sched-time font-mono justify-center">
-                                                <Clock size={13}/>
+                                            <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                                                <Clock size={13} className="text-text-muted shrink-0" />
                                                 <span>{project.startTime}</span>
                                             </div>
                                         )}

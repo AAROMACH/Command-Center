@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, ChevronDown, UserCheck } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -48,7 +48,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     location: ''
   });
   
-  const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [registrySearch, setRegistrySearch] = useState("");
   const [isSitePopoverOpen, setIsSitePopoverOpen] = useState(false);
 
   const { toast } = useToast();
@@ -65,13 +66,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     return clients.find(c => (c.clientCompany || c.name) === formData.clientName);
   }, [formData.clientName, clients]);
 
-  const filteredClients = useMemo(() => {
-    if (!formData.clientName) return clients;
+  const filteredRegistry = useMemo(() => {
     return clients.filter(c => 
-        (c.clientCompany || '').toLowerCase().includes((formData.clientName || '').toLowerCase()) ||
-        c.name.toLowerCase().includes((formData.clientName || '').toLowerCase())
+        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(registrySearch.toLowerCase())
     );
-  }, [formData.clientName, clients]);
+  }, [registrySearch, clients]);
 
   const handleSave = () => {
     if (!formData.description || !formData.location || !formData.clientName) {
@@ -107,19 +108,20 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         clientName: '',
         location: ''
       });
+      setRegistrySearch("");
   };
 
-  const selectClient = (client: Technician) => {
+  const selectClientFromRegistry = (client: Technician) => {
     const name = client.clientCompany || client.name;
     setFormData(prev => ({
         ...prev,
         clientName: name,
         location: '' 
     }));
-    setIsClientPopoverOpen(false);
+    setIsRegistryOpen(false);
     toast({
-        title: "Client Selected",
-        description: `${name} has been set as the primary job entity.`,
+        title: "Registry Match Selected",
+        description: `${name} has been linked to this dispatch entry.`,
     });
   };
 
@@ -133,235 +135,246 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-        <DialogHeader className="p-6 pb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <Wrench className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
-          </div>
-          <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
-        </DialogHeader>
+    <>
+        <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
+          <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
+            <DialogHeader className="p-6 pb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Wrench className="text-brand-red h-5 w-5" />
+                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
+              </div>
+              <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
+            </DialogHeader>
 
-        <div className="px-6 py-4 space-y-6">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-            <Textarea 
-              placeholder="Primary objective and low voltage requirements..." 
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="bg-bg-primary border-border-sub h-20 text-xs"
-            />
-          </div>
+            <div className="px-6 py-4 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                <Textarea 
+                  placeholder="Primary objective and low voltage requirements..." 
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="bg-bg-primary border-border-sub h-20 text-xs"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                <div className="relative">
-                    <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <div className="relative w-full">
-                                <Input 
-                                    placeholder="Type name or search registry..." 
-                                    value={formData.clientName}
-                                    onChange={(e) => {
-                                        setFormData({...formData, clientName: e.target.value});
-                                        if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
-                                    }}
-                                    onFocus={() => setIsClientPopoverOpen(true)}
-                                    className="bg-bg-primary h-10 pr-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
-                                />
-                                <button 
-                                    type="button"
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
-                                    onClick={() => setIsClientPopoverOpen(!isClientPopoverOpen)}
-                                >
-                                    <ChevronDown size={14} />
-                                </button>
-                            </div>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                            className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" 
-                            align="start"
-                            onOpenAutoFocus={(e) => e.preventDefault()}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                    <div className="space-y-1.5">
+                        <Input 
+                            placeholder="Type client name..." 
+                            value={formData.clientName}
+                            onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                            className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
+                        />
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                            onClick={() => setIsRegistryOpen(true)}
                         >
-                            <div className="p-2 border-b border-border-sub bg-bg-tertiary">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted px-1">Registry Matches</p>
-                            </div>
-                            <ScrollArea className="h-[200px]">
-                                <div className="p-1">
-                                    {filteredClients.map(client => (
-                                        <button
-                                            key={client.id}
+                            <Search size={12}/> Search Registry
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                    <div className="relative">
+                        <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <div className="relative w-full">
+                                    <Input 
+                                        placeholder="Full address or coordinates..." 
+                                        value={formData.location}
+                                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                        onFocus={() => {
+                                            if (selectedClient?.managedSites && selectedClient.managedSites.length > 0) {
+                                                setIsSitePopoverOpen(true);
+                                            }
+                                        }}
+                                        className="bg-bg-primary h-10 pr-10 text-xs focus:border-brand-red transition-all"
+                                    />
+                                    {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
+                                        <button 
                                             type="button"
-                                            onClick={() => selectClient(client)}
-                                            className="w-full flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim"
+                                            className={cn("absolute right-3 top-1/2 -translate-y-1/2 transition-colors", formData.location ? "text-text-green" : "text-text-muted hover:text-text-primary")}
+                                            onClick={() => setIsSitePopoverOpen(!isSitePopoverOpen)}
                                         >
-                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
-                                                <Building2 size={12} />
-                                            </div>
-                                            <div className="flex-1 overflow-hidden">
-                                                <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
-                                                {client.businessType && (
-                                                    <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
-                                                )}
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id}</p>
-                                            </div>
-                                            {formData.clientName === (client.clientCompany || client.name) && <Check size={14} className="text-text-green shrink-0" />}
+                                            <MapPin size={16} />
                                         </button>
-                                    ))}
-                                    {filteredClients.length === 0 && (
-                                        <div className="p-4 text-center">
-                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches</p>
-                                            <p className="text-[9px] text-text-muted mt-1 uppercase tracking-tight">System will record as new entity</p>
-                                        </div>
                                     )}
                                 </div>
-                            </ScrollArea>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                <div className="relative">
-                    <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <div className="relative w-full">
-                                <Input 
-                                    placeholder="Full address or coordinates..." 
-                                    value={formData.location}
-                                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                                    onFocus={() => {
-                                        if (selectedClient?.managedSites && selectedClient.managedSites.length > 0) {
-                                            setIsSitePopoverOpen(true);
-                                        }
-                                    }}
-                                    className="bg-bg-primary h-10 pr-10 text-xs focus:border-brand-red transition-all"
-                                />
-                                {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                                    <button 
-                                        type="button"
-                                        className={cn("absolute right-3 top-1/2 -translate-y-1/2 transition-colors", formData.location ? "text-text-green" : "text-text-muted hover:text-text-primary")}
-                                        onClick={() => setIsSitePopoverOpen(!isSitePopoverOpen)}
-                                    >
-                                        <MapPin size={16} />
-                                    </button>
-                                )}
-                            </div>
-                        </PopoverTrigger>
-                        {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                            <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
-                                <div className="p-3 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
-                                    <UserCheck size={10} className="text-accent-gold" />
-                                </div>
-                                <ScrollArea className="h-[180px]">
-                                    <div className="p-1">
-                                        {selectedClient.managedSites.map(site => (
-                                            <button
-                                                key={site.id}
-                                                type="button"
-                                                onClick={() => selectSite(site)}
-                                                className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group active:bg-brand-red-dim"
-                                            >
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                                    {formData.location === site.location && <Check size={12} className="text-text-green shrink-0" />}
-                                                </div>
-                                                <p className="text-[10px] text-text-muted mt-0.5 truncate">{site.location}</p>
-                                            </button>
-                                        ))}
+                            </PopoverTrigger>
+                            {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
+                                <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
+                                    <div className="p-3 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
+                                        <UserCheck size={10} className="text-accent-gold" />
                                     </div>
-                                </ScrollArea>
-                            </PopoverContent>
-                        )}
-                    </Popover>
+                                    <ScrollArea className="h-[180px]">
+                                        <div className="p-1">
+                                            {selectedClient.managedSites.map(site => (
+                                                <button
+                                                    key={site.id}
+                                                    type="button"
+                                                    onClick={() => selectSite(site)}
+                                                    className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group active:bg-brand-red-dim"
+                                                >
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                                        {formData.location === site.location && <Check size={12} className="text-text-green shrink-0" />}
+                                                    </div>
+                                                    <p className="text-[10px] text-text-muted mt-0.5 truncate">{site.location}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </PopoverContent>
+                            )}
+                        </Popover>
+                    </div>
                 </div>
-            </div>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-              <Input 
-                type="number"
-                placeholder="0.00"
-                value={formData.pay || ''}
-                onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
-                className="bg-bg-primary h-10 font-mono text-text-green text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
-              <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Fixed Rate</SelectItem>
-                  <SelectItem value="hourly">Hourly Logic</SelectItem>
-                  <SelectItem value="blended">Blended / Complex</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                  <Input 
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.pay || ''}
+                    onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
+                    className="bg-bg-primary h-10 font-mono text-text-green text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                  <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
+                    <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Rate</SelectItem>
+                      <SelectItem value="hourly">Hourly Logic</SelectItem>
+                      <SelectItem value="blended">Blended / Complex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
-              <Input 
-                type="date"
-                value={formData.scheduleDate}
-                onChange={(e) => setFormData({...formData, scheduleDate: e.target.value})}
-                className="bg-bg-primary h-10 text-xs"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-              <Input 
-                placeholder="e.g. 10:00 AM EST"
-                value={formData.scheduleTime}
-                onChange={(e) => setFormData({...formData, scheduleTime: e.target.value})}
-                className="bg-bg-primary h-10 text-xs"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
+                  <Input 
+                    type="date"
+                    value={formData.scheduleDate}
+                    onChange={(e) => setFormData({...formData, scheduleDate: e.target.value})}
+                    className="bg-bg-primary h-10 text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
+                  <Input 
+                    placeholder="e.g. 10:00 AM EST"
+                    value={formData.scheduleTime}
+                    onChange={(e) => setFormData({...formData, scheduleTime: e.target.value})}
+                    className="bg-bg-primary h-10 text-xs"
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
-              <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
+                  <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
+                    <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                 <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                  <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
+                    <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Infrastructure Repair">Repair</SelectItem>
+                      <SelectItem value="Low Voltage Maintenance">Maintenance</SelectItem>
+                      <SelectItem value="Network Installation">Installation</SelectItem>
+                      <SelectItem value="Site Audit">Inspection</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-              <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Infrastructure Repair">Repair</SelectItem>
-                  <SelectItem value="Low Voltage Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Network Installation">Installation</SelectItem>
-                  <SelectItem value="Site Audit">Inspection</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
 
-        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-          <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
-            Create Dispatch Entry
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
+              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+              <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                Create Dispatch Entry
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* CLIENT REGISTRY POPUP */}
+        <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
+            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+                <DialogHeader className="p-6 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Users className="text-brand-red h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Stakeholder Registry</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
+                </DialogHeader>
+                <div className="px-6 py-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                        <Input 
+                            placeholder="Filter registry by name or ID..." 
+                            value={registrySearch}
+                            onChange={(e) => setRegistrySearch(e.target.value)}
+                            className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                        />
+                    </div>
+                </div>
+                <ScrollArea className="flex-1 px-6 py-4">
+                    <div className="space-y-1">
+                        {filteredRegistry.map(client => (
+                            <button
+                                key={client.id}
+                                type="button"
+                                onClick={() => selectClientFromRegistry(client)}
+                                className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                            >
+                                <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                                    <Building2 size={16} />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                    {client.businessType && (
+                                        <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                    )}
+                                    <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                                </div>
+                                <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                        ))}
+                        {filteredRegistry.length === 0 && (
+                            <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </>
   );
 }

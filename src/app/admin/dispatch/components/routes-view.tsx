@@ -68,6 +68,11 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
     zIndex: 100,
   } : undefined;
 
+  const getFieldNationLink = (id: string) => {
+    const cleanId = id.replace(/^wo-/, '');
+    return `https://app.fieldnation.com/workorders/${cleanId}`;
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -87,7 +92,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
             <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
             {job.source === 'Imported' && (
               <a 
-                href={`https://app.fieldnation.com/workorders/${job.id.replace('wo-', '')}`} 
+                href={getFieldNationLink(job.id)} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-text-muted hover:text-brand-red transition-colors"

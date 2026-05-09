@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -50,7 +51,7 @@ import {
   ChevronRight,
   ExternalLink
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
@@ -264,17 +265,18 @@ export function WorkOrdersClient({
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
           let m, d, y;
-          if (parts[0].length === 4) { // yyyy-mm-dd
-              [y, m, d] = parts;
-          } else { // mm-dd-yyyy or similar
-              [m, d, y] = parts;
-          }
+          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
           return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
       return dateStr;
     }
+  };
+
+  const getFieldNationLink = (id: string) => {
+    const cleanId = id.replace(/^wo-/, '');
+    return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
   // Registry Selection Logic
@@ -340,8 +342,15 @@ export function WorkOrdersClient({
                   <td className="!py-3">
                     <div className="flex items-center gap-4 px-4">
                       <div className="flex flex-col items-center gap-1.5 shrink-0">
-                        <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
-                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[7px] h-3.5 px-1.5">{order.status}</Badge>
+                        <div className="flex items-center gap-1.5">
+                            <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
+                            {order.source === 'Imported' && (
+                                <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
+                                    <ExternalLink size={10} />
+                                </a>
+                            )}
+                        </div>
+                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex flex-col items-start text-left min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>

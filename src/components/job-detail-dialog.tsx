@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -71,17 +72,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
           let m, d, y;
-          if (parts[0].length === 4) { // yyyy-mm-dd
-              [y, m, d] = parts;
-          } else { // mm-dd-yyyy or similar
-              [m, d, y] = parts;
-          }
+          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
           return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
       return dateStr;
     }
+  };
+
+  const getFieldNationLink = (id: string) => {
+    const cleanId = id.replace(/^wo-/, '');
+    return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
   return (
@@ -94,7 +96,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                 <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {mission.id.toUpperCase()}</span>
                 {mission.source === 'Imported' && (
                   <a 
-                    href={`https://app.fieldnation.com/workorders/${mission.id.replace('wo-', '')}`} 
+                    href={getFieldNationLink(mission.id)} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-text-muted hover:text-brand-red transition-colors"

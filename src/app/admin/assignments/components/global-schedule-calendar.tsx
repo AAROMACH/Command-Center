@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -25,7 +26,8 @@ import {
   MapPin, 
   Clock, 
   User,
-  Activity
+  Activity,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -120,6 +122,11 @@ export function GlobalScheduleCalendar({
     const handleCardClick = (wo: WorkOrder) => {
         setSelectedJob(wo);
         setIsDetailOpen(true);
+    };
+
+    const getFieldNationLink = (id: string) => {
+      const cleanId = id.replace(/^wo-/, '');
+      return `https://app.fieldnation.com/workorders/${cleanId}`;
     };
 
     if (!currentDate) return null;
@@ -250,7 +257,14 @@ export function GlobalScheduleCalendar({
                                               <div className="job-body !p-5">
                                                   <div className="job-left">
                                                       <div className="flex justify-between items-start mb-3">
-                                                          <span className="job-wo !text-[10px]">{wo.id.toUpperCase()}</span>
+                                                          <div className="flex items-center gap-2">
+                                                            <span className="job-wo !text-[10px]">{wo.id.toUpperCase()}</span>
+                                                            {wo.source === 'Imported' && (
+                                                              <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                                <ExternalLink size={10} />
+                                                              </a>
+                                                            )}
+                                                          </div>
                                                           <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 uppercase tracking-widest">
                                                               {wo.status}
                                                           </Badge>

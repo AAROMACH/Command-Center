@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -272,11 +273,7 @@ export function WorkOrdersClient({
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
           let m, d, y;
-          if (parts[0].length === 4) { // yyyy-mm-dd
-              [y, m, d] = parts;
-          } else { // mm-dd-yyyy or similar
-              [m, d, y] = parts;
-          }
+          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
           return `${m}-${d}-${y}`;
       }
       return dateStr;
@@ -285,44 +282,9 @@ export function WorkOrdersClient({
     }
   };
 
-  // Registry Selection Logic
-  const clients = useMemo(() => {
-    return technicians.filter(t => 
-        t.roles?.includes('client') || 
-        t.role.toLowerCase().includes('client') || 
-        t.clientCompany
-    );
-  }, []);
-
-  const selectedClient = useMemo(() => {
-    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clients]);
-
-  const filteredRegistry = useMemo(() => {
-    return clients.filter(c => 
-        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.id.toLowerCase().includes(registrySearch.toLowerCase())
-    );
-  }, [registrySearch, clients]);
-
-  const selectClientFromRegistry = (client: Technician) => {
-    const name = client.clientCompany || client.name;
-    if (editedOrder) {
-        setEditedOrder({
-            ...editedOrder,
-            clientName: name,
-            location: '' 
-        });
-    }
-    setIsRegistryOpen(false);
-  };
-
-  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
-    if (editedOrder) {
-        setEditedOrder({ ...editedOrder, location: site.location });
-    }
-    setIsSiteRegistryOpen(false);
+  const getFieldNationLink = (id: string) => {
+    const cleanId = id.replace(/^wo-/, '');
+    return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
   return (
@@ -384,8 +346,15 @@ export function WorkOrdersClient({
                   <td className="!py-3">
                     <div className="flex items-center gap-4 px-4">
                       <div className="flex flex-col items-center gap-1.5 shrink-0">
-                        <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
-                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-3.5 px-1.5">{order.status}</Badge>
+                        <div className="flex items-center gap-1.5">
+                            <div className="cell-id !text-[10px] font-mono">{order.id.toUpperCase()}</div>
+                            {order.source === 'Imported' && (
+                                <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
+                                    <ExternalLink size={10} />
+                                </a>
+                            )}
+                        </div>
+                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex flex-col items-start text-left min-w-0">
                         <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>

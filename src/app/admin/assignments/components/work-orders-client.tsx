@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -372,7 +371,7 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                      <MapPin className="h-3 w-3 text-brand-red shrink-0" />
+                      <MapPin size={10} className="text-brand-red shrink-0" />
                       <span className="px-1 text-center">{order.location}</span>
                     </div>
                   </td>
@@ -545,7 +544,7 @@ export function WorkOrdersClient({
                                     <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
-                                            <MapPin size={10}/> {tech.distance.toFixed(1)} MI FROM SITE
+                                            <MapPin size={10} className="text-brand-red" /> {tech.distance.toFixed(1)} MI FROM SITE
                                         </p>
                                         <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                         <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>

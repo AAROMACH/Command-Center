@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -126,7 +125,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                 <td>
                                     <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin className="h-3 w-3 text-brand-red shrink-0" />
-                                        <span className="max-w-[200px] text-center">{project.location}</span>
+                                        <span className="text-center">{project.location}</span>
                                     </div>
                                 </td>
                                 <td>

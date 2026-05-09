@@ -21,10 +21,9 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
@@ -49,8 +48,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   });
 
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
-  const [isSitePopoverOpen, setIsSitePopoverOpen] = useState(false);
 
   useEffect(() => {
       if (isOpen && !formData.scheduleDate) {
@@ -134,11 +133,11 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     });
   };
 
-  const selectSite = (site: { name: string, location: string }) => {
+  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
     setFormData(prev => ({ ...prev, location: site.location }));
-    setIsSitePopoverOpen(false);
+    setIsSiteRegistryOpen(false);
     toast({
-        title: "Site Selected",
+        title: "Site Coordinates Applied",
         description: `Deployment target set to ${site.name}.`,
     });
   };
@@ -190,59 +189,28 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                    <div className="relative">
-                        <Popover open={isSitePopoverOpen} onOpenChange={setIsSitePopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <div className="relative w-full">
-                                    <Input 
-                                        placeholder="Full address or coordinates..." 
-                                        value={formData.location}
-                                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                                        onFocus={() => {
-                                            if (selectedClient?.managedSites && selectedClient.managedSites.length > 0) {
-                                                setIsSitePopoverOpen(true);
-                                            }
-                                        }}
-                                        className="bg-bg-primary h-10 pr-10 text-xs focus:border-brand-red transition-all"
-                                    />
-                                    {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                                        <button 
-                                            type="button"
-                                            className={cn("absolute right-3 top-1/2 -translate-y-1/2 transition-colors", formData.location ? "text-text-green" : "text-text-muted hover:text-text-primary")}
-                                            onClick={() => setIsSitePopoverOpen(!isSitePopoverOpen)}
-                                        >
-                                            <MapPin size={16} />
-                                        </button>
-                                    )}
-                                </div>
-                            </PopoverTrigger>
-                            {selectedClient?.managedSites && selectedClient.managedSites.length > 0 && (
-                                <PopoverContent className="w-[300px] p-0 bg-bg-elevated border-border-main shadow-2xl z-[60]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
-                                    <div className="p-3 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
-                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-gold">Verified Client Sites</p>
-                                        <UserCheck size={10} className="text-accent-gold" />
-                                    </div>
-                                    <ScrollArea className="h-[180px]">
-                                        <div className="p-1">
-                                            {selectedClient.managedSites.map(site => (
-                                                <button
-                                                    key={site.id}
-                                                    type="button"
-                                                    onClick={() => selectSite(site)}
-                                                    className="w-full p-2.5 rounded hover:bg-bg-tertiary transition-colors text-left border border-transparent hover:border-border-sub group active:bg-brand-red-dim"
-                                                >
-                                                    <div className="flex justify-between items-start gap-2">
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                                        {formData.location === site.location && <Check size={12} className="text-text-green shrink-0" />}
-                                                    </div>
-                                                    <p className="text-[10px] text-text-muted mt-0.5 truncate">{site.location}</p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
-                                </PopoverContent>
+                    <div className="space-y-1.5">
+                        <Input 
+                            placeholder="Full address or coordinates..." 
+                            value={formData.location}
+                            onChange={(e) => setFormData({...formData, location: e.target.value})}
+                            className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
+                        />
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
+                            className={cn(
+                                "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                                (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
+                                    ? "text-text-muted opacity-50 cursor-not-allowed" 
+                                    : "text-accent-gold hover:bg-accent-gold/10"
                             )}
-                        </Popover>
+                            onClick={() => setIsSiteRegistryOpen(true)}
+                        >
+                            <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
+                        </Button>
                     </div>
                 </div>
               </div>
@@ -381,6 +349,50 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </ScrollArea>
                 <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
                     <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* SITE REGISTRY POPUP */}
+        <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
+            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+                <DialogHeader className="p-6 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Navigation className="text-accent-gold h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="flex-1 px-6 py-4">
+                    <div className="space-y-1">
+                        {selectedClient?.managedSites?.map(site => (
+                            <button
+                                key={site.id}
+                                type="button"
+                                onClick={() => selectSiteFromRegistry(site)}
+                                className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                            >
+                                <div className="flex justify-between items-start gap-3">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                        <p className="text-[10px] text-text-muted flex items-center gap-1.5">
+                                            <MapPin size={10} className="text-brand-red" />
+                                            {site.location}
+                                        </p>
+                                    </div>
+                                    <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                                </div>
+                            </button>
+                        ))}
+                        {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
+                            <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this stakeholder</p>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

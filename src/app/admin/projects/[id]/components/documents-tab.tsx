@@ -171,31 +171,8 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
         toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
     };
 
-    const simulateUpload = (phaseId?: string) => {
-        const newDoc: ProjectDocument = {
-            id: `doc-${Date.now()}`,
-            name: `Manual_Upload_${Date.now().toString().slice(-4)}.pdf`,
-            type: 'pdf',
-            label: 'Manual Upload',
-            uploader: 'System Admin',
-            uploadDate: 'Just Now',
-            size: '1.2 MB',
-            phaseId
-        };
-        setDocuments(prev => [newDoc, ...prev]);
-        toast({ title: "Registry Handshake Complete", description: "Asset appended to project folder." });
-    };
-    
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-end bg-bg-secondary/30 p-3 rounded-lg border border-border-sub">
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => simulateUpload()}>
-                        <Plus size={12} className="mr-1.5"/> Pre-Site Doc
-                    </Button>
-                </div>
-            </div>
-
             <div>
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 mb-3 px-1">
                     <FileText size={14}/>

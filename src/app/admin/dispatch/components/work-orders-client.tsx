@@ -202,7 +202,7 @@ export function WorkOrdersClient({
                 <ShieldCheck className="text-text-green h-5 w-5" />
                 <div>
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Global Allocation Protocol</p>
-                    <p className="text-xs font-bold text-text-primary uppercase">Ready for mission transmission</p>
+                    <p className="text-xs font-bold text-text-primary uppercase">Ready for Assignment</p>
                 </div>
             </div>
             

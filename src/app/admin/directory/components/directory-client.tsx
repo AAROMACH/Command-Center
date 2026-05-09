@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -349,61 +348,61 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         </div>
                     </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
-                        <div className="flex items-center gap-2">
-                            {activeTab !== 'map' && activeTab !== 'requests' && (
-                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon-sm" 
-                                        className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
-                                        onClick={() => setViewMode('rows')}
-                                        title="Row View"
-                                    >
-                                        <Rows3 size={11} />
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon-sm" 
-                                        className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
-                                        onClick={() => setViewMode('grid')}
-                                        title="Box View"
-                                    >
-                                        <LayoutGrid size={11} />
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon-sm" 
-                                        className={cn("h-6 w-6", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
-                                        onClick={() => setViewMode('columns')}
-                                        title="Column View"
-                                    >
-                                        <Columns2 size={11} />
-                                    </Button>
-                                </div>
-                            )}
+                    {activeTab !== 'map' && (
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
+                            <div className="flex items-center gap-2">
+                                {activeTab !== 'requests' && (
+                                    <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon-sm" 
+                                            className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                            onClick={() => setViewMode('rows')}
+                                            title="Row View"
+                                        >
+                                            <Rows3 size={11} />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon-sm" 
+                                            className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                            onClick={() => setViewMode('grid')}
+                                            title="Box View"
+                                        >
+                                            <LayoutGrid size={11} />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon-sm" 
+                                            className={cn("h-6 w-6", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
+                                            onClick={() => setViewMode('columns')}
+                                            title="Column View"
+                                        >
+                                            <Columns2 size={11} />
+                                        </Button>
+                                    </div>
+                                )}
 
-                            {activeTab !== 'map' && activeTab !== 'requests' && (
-                                <div className="flex items-center gap-1">
-                                    <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                        <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
-                                            <div className="flex items-center gap-1.5">
-                                                <ArrowUpDown size={10} className="text-text-muted" />
-                                                <SelectValue placeholder="Sort" />
-                                            </div>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
-                                            {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
-                                            {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
-                                            {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        </div>
+                                {activeTab !== 'requests' && (
+                                    <div className="flex items-center gap-1">
+                                        <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                                            <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
+                                                <div className="flex items-center gap-1.5">
+                                                    <ArrowUpDown size={10} className="text-text-muted" />
+                                                    <SelectValue placeholder="Sort" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
+                                                {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
+                                                {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
+                                                {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                            </div>
 
-                        {activeTab !== 'map' && (
                             <div className="search-wrap flex-1 md:flex-none">
                                 <Search className="h-3 w-3" />
                                 <input 
@@ -413,8 +412,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="w-full mt-3">
@@ -614,7 +613,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3624053.354181654!2d-84.06883681645265!3d43.5584848511088!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus" 
                                         width="100%" 
                                         height="100%" 
-                                        style={{ border: 0, filter: 'grayscale(0.6) invert(1) contrast(1.2)' }} 
+                                        style={{ border: 0 }} 
                                         allowFullScreen={true} 
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"

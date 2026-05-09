@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -522,7 +521,7 @@ export function WorkOrdersClient({
                     {filteredTechniciansRegistry.map(tech => (
                         <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center gap-4">
-                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors shadow-sm"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                 <div>
                                     <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">

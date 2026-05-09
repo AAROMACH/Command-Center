@@ -129,6 +129,7 @@ export default function ReportsPage() {
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
+          // Standardizing to mm-dd-yyyy
           return format(parseISO(dateStr), "MM-dd-yyyy");
         } catch (e) {
           return dateStr;
@@ -351,7 +352,7 @@ export default function ReportsPage() {
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">1 Weekly log overdue — not submitted</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    Corey Williams — week of 03-30-2026. Status: Draft. Log contains 3 assignment items requiring administrative verification.
+                                                    Corey Williams — week of 03-30-2026. Status: Draft. Log contains 3 work order items, 1 needing admin review.
                                                 </p>
                                             </div>
                                         </div>
@@ -411,7 +412,7 @@ export default function ReportsPage() {
                                         
                                         <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
                                             {AUDIT_ACTIONS.map((evt, i) => (
-                                                <div key={i} className="space-y-1 relative group">
+                                                <div key={i} className="space-y-1 relative group" onClick={() => handleResultClick(evt)}>
                                                     <div className={cn(
                                                         "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
                                                         evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'

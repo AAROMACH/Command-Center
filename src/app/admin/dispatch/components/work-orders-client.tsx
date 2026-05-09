@@ -261,7 +261,11 @@ export function WorkOrdersClient({
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
           let m, d, y;
-          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
+          if (parts[0].length === 4) { // yyyy-mm-dd
+              [y, m, d] = parts;
+          } else { // mm-dd-yyyy or similar
+              [m, d, y] = parts;
+          }
           return `${m}-${d}-${y}`;
       }
       return dateStr;
@@ -395,15 +399,15 @@ export function WorkOrdersClient({
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
+                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight whitespace-normal">{order.description}</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date font-mono"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time font-mono"><Clock size={13} />{order.scheduleTime}</div>
+                      <div className="cell-sched-date font-mono justify-center"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
+                      <div className="cell-sched-time font-mono justify-center"><Clock size={13} />{order.scheduleTime}</div>
                     </div>
                   </td>
                   <td>
@@ -913,7 +917,7 @@ export function WorkOrdersClient({
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">No verified sites on record for this client</p>
                           </div>
                       )}
                   </div>

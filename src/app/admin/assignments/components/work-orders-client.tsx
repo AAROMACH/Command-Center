@@ -279,7 +279,7 @@ export function WorkOrdersClient({
   };
 
   // Registry Selection Logic
-  const clients = useMemo(() => {
+  const clientsList = useMemo(() => {
     return technicians.filter(t => 
         t.roles?.includes('client') || 
         t.role.toLowerCase().includes('client') || 
@@ -288,16 +288,16 @@ export function WorkOrdersClient({
   }, []);
 
   const selectedClient = useMemo(() => {
-    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clients]);
+    return clientsList.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
+  }, [editedOrder?.clientName, clientsList]);
 
   const filteredRegistryList = useMemo(() => {
-    return clients.filter(c => 
+    return clientsList.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.id.toLowerCase().includes(registrySearch.toLowerCase())
     );
-  }, [registrySearch, clients]);
+  }, [registrySearch, clientsList]);
 
   const selectClientFromRegistry = (client: Technician) => {
     const name = client.clientCompany || client.name;
@@ -352,15 +352,15 @@ export function WorkOrdersClient({
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
+                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight whitespace-normal">{order.description}</div>
                         <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date font-mono"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
-                      <div className="cell-sched-time font-mono"><Clock size={13} />{order.scheduleTime}</div>
+                      <div className="cell-sched-date font-mono justify-center"><Calendar size={13} />{formatDateDisplay(order.scheduleDate)}</div>
+                      <div className="cell-sched-time font-mono justify-center"><Clock size={13} />{order.scheduleTime}</div>
                     </div>
                   </td>
                   <td>

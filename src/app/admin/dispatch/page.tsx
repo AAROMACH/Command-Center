@@ -119,7 +119,7 @@ export default function DispatchPage() {
                 <Layers size={14} />
                 DISPATCH HUB
                 {unassignedCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold">
+                  <Badge className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold bg-brand-red text-white border-none shadow-[0_0_8px_rgba(204,34,0,0.4)]">
                     {unassignedCount}
                   </Badge>
                 )}
@@ -128,7 +128,7 @@ export default function DispatchPage() {
                 <ClipboardList size={14} />
                 SERVICE REQUESTS
                 {newRequestsCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold">
+                  <Badge className="ml-1 h-5 min-w-[20px] px-1 text-[10px] font-bold bg-brand-red text-white border-none shadow-[0_0_8px_rgba(204,34,0,0.4)]">
                     {newRequestsCount}
                   </Badge>
                 )}

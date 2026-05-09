@@ -221,7 +221,7 @@ export function WorkOrdersClient({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Abort</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleConfirmAssignments} className="bg-text-green hover:bg-text-green/90 border-none">
                     Confirm & Notify
                   </AlertDialogAction>

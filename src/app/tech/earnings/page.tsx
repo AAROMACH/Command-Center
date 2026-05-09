@@ -295,7 +295,7 @@ export default function TechEarningsPage() {
 
                     <DialogFooter className="bg-bg-secondary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
                         <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest">
-                            <X size={14} className="mr-2" /> Abort
+                            <X size={14} className="mr-2" /> Cancel
                         </Button>
                         <Button onClick={executeExport} className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
                             <Check size={14} className="mr-2" /> Finalize & Download

@@ -273,7 +273,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
             </ScrollArea>
 
             <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Close Terminal</Button>
+                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
                 <Button className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
                     Commit Updates
                 </Button>

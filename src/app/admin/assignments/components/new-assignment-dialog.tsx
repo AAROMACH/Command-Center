@@ -365,7 +365,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         </div>
 
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort</Button>
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
           <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
             Create Dispatch Entry
           </Button>

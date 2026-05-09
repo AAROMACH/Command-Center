@@ -388,7 +388,7 @@ export default function ClientSitesPage() {
                             </div>
                         </div>
                         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-                            <Button variant="outline" type="button" onClick={() => setIsAddSiteOpen(false)}>Abort</Button>
+                            <Button variant="outline" type="button" onClick={() => setIsAddSiteOpen(false)}>Cancel</Button>
                             <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10">
                                 <Check size={16} className="mr-2" />
                                 Request Registry

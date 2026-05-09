@@ -220,7 +220,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
           {step === 'input' ? (
             <>
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8">Abort</Button>
+                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8">Cancel</Button>
                 <Button onClick={handleAnalyze} disabled={isProcessing || !pastedText.trim()} className="h-10 px-10">
                     {isProcessing ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ChevronRight size={16} className="mr-2" />}
                     Analyze Buffer

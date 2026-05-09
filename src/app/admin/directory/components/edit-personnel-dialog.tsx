@@ -355,7 +355,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         </div>
 
         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Abort Updates</Button>
+          <Button variant="outline" onClick={() => setEditingLogId(null)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Cancel Updates</Button>
           <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover group">
             <Save size={14} className="mr-2" />
             Commit Updates

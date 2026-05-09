@@ -254,7 +254,7 @@ export default function ClientBillingPage() {
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
-                        <Button variant="outline" onClick={() => setIsModifyOpen(false)} className="h-10 px-8">Abort</Button>
+                        <Button variant="outline" onClick={() => setIsModifyOpen(false)} className="h-10 px-8">Cancel</Button>
                         <Button onClick={handleUpdatePlan} className="h-10 px-12 bg-brand-red hover:bg-brand-red-hover">
                             Request Plan Transition
                         </Button>

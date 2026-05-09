@@ -316,7 +316,7 @@ export default function ClientTicketsPage() {
                             </div>
                         </div>
                         <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default mt-2">
-                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Abort Submission</Button>
+                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel Submission</Button>
                             <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10 uppercase font-bold text-[10px] tracking-widest h-10">
                                 <Check size={16} className="mr-2" />
                                 Transmit Request

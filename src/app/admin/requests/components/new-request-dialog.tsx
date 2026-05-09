@@ -248,8 +248,11 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           </div>
         </div>
 
-        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-col gap-4">
-          <div className="w-full">
+        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-row items-end gap-4">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
+            <X size={14} className="mr-2"/> Cancel Intake
+          </Button>
+          <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">Convert to a(n):</p>
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
@@ -260,9 +263,6 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               </Button>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full h-10 px-8 uppercase font-bold text-[10px] tracking-widest">
-            <X size={14} className="mr-2"/> Cancel Intake
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

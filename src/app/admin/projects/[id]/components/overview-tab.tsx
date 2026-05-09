@@ -3,7 +3,7 @@ import type { Project, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, DollarSign, AlertTriangle, Info, Plus, Users } from 'lucide-react';
+import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, X } from 'lucide-react';
 import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,25 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
         if (value === undefined) return '$0.00';
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
     }
+
+    const handleAddNote = () => {
+        const newNote = {
+            id: `note-${Date.now()}`,
+            text: 'New Site Intel',
+            type: 'info' as const
+        };
+        setProject(prev => ({
+            ...prev,
+            siteHazardNotes: [...prev.siteHazardNotes, newNote]
+        }));
+    };
+
+    const handleDeleteNote = (id: string) => {
+        setProject(prev => ({
+            ...prev,
+            siteHazardNotes: prev.siteHazardNotes.filter(n => n.id !== id)
+        }));
+    };
     
     return (
         <>
@@ -50,12 +69,18 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             <label className="field-label">Field Intelligence & Site Notes</label>
                             <div className="note-chips">
                                 {project.siteHazardNotes.map(note => (
-                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
+                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'} group/note`}>
                                         {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
-                                        {note.text}
+                                        <span>{note.text}</span>
+                                        <button 
+                                            onClick={() => handleDeleteNote(note.id)}
+                                            className="ml-1 opacity-60 hover:opacity-100 hover:text-text-primary transition-opacity"
+                                        >
+                                            <X size={12} />
+                                        </button>
                                     </div>
                                 ))}
-                                <button className="note-chip-add"><Plus size={13}/> Add Note</button>
+                                <button className="note-chip-add" onClick={handleAddNote}><Plus size={13}/> Add Note</button>
                             </div>
                             <Textarea className="field-textarea mt-2" placeholder="Parking, entry codes, badge requirements..." defaultValue={project.siteAccessInstructions}></Textarea>
                         </div>

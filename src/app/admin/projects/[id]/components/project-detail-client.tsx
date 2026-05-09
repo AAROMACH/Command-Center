@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Project, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import { ChevronLeft, MapPin, Calendar, Clock, Users, Edit, Archive, Check, X, ShieldAlert, DollarSign, Timer, Building2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,20 +42,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-type ProjectDetailClientProps = {
-    project: Project;
-    technicians: Technician[];
-    documents: ProjectDocument[];
-    timesheets: TimesheetLog[];
-};
-
 function getProgress(project: Project): number {
-    const totalTasks = project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
-    if (totalTasks === 0) return 0;
-    const completedTasks = project.phases.reduce((acc, phase) => {
-        return acc + phase.tasks.filter(task => task.isCompleted).length;
-    }, 0);
-    return (completedTasks / totalTasks) * 100;
+    const allTasks = project.phases.flatMap(phase => phase.tasks);
+    if (allTasks.length === 0) return 0;
+    const completedTasks = allTasks.filter(task => task.isCompleted).length;
+    return (completedTasks / allTasks.length) * 100;
 }
 
 export function ProjectDetailClient({ project: initialProject, technicians, documents, timesheets: initialTimesheets }: ProjectDetailClientProps) {
@@ -100,7 +91,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                 </Link>
                 <div className="detail-breadcrumb">/ <span>{project.name}</span></div>
                 <div className="ml-auto flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setEditedProject(project); setIsEditOpen(true); }}>
+                    <Button variant="outline" size="sm" onClick={() => { setEditedProject(project); setIsEditOpen(true); }} className="h-8 !text-[10px]">
                         <Edit size={12} className="mr-1.5"/> Edit Project
                     </Button>
                 </div>
@@ -109,7 +100,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
             <div className="project-detail-header">
                 <div className="pdh-top">
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-1">
                             <h1 className="pdh-title">{project.name} — {project.location}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>
@@ -372,3 +363,10 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
         </div>
     );
 }
+
+type ProjectDetailClientProps = {
+    project: Project;
+    technicians: Technician[];
+    documents: ProjectDocument[];
+    timesheets: TimesheetLog[];
+};

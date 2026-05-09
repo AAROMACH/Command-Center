@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician } from '@/lib/types';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import {
   ChevronLeft,
   MapPin,
@@ -29,12 +29,10 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 
 function getProgress(project: Project): number {
-    const totalTasks = project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
-    if (totalTasks === 0) return 0;
-    const completedTasks = project.phases.reduce((acc, phase) => {
-        return acc + phase.tasks.filter(task => task.isCompleted).length;
-    }, 0);
-    return (completedTasks / totalTasks) * 100;
+    const allTasks = project.phases.flatMap(phase => phase.tasks);
+    if (allTasks.length === 0) return 0;
+    const completedTasks = allTasks.filter(task => task.isCompleted).length;
+    return (completedTasks / allTasks.length) * 100;
 }
 
 const PhaseBlock = ({
@@ -167,7 +165,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
             <div className="project-detail-header">
                 <div className="pdh-top">
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-1">
                             <h1 className="pdh-title">{project.name}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>

@@ -11,12 +11,10 @@ type ProjectsClientProps = {
 };
 
 function getProgress(project: Project): number {
-    const totalTasks = project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
-    if (totalTasks === 0) return 0;
-    const completedTasks = project.phases.reduce((acc, phase) => {
-        return acc + phase.tasks.filter(task => task.isCompleted).length;
-    }, 0);
-    return (completedTasks / totalTasks) * 100;
+    const allTasks = project.phases.flatMap(phase => phase.tasks);
+    if (allTasks.length === 0) return 0;
+    const completedTasks = allTasks.filter(task => task.isCompleted).length;
+    return (completedTasks / allTasks.length) * 100;
 }
 
 function getCompletedTasksCount(project: Project): number {

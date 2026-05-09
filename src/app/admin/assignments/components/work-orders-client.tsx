@@ -43,11 +43,13 @@ import {
   Building2,
   Check,
   Users,
-  Navigation
+  Navigation,
+  Eye
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { JobDetailDialog } from "@/components/job-detail-dialog";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -82,6 +84,9 @@ export function WorkOrdersClient({
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
 
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailJob, setDetailJob] = useState<WorkOrder | null>(null);
+
   const { toast } = useToast();
 
   const sortedWorkOrders = useMemo(() => {
@@ -99,6 +104,11 @@ export function WorkOrdersClient({
     setSelectedOrder(order);
     setEditedOrder({ ...order });
     setIsEditDialogOpen(true);
+  };
+
+  const handleOpenDetail = (order: WorkOrder) => {
+    setDetailJob(order);
+    setIsDetailOpen(true);
   };
 
   const handleGetRecommendation = async () => {
@@ -303,7 +313,10 @@ export function WorkOrdersClient({
                          </Button>
                        )}
                        <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
-                         <Pencil />
+                         <Pencil size={16} />
+                       </button>
+                       <button className="btn-edit" onClick={() => handleOpenDetail(order)}>
+                         <Eye size={16} />
                        </button>
                      </div>
                   </td>
@@ -316,6 +329,16 @@ export function WorkOrdersClient({
           </tbody>
         </table>
       </div>
+
+      <JobDetailDialog 
+        isOpen={isDetailOpen} 
+        setIsOpen={setIsDetailOpen} 
+        mission={detailJob} 
+        onEdit={(m) => {
+          setIsDetailOpen(false);
+          handleOpenEditDialog(m);
+        }}
+      />
 
       {/* DISPATCH TERMINAL */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

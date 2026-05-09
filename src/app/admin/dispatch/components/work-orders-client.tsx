@@ -366,9 +366,6 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                      <div className="cell-actions">
-                       <button className="btn-edit" onClick={() => handleOpenDetail(order)}>
-                         <Eye size={16} />
-                       </button>
                        {order.status === 'unassigned' && (
                          <Button 
                             size="sm" 
@@ -380,7 +377,10 @@ export function WorkOrdersClient({
                          </Button>
                        )}
                        <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
-                         <Pencil />
+                         <Pencil size={16} />
+                       </button>
+                       <button className="btn-edit" onClick={() => handleOpenDetail(order)}>
+                         <Eye size={16} />
                        </button>
                      </div>
                   </td>

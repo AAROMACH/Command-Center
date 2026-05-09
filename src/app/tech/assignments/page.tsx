@@ -108,7 +108,7 @@ export default function TechAssignmentsPage() {
                                     <tr key={wo.id}>
                                         <td>
                                             <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize">{wo.status}</Badge>
+                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5">{wo.status}</Badge>
                                         </td>
                                         <td>
                                             <div className="cell-desc-title">{wo.description}</div>
@@ -187,7 +187,7 @@ export default function TechAssignmentsPage() {
                                             <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
                                         </td>
                                         <td>
-                                            <Badge variant="completed" className="uppercase text-[9px]">
+                                            <Badge variant="completed" className="uppercase text-[8px] h-4 px-1.5">
                                                 <FileCheck size={11} className="mr-1"/>
                                                 Audit Passed
                                             </Badge>

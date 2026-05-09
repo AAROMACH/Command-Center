@@ -97,7 +97,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer">
                                 <td>
                                     <div className="cell-id">{project.id.toUpperCase()}</div>
-                                    <Badge variant={project.status} className="capitalize">{project.status}</Badge>
+                                    <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
                                 </td>
                                 <td>
                                     <div className="cell-desc-title !normal-case">{project.name}</div>
@@ -177,7 +177,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     className="h-7 w-7 border-border-sub bg-bg-primary"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size(14) />
                   </Button>
                   <div className="flex items-center gap-1 px-2">
                     <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>

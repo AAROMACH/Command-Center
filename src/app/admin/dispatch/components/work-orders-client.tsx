@@ -374,7 +374,7 @@ export function WorkOrdersClient({
                 <tr key={order.id}>
                   <td>
                     <div className="cell-id">{order.id.toUpperCase()}</div>
-                    <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize">{order.status}</Badge>
+                    <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                   </td>
                   <td>
                     <div className="cell-desc-title">{order.description}</div>
@@ -391,7 +391,7 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     {route ? (
-                        <Badge variant="outline" className="bg-bg-tertiary border-accent-gold/30 text-accent-gold text-[9px] uppercase tracking-widest gap-1">
+                        <Badge variant="outline" className="bg-bg-tertiary border-accent-gold/30 text-accent-gold text-[8px] uppercase tracking-widest gap-1 h-4 px-1.5">
                             <Layers size={10}/> {route.name}
                         </Badge>
                     ) : (
@@ -909,4 +909,3 @@ export function WorkOrdersClient({
     </>
   );
 }
-

@@ -70,12 +70,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
     if (!dateStr) return 'TBD';
     try {
       const parts = dateStr.split(/[-/]/);
-      if (parts.length === 3) {
-          let m, d, y;
-          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-          return `${m}-${d}-${y}`;
-      }
-      return dateStr;
+      let d;
+      if (parts[0].length === 4) { d = new Date(dateStr); } 
+      else { d = parseISO(dateStr); }
+      return format(d, 'MM-dd-yyyy');
     } catch (e) {
       return dateStr;
     }
@@ -124,7 +122,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8 mt-2">
-          {/* Pay Change Request Alert */}
           {mission.payChangeRequest && (
               <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex flex-col gap-3">
                   <div className="flex items-center gap-3">
@@ -154,7 +151,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
               </div>
           )}
 
-          {/* Section 1: Personnel Intelligence */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <User size={14} className="text-brand-red"/> Primary Operative
@@ -185,7 +181,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              </div>
           </div>
 
-          {/* Section 2: History Ledger */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <History size={14} className="text-accent-gold"/> History Ledger
@@ -215,7 +210,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              </div>
           </div>
 
-          {/* Section 3: Financial Settlement Audit */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <Coins size={14} className="text-text-green"/> Financial Audit
@@ -235,7 +229,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                 </div>
              </div>
 
-             {/* Reimbursements */}
              {mission.reimbursements && mission.reimbursements.length > 0 && (
                 <div className="space-y-2">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">Incidentals & Reimbursements</p>
@@ -254,7 +247,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              )}
           </div>
 
-          {/* Section 4: Intelligence Notes */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <StickyNote size={14} className="text-accent-gold"/> Internal Briefing Notes

@@ -32,14 +32,12 @@ function getTotalTasksCount(project: Project): number {
     return project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
 }
 
-export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians }: { projects: Project[], technicians: Technician[] }) {
     const router = useRouter();
     
-    // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
-    // Reset pagination when list length changes
     useEffect(() => {
         setCurrentPage(1);
     }, [projects.length, itemsPerPage]);
@@ -54,12 +52,10 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
         if (!dateStr) return 'TBD';
         try {
           const parts = dateStr.split(/[-/]/);
-          if (parts.length === 3) {
-              let m, d, y;
-              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-              return `${m}-${d}-${y}`;
-          }
-          return dateStr;
+          let d;
+          if (parts[0].length === 4) { d = new Date(dateStr); } 
+          else { d = parseISO(dateStr); }
+          return format(d, 'MM-dd-yyyy');
         } catch (e) {
           return dateStr;
         }
@@ -68,7 +64,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     if (projects.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12">
+                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest">
                     No projects found in this category.
                 </div>
             </div>
@@ -80,7 +76,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th className="text-center w-[120px]">Status</th>
+                        <th className="text-center w-[120px]">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-center">Site Coordinates</th>
@@ -100,14 +96,15 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
                                 <td>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex flex-col items-center justify-center gap-1.5">
                                         <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
+                                        <div className="cell-id !text-[10px] font-mono !text-center">{project.id.toUpperCase()}</div>
                                     </div>
                                 </td>
                                 <td className="!py-4 text-left pl-0">
                                     <div className="flex flex-col min-w-0">
                                       <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
-                                      <div className="cell-id !text-[10px] font-mono mt-1.5 !text-left">{project.id.toUpperCase()}</div>
+                                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1.5">{project.client}</div>
                                     </div>
                                 </td>
                                 <td>
@@ -121,7 +118,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                                 <span className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[100px]">{lead.name}</span>
                                             </div>
                                         ) : (
-                                            <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unassigned</span>
+                                            <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
                                         )}
                                     </div>
                                 </td>
@@ -133,12 +130,12 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                 </td>
                                 <td>
                                     <div className="cell-sched">
-                                        <div className="cell-sched-date font-mono">
+                                        <div className="cell-sched-date font-mono justify-center">
                                             <Calendar size={13}/>
                                             <span>{formatDateDisplay(project.startDate)}</span>
                                         </div>
                                         {project.startTime && (
-                                            <div className="cell-sched-time font-mono">
+                                            <div className="cell-sched-time font-mono justify-center">
                                                 <Clock size={13}/>
                                                 <span>{project.startTime}</span>
                                             </div>
@@ -160,7 +157,6 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                 </tbody>
             </table>
 
-            {/* REGISTRY PAGINATION CONTROLS */}
             {projects.length > 0 && (
               <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
                 <div className="flex items-center gap-4">
@@ -212,8 +208,3 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
         </div>
     );
 }
-
-type ProjectsClientProps = {
-    projects: Project[];
-    technicians: Technician[];
-};

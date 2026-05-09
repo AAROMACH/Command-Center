@@ -47,7 +47,6 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 
-// ── Mock Audit Data ───────────────────────────────────────────────────────────
 const AUDIT_ACTIONS = [
     { dot: "done", action: "Assignment assigned — aaro_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Manual work order assigned"' },
     { dot: "done", action: "Assignment assigned — client_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Client work order assigned"' },
@@ -65,7 +64,6 @@ export default function ReportsPage() {
     const [clDays, setClDays] = useState("30");
     const [isClLoaded, setIsClLoaded] = useState(false);
 
-    // Detail States
     const [isPersonnelOpen, setIsPersonnelOpen] = useState(false);
     const [selectedPersonnel, setSelectedPersonnel] = useState<Technician | null>(null);
     const [isJobOpen, setIsJobOpen] = useState(false);
@@ -130,12 +128,10 @@ export default function ReportsPage() {
         if (!dateStr) return 'TBD';
         try {
           const parts = dateStr.split(/[-/]/);
-          if (parts.length === 3) {
-              let m, d, y;
-              if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-              return `${m}-${d}-${y}`;
-          }
-          return dateStr;
+          let d;
+          if (parts[0].length === 4) { d = new Date(dateStr); } 
+          else { d = parseISO(dateStr); }
+          return format(d, 'MM-dd-yyyy');
         } catch (e) {
           return dateStr;
         }
@@ -379,8 +375,8 @@ export default function ReportsPage() {
                                     <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-xl space-y-6">
                                         <History size={48} className="mx-auto text-text-muted opacity-20" />
                                         <div className="space-y-2">
-                                            <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Change Log On-Demand</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Read-efficiency mode: Log data is only fetched upon manual trigger.</p>
+                                            <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Change log is fetched on demand</p>
+                                            <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Keeps read costs low — only loads when you need it.</p>
                                         </div>
                                         <div className="flex items-center justify-center gap-3">
                                             <Select value={clDays} onValueChange={setClDays}>
@@ -388,12 +384,13 @@ export default function ReportsPage() {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="7">Last 7 Days</SelectItem>
-                                                    <SelectItem value="30">Last 30 Days</SelectItem>
-                                                    <SelectItem value="90">Last Quarter</SelectItem>
+                                                    <SelectItem value="7">Last 7 days</SelectItem>
+                                                    <SelectItem value="30">Last 30 days</SelectItem>
+                                                    <SelectItem value="60">Last 60 days</SelectItem>
+                                                    <SelectItem value="90">Last 90 days</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <Button onClick={() => setIsClLoaded(true)} className="h-10 px-8">Load Registry Audit</Button>
+                                            <Button onClick={() => setIsClLoaded(true)} className="h-10 px-8">Load change log</Button>
                                         </div>
                                     </div>
                                 ) : (
@@ -405,9 +402,10 @@ export default function ReportsPage() {
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="7">Last 7 Days</SelectItem>
-                                                        <SelectItem value="30">Last 30 Days</SelectItem>
-                                                        <SelectItem value="90">Last Quarter</SelectItem>
+                                                        <SelectItem value="7">Last 7 days</SelectItem>
+                                                        <SelectItem value="30">Last 30 days</SelectItem>
+                                                        <SelectItem value="60">Last 60 days</SelectItem>
+                                                        <SelectItem value="90">Last 90 days</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <Button variant="outline" size="sm" className="h-9" onClick={() => setIsClLoaded(false)}>Reset Terminal</Button>
@@ -433,7 +431,6 @@ export default function ReportsPage() {
                         </div>
                     </Tabs>
                 ) : (
-                    /* GLOBAL SEARCH RESULTS VIEW */
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div className="flex items-center justify-between border-b border-border-sub pb-3 px-1">
                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} intelligence matches for &quot;{searchQuery}&quot;</h3>

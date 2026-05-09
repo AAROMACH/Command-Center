@@ -96,11 +96,9 @@ export function WorkOrdersClient({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Registry Popup States for Edit Flow
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
@@ -119,7 +117,6 @@ export function WorkOrdersClient({
     }
   }, [technicians]);
 
-  // Reset page when data changes
   useEffect(() => {
     setCurrentPage(1);
   }, [workOrders.length, itemsPerPage]);
@@ -259,12 +256,10 @@ export function WorkOrdersClient({
     if (!dateStr) return 'TBD';
     try {
       const parts = dateStr.split(/[-/]/);
-      if (parts.length === 3) {
-          let m, d, y;
-          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-          return `${m}-${d}-${y}`;
-      }
-      return dateStr;
+      let d;
+      if (parts[0].length === 4) { d = new Date(dateStr); } 
+      else { d = parseISO(dateStr); }
+      return format(d, 'MM-dd-yyyy');
     } catch (e) {
       return dateStr;
     }
@@ -292,13 +287,13 @@ export function WorkOrdersClient({
         t.role.toLowerCase().includes('client') || 
         t.clientCompany
     );
-  }, []);
+  }, [technicians]);
 
   const selectedClient = useMemo(() => {
     return clientsList.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
   }, [editedOrder?.clientName, clientsList]);
 
-  const filteredRegistryList = useMemo(() => {
+  const filteredRegistry = useMemo(() => {
     return clientsList.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
@@ -383,7 +378,7 @@ export function WorkOrdersClient({
                 <tr key={order.id} className="group">
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5">
                           <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
                           {order.source === 'Imported' && (
@@ -483,7 +478,6 @@ export function WorkOrdersClient({
           </tbody>
         </table>
 
-        {/* REGISTRY PAGINATION CONTROLS */}
         {sortedWorkOrders.length > 0 && (
           <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
             <div className="flex items-center gap-4">
@@ -847,7 +841,7 @@ export function WorkOrdersClient({
               </div>
               <ScrollArea className="flex-1 px-6 py-4">
                   <div className="space-y-1">
-                      {filteredRegistryList.map(client => (
+                      {filteredRegistry.map(client => (
                           <button
                               key={client.id}
                               type="button"
@@ -867,7 +861,7 @@ export function WorkOrdersClient({
                               <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                       ))}
-                      {filteredRegistryList.length === 0 && (
+                      {filteredRegistry.length === 0 && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
                               <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
                           </div>

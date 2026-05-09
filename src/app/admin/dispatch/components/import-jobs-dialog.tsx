@@ -39,7 +39,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
     if (!pastedText.trim()) return;
     setIsProcessing(true);
 
-    // Parser logic for FieldNation raw blocks
     const parsePastedText = (text: string): WorkOrder[] => {
       const blocks = text.split(/\n\s*\n/).filter(b => b.trim());
       
@@ -232,7 +231,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
             </>
           )}
         </DialogFooter>
-      </Dialog>
+      </DialogContent>
     </Dialog>
   );
 }

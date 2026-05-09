@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { ServiceRequest } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,9 @@ import {
   Wrench,
   Camera,
   FileText,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -27,6 +30,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +50,21 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Reset pagination when data changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [requests.length, itemsPerPage]);
+
+    const totalPages = Math.ceil(requests.length / itemsPerPage);
+    const paginatedRequests = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return requests.slice(start, start + itemsPerPage);
+    }, [requests, currentPage, itemsPerPage]);
 
     if (requests.length === 0) {
         return (
@@ -104,7 +129,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     </tr>
                 </thead>
                 <tbody>
-                    {requests.map((req) => (
+                    {paginatedRequests.map((req) => (
                         <tr key={req.id}>
                             <td>
                                 <div className="cell-id">{req.id.toUpperCase()}</div>
@@ -142,6 +167,56 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     ))}
                 </tbody>
             </table>
+
+            {/* REGISTRY PAGINATION CONTROLS */}
+            {requests.length > 0 && (
+              <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                    <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                      <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                    Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, requests.length)}</span> of <span className="text-text-primary">{requests.length}</span> entries
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="outline" 
+                    size="icon-sm" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                  >
+                    <ChevronLeft size={14} />
+                  </Button>
+                  <div className="flex items-center gap-1 px-2">
+                    <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
+                    <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon-sm" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                  >
+                    <ChevronRight size={14} />
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
                 <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
@@ -262,7 +337,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 text-[10px] uppercase font-bold tracking-widest">
                             <X size={14} className="mr-2" /> Reject
                         </Button>
-                        <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                        <Button onClick={handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
                             <Wrench size={14} className="mr-2" /> Assignment
                         </Button>
                         <Button variant="outline" onClick={() => handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">

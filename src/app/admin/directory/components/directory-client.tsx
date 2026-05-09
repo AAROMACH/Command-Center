@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +13,8 @@ import {
     Map, 
     UserCheck, 
     Building, 
-    ChevronRight, 
+    ChevronLeft,
+    ChevronRight,
     Building2, 
     Rows3, 
     LayoutGrid, 
@@ -27,7 +29,7 @@ import {
     X,
     Clock
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -63,6 +65,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [sortBy, setSortBy] = useState<SortOption>('name');
     const [activeTab, setActiveTab] = useState('technicians');
     
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
@@ -74,6 +80,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [siteRequests, setSiteRequests] = useState(initialSiteRequests);
     
     const { toast } = useToast();
+
+    // Reset pagination on search or tab change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, activeTab, itemsPerPage]);
 
     const handleRowClick = (person: Technician) => {
         setSelectedPerson(person);
@@ -173,7 +184,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
-    // SORTING & FILTERING
+    // FILTERED & SORTED LISTS
     const filteredTechnicians = useMemo(() => {
         return techniciansList
             .filter((tech) =>
@@ -213,6 +224,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             });
     }, [companies, lowercasedQuery, sortBy]);
     
+    // Paginated Slices
+    const paginatedTechnicians = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredTechnicians.slice(start, start + itemsPerPage);
+    }, [filteredTechnicians, currentPage, itemsPerPage]);
+
+    const paginatedStaff = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredStaff.slice(start, start + itemsPerPage);
+    }, [filteredStaff, currentPage, itemsPerPage]);
+
+    const paginatedCompanies = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredCompanies.slice(start, start + itemsPerPage);
+    }, [filteredCompanies, currentPage, itemsPerPage]);
+
+    const totalRecords = activeTab === 'technicians' ? filteredTechnicians.length : 
+                       activeTab === 'staff' ? filteredStaff.length :
+                       activeTab === 'clients' ? filteredCompanies.length : 0;
+    const totalPages = Math.ceil(totalRecords / itemsPerPage);
+
     const filteredTimeOffRequests = useMemo(() => {
         return timeOffRequests
             .filter(req => {
@@ -242,9 +274,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     }, [siteRequests, lowercasedQuery]);
 
     const pendingRequestsCount = timeOffRequests.filter(r => r.status === 'pending').length + siteRequests.filter(r => r.status === 'pending').length;
-
-    const personWorkOrders = selectedPerson ? workOrders.filter(wo => wo.assignedTechnicianId === selectedPerson.id) : [];
-    const personTimeOffRequests = selectedPerson ? timeOffRequests.filter(req => req.technicianId === selectedPerson.id) : [];
 
     return (
         <>
@@ -363,7 +392,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     <div className="text-center">RELIABILITY</div>
                                     <div>STATUS</div>
                                 </div>
-                                {filteredTechnicians.map(tech => {
+                                {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
                                     <div key={tech.id} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
@@ -391,7 +420,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                         {viewMode === 'grid' && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {filteredTechnicians.map(tech => (
+                                {paginatedTechnicians.map(tech => (
                                     <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
                                         <CardContent className="p-3">
                                             <div className="flex justify-between items-start mb-2">
@@ -414,7 +443,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                         {viewMode === 'columns' && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                                {filteredTechnicians.map(tech => (
+                                {paginatedTechnicians.map(tech => (
                                     <div key={tech.id} className="p-2 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
                                         <div className="flex items-center gap-2">
                                             <Avatar className="h-6 w-6">
@@ -440,7 +469,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     <div>CONTACT</div>
                                     <div>ROLE</div>
                                 </div>
-                                {filteredStaff.map(s => (
+                                {paginatedStaff.map(s => (
                                     <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-8 w-8">
@@ -462,7 +491,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 ))}
                             </div>
                         )}
-                        {/* Other views for staff could follow the same reduced padding pattern */}
                     </TabsContent>
                     
                     <TabsContent value="clients" className="m-0">
@@ -474,7 +502,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     <div className="text-center">CONTACTS</div>
                                     <div className="text-right">REGISTRY</div>
                                 </div>
-                                {filteredCompanies.map(company => (
+                                {paginatedCompanies.map(company => (
                                     <div key={company.name} className="grid grid-cols-[2fr,2fr,1fr,1fr] items-center p-2 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
                                         <div className="flex items-center gap-3">
                                             <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
@@ -495,146 +523,58 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 ))}
                             </div>
                         )}
-                        {/* Other views for clients follow the pattern */}
-                    </TabsContent>
-                    
-                    <TabsContent value="requests" className="m-0">
-                        <div className="space-y-4">
-                            <Tabs defaultValue="site_registry" className="w-full">
-                                <div className="flex items-center gap-4 mb-2 border-b border-border-sub pb-1.5">
-                                    <TabsList className="bg-transparent h-auto p-0 gap-4">
-                                        <TabsTrigger value="site_registry" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-1 text-[10px] flex items-center gap-1.5">
-                                            Site Registry
-                                            {siteRequests.filter(s => s.status === 'pending').length > 0 && (
-                                                <Badge variant="destructive" className="h-3 px-1 text-[7px]">
-                                                    {siteRequests.filter(s => s.status === 'pending').length}
-                                                </Badge>
-                                            )}
-                                        </TabsTrigger>
-                                        <TabsTrigger value="personnel_absences" className="tab-trigger data-[state=active]:text-brand-red data-[state=active]:border-brand-red border-b-2 border-transparent rounded-none px-0 pb-1 text-[10px] flex items-center gap-1.5">
-                                            Absences
-                                            {timeOffRequests.filter(r => r.status === 'pending').length > 0 && (
-                                                <Badge variant="secondary" className="h-3 px-1 text-[7px]">
-                                                    {timeOffRequests.filter(r => r.status === 'pending').length}
-                                                </Badge>
-                                            )}
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </div>
-
-                                <TabsContent value="site_registry" className="mt-0">
-                                    <div className="table-wrap">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="h-9 hover:bg-transparent">
-                                                    <TableHead className="text-[10px]">CLIENT & SITE</TableHead>
-                                                    <TableHead className="text-[10px]">COORDINATES</TableHead>
-                                                    <TableHead className="text-[10px]">MANAGER</TableHead>
-                                                    <TableHead className="text-[10px]">STATUS</TableHead>
-                                                    <TableHead className="text-right text-[10px]">ACTIONS</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredSiteRequests.map(req => (
-                                                    <TableRow key={req.id} className="h-10">
-                                                        <TableCell className="py-1">
-                                                            <div className="space-y-0.5">
-                                                                <p className="text-[9px] font-bold text-brand-red uppercase tracking-widest">{req.clientName}</p>
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase">{req.siteName}</p>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="py-1">
-                                                            <div className="flex items-center gap-1 text-[10px] text-text-secondary">
-                                                                <MapPin size={10} className="text-text-muted" />
-                                                                <span className="truncate max-w-[120px]">{req.location}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="py-1">
-                                                            <p className="text-[10px] font-semibold text-text-primary">{req.managerName || 'TBD'}</p>
-                                                        </TableCell>
-                                                        <TableCell className="py-1">
-                                                            <Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[9px] h-5">
-                                                                {req.status}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell className="py-1 text-right">
-                                                            {req.status === 'pending' && (
-                                                                <div className="flex gap-1.5 justify-end">
-                                                                    <Button size="icon-sm" variant="outline" className="h-6 w-6" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}><X size={12}/></Button>
-                                                                    <Button size="icon-sm" className="h-6 w-6" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}><Check size={12}/></Button>
-                                                                </div>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="personnel_absences" className="mt-0">
-                                    <div className="table-wrap">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="h-9 hover:bg-transparent">
-                                                    <TableHead className="text-[10px]">PERSONNEL</TableHead>
-                                                    <TableHead className="text-[10px]">DATES</TableHead>
-                                                    <TableHead className="text-[10px]">TYPE</TableHead>
-                                                    <TableHead className="text-[10px]">STATUS</TableHead>
-                                                    <TableHead className="text-right text-[10px]">ACTIONS</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredTimeOffRequests.map(req => {
-                                                    const person = personnel.find(p => p.id === req.technicianId);
-                                                    return (
-                                                    <TableRow key={req.id} className="h-10">
-                                                        <TableCell className="py-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar className="h-6 w-6"><AvatarImage src={person?.avatarUrl}/><AvatarFallback className="text-[8px]">{person?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                <span className="font-bold uppercase tracking-wide text-[10px]">{person?.name}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="py-1 text-[10px] font-mono">{req.startDate}</TableCell>
-                                                        <TableCell className="py-1"><Badge variant="secondary" className="capitalize text-[8px] h-4">{req.type}</Badge></TableCell>
-                                                        <TableCell className="py-1"><Badge variant={req.status === 'approved' ? 'completed' : req.status === 'pending' ? 'onhold' : 'destructive'} className="capitalize text-[8px] h-4">{req.status}</Badge></TableCell>
-                                                        <TableCell className="py-1 text-right">
-                                                            {req.status === 'pending' && (
-                                                                <div className="flex gap-1.5 justify-end">
-                                                                    <Button size="icon-sm" variant="outline" className="h-6 w-6" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}><X size={12}/></Button>
-                                                                    <Button size="icon-sm" className="h-6 w-6" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}><Check size={12}/></Button>
-                                                                </div>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )})}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </TabsContent>
-                            </Tabs>
-                        </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="map" className="m-0">
-                        <div className="p-3 flex flex-col gap-3 border border-border-default rounded-lg bg-bg-secondary">
-                            <div className="flex justify-end items-center gap-3 border-b border-border-default pb-2">
-                                <div className="flex items-center gap-1.5">
-                                    <UserCheck size={12} className="text-accent-gold" />
-                                    <Label className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Home Area</Label>
-                                </div>
-                                <Switch id="map-toggle" className="scale-75" />
-                                    <div className="flex items-center gap-1.5">
-                                    <Building size={12} className="text-text-green" />
-                                    <Label className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Client Sites</Label>
-                                </div>
-                            </div>
-                            <div className="relative aspect-video w-full bg-bg-primary rounded-md overflow-hidden border border-border-subtle">
-                                <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d2519879.5136364023!2d-84.46712132853324!3d42.82164695836222!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1777314459553!5m2!1sen!2sus" width="100%" height="100%" style={{ border: 0 }} allowFullScreen={true} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute top-0 left-0 w-full h-full grayscale invert opacity-80"></iframe>
-                            </div>
-                        </div>
                     </TabsContent>
                 </div>
+
+                {/* GLOBAL REGISTRY PAGINATION FOOTER */}
+                {activeTab !== 'map' && activeTab !== 'requests' && totalRecords > 0 && (
+                    <div className="mt-4 flex items-center justify-between p-4 bg-bg-secondary rounded-lg border border-border-sub">
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                                <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                                    <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                                Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, totalRecords)}</span> of <span className="text-text-primary">{totalRecords}</span> entries
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                            <Button 
+                                variant="outline" 
+                                size="icon-sm" 
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                className="h-7 w-7 border-border-sub bg-bg-primary"
+                            >
+                                <ChevronLeft size={14} />
+                            </Button>
+                            <div className="flex items-center gap-1 px-3">
+                                <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
+                                <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                size="icon-sm" 
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                className="h-7 w-7 border-border-sub bg-bg-primary"
+                            >
+                                <ChevronRight size={14} />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </Tabs>
             
             <AddPersonnelDialog 
@@ -656,9 +596,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
                 person={selectedPerson}
-                workOrders={personWorkOrders}
+                workOrders={[]}
                 onEdit={() => handleEditClick(selectedPerson!)}
-                timeOffRequests={personTimeOffRequests}
+                timeOffRequests={[]}
             />
 
             {selectedCompany && (
@@ -672,3 +612,4 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         </>
     );
 }
+

@@ -1,10 +1,20 @@
+
 'use client';
 
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, Timer, User } from 'lucide-react';
+import { MapPin, Calendar, Clock, Timer, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ProjectsClientProps = {
     projects: Project[];
@@ -28,6 +38,21 @@ function getTotalTasksCount(project: Project): number {
 
 export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     const router = useRouter();
+    
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Reset pagination when list length changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [projects.length, itemsPerPage]);
+
+    const totalPages = Math.ceil(projects.length / itemsPerPage);
+    const paginatedProjects = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return projects.slice(start, start + itemsPerPage);
+    }, [projects, currentPage, itemsPerPage]);
 
     const formatDateDisplay = (dateStr: string) => {
         try {
@@ -60,7 +85,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                     </tr>
                 </thead>
                 <tbody>
-                    {projects.map((project) => {
+                    {paginatedProjects.map((project) => {
                         const progress = getProgress(project);
                         const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
                         const completedTasks = getCompletedTasksCount(project);
@@ -120,6 +145,56 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                     })}
                 </tbody>
             </table>
+
+            {/* REGISTRY PAGINATION CONTROLS */}
+            {projects.length > 0 && (
+              <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                    <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                      <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                    Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, projects.length)}</span> of <span className="text-text-primary">{projects.length}</span> entries
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="outline" 
+                    size="icon-sm" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                  >
+                    <ChevronLeft size={14} />
+                  </Button>
+                  <div className="flex items-center gap-1 px-2">
+                    <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
+                    <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon-sm" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                  >
+                    <ChevronRight size={14} />
+                  </Button>
+                </div>
+              </div>
+            )}
         </div>
     );
 }

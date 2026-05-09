@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -57,7 +58,9 @@ import {
   Check,
   Users,
   Navigation,
-  AlertTriangle
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -93,6 +96,10 @@ export function WorkOrdersClient({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Registry Popup States for Edit Flow
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
@@ -112,9 +119,20 @@ export function WorkOrdersClient({
     }
   }, [technicians]);
 
+  // Reset page when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [workOrders.length, itemsPerPage]);
+
   const sortedWorkOrders = useMemo(() => {
     return [...workOrders].sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
   }, [workOrders]);
+
+  const totalPages = Math.ceil(sortedWorkOrders.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedWorkOrders.slice(start, start + itemsPerPage);
+  }, [sortedWorkOrders, currentPage, itemsPerPage]);
 
   const handleOpenAssignDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
@@ -348,7 +366,7 @@ export function WorkOrdersClient({
             </tr>
           </thead>
           <tbody>
-            {sortedWorkOrders.map((order) => {
+            {paginatedOrders.map((order) => {
               const route = routes.find(r => r.id === order.routeId);
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
               
@@ -447,6 +465,56 @@ export function WorkOrdersClient({
             )}
           </tbody>
         </table>
+
+        {/* REGISTRY PAGINATION CONTROLS */}
+        {sortedWorkOrders.length > 0 && (
+          <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                  <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, sortedWorkOrders.length)}</span> of <span className="text-text-primary">{sortedWorkOrders.length}</span> entries
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="icon-sm" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="h-7 w-7 border-border-sub bg-bg-primary"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <div className="flex items-center gap-1 px-2">
+                <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
+                <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="icon-sm" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="h-7 w-7 border-border-sub bg-bg-primary"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <JobDetailDialog 
@@ -841,3 +909,4 @@ export function WorkOrdersClient({
     </>
   );
 }
+

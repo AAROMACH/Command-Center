@@ -658,17 +658,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
-                                    <div className="absolute bottom-4 left-4 z-10 bg-black/80 backdrop-blur-md p-3 rounded-md border border-white/10 shadow-2xl">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-2">
-                                                <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-widest cursor-pointer">Technicians</Label>
-                                                <Switch 
-                                                    id="map-toggle" 
-                                                    checked={mapViewMode === 'sites'} 
-                                                    onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
-                                                />
-                                                <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-widest cursor-pointer">Client Sites</Label>
-                                            </div>
+                                    <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1.5 rounded border border-white/10 shadow-2xl">
+                                        <div className="flex items-center gap-2">
+                                            <Label htmlFor="map-toggle" className="text-[9px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
+                                            <Switch 
+                                                id="map-toggle" 
+                                                className="scale-75"
+                                                checked={mapViewMode === 'sites'} 
+                                                onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
+                                            />
+                                            <Label htmlFor="map-toggle" className="text-[9px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
                                         </div>
                                     </div>
                                 </div>

@@ -46,6 +46,7 @@ export type Technician = {
   email: string;
   phone: string;
   address?: string;
+  hourlyRate?: number; // Added for Economics logic
   emergencyContact?: {
     name: string;
     relation: string;
@@ -122,6 +123,7 @@ export type Task = {
   requiresFileUpload?: boolean;
   requiresOther?: boolean;
   otherRequirementLabel?: string;
+  estimatedHours?: number; // Added for Economics logic
 };
 
 export type ProjectDocument = {
@@ -254,6 +256,7 @@ export type Expense = {
   description: string;
   amount: number;
   status: 'Pending' | 'Approved' | 'Rejected';
+  projectId?: string; // Added for project linkage
 };
 
 export type Report = {

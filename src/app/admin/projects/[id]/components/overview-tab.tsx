@@ -1,14 +1,32 @@
 'use client';
-import type { Project, Technician } from '@/lib/types';
+import type { Project, Technician, TimesheetLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, X, Check } from 'lucide-react';
-import React, {useState, useEffect} from 'react';
+import { 
+    FileText, 
+    DollarSign, 
+    AlertTriangle, 
+    Info, 
+    Plus, 
+    Users, 
+    X, 
+    Check,
+    TrendingUp,
+    ChevronDown,
+    ChevronUp,
+    Clock,
+    Activity,
+    Landmark
+} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ManageTeamDialog } from './manage-team-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { timesheetLogs, expenses, invoices } from '@/lib/data';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type OverviewTabProps = {
     project: Project;
@@ -20,6 +38,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
+    const [isEconomicDetailsOpen, setIsEconomicDetailsOpen] = useState(false);
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
 
@@ -31,13 +50,83 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
         });
     }, [project]);
 
+    // ECONOMIC CALCULATION ENGINE
+    const projectEconomics = useMemo(() => {
+        const projectLogs = timesheetLogs.filter(log => log.projectId === project.id);
+        const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
+        const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
+
+        // 1. Logged Hours
+        const loggedHours = projectLogs.reduce((acc, log) => acc + log.totalMinutes, 0) / 60;
+
+        // 2. Estimated Hours (Auto-calc from tasks or manual)
+        let estimatedHours = project.estimatedHours || 0;
+        const taskEstSum = project.phases.reduce((pAcc, phase) => 
+            pAcc + phase.tasks.reduce((tAcc, task) => tAcc + (task.estimatedHours || 0), 0)
+        , 0);
+        if (taskEstSum > 0) estimatedHours = taskEstSum;
+
+        // 3. Labor Cost (Logged Hours x Tech Rate)
+        let laborCost = 0;
+        let rateMissing = false;
+        projectLogs.forEach(log => {
+            const tech = allTechnicians.find(t => t.id === log.technicianId);
+            if (tech?.hourlyRate) {
+                laborCost += (log.totalMinutes / 60) * tech.hourlyRate;
+            } else {
+                rateMissing = true;
+            }
+        });
+
+        // 4. Material Cost
+        const materialCost = projectExpenses
+            .filter(e => e.category === 'Materials')
+            .reduce((acc, e) => acc + e.amount, 0);
+
+        // 5. Total Other Expenses
+        const otherExpenses = projectExpenses
+            .filter(e => e.category !== 'Materials')
+            .reduce((acc, e) => acc + e.amount, 0);
+
+        // 6. Actual Cost
+        const actualCost = laborCost + materialCost + otherExpenses;
+
+        // 7. Revenue & Profit
+        const revenue = projectInvoices.length > 0 
+            ? projectInvoices.reduce((acc, i) => acc + i.total, 0)
+            : (project.projectBudget || 0);
+            
+        const isActualProfit = projectInvoices.length > 0;
+        const profit = revenue - actualCost;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+        // 8. Budget Pulse
+        const remainingBudget = (project.projectBudget || 0) - actualCost;
+        let budgetStatus: 'On Budget' | 'Near Limit' | 'Over Budget' | 'Not Enough Data' = 'On Budget';
+        if (!project.projectBudget) budgetStatus = 'Not Enough Data';
+        else if (remainingBudget < 0) budgetStatus = 'Over Budget';
+        else if (remainingBudget < (project.projectBudget * 0.1)) budgetStatus = 'Near Limit';
+
+        return {
+            loggedHours,
+            estimatedHours,
+            laborCost,
+            rateMissing,
+            materialCost,
+            otherExpenses,
+            actualCost,
+            remainingBudget,
+            profit,
+            isActualProfit,
+            margin,
+            budgetStatus,
+            revenue
+        };
+    }, [project, allTechnicians]);
+
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
-    const budgetProgress = project.projectBudget && project.actualBudget ? (project.actualBudget / project.projectBudget) * 100 : 0;
-    const hoursProgress = project.estimatedHours && project.actualHours ? (project.actualHours / project.estimatedHours) * 100 : 0;
-
-    const formatCurrency = (value?: number) => {
-        if (value === undefined) return '$0.00';
+    const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
     }
 
@@ -158,28 +247,124 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         </div>
                     </div>
 
-                     <div className="field-group">
-                        <h3 className="field-group-title"><DollarSign/> Project Economics</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between items-end mb-1">
-                                    <label className="field-label !mb-0">Budget</label>
-                                    <p className="text-sm font-mono"><span className="font-bold text-text-primary">{formatCurrency(project.actualBudget)}</span> / <span className="text-text-muted">{formatCurrency(project.projectBudget)}</span></p>
-                                </div>
-                                <div className="progress-wrap">
-                                    <div className="progress-track !h-[6px]"><div className="progress-fill green" style={{ width: `${budgetProgress}%` }}></div></div>
-                                </div>
+                     <div className="field-group !pb-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="field-group-title !mb-0"><DollarSign/> Project Economics</h3>
+                            <Badge 
+                                variant={
+                                    projectEconomics.budgetStatus === 'Over Budget' ? 'missed' : 
+                                    projectEconomics.budgetStatus === 'Near Limit' ? 'onhold' : 'active'
+                                }
+                                className="text-[9px] uppercase tracking-widest px-3 h-5"
+                            >
+                                {projectEconomics.budgetStatus}
+                            </Badge>
+                        </div>
+                        
+                        {/* Primary Economic Grid */}
+                        <div className="grid grid-cols-5 gap-px bg-border-sub border border-border-sub rounded-lg overflow-hidden mb-4">
+                            <div className="bg-bg-primary p-3 space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Master Budget</p>
+                                <p className="text-xs font-mono font-bold text-text-primary">
+                                    {project.projectBudget ? formatCurrency(project.projectBudget) : 'TBD'}
+                                </p>
                             </div>
-                             <div>
-                                <div className="flex justify-between items-end mb-1">
-                                    <label className="field-label !mb-0">Hours</label>
-                                     <p className="text-sm font-mono"><span className="font-bold text-text-primary">{project.actualHours || 0}h</span> / <span className="text-text-muted">{project.estimatedHours || 0}h</span></p>
-                                </div>
-                                <div className="progress-wrap">
-                                    <div className="progress-track !h-[6px]"><div className="progress-fill gold" style={{ width: `${hoursProgress}%` }}></div></div>
-                                </div>
+                            <div className="bg-bg-primary p-3 space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Est. Hours</p>
+                                <p className="text-xs font-mono font-bold text-text-primary">
+                                    {projectEconomics.estimatedHours ? `${projectEconomics.estimatedHours}h` : 'TBD'}
+                                </p>
+                            </div>
+                            <div className="bg-bg-primary p-3 space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Logged Hours</p>
+                                <p className={cn("text-xs font-mono font-bold", projectEconomics.loggedHours > 0 ? "text-accent-gold" : "text-text-muted")}>
+                                    {projectEconomics.loggedHours.toFixed(1)}h
+                                </p>
+                            </div>
+                            <div className="bg-bg-primary p-3 space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Remaining</p>
+                                <p className={cn("text-xs font-mono font-bold", projectEconomics.remainingBudget < 0 ? "text-text-red" : "text-text-green")}>
+                                    {project.projectBudget ? formatCurrency(projectEconomics.remainingBudget) : 'TBD'}
+                                </p>
+                            </div>
+                            <div className="bg-bg-primary p-3 space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">
+                                    {projectEconomics.isActualProfit ? 'Actual Profit' : 'Est. Profit'}
+                                </p>
+                                <p className="text-xs font-mono font-bold text-text-primary">
+                                    {project.projectBudget ? formatCurrency(projectEconomics.profit) : 'TBD'}
+                                </p>
                             </div>
                         </div>
+
+                        {/* Expandable Secondary Audit Layer */}
+                        <Collapsible open={isEconomicDetailsOpen} onOpenChange={setIsEconomicDetailsOpen}>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="w-full h-8 flex items-center justify-center gap-2 hover:bg-bg-tertiary transition-colors group">
+                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] group-hover:text-text-primary">View Economic details</p>
+                                    {isEconomicDetailsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pt-2 pb-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
+                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Cost Breakdown</p>
+                                            <Activity size={12} className="text-brand-red opacity-50" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Field Labor</span>
+                                                <span className={cn("text-[10px] font-mono font-bold", projectEconomics.rateMissing ? "text-text-red" : "text-text-primary")}>
+                                                    {projectEconomics.rateMissing ? 'Rate Missing' : formatCurrency(projectEconomics.laborCost)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Materials & Parts</span>
+                                                <span className="text-[10px] font-mono font-bold text-text-primary">
+                                                    {projectEconomics.materialCost > 0 ? formatCurrency(projectEconomics.materialCost) : '$0.00'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Incidentals</span>
+                                                <span className="text-[10px] font-mono font-bold text-text-primary">
+                                                    {projectEconomics.otherExpenses > 0 ? formatCurrency(projectEconomics.otherExpenses) : '$0.00'}
+                                                </span>
+                                            </div>
+                                            <div className="pt-1 border-t border-border-sub mt-1 flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-black text-text-primary uppercase tracking-widest">Actual Cost</span>
+                                                <span className="text-xs font-mono font-bold text-text-red">{formatCurrency(projectEconomics.actualCost)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
+                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Profit Analysis</p>
+                                            <TrendingUp size={12} className="text-text-green opacity-50" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Projected Revenue</span>
+                                                <span className="text-[10px] font-mono font-bold text-text-primary">{formatCurrency(projectEconomics.revenue)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center px-1">
+                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Profit Margin</span>
+                                                <span className={cn("text-[10px] font-mono font-bold", projectEconomics.margin > 20 ? "text-text-green" : "text-accent-gold")}>
+                                                    {project.projectBudget ? `${projectEconomics.margin.toFixed(1)}%` : 'TBD'}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 mt-2 rounded bg-bg-primary border border-border-sub flex items-start gap-2">
+                                                <Info size={12} className="text-text-muted shrink-0 mt-0.5" />
+                                                <p className="text-[9px] text-text-muted leading-relaxed uppercase">
+                                                    Economics are aggregated from project-linked work orders, time logs, and finalized invoices.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </div>
                 </div>
 

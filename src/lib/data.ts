@@ -12,6 +12,7 @@ export const technicians: Technician[] = [
     email: 'alex.j@aaromach.com',
     phone: '555-111-2222',
     address: '123 Beacon St, Boston, MA 02108',
+    hourlyRate: 65,
     emergencyContact: {
       name: 'Sarah Johnson',
       relation: 'Spouse',
@@ -46,6 +47,7 @@ export const technicians: Technician[] = [
     email: 'maria.g@aaromach.com',
     phone: '555-222-3333',
     address: '456 Oak Ave, Brooklyn, NY 11201',
+    hourlyRate: 55,
     emergencyContact: {
       name: 'Luis Garcia',
       relation: 'Brother',
@@ -100,6 +102,7 @@ export const technicians: Technician[] = [
     email: 'cwilliams@aaromach.com',
     phone: '555-666-7777',
     address: '303 Birch Rd, Newark, NJ 07102',
+    hourlyRate: 60,
     emergencyContact: {
       name: 'Michael Williams',
       relation: 'Father',
@@ -134,6 +137,7 @@ export const technicians: Technician[] = [
     email: 'david.s@aaromach.com',
     phone: '555-333-4444',
     address: '789 Maple Dr, Queens, NY 11101',
+    hourlyRate: 75,
     emergencyContact: {
       name: 'Emily Smith',
       relation: 'Spouse',
@@ -350,9 +354,9 @@ export const projects: Project[] = [
         name: 'Deinstallation',
         notes: 'All de-installed equipment must be audited against the asset list before moving to packing.',
         tasks: [
-          { id: 't1-1', name: 'Remove existing cabling', isCompleted: true, requiresPhoto: true },
-          { id: 't1-2', name: 'Disconnect all peripherals', isCompleted: true, requiresPhoto: false },
-          { id: 't1-3', name: 'Remove desktops from workstations', isCompleted: true, requiresPhoto: true },
+          { id: 't1-1', name: 'Remove existing cabling', isCompleted: true, requiresPhoto: true, estimatedHours: 4 },
+          { id: 't1-2', name: 'Disconnect all peripherals', isCompleted: true, requiresPhoto: false, estimatedHours: 8 },
+          { id: 't1-3', name: 'Remove desktops from workstations', isCompleted: true, requiresPhoto: true, estimatedHours: 12 },
         ],
       },
       {
@@ -361,9 +365,9 @@ export const projects: Project[] = [
         name: 'Packing of Old Equipment',
         notes: 'Use provided packaging materials only. All boxes must be labeled with the Ki9 standard return label format.',
         tasks: [
-          { id: 't2-1', name: 'Box items', isCompleted: true, requiresPhoto: false },
-          { id: 't2-2', name: 'Add return labels', isCompleted: false, requiresPhoto: false },
-          { id: 't2-3', name: 'Take pictures of packed items', isCompleted: false, requiresPhoto: true },
+          { id: 't2-1', name: 'Box items', isCompleted: true, requiresPhoto: false, estimatedHours: 16 },
+          { id: 't2-2', name: 'Add return labels', isCompleted: false, requiresPhoto: false, estimatedHours: 4 },
+          { id: 't2-3', name: 'Take pictures of packed items', isCompleted: false, requiresPhoto: true, estimatedHours: 2 },
         ],
       },
     ],
@@ -396,9 +400,9 @@ export const projects: Project[] = [
         name: 'Cabling & Infrastructure',
         notes: 'Run all necessary HDMI, Cat6, and speaker wire to designated locations as per the blueprint.',
         tasks: [
-          { id: 't3-1', name: 'Run conduit in main conference room', isCompleted: true, requiresPhoto: false },
-          { id: 't3-2', name: 'Pull all AV cabling for Room 101', isCompleted: false, requiresPhoto: true },
-          { id: 't3-3', name: 'Terminate all Cat6 runs', isCompleted: false, requiresPhoto: false },
+          { id: 't3-1', name: 'Run conduit in main conference room', isCompleted: true, requiresPhoto: false, estimatedHours: 24 },
+          { id: 't3-2', name: 'Pull all AV cabling for Room 101', isCompleted: false, requiresPhoto: true, estimatedHours: 40 },
+          { id: 't3-3', name: 'Terminate all Cat6 runs', isCompleted: false, requiresPhoto: false, estimatedHours: 16 },
         ],
       },
        {
@@ -407,8 +411,8 @@ export const projects: Project[] = [
         name: 'Hardware Installation',
         notes: '',
         tasks: [
-          { id: 't4-1', name: 'Mount displays in all conference rooms', isCompleted: false, requiresPhoto: true },
-          { id: 't4-2', name: 'Install ceiling speakers', isCompleted: false, requiresPhoto: true },
+          { id: 't4-1', name: 'Mount displays in all conference rooms', isCompleted: false, requiresPhoto: true, estimatedHours: 32 },
+          { id: 't4-2', name: 'Install ceiling speakers', isCompleted: false, requiresPhoto: true, estimatedHours: 16 },
         ],
       },
     ],
@@ -578,9 +582,9 @@ export const projectDailyLogs: ProjectDailyLog[] = [
 ];
 
 export const expenses: Expense[] = [
-    { id: 'exp-001', date: '2024-07-25', submittedBy: 'Alex Johnson', category: 'Materials', description: 'Emergency purchase of 1/2" copper piping', amount: 75.50, status: 'Approved' },
+    { id: 'exp-001', date: '2024-07-25', submittedBy: 'Alex Johnson', category: 'Materials', description: 'Emergency purchase of 1/2" copper piping', amount: 75.50, status: 'Approved', projectId: 'proj-001' },
     { id: 'exp-002', date: '2024-07-26', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
-    { id: 'exp-003', date: '2024-07-27', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending' },
+    { id: 'exp-003', date: '2024-07-27', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending', projectId: 'proj-001' },
     { id: 'exp-004', date: '2024-07-28', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
     { id: 'exp-005', date: '2024-07-28', submittedBy: 'Ben Carter', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
 ];

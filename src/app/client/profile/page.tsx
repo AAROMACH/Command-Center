@@ -41,7 +41,7 @@ export default function ClientProfilePage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <User size={12} />
-                        Stakeholder Identity
+                        Client Identity
                     </p>
                     <h1 className="page-title">Personal Profile</h1>
                     <p className="page-subtitle">Official portal credentials and organizational context.</p>

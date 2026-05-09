@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -154,7 +153,7 @@ export default function DispatchPage() {
                 Operations Control Center
               </p>
               <h1 className="page-title">Dispatch & Intake</h1>
-              <p className="page-subtitle">Unified terminal for stakeholder requests and logistical job routing.</p>
+              <p className="page-subtitle">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="page-header-right">
                 {activeMasterTab === 'dispatch' ? (

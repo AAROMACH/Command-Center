@@ -52,7 +52,7 @@ export default function ClientSettingsPage() {
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
                         <SettingsIcon size={12} />
-                        Stakeholder Terminal
+                        Client Terminal
                     </p>
                     <h1 className="page-title">Settings</h1>
                     <p className="page-subtitle">Manage communication protocols, organizational details, and account security.</p>

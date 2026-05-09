@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -765,7 +764,7 @@ export function WorkOrdersClient({
               <DialogHeader className="p-6 pb-2">
                   <div className="flex items-center gap-2 mb-1">
                       <Users className="text-brand-red h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Stakeholder Registry</DialogTitle>
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
                   </div>
                   <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
               </DialogHeader>
@@ -848,7 +847,7 @@ export function WorkOrdersClient({
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this stakeholder</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
                           </div>
                       )}
                   </div>

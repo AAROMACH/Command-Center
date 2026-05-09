@@ -232,7 +232,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-0.5">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">STAKEHOLDER</p>
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">CLIENT</p>
                                     <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.clientName}</p>
                                 </div>
                                 <div className="space-y-0.5 text-right">

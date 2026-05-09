@@ -266,7 +266,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
 
                 {/* Client Roles Column */}
                 <div className="space-y-4">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Stakeholder</h4>
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Client</h4>
                     <div className="space-y-2">
                         {ROLE_DATA.client.map(role => {
                             const isSelected = (formData.roles || []).includes(role.id);
@@ -339,7 +339,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="emergencyContactRelation" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Relation</Label>
-                                        <Input id="emergencyContactRelation" value={formData.emergencyContact?.relation || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: ''}), relation: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
+                                        <Input id="emergencyContactRelation" value={formData.emergencyContact?.relation || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: '0'}), relation: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
@@ -355,7 +355,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         </div>
 
         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-          <Button variant="outline" onClick={() => setEditingLogId(null)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Cancel Updates</Button>
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Cancel Updates</Button>
           <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover group">
             <Save size={14} className="mr-2" />
             Commit Updates

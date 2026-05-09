@@ -77,7 +77,7 @@ export function UserNav() {
                 {currentUser?.name || 'Authorized User'}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
-                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Stakeholder'}
+                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Lead'}
              </span>
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />

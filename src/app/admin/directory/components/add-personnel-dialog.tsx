@@ -96,7 +96,7 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
         { 
             id: 'client', 
             label: 'Client Contact', 
-            desc: 'External project stakeholder.', 
+            desc: 'External project lead.', 
             icon: Building2,
             permissions: ['View Project Status', 'Submit Service Requests', 'View Work History']
         },
@@ -301,7 +301,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
                 {/* Client Roles Column */}
                 <div className="space-y-4">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Stakeholder</h4>
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Client</h4>
                     <div className="space-y-2">
                         {ROLE_DATA.client.map(role => {
                             const isSelected = (formData.roles || []).includes(role.id);

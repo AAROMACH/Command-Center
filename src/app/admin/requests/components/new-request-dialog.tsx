@@ -115,13 +115,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <ClipboardList className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
           </div>
-          <DialogDescription>Initialize a new stakeholder request in the intake funnel.</DialogDescription>
+          <DialogDescription>Initialize a new client request in the intake funnel.</DialogDescription>
         </DialogHeader>
 
         <div className="px-6 py-4 space-y-6">
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Stakeholder</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
               <Input 
                 placeholder="Name or Organization"
                 value={formData.clientName}

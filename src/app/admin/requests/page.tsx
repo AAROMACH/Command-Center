@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -39,7 +38,7 @@ export default function RequestsPage() {
             Service Funnel
           </p>
           <h1 className="page-title !text-xl">Intake Registry</h1>
-          <p className="page-subtitle text-[11px]">Audit and route stakeholder service requests.</p>
+          <p className="page-subtitle text-[11px]">Audit and route client service requests.</p>
         </div>
         <div className="page-header-right items-center">
             <Button variant="default" size="sm" onClick={() => setIsNewDialogOpen(true)} className="h-8 !text-[10px]">
@@ -72,4 +71,3 @@ export default function RequestsPage() {
     </div>
   );
 }
-

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Milestone, Camera, Paperclip, Plus, User } from 'lucide-react';
 import React from 'react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 type DocumentsTabProps = {
     project: Project;

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   Building2, 
   Users, 
@@ -30,10 +31,13 @@ import {
   ChevronRight,
   ShieldCheck,
   FolderOpen,
-  Plus
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 type CompanyDetailDialogProps = {
   isOpen: boolean;
@@ -44,6 +48,9 @@ type CompanyDetailDialogProps = {
 
 export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel }: CompanyDetailDialogProps) {
   const [notes, setNotes] = useState("");
+  const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
+  const [newSiteData, setNewSiteData] = useState({ name: '', location: '' });
+  const { toast } = useToast();
 
   const companyContacts = useMemo(() => 
     personnel.filter(p => p.clientCompany === companyName),
@@ -76,6 +83,16 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
       .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
       .reduce((acc, inv) => acc + inv.total, 0)
   , [companyInvoices]);
+
+  const handleAddSite = () => {
+      if (!newSiteData.name || !newSiteData.location) return;
+      toast({
+          title: "Site Coordinate Authorized",
+          description: `${newSiteData.name} has been added to the ${companyName} registry.`,
+      });
+      setIsAddSiteOpen(false);
+      setNewSiteData({ name: '', location: '' });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -197,24 +214,65 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
 
                 {/* SITES */}
                 <TabsContent value="sites" className="m-0 space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{companySites.length} Authorized Locations</p>
+                        <Button variant="default" size="sm" className="h-8 !text-[10px]" onClick={() => setIsAddSiteOpen(true)}>
+                            <Plus size={14} className="mr-1.5"/> Add Verified Site
+                        </Button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {companySites.map((site, idx) => (
-                            <div key={idx} className="p-4 rounded-lg border border-border-sub bg-bg-primary hover:border-text-muted transition-colors flex items-center justify-between">
+                            <div key={idx} className="p-4 rounded-lg border border-border-sub bg-bg-primary hover:border-text-muted transition-colors flex items-center justify-between group">
                                 <div className="flex items-center gap-4">
-                                    <div className="p-2 bg-bg-tertiary rounded border border-border-sub">
-                                        <MapPin size={16} className="text-brand-red" />
+                                    <div className="p-2 bg-bg-tertiary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                        <MapPin size={16} />
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{site.name}</p>
                                         <p className="text-[10px] text-text-muted">{site.location}</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
                                     <ExternalLink size={14} />
                                 </Button>
                             </div>
                         ))}
                     </div>
+
+                    {isAddSiteOpen && (
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-brand-red/30 animate-in fade-in slide-in-from-top-2 duration-300">
+                             <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-[10px] font-black uppercase text-brand-red tracking-widest">New Site Enrollment</h4>
+                                <button onClick={() => setIsAddSiteOpen(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                             </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] uppercase font-bold text-text-muted">Site Identifier</Label>
+                                    <Input 
+                                        placeholder="e.g. Data Center West" 
+                                        className="h-9 text-xs bg-bg-primary"
+                                        value={newSiteData.name}
+                                        onChange={e => setNewSiteData({...newSiteData, name: e.target.value})}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] uppercase font-bold text-text-muted">Operational Coordinates (Address)</Label>
+                                    <Input 
+                                        placeholder="Full address..." 
+                                        className="h-9 text-xs bg-bg-primary"
+                                        value={newSiteData.location}
+                                        onChange={e => setNewSiteData({...newSiteData, location: e.target.value})}
+                                    />
+                                </div>
+                             </div>
+                             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border-sub/50">
+                                <Button variant="ghost" size="sm" className="h-8 !text-[10px]" onClick={() => setIsAddSiteOpen(false)}>Discard</Button>
+                                <Button size="sm" className="h-8 !text-[10px] bg-brand-red" onClick={handleAddSite} disabled={!newSiteData.name || !newSiteData.location}>
+                                    <Check size={14} className="mr-1.5"/> Authorize Registry
+                                </Button>
+                             </div>
+                        </div>
+                    )}
                 </TabsContent>
 
                 {/* CONTACTS */}

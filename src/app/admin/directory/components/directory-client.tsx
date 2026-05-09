@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,7 +26,9 @@ import {
     Calendar,
     Check,
     X,
-    Clock
+    Clock,
+    AlertCircle,
+    User
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
@@ -524,6 +525,112 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </div>
                         )}
                     </TabsContent>
+
+                    <TabsContent value="requests" className="m-0 space-y-8">
+                        {/* Time Off Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b border-border-sub pb-2">
+                                <Clock size={16} className="text-brand-red" />
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {filteredTimeOffRequests.map(req => {
+                                    const tech = personnel.find(p => p.id === req.technicianId);
+                                    return (
+                                        <Card key={req.id} className="bg-bg-secondary border-border-main group hover:border-brand-red transition-colors">
+                                            <CardContent className="p-4 space-y-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-8 w-8 border border-border-sub">
+                                                            <AvatarImage src={tech?.avatarUrl} />
+                                                            <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">{req.type}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Duration</p>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase">{req.startDate} — {req.endDate}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="p-2.5 rounded bg-bg-primary border border-border-sub italic text-[11px] text-text-secondary line-clamp-2">
+                                                    &quot;{req.reason}&quot;
+                                                </div>
+                                                <div className="flex gap-2 pt-1">
+                                                    <Button variant="outline" size="sm" className="flex-1 h-8 text-[9px] uppercase font-bold text-text-red border-border-alert hover:bg-brand-red-dim" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
+                                                        <X size={12} className="mr-1.5"/> Deny
+                                                    </Button>
+                                                    <Button variant="default" size="sm" className="flex-1 h-8 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
+                                                        <Check size={12} className="mr-1.5"/> Approve
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                                {filteredTimeOffRequests.length === 0 && (
+                                    <div className="col-span-full py-12 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                        <Check size={24} className="mx-auto text-text-muted mb-2 opacity-50" />
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Site Registry Requests */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b border-border-sub pb-2">
+                                <MapPin size={16} className="text-brand-red" />
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
+                            </div>
+
+                            <div className="space-y-2">
+                                {filteredSiteRequests.map(req => (
+                                    <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
+                                        <div className="flex items-center gap-5 flex-1">
+                                            <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                                <Building2 size={18} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-3">
+                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
+                                                    <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">{req.clientName}</Badge>
+                                                </div>
+                                                <p className="text-[10px] text-text-muted font-bold flex items-center gap-1.5">
+                                                    <MapPin size={10}/> {req.location}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 mt-4 md:mt-0">
+                                            <div className="text-right hidden md:block mr-4">
+                                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
+                                                <p className="text-[10px] font-bold text-text-primary uppercase">{req.managerName}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
+                                                    <X size={12} className="mr-1.5"/> Deny Registry
+                                                </Button>
+                                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
+                                                    <Check size={12} className="mr-1.5"/> Approve Site
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {filteredSiteRequests.length === 0 && (
+                                    <div className="py-12 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
+                                        <Map size={24} className="mx-auto text-text-muted mb-2 opacity-50" />
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </TabsContent>
                 </div>
 
                 {/* GLOBAL REGISTRY PAGINATION FOOTER */}
@@ -612,4 +719,3 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         </>
     );
 }
-

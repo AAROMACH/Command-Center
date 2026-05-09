@@ -110,7 +110,7 @@ export default function ClientProfilePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Contact Credentials</CardTitle>
-                            <CardDescription>Official lines of communication for mission-critical alerts.</CardDescription>
+                            <CardDescription>Official lines of communication for critical alerts.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

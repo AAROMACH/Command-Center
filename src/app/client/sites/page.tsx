@@ -206,7 +206,7 @@ export default function ClientSitesPage() {
                                     <div className="p-4 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/20 flex flex-col items-center text-center space-y-2">
                                         <AlertCircle size={24} className="text-accent-gold opacity-50" />
                                         <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">Coordinates Under Verification</p>
-                                        <p className="text-[9px] text-text-muted leading-relaxed">This site coordinate has been submitted to the Command Center and is currently undergoing tactical verification.</p>
+                                        <p className="text-[9px] text-text-muted leading-relaxed">This site coordinate has been submitted to the Command Center and is currently undergoing verification.</p>
                                     </div>
                                 ) : (
                                     <>
@@ -300,7 +300,7 @@ export default function ClientSitesPage() {
                             <History className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Pending Site Requests</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs">Registry submissions currently undergoing tactical verification by Command Center staff.</DialogDescription>
+                        <DialogDescription className="text-xs">Registry submissions currently undergoing verification by Command Center staff.</DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto px-6 py-4">
                         {myPendingSitesList.length > 0 ? (
@@ -365,10 +365,10 @@ export default function ClientSitesPage() {
                             <Input name="siteName" placeholder="e.g., Gotham Data Center, HQ North" className="bg-bg-primary" required />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Address / Coordinates</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Address / Coordinates</Label>
                             <div className="relative">
                                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                                <Input name="location" placeholder="Full tactical address..." className="bg-bg-primary pl-10" required />
+                                <Input name="location" placeholder="Full address..." className="bg-bg-primary pl-10" required />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

@@ -286,7 +286,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         onWorkOrdersChange(updatedWorkOrders);
         toast({
             title: "Batch Assignment Executed",
-            description: "Mission data transferred to the Assigned registry.",
+            description: "Job data transferred to the Assigned registry.",
         });
     };
 
@@ -417,7 +417,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
                     <DialogHeader>
                         <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Establish New Route</DialogTitle>
-                        <DialogDescription>Define a named tactical grouping for field assignments.</DialogDescription>
+                        <DialogDescription>Define a named operational grouping for field assignments.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block">Route Identifier / Name</Label>

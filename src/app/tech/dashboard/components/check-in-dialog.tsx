@@ -146,7 +146,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         <Navigation className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Check In Terminal</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">GPS-verified on-site reporting for assignments and tactical projects.</DialogDescription>
+                    <DialogDescription className="text-xs">GPS-verified on-site reporting for assignments and projects.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">

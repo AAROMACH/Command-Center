@@ -142,7 +142,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         <div className="flex items-center justify-between">
                             <div>
                                 <DialogTitle className="uppercase tracking-widest font-bold text-lg">Modify Project Registry</DialogTitle>
-                                <DialogDescription>Update high-fidelity parameters and tactical briefing for project <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
+                                <DialogDescription>Update high-fidelity parameters and operational briefing for project <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
                             </div>
                             <Badge variant={editedProject.status} className="h-6 px-3">{editedProject.status.toUpperCase()}</Badge>
                         </div>
@@ -237,10 +237,10 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                             <div className="space-y-6">
                                 <div className="space-y-4">
                                     <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <ShieldAlert size={12} className="text-brand-red"/> Tactical Briefing
+                                        <ShieldAlert size={12} className="text-brand-red"/> Operational Briefing
                                     </h3>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Mission Scope</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
                                         <Textarea 
                                             value={editedProject.scope} 
                                             onChange={e => setEditedProject({...editedProject, scope: e.target.value})}

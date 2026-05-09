@@ -30,7 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MissionDetailDialog } from '@/components/mission-detail-dialog';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type ViewMode = 'week' | 'month';
 
@@ -51,7 +51,7 @@ export function GlobalScheduleCalendar({
 }: GlobalScheduleCalendarProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
-    const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     useEffect(() => {
@@ -118,7 +118,7 @@ export function GlobalScheduleCalendar({
     };
 
     const handleCardClick = (wo: WorkOrder) => {
-        setSelectedMission(wo);
+        setSelectedJob(wo);
         setIsDetailOpen(true);
     };
 
@@ -221,7 +221,7 @@ export function GlobalScheduleCalendar({
                                   <CalendarIcon size={18} className="text-brand-red" />
                               </div>
                               <div>
-                                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Manifest</p>
+                                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Schedule Manifest</p>
                                   <p className="text-sm font-bold text-text-primary uppercase">
                                     {selectedDates.length > 0 
                                         ? selectedDates.map(d => format(d, 'MMM d')).join(', ')
@@ -231,7 +231,7 @@ export function GlobalScheduleCalendar({
                               </div>
                           </div>
                           <Badge variant="outline" className="bg-bg-tertiary border-border-sub text-[10px] px-4 h-8 uppercase font-bold tracking-widest">
-                              {assignmentsForSelectedDays.length} Active Missions
+                              {assignmentsForSelectedDays.length} Active Jobs
                           </Badge>
                       </div>
 
@@ -292,7 +292,7 @@ export function GlobalScheduleCalendar({
                           ) : (
                               <div className="col-span-full p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                                   <Activity size={48} className="mx-auto text-text-muted mb-4 opacity-10" />
-                                  <p className="text-xs text-text-muted uppercase font-bold tracking-[0.3em] italic">No missions deployed for these coordinates</p>
+                                  <p className="text-xs text-text-muted uppercase font-bold tracking-[0.2em] italic">No jobs assigned for these coordinates</p>
                               </div>
                           )}
                       </div>
@@ -300,10 +300,10 @@ export function GlobalScheduleCalendar({
                 )}
             </div>
 
-            <MissionDetailDialog 
+            <JobDetailDialog 
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
-                mission={selectedMission} 
+                mission={selectedJob} 
             />
         </>
     );

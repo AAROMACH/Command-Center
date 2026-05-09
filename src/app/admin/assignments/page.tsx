@@ -20,7 +20,7 @@ import {
 import type { WorkOrder } from "@/lib/types";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 import { format, isSameDay, parseISO } from 'date-fns';
-import { MissionDetailDialog } from '@/components/mission-detail-dialog';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
   Dialog,
   DialogContent,
@@ -42,7 +42,7 @@ export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDates, setFilterDates] = useState<Date[]>([]);
-  const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+  const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Edit Logic
@@ -90,7 +90,7 @@ export default function AssignmentsHubPage() {
   };
 
   const handleCardClick = (wo: WorkOrder) => {
-    setSelectedMission(wo);
+    setSelectedJob(wo);
     setIsDetailOpen(true);
   };
 
@@ -114,10 +114,10 @@ export default function AssignmentsHubPage() {
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <CalendarIcon size={12} />
-            Mission Schedule Terminal
+            Job Schedule Terminal
           </p>
           <h1 className="page-title">Assignments</h1>
-          <p className="page-subtitle">Operational schedule oversight and historical mission audit.</p>
+          <p className="page-subtitle">Operational schedule oversight and historical job audit.</p>
         </div>
         <div className="search-wrap">
           <Search className="h-4 w-4" />
@@ -234,8 +234,8 @@ export default function AssignmentsHubPage() {
                             <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
                             <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">
                                 {filterDates.length > 0 
-                                    ? `No active missions found for selected dates`
-                                    : "No active missions matching search criteria"
+                                    ? `No active jobs found for selected dates`
+                                    : "No active jobs matching search criteria"
                                 }
                             </p>
                             {filterDates.length > 0 && (
@@ -309,10 +309,10 @@ export default function AssignmentsHubPage() {
         </TabsContent>
       </Tabs>
 
-      <MissionDetailDialog 
+      <JobDetailDialog 
         isOpen={isDetailOpen} 
         setIsOpen={setIsDetailOpen} 
-        mission={selectedMission} 
+        mission={selectedJob} 
         onEdit={(m) => {
           setIsDetailOpen(false);
           handleOpenEditDialog(m);
@@ -323,7 +323,7 @@ export default function AssignmentsHubPage() {
         <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
             <DialogHeader>
                 <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Update Dispatch Parameters</DialogTitle>
-                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedMission?.id.toUpperCase()}</span></p>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
             </DialogHeader>
             {editedOrder && (
                 <div className="space-y-4 py-4">

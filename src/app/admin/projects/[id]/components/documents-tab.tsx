@@ -70,11 +70,11 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
              </header>
              <div className="p-4 space-y-4">
                 <div>
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Operational Intelligence / Notes</label>
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Operational Intelligence / Field Notes</label>
                     <Textarea 
                         className="min-h-[60px] text-[11px] bg-bg-primary border-border-sub focus:border-brand-red resize-none" 
                         defaultValue={phase.notes}
-                        placeholder="Add tactical notes for this phase..."
+                        placeholder="Add operational notes for this phase..."
                     />
                 </div>
 
@@ -200,7 +200,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
             <div className="space-y-4">
                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 mb-1 px-1">
                     <Milestone size={14}/>
-                    Tactical Phase Verification
+                    Phase Verification
                  </h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {project.phases.map(phase => (

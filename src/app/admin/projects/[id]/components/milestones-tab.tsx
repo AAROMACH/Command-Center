@@ -289,7 +289,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                 <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default p-0 overflow-hidden flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                         <DialogTitle className="uppercase tracking-widest font-bold">Task Parameters</DialogTitle>
-                        <DialogDescription className="text-[11px]">Define mission requirements for this project action.</DialogDescription>
+                        <DialogDescription className="text-[11px]">Define requirements for this project action.</DialogDescription>
                     </DialogHeader>
                     {editingTaskData && (
                         <ScrollArea className="flex-1">

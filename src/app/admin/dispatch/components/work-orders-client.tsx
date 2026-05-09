@@ -52,7 +52,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { MissionDetailDialog } from "@/components/mission-detail-dialog";
+import { JobDetailDialog } from "@/components/job-detail-dialog";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -83,7 +83,7 @@ export function WorkOrdersClient({
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [detailMission, setDetailMission] = useState<WorkOrder | null>(null);
+  const [detailJob, setDetailJob] = useState<WorkOrder | null>(null);
 
   const { toast } = useToast();
 
@@ -105,7 +105,7 @@ export function WorkOrdersClient({
   };
 
   const handleOpenDetail = (order: WorkOrder) => {
-    setDetailMission(order);
+    setDetailJob(order);
     setIsDetailOpen(true);
   };
 
@@ -215,7 +215,7 @@ export function WorkOrdersClient({
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-bg-elevated border-border-main">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="uppercase tracking-wider">Authorize Mission Transmission?</AlertDialogTitle>
+                  <AlertDialogTitle className="uppercase tracking-wider">Authorize Job Transmission?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will broadcast assignment details to {sortedWorkOrders.length} field operatives. This action initiates the live tracking window.
                   </AlertDialogDescription>
@@ -339,10 +339,10 @@ export function WorkOrdersClient({
         </table>
       </div>
 
-      <MissionDetailDialog 
+      <JobDetailDialog 
         isOpen={isDetailOpen} 
         setIsOpen={setIsDetailOpen} 
-        mission={detailMission} 
+        mission={detailJob} 
         onEdit={(m) => {
           setIsDetailOpen(false);
           handleOpenEditDialog(m);

@@ -51,7 +51,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       toast({
         variant: "destructive",
         title: "Incomplete Request",
-        description: "Please populate all mission-critical fields.",
+        description: "Please populate all critical fields.",
       });
       return;
     }
@@ -157,7 +157,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Mission Priority</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
               <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
                 <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>

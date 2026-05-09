@@ -55,7 +55,7 @@ export default function DispatchPage() {
     setAllRequests(prev => [request, ...prev]);
     toast({
         title: "Intake Buffer Updated",
-        description: `Request ${request.id.toUpperCase()} has been added to the mission funnel.`,
+        description: `Request ${request.id.toUpperCase()} has been added to the job funnel.`,
     });
   };
 
@@ -85,7 +85,7 @@ export default function DispatchPage() {
                 Operations Control Center
               </p>
               <h1 className="page-title">Dispatch & Intake</h1>
-              <p className="page-subtitle">Unified terminal for stakeholder requests and logistical mission routing.</p>
+              <p className="page-subtitle">Unified terminal for stakeholder requests and logistical job routing.</p>
             </div>
             <div className="page-header-right">
                 {activeMasterTab === 'dispatch' ? (

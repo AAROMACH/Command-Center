@@ -266,7 +266,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                     <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub flex items-start gap-3">
                         <StickyNote size={16} className="text-accent-gold shrink-0 mt-0.5" />
                         <p className="text-[10px] text-text-secondary leading-normal italic">
-                            Terminal Note: Account intelligence is only visible to administrative personnel and mission managers. 
+                            Terminal Note: Account intelligence is only visible to administrative personnel and project managers. 
                         </p>
                     </div>
                 </TabsContent>

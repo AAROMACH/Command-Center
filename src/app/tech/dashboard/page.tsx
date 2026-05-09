@@ -29,7 +29,7 @@ import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 import { PendingPayoutDialog } from './components/pending-payout-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
-import { MissionDetailDialog } from '@/components/mission-detail-dialog';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function TechDashboardPage() {
     const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false);
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     
-    const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
@@ -105,8 +105,8 @@ export default function TechDashboardPage() {
         setIsLogSelectionOpen(false);
     };
 
-    const handleOpenMissionDetail = (wo: WorkOrder) => {
-        setSelectedMission(wo);
+    const handleOpenJobDetail = (wo: WorkOrder) => {
+        setSelectedJob(wo);
         setIsDetailOpen(true);
     };
 
@@ -186,7 +186,7 @@ export default function TechDashboardPage() {
                 {!activeJob && (
                     <Card 
                         className="border-2 border-brand-red bg-brand-red-dim/5 cursor-pointer hover:bg-brand-red-dim/10 transition-colors"
-                        onClick={() => nextAction && handleOpenMissionDetail(nextAction)}
+                        onClick={() => nextAction && handleOpenJobDetail(nextAction)}
                     >
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ export default function TechDashboardPage() {
                                         <div className="flex items-center gap-2">
                                             <div className="p-2 bg-bg-primary rounded-md"><MapPin size={16} className="text-brand-red"/></div>
                                             <div>
-                                                <p className="text-[10px] uppercase font-bold text-text-muted">Site Location</p>
+                                                <p className="text-[10px] uppercase font-bold text-text-muted">Address</p>
                                                 <p className="text-sm font-semibold">{nextAction.location}</p>
                                             </div>
                                         </div>
@@ -223,7 +223,7 @@ export default function TechDashboardPage() {
                                             {nextAction.isImported ? <FileCheck size={16}/> : <Play size={16} fill="currentColor"/>}
                                             {nextAction.isImported ? "FINALIZE JOB" : "START JOB"}
                                         </Button>
-                                        <Button variant="outline" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleOpenMissionDetail(nextAction); }}>
+                                        <Button variant="outline" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleOpenJobDetail(nextAction); }}>
                                             <Eye size={16} className="mr-2"/> VIEW DETAILS
                                         </Button>
                                         <Button variant="secondary" className="h-12 px-6" onClick={(e) => e.stopPropagation()}>ACKNOWLEDGE</Button>
@@ -246,7 +246,7 @@ export default function TechDashboardPage() {
                 {activeJob && (
                     <Card 
                         className="border-2 border-text-green bg-green-dim/10 cursor-pointer hover:bg-green-dim/15 transition-colors"
-                        onClick={() => handleOpenMissionDetail(activeJob)}
+                        onClick={() => handleOpenJobDetail(activeJob)}
                     >
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
@@ -330,10 +330,10 @@ export default function TechDashboardPage() {
                 submittedLogs={submittedLogs}
             />
 
-            <MissionDetailDialog 
+            <JobDetailDialog 
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
-                mission={selectedMission} 
+                mission={selectedJob} 
             />
         </div>
     );

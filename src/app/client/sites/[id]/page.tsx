@@ -125,7 +125,7 @@ export default function SiteDetailPage() {
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Tactical Address</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
                                 <p className="text-sm font-bold text-text-primary">{siteData.location}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">

@@ -239,28 +239,28 @@ export default function ReportsPage() {
                                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Assignment history</h3>
                                             <div className="relative pl-6 space-y-6 border-l border-border-sub ml-2 text-left">
                                                 <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
+                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Follow-up camera adjustment <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Ann Arbor, MI · completed · aaro_wo_001</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
+                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Front camera offline <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Detroit, MI · completed · client_wo_001</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-accent-gold ring-4 ring-bg-primary" />
+                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-accent-gold ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
                                                         Aarons AP Refresh <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-17-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-widest"><MapPin size={10} className="text-brand-red"/> Toledo, OH · scheduled · WO 18889221 · $70</div>
                                                 </div>
                                                 <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1 h-2 w-2 rounded-full bg-text-red ring-4 ring-bg-primary" />
+                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-red ring-4 ring-bg-primary" />
                                                     <p className="text-xs font-bold text-text-red uppercase tracking-wide">
                                                         Penalty — late log <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
@@ -343,7 +343,7 @@ export default function ReportsPage() {
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">4 Scheduled assignments unallocated</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    WO 18948530, 18967014, 18924409 — <code className="text-text-primary">techId</code> is null. These assignments will not propagate to field terminals and are currently invisible to the workforce.
+                                                    WO 18948530, 18967014, 18924409 — <code className="text-text-primary">techId</code> is null. These assignments will not appear in any technician's Calendar or Dispatch view and are currently invisible to the workforce.
                                                 </p>
                                             </div>
                                         </div>

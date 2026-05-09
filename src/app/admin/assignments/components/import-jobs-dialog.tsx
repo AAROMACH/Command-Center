@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft, MapPin } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';

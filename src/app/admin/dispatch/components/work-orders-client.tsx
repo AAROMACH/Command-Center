@@ -387,7 +387,7 @@ export function WorkOrdersClient({
                 <tr key={order.id} className="group">
                   <td className="!py-3">
                     <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex flex-col items-start gap-1.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5">
                           <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
                           {order.source === 'Imported' && (
@@ -399,8 +399,8 @@ export function WorkOrdersClient({
                         <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight whitespace-normal">{order.description}</div>
-                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
+                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{order.clientName}</div>
                       </div>
                     </div>
                   </td>
@@ -591,7 +591,7 @@ export function WorkOrdersClient({
             <Separator className="bg-border-sub" />
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
-                    {filteredTechnicians.map(tech => (
+                    {filteredRegistryList.map(tech => (
                         <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
@@ -599,7 +599,7 @@ export function WorkOrdersClient({
                                     <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
-                                            <MapPin size={10} className="text-brand-red" /> {tech.distance.toFixed(1)} MI FROM SITE
+                                            <MapPin size={10} className="text-brand-red" /> {tech.distance?.toFixed(1) || '0.0'} MI FROM SITE
                                         </p>
                                         <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                         <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>
@@ -615,7 +615,7 @@ export function WorkOrdersClient({
                             </Button>
                         </div>
                     ))}
-                    {filteredTechnicians.length === 0 && (
+                    {filteredRegistryList.length === 0 && (
                         <div className="p-12 text-center">
                             <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest italic">No matching operatives in registry</p>
                         </div>

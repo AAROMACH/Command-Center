@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft, MapPin } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -190,10 +190,10 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                     <div className="flex items-center gap-4 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                         <span>{job.clientName}</span>
                                         <span>•</span>
-                                        <span className="text-text-green">${job.pay.toFixed(2)} ({job.payType})</span>
-                                        <span>•</span>
                                         <MapPin size={10} className="text-brand-red inline mr-1" />
                                         <span>{job.location}</span>
+                                        <span>•</span>
+                                        <span className="text-text-green">${job.pay.toFixed(2)} ({job.payType})</span>
                                     </div>
                                 </div>
                                 <div className="text-right">

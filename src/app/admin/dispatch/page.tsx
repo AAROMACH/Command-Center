@@ -6,7 +6,7 @@ import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Wrench, ClipboardList, Layers, X } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
@@ -25,6 +25,12 @@ const SERVICE_CATEGORIES = [
     'Survey',
     'Repair',
     'Decommission'
+];
+
+const ASSIGNMENT_SOURCES = [
+  'Imported',
+  'Manual',
+  'Client'
 ];
 
 export default function DispatchPage() {
@@ -48,6 +54,7 @@ export default function DispatchPage() {
   // Filter State
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
+  const [activeSources, setActiveSources] = useState<string[]>([]);
 
   const { toast } = useToast();
 
@@ -57,11 +64,11 @@ export default function DispatchPage() {
 
   // Handlers - Dispatch
   const handleAddNewOrder = (order: WorkOrder) => {
-    setAllWorkOrders(prev => [order, ...prev]);
+    setAllWorkOrders(prev => [{ ...order, source: 'Manual' }, ...prev]);
   };
 
   const handleImportOrders = (newOrders: WorkOrder[]) => {
-    setAllWorkOrders(prev => [...newOrders, ...prev]);
+    setAllWorkOrders(prev => [...newOrders.map(o => ({ ...o, source: 'Imported' as const })), ...prev]);
   };
 
   const handleWorkOrdersChange = (updated: WorkOrder[]) => {
@@ -94,9 +101,16 @@ export default function DispatchPage() {
     );
   };
 
+  const toggleSource = (source: string) => {
+    setActiveSources(prev => 
+      prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]
+    );
+  };
+
   const resetFilters = () => {
     setActivePriorities([]);
     setActiveTypes([]);
+    setActiveSources([]);
     toast({ title: "Filters Cleared", description: "All search constraints have been removed." });
   };
 
@@ -109,10 +123,11 @@ export default function DispatchPage() {
       
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
+      const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
       
-      return matchesSearch && matchesPriority && matchesType;
+      return matchesSearch && matchesPriority && matchesType && matchesSource;
     })
-  , [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes]);
+  , [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources]);
 
   const filteredRequests = useMemo(() => 
     allRequests.filter(req => {
@@ -127,14 +142,14 @@ export default function DispatchPage() {
     })
   , [allRequests, requestSearchQuery, activePriorities, activeTypes]);
 
-  const hasActiveFilters = activePriorities.length > 0 || activeTypes.length > 0;
+  const hasActiveFilters = activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0;
 
   return (
     <div className="space-y-6">
         <header className="page-header">
             <div>
               <p className="page-eyebrow flex items-center gap-2">
-                <Wrench size={12} />
+                <Layers size={12} />
                 Operations Control Center
               </p>
               <h1 className="page-title">Dispatch & Intake</h1>
@@ -205,7 +220,7 @@ export default function DispatchPage() {
                   <Button variant="outline" size="default" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
                     <SlidersHorizontal size={14} className="mr-2"/>
                     Filters
-                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activePriorities.length + activeTypes.length}</Badge>}
+                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activePriorities.length + activeTypes.length + activeSources.length}</Badge>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
@@ -220,6 +235,23 @@ export default function DispatchPage() {
                     </div>
                   </div>
                   <div className="p-4 space-y-6">
+                    {/* Source Filter */}
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Assignment Source</p>
+                      <div className="space-y-2">
+                        {ASSIGNMENT_SOURCES.map(source => (
+                          <div key={source} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`source-${source}`} 
+                              checked={activeSources.includes(source)}
+                              onCheckedChange={() => toggleSource(source)}
+                            />
+                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Priority Filter */}
                     <div className="space-y-3">
                       <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Level</p>

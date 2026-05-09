@@ -87,6 +87,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       ...formData as WorkOrder,
       id: `wo-${Date.now().toString().slice(-6)}`,
       isAcknowledged: false,
+      source: 'Manual',
     };
 
     onSave(newOrder);

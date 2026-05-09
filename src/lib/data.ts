@@ -224,13 +224,14 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-003',
     clientName: 'Residential Client',
     projectType: 'Maintenance',
-    scheduleDate: '2024-07-20',
+    scheduleDate: '07-20-2024',
     scheduleTime: '11:00 AM EST',
     pay: 150.00,
     payType: 'fixed',
     isAcknowledged: true,
+    source: 'Manual',
     history: [
-      { type: 'tech_swap', date: '2024-07-19', details: 'Technician swapped from tech-001 to tech-003 due to scheduling conflict.', user: 'Corey Williams' }
+      { type: 'tech_swap', date: '07-19-2024', details: 'Technician swapped from tech-001 to tech-003 due to scheduling conflict.', user: 'Corey Williams' }
     ]
   },
   {
@@ -243,13 +244,14 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Commercial Property',
     projectType: 'Repair',
-    scheduleDate: '2024-07-28',
+    scheduleDate: '07-28-2024',
     scheduleTime: '02:00 PM EST',
     pay: 350.00,
     payType: 'fixed',
     isAcknowledged: false,
+    source: 'Client',
     history: [
-        { type: 'note', date: '2024-07-27', details: 'Site access confirmed with building manager. Parking permit staged.', user: 'Sarah Connor' }
+        { type: 'note', date: '07-27-2024', details: 'Site access confirmed with building manager. Parking permit staged.', user: 'Sarah Connor' }
     ]
   },
   {
@@ -261,10 +263,11 @@ export const workOrders: WorkOrder[] = [
     status: 'unassigned',
     clientName: 'Smart Home Solutions',
     projectType: 'Installation',
-    scheduleDate: '2024-07-29', 
+    scheduleDate: '07-29-2024', 
     scheduleTime: '10:00 AM EST',
     pay: 120.00,
     payType: 'fixed',
+    source: 'Manual',
   },
   {
     id: 'wo-104',
@@ -276,17 +279,18 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-002',
     clientName: 'Restaurant Supply Co.',
     projectType: 'Emergency Repair',
-    scheduleDate: '2024-07-25',
+    scheduleDate: '07-25-2024',
     scheduleTime: '4:00 PM EST',
     pay: 475.00,
     payType: 'fixed',
     isAcknowledged: true,
     finalPay: 500.50,
+    source: 'Manual',
     reimbursements: [
-        { id: 're-1', technicianId: 'tech-002', date: '2024-07-25', type: 'reimbursement', amount: 25.50, description: 'Emergency parts courier' }
+        { id: 're-1', technicianId: 'tech-002', date: '07-25-2024', type: 'reimbursement', amount: 25.50, description: 'Emergency parts courier' }
     ],
     history: [
-        { type: 'status_change', date: '2024-07-25', details: 'Mission finalized. Site verified clean.', user: 'Maria Garcia' }
+        { type: 'status_change', date: '07-25-2024', details: 'Mission finalized. Site verified clean.', user: 'Maria Garcia' }
     ]
   },
    {
@@ -298,10 +302,11 @@ export const workOrders: WorkOrder[] = [
     status: 'unassigned',
     clientName: 'Corporate Tower Mgmt',
     projectType: 'Inspection',
-    scheduleDate: '2024-08-01',
+    scheduleDate: '08-01-2024',
     scheduleTime: '09:00 AM EST',
     pay: 600.00,
     payType: 'fixed',
+    source: 'Manual',
   },
    {
     id: 'wo-106',
@@ -313,13 +318,14 @@ export const workOrders: WorkOrder[] = [
     assignedTechnicianId: 'tech-001',
     clientName: 'Apartment Complex',
     projectType: 'Replacement',
-    scheduleDate: '2024-07-28',
+    scheduleDate: '07-28-2024',
     scheduleTime: '01:00 PM EST',
     pay: 750.00,
     payType: 'fixed',
     isAcknowledged: true,
+    source: 'Manual',
     history: [
-        { type: 'note', date: '2024-07-28', details: 'Technician on-site. Began draining existing unit.', user: 'Alex Johnson' }
+        { type: 'note', date: '07-28-2024', details: 'Technician on-site. Began draining existing unit.', user: 'Alex Johnson' }
     ]
   },
 ];
@@ -331,7 +337,7 @@ export const projects: Project[] = [
     client: 'Ki9',
     location: 'Detroit, MI',
     status: 'active',
-    startDate: '2026-04-18',
+    startDate: '04-18-2026',
     startTime: '9:00 AM EDT',
     estimatedDuration: '2 weeks',
     assignedTechnicianIds: ['tech-003', 'tech-001'],
@@ -378,7 +384,7 @@ export const projects: Project[] = [
     client: 'Global Corp',
     location: 'New York, NY',
     status: 'active',
-    startDate: '2026-05-01',
+    startDate: '05-01-2026',
     startTime: '8:00 AM EDT',
     estimatedDuration: '3 weeks',
     assignedTechnicianIds: ['tech-001', 'tech-004'],
@@ -420,16 +426,16 @@ export const projects: Project[] = [
 ];
 
 export const projectDocuments: ProjectDocument[] = [
-  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: 'Apr 18, 2026', size: '2.4 MB' },
-  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Contract', uploader: 'Corey Williams', uploadDate: 'Apr 18, 2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
-  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: 'Apr 17, 2026', size: '340 KB' },
+  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Contract', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
+  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB' },
   { 
     id: 'doc-4', 
     name: 'Deinstallation_Signoff.pdf', 
     type: 'pdf', 
     label: 'Sign-off', 
     uploader: 'David Smith', 
-    uploadDate: 'Apr 19, 2026', 
+    uploadDate: '04-19-2026', 
     size: '800 KB',
     phaseId: 'phase-1',
   },
@@ -439,7 +445,7 @@ export const projectDocuments: ProjectDocument[] = [
     type: 'img',
     label: 'Photo',
     uploader: 'David Smith',
-    uploadDate: 'Apr 19, 2026',
+    uploadDate: '04-19-2026',
     size: '1.8 MB',
     phaseId: 'phase-1',
     taskId: 't1-1',
@@ -493,11 +499,11 @@ export const timesheetLogs: TimesheetLog[] = [
 ];
 
 export const serviceRequests: ServiceRequest[] = [
-    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'New Install', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '2024-07-22', priority: 'high' },
-    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '2024-07-21', priority: 'critical' },
-    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Inspection', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '2024-07-20', priority: 'medium' },
-    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Quote', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '2024-07-22', priority: 'medium' },
-    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '2024-07-19', priority: 'low' },
+    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'Installation', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '07-22-2024', priority: 'high' },
+    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '07-21-2024', priority: 'critical' },
+    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Maintenance', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '07-20-2024', priority: 'medium' },
+    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Maintenance', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '07-22-2024', priority: 'medium' },
+    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '07-19-2024', priority: 'low' },
 ];
 
 export const profitabilityData = [
@@ -523,7 +529,7 @@ export const weeklyLogs: WeeklyLog[] = [
       { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },
     ],
     reimbursements: [
-      { id: 'fr-1', technicianId: 'tech-001', date: '2024-07-24', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
+      { id: 'fr-1', technicianId: 'tech-001', date: '07-24-2024', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
     ],
     totalPayout: 2150.50,
   },
@@ -548,21 +554,21 @@ export const weeklyLogs: WeeklyLog[] = [
 ];
 
 export const timeOffRequests: TimeOffRequest[] = [
-  { id: 'tor-1', technicianId: 'tech-001', startDate: '2024-08-15', endDate: '2024-08-16', type: 'Vacation', reason: 'Family trip', status: 'approved' },
-  { id: 'tor-2', technicianId: 'tech-001', startDate: '2024-09-02', endDate: '2024-09-02', type: 'Personal', reason: 'Appointment', status: 'pending' },
-  { id: 'tor-3', technicianId: 'tech-003', startDate: '2024-08-05', endDate: '2024-08-09', type: 'Vacation', reason: 'Annual Leave', status: 'pending' },
-  { id: 'tor-4', technicianId: 'tech-002', startDate: '2024-07-30', endDate: '2024-07-30', type: 'Sick', reason: 'Feeling unwell', status: 'approved' },
-  { id: 'tor-5', technicianId: 'tech-004', startDate: '2024-08-12', endDate: '2024-08-12', type: 'Other', reason: 'Jury Duty', status: 'denied' },
+  { id: 'tor-1', technicianId: 'tech-001', startDate: '08-15-2024', endDate: '08-16-2024', type: 'Vacation', reason: 'Family trip', status: 'approved' },
+  { id: 'tor-2', technicianId: 'tech-001', startDate: '09-02-2024', endDate: '09-02-2024', type: 'Personal', reason: 'Appointment', status: 'pending' },
+  { id: 'tor-3', technicianId: 'tech-003', startDate: '08-05-2024', endDate: '08-09-2024', type: 'Vacation', reason: 'Annual Leave', status: 'pending' },
+  { id: 'tor-4', technicianId: 'tech-002', startDate: '07-30-2024', endDate: '07-30-2024', type: 'Sick', reason: 'Feeling unwell', status: 'approved' },
+  { id: 'tor-5', technicianId: 'tech-004', startDate: '08-12-2024', endDate: '08-12-2024', type: 'Other', reason: 'Jury Duty', status: 'denied' },
 ];
 
 export const siteRequests: SiteRequest[] = [
-  { id: 'sr-1', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Gotham Data Center', location: '42 Gotham Way, Newark, NJ', managerName: 'Bruce Wayne', status: 'pending', submittedDate: '2024-07-28' },
-  { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 Daily Planet Ave, New York, NY', managerName: 'Clark Kent', status: 'pending', submittedDate: '2024-07-29' },
+  { id: 'sr-1', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Gotham Data Center', location: '42 Gotham Way, Newark, NJ', managerName: 'Bruce Wayne', status: 'pending', submittedDate: '07-28-2024' },
+  { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 Daily Planet Ave, New York, NY', managerName: 'Clark Kent', status: 'pending', submittedDate: '07-29-2024' },
 ];
 
 export const penaltyEvents: PenaltyEvent[] = [
-  { id: 'pe-1', technicianId: 'tech-001', date: '2024-06-15', reason: 'Late check-in to critical job', points: -2 },
-  { id: 'pe-2', technicianId: 'tech-001', date: '2024-05-20', reason: 'Missed required photo upload', points: -1 },
+  { id: 'pe-1', technicianId: 'tech-001', date: '06-15-2024', reason: 'Late check-in to critical job', points: -2 },
+  { id: 'pe-2', technicianId: 'tech-001', date: '05-20-2024', reason: 'Missed required photo upload', points: -1 },
 ];
 
 export const projectDailyLogs: ProjectDailyLog[] = [
@@ -570,7 +576,7 @@ export const projectDailyLogs: ProjectDailyLog[] = [
     id: 'pdl-1',
     projectId: 'proj-001',
     technicianId: 'tech-001',
-    date: '2026-04-18',
+    date: '04-18-2026',
     hoursWorked: 9,
     workSummary: 'Assisted with deinstallation and started running new CAT6A cabling for the refresh. All old patch panels have been removed. Coordinated with David on server room access.',
     taskIdsProgressed: ['t2-2'],
@@ -582,18 +588,18 @@ export const projectDailyLogs: ProjectDailyLog[] = [
 ];
 
 export const expenses: Expense[] = [
-    { id: 'exp-001', date: '2024-07-25', submittedBy: 'Alex Johnson', category: 'Materials', description: 'Emergency purchase of 1/2" copper piping', amount: 75.50, status: 'Approved', projectId: 'proj-001' },
-    { id: 'exp-002', date: '2024-07-26', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
-    { id: 'exp-003', date: '2024-07-27', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending', projectId: 'proj-001' },
-    { id: 'exp-004', date: '2024-07-28', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
-    { id: 'exp-005', date: '2024-07-28', submittedBy: 'Ben Carter', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
+    { id: 'exp-001', date: '07-25-2024', submittedBy: 'Alex Johnson', category: 'Materials', description: 'Emergency purchase of 1/2" copper piping', amount: 75.50, status: 'Approved', projectId: 'proj-001' },
+    { id: 'exp-002', date: '07-26-2024', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
+    { id: 'exp-003', date: '07-27-2024', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending', projectId: 'proj-001' },
+    { id: 'exp-004', date: '07-28-2024', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
+    { id: 'exp-005', date: '07-28-2024', submittedBy: 'Ben Carter', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
 ];
 
 export const reports: Report[] = [
-    { id: 'rep-001', name: 'Q2 2024 Financial Summary', type: 'Financial', generationDate: '2024-07-01', generatedBy: 'System Administrator' },
-    { id: 'rep-002', name: 'July Technician Payroll', type: 'Financial', generationDate: '2024-07-25', generatedBy: 'System Administrator' },
-    { id: 'rep-003', name: 'Q2 Project Profitability Analysis', type: 'Operational', generationDate: '2024-07-05', generatedBy: 'System Administrator' },
-    { id: 'rep-004', name: 'June Safety Compliance Report', type: 'Compliance', generationDate: '2024-07-02', generatedBy: 'System Administrator' },
+    { id: 'rep-001', name: 'Q2 2024 Financial Summary', type: 'Financial', generationDate: '07-01-2024', generatedBy: 'System Administrator' },
+    { id: 'rep-002', name: 'July Technician Payroll', type: 'Financial', generationDate: '07-25-2024', generatedBy: 'System Administrator' },
+    { id: 'rep-003', name: 'Q2 Project Profitability Analysis', type: 'Operational', generationDate: '07-05-2024', generatedBy: 'System Administrator' },
+    { id: 'rep-004', name: 'June Safety Compliance Report', type: 'Compliance', generationDate: '07-02-2024', generatedBy: 'System Administrator' },
 ];
 
 export const invoices: Invoice[] = [
@@ -603,8 +609,8 @@ export const invoices: Invoice[] = [
     clientId: 'client-001',
     clientName: 'Global Corp',
     projectId: 'proj-002',
-    issueDate: '2024-07-15',
-    dueDate: '2024-08-14',
+    issueDate: '07-15-2024',
+    dueDate: '08-14-2024',
     status: 'paid',
     lineItems: [
       { id: 'li-1', description: 'AV Cabling & Infrastructure', quantity: 80, unitPrice: 150 },
@@ -621,8 +627,8 @@ export const invoices: Invoice[] = [
     clientId: 'client-002',
     clientName: 'Acme Inc.',
     workOrderId: 'wo-106',
-    issueDate: '2024-07-28',
-    dueDate: '2024-08-27',
+    issueDate: '07-28-2024',
+    dueDate: '08-27-2024',
     status: 'sent',
     lineItems: [
       { id: 'li-3', description: 'Water Heater Replacement Labor', quantity: 8, unitPrice: 93.75 },
@@ -637,8 +643,8 @@ export const invoices: Invoice[] = [
     invoiceNumber: '2024-003',
     clientId: 'client-001',
     clientName: 'Global Corp',
-    issueDate: '2024-08-01',
-    dueDate: '2024-08-31',
+    issueDate: '08-01-2024',
+    dueDate: '08-31-2024',
     status: 'draft',
     lineItems: [
        { id: 'li-5', description: 'Quarterly Maintenance Contract', quantity: 1, unitPrice: 2500 },

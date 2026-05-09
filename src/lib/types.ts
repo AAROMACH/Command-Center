@@ -24,6 +24,7 @@ export type WorkOrder = {
   isAcknowledged?: boolean;
   routeId?: string; // Links job to a specific route
   isImported?: boolean; // Flag for jobs from FieldNation
+  source?: 'Imported' | 'Manual' | 'Client'; // Origin of the assignment
   // Enhanced detail fields
   history?: { type: 'tech_swap' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
   notes?: string[];
@@ -274,7 +275,7 @@ export type Report = {
   generatedBy: string;
 };
 
-export type Invoice LineItem = {
+export type InvoiceLineItem = {
   id: string;
   description: string;
   quantity: number;

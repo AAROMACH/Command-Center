@@ -372,6 +372,41 @@ export default function ReportsPage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex gap-3">
+                                            <Select value={clDays} onValueChange={(val) => setClDays(val)}>
+                                                <SelectTrigger className="w-[160px] bg-bg-secondary h-9 text-[10px] uppercase font-bold tracking-widest border-border-sub">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="7">Last 7 days</SelectItem>
+                                                    <SelectItem value="30">Last 30 days</SelectItem>
+                                                    <SelectItem value="60">Last 60 days</SelectItem>
+                                                    <SelectItem value="90">Last 90 days</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Button variant="outline" size="sm" className="h-9" onClick={() => setIsClLoaded(false)}>Reset Terminal</Button>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{AUDIT_ACTIONS.length} events retrieved</span>
+                                    </div>
+                                    
+                                    <ScrollArea className="h-full">
+                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
+                                            {AUDIT_ACTIONS.map((evt, i) => (
+                                                <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
+                                                    <div className={cn(
+                                                        "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
+                                                        evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
+                                                    )} />
+                                                    <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
+                                                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="changelog" className="m-0">

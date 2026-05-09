@@ -62,6 +62,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'view_financials',
     'manage_payroll',
     'view_directory',
+    'approve_pay_changes',
   ],
   project_manager: [
     'view_dashboard',
@@ -115,6 +116,11 @@ export function isSuperAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
   return userRoles.includes('super_admin') || user.role.toLowerCase() === 'admin';
+}
+
+export function isPayAdmin(user: Technician | null | undefined): boolean {
+  if (!user) return false;
+  return hasPermission(user, 'approve_pay_changes');
 }
 
 export function isTech(user: Technician | null | undefined): boolean {

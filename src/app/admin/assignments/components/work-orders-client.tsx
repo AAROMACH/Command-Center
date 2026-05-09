@@ -51,7 +51,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
-import { isSuperAdmin } from "@/lib/permissions";
+import { isPayAdmin } from "@/lib/permissions";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -175,9 +175,9 @@ export function WorkOrdersClient({
     
     let finalUpdate = { ...editedOrder };
     const payChanged = editedOrder.pay !== selectedOrder.pay || editedOrder.payType !== selectedOrder.payType;
-    const superAdmin = isSuperAdmin(currentUser);
+    const payAdmin = isPayAdmin(currentUser);
 
-    if (payChanged && !superAdmin) {
+    if (payChanged && !payAdmin) {
       // Revert pay on the master object but add a request
       finalUpdate.pay = selectedOrder.pay;
       finalUpdate.payType = selectedOrder.payType;
@@ -189,9 +189,9 @@ export function WorkOrdersClient({
       };
       toast({
         title: "Pay Change Requested",
-        description: "Financial modifications require Super Admin authorization. Request staged.",
+        description: "Financial modifications require Super Admin or Payroll Admin authorization. Request staged.",
       });
-    } else if (payChanged && superAdmin) {
+    } else if (payChanged && payAdmin) {
       // Direct update and clear any pending
       finalUpdate.payChangeRequest = undefined;
       toast({ title: "Pay Parameters Updated", description: "Financial changes authorized and committed." });
@@ -502,7 +502,7 @@ export function WorkOrdersClient({
                                     <p className="text-[10px] text-text-muted uppercase tracking-widest">Requested: ${editedOrder.payChangeRequest.pay} ({editedOrder.payChangeRequest.payType})</p>
                                 </div>
                             </div>
-                            {isSuperAdmin(currentUser) && (
+                            {isPayAdmin(currentUser) && (
                                 <Button size="sm" className="h-8 bg-brand-red" onClick={() => handleApprovePay(editedOrder.id)}>
                                     <ShieldCheck size={14} className="mr-1.5"/> Authorize
                                 </Button>

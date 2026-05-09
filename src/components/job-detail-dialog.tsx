@@ -31,7 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { isSuperAdmin } from '@/lib/permissions';
+import { isPayAdmin } from '@/lib/permissions';
 
 type JobDetailDialogProps = {
   isOpen: boolean;
@@ -109,7 +109,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                           <p className="text-sm font-bold text-text-primary uppercase">{mission.payChangeRequest.payType}</p>
                       </div>
                   </div>
-                  {isSuperAdmin(currentUser) && (
+                  {isPayAdmin(currentUser) && (
                       <Button className="w-full bg-brand-red h-9 text-[10px] uppercase font-bold" onClick={handleModifyClick}>
                           <ShieldCheck size={14} className="mr-2"/> Authorize Pay Change
                       </Button>

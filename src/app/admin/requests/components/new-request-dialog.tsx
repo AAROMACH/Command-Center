@@ -180,7 +180,6 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             />
           </div>
 
-          {/* ATTACHMENT TERMINAL */}
           <div className="space-y-4 pt-2">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -225,7 +224,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <div className="space-y-2">
                 {docs.map((doc, i) => (
                   <div key={i} className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 overflow-hidden">
                       <FileText size={12} className="text-text-muted" />
                       <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{doc}</span>
                     </div>
@@ -255,10 +254,10 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">Convert to a(n):</p>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+              <Button onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
                 <Wrench size={14} className="mr-2" /> Assignment
               </Button>
-              <Button onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+              <Button onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
                 <Briefcase size={14} className="mr-2" /> Project
               </Button>
             </div>

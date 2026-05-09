@@ -29,6 +29,13 @@ export type WorkOrder = {
   notes?: string[];
   reimbursements?: FinancialRecord[];
   finalPay?: number;
+  // Pay Change Approval Workflow
+  payChangeRequest?: {
+    pay: number;
+    payType: 'fixed' | 'hourly' | 'blended';
+    requestedBy: string;
+    requestedAt: string;
+  };
 };
 
 export type Route = {
@@ -267,7 +274,7 @@ export type Report = {
   generatedBy: string;
 };
 
-export type InvoiceLineItem = {
+export type Invoice LineItem = {
   id: string;
   description: string;
   quantity: number;

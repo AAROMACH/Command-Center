@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { 
@@ -22,13 +23,15 @@ import {
   AlertTriangle,
   FileCheck,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isSuperAdmin } from '@/lib/permissions';
 
 type JobDetailDialogProps = {
   isOpen: boolean;
@@ -38,6 +41,15 @@ type JobDetailDialogProps = {
 };
 
 export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetailDialogProps) {
+  const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+
+  useEffect(() => {
+    const userId = localStorage.getItem('currentUserId');
+    if (userId) {
+      setCurrentUser(technicians.find(t => t.id === userId) || null);
+    }
+  }, []);
+
   if (!mission) return null;
 
   const tech = technicians.find(t => t.id === mission.assignedTechnicianId);
@@ -75,6 +87,36 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8 mt-2">
+          {/* Pay Change Request Alert */}
+          {mission.payChangeRequest && (
+              <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                      <AlertTriangle className="text-brand-red h-5 w-5 shrink-0" />
+                      <div className="flex-1">
+                          <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Pay Change Pending Approval</p>
+                          <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">
+                              A financial modification has been requested and is currently under audit.
+                          </p>
+                      </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 bg-bg-primary/50 p-3 rounded border border-border-sub">
+                      <div>
+                          <p className="text-[8px] font-black uppercase text-text-muted">Proposed Rate</p>
+                          <p className="text-sm font-mono font-bold text-text-primary">{formatCurrency(mission.payChangeRequest.pay)}</p>
+                      </div>
+                      <div>
+                          <p className="text-[8px] font-black uppercase text-text-muted">Proposed Model</p>
+                          <p className="text-sm font-bold text-text-primary uppercase">{mission.payChangeRequest.payType}</p>
+                      </div>
+                  </div>
+                  {isSuperAdmin(currentUser) && (
+                      <Button className="w-full bg-brand-red h-9 text-[10px] uppercase font-bold" onClick={handleModifyClick}>
+                          <ShieldCheck size={14} className="mr-2"/> Authorize Pay Change
+                      </Button>
+                  )}
+              </div>
+          )}
+
           {/* Section 1: Personnel Intelligence */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">

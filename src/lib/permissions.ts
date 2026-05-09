@@ -20,7 +20,8 @@ export type Permission =
   | 'field_logs'
   | 'client_portal'
   | 'view_assigned_projects_only'
-  | 'view_assigned_work_only';
+  | 'view_assigned_work_only'
+  | 'approve_pay_changes';
 
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
@@ -45,6 +46,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'manage_settings',
     'field_checkin',
     'field_logs',
+    'approve_pay_changes',
   ],
   dispatch_admin: [
     'view_dashboard',
@@ -107,6 +109,12 @@ export function isAdmin(user: Technician | null | undefined): boolean {
   const userRoles: AppRole[] = user.roles || [];
   const isLegacyAdmin = ['admin', 'dispatcher'].includes(user.role.toLowerCase());
   return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
+}
+
+export function isSuperAdmin(user: Technician | null | undefined): boolean {
+  if (!user) return false;
+  const userRoles: AppRole[] = user.roles || [];
+  return userRoles.includes('super_admin') || user.role.toLowerCase() === 'admin';
 }
 
 export function isTech(user: Technician | null | undefined): boolean {

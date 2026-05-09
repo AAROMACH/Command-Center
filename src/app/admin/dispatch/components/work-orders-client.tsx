@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
 import { getRecommendation } from "../actions";
 import { format, parseISO } from "date-fns";
@@ -57,12 +56,14 @@ import {
   Building2,
   Check,
   Users,
-  Navigation
+  Navigation,
+  AlertTriangle
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { cn } from "@/lib/utils";
+import { isSuperAdmin } from "@/lib/permissions";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -100,7 +101,16 @@ export function WorkOrdersClient({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailJob, setDetailJob] = useState<WorkOrder | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+
   const { toast } = useToast();
+
+  useEffect(() => {
+    const userId = localStorage.getItem('currentUserId');
+    if (userId) {
+      setCurrentUser(technicians.find(t => t.id === userId) || null);
+    }
+  }, [technicians]);
 
   const sortedWorkOrders = useMemo(() => {
     return [...workOrders].sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
@@ -173,13 +183,51 @@ export function WorkOrdersClient({
   }
 
   const handleSaveChanges = () => {
-    if (!editedOrder) return;
+    if (!editedOrder || !selectedOrder) return;
+
+    let finalUpdate = { ...editedOrder };
+    const payChanged = editedOrder.pay !== selectedOrder.pay || editedOrder.payType !== selectedOrder.payType;
+    const superAdmin = isSuperAdmin(currentUser);
+
+    if (payChanged && !superAdmin) {
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.payChangeRequest = {
+        pay: editedOrder.pay,
+        payType: editedOrder.payType,
+        requestedBy: currentUser?.id || 'unknown',
+        requestedAt: new Date().toISOString()
+      };
+      toast({
+        title: "Pay Change Requested",
+        description: "Financial modifications require Super Admin authorization. Request staged.",
+      });
+    } else if (payChanged && superAdmin) {
+      finalUpdate.payChangeRequest = undefined;
+      toast({ title: "Pay Parameters Updated", description: "Financial changes authorized and committed." });
+    }
+
     const updated = allWorkOrders.map(order =>
-      order.id === editedOrder.id ? editedOrder : order
+      order.id === editedOrder.id ? finalUpdate : order
     );
     onWorkOrdersChange(updated);
     setIsEditDialogOpen(false);
-    toast({ title: "Registry Updated", description: "Assignment parameters committed." });
+  };
+
+  const handleApprovePay = (orderId: string) => {
+    const updated = allWorkOrders.map(o => {
+      if (o.id === orderId && o.payChangeRequest) {
+        return {
+          ...o,
+          pay: o.payChangeRequest.pay,
+          payType: o.payChangeRequest.payType,
+          payChangeRequest: undefined
+        };
+      }
+      return o;
+    });
+    onWorkOrdersChange(updated);
+    toast({ title: "Pay Authorized", description: "Registry updated with approved financial parameters." });
   };
 
   const handleConfirmAssignments = () => {
@@ -339,30 +387,37 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    {mode === 'assigned' ? (
-                        technician ? (
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8 border border-border-sub">
-                                    <AvatarImage src={technician.avatarUrl} />
-                                    <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="space-y-0.5">
-                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
-                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
+                    <div className="flex flex-col">
+                        {mode === 'assigned' ? (
+                            technician ? (
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8 border border-border-sub">
+                                        <AvatarImage src={technician.avatarUrl} />
+                                        <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="space-y-0.5">
+                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
+                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <span className="text-[10px] text-text-red uppercase font-bold tracking-widest">ID Discrepancy</span>
+                            )
+                        ) : (
+                            <div className="cell-pay">
+                                <DollarSign />
+                                <div className="flex flex-col">
+                                    <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
+                                    <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
                                 </div>
                             </div>
-                        ) : (
-                            <span className="text-[10px] text-text-red uppercase font-bold tracking-widest">ID Discrepancy</span>
-                        )
-                    ) : (
-                        <div className="cell-pay">
-                            <DollarSign />
-                            <div className="flex flex-col">
-                                <span className="cell-pay-val">{order.pay.toFixed(2)}</span>
-                                <span className="text-[9px] uppercase font-bold tracking-widest text-text-muted">{order.payType}</span>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                        {order.payChangeRequest && (
+                            <Badge variant="missed" className="mt-1 text-[8px] uppercase tracking-widest h-4 gap-1">
+                                <AlertTriangle size={10}/> Pay Pending
+                            </Badge>
+                        )}
+                    </div>
                   </td>
                   <td>
                      <div className="cell-actions">
@@ -491,6 +546,23 @@ export function WorkOrdersClient({
             </DialogHeader>
             {editedOrder && (
                 <div className="px-6 py-4 space-y-6">
+                    {editedOrder.payChangeRequest && (
+                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <AlertTriangle className="text-brand-red h-5 w-5" />
+                                <div>
+                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Pay Change Pending Approval</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Requested: ${editedOrder.payChangeRequest.pay} ({editedOrder.payChangeRequest.payType})</p>
+                                </div>
+                            </div>
+                            {isSuperAdmin(currentUser) && (
+                                <Button size="sm" className="h-8 bg-brand-red" onClick={() => handleApprovePay(editedOrder.id)}>
+                                    <ShieldCheck size={14} className="mr-1.5"/> Authorize
+                                </Button>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
                         <Textarea 

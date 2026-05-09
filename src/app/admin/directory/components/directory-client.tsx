@@ -621,7 +621,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <Label htmlFor="map-toggle" className="text-[8px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
                                             <Switch 
                                                 id="map-toggle" 
-                                                className="scale-[0.6] data-[state=checked]:bg-brand-red"
+                                                className="scale-[0.6] bg-brand-red data-[state=unchecked]:bg-brand-red data-[state=checked]:bg-brand-red"
                                                 checked={mapViewMode === 'sites'} 
                                                 onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
                                             />

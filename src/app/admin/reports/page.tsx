@@ -42,7 +42,7 @@ import { format, parseISO, subDays, isAfter } from 'date-fns';
 const AUDIT_ACTIONS = [
     { dot: "done", action: "Assignment assigned — aaro_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Manual work order assigned"' },
     { dot: "done", action: "Assignment assigned — client_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Client work order assigned"' },
-    { dot: "done", action: "Assignment created — fn_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Initial assignment created"' },
+    { dot: "done", action: "Assignment assigned — fn_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Initial assignment created"' },
     { dot: "warn", action: "Penalty recorded — late log · 3 pts", sub: "Corey Williams · 04-04-2026 · weekly log submitted after due date" },
     { dot: "done", action: "Import batch — field_nation_csv", sub: "field_nation_jobs.csv · 1 row · 1 created · by System Administrator · 04-04-2026" },
     { dot: "flag", action: 'Client request rejected — "Computers Down!"', sub: "by System Administrator · 04-23-2026 · client fields blank at submission" },

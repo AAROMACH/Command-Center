@@ -288,8 +288,8 @@ export default function AssignmentsHubPage() {
                                                         {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-center">
-                                                        <span className="max-w-[200px]">{job.location}</span>
                                                         <MapPin size={12} className="text-text-muted shrink-0" />
+                                                        <span className="max-w-[200px]">{job.location}</span>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -357,8 +357,8 @@ export default function AssignmentsHubPage() {
                                     </td>
                                     <td>
                                         <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                            <span className="max-w-[150px]">{wo.location}</span>
                                             <MapPin size={12} className="text-text-muted shrink-0" />
+                                            <span className="max-w-[150px]">{wo.location}</span>
                                         </div>
                                     </td>
                                     <td>

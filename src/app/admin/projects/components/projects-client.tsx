@@ -125,8 +125,8 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                 </td>
                                 <td>
                                     <div className="flex items-center justify-center gap-2 text-sm text-text-secondary text-center">
-                                        <span className="max-w-[150px]">{project.location}</span>
                                         <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
+                                        <span className="max-w-[150px]">{project.location}</span>
                                     </div>
                                 </td>
                                 <td>

@@ -159,7 +159,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             </td>
                             <td className="!py-1 text-center">
                                 <div className="flex items-center justify-center">
-                                  <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
+                                  <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
                                       {req.priority}
                                   </Badge>
                                 </div>

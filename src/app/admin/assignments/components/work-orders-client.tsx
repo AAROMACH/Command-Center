@@ -374,8 +374,8 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     <div className="cell-loc flex items-center justify-center gap-2">
-                      <span className="line-clamp-2 px-1 text-center">{order.location}</span>
                       <MapPin className="shrink-0" />
+                      <span className="px-1 text-center">{order.location}</span>
                     </div>
                   </td>
                   <td>

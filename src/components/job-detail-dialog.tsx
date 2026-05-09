@@ -114,8 +114,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </DialogTitle>
           <DialogDescription className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
              <span className="flex items-center gap-1.5">
-               {mission.location}
                <MapPin size={12}/>
+               {mission.location}
              </span>
              <span className="flex items-center gap-1.5"><Calendar size={12}/> {formatDateDisplay(mission.scheduleDate)}</span>
           </DialogDescription>

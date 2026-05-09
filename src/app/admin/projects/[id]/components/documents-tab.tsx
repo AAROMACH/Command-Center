@@ -43,7 +43,7 @@ const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDe
                     </div>
                     <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Download Initiated", description: `${doc.name} transfer handshake complete.` })}><Download size={12} /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={12} /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => onDelete(id => onDelete(doc.id))}><Trash2 size={12} /></Button>
                     </div>
                 </div>
             )) : (
@@ -180,16 +180,7 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
     
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between bg-bg-secondary/30 p-3 rounded-lg border border-border-sub">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-brand-red-dim rounded border border-brand-red/20 text-brand-red">
-                        <FolderOpen size={16} />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Registry Density</p>
-                        <p className="text-xs font-bold text-text-primary uppercase">{documents.length} Technical Assets Archived</p>
-                    </div>
-                </div>
+            <div className="flex items-center justify-end bg-bg-secondary/30 p-3 rounded-lg border border-border-sub">
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => simulateUpload()}>
                         <Plus size={12} className="mr-1.5"/> Pre-Site Doc

@@ -76,7 +76,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
             <table className="tbl">
                 <thead>
                     <tr>
-                        <th className="text-center w-[120px]">Status & ID</th>
+                        <th className="text-center w-[140px]">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-left">Site Coordinates</th>
@@ -96,7 +96,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
                                 <td>
-                                    <div className="flex flex-col items-center justify-center gap-1.5">
+                                    <div className="flex flex-col items-center justify-center gap-1">
                                         <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5">{project.status}</Badge>
                                         <div className="cell-id !text-[10px] font-mono !text-center">{project.id.toUpperCase()}</div>
                                     </div>
@@ -104,7 +104,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                 <td className="!py-4 text-left pl-0">
                                     <div className="flex flex-col min-w-0">
                                       <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
-                                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1.5">{project.client}</div>
+                                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
                                     </div>
                                 </td>
                                 <td>

@@ -1,5 +1,5 @@
 'use client';
-import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
+import type { Technician, TimeOffRequest, WorkOrder, SiteRequest, AppRole } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -256,6 +256,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         }
     };
 
+    const getPrimaryRoleLabel = (person: Technician) => {
+        if (person.roles && person.roles.length > 0) {
+            return person.roles[0].replace(/_/g, ' ').toUpperCase();
+        }
+        return person.role.toUpperCase();
+    };
+
     const filteredTimeOffRequests = useMemo(() => {
         return timeOffRequests
             .filter(req => {
@@ -412,11 +419,15 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{tech.name}</span>
                                         </div>
                                         <div className="text-left">
-                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{tech.role}</span>
+                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
                                         </div>
                                         <div className="min-w-0 flex flex-col items-start justify-center">
-                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{tech.email}</div>
-                                            <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}</div>
+                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
+                                                <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[9px] text-text-muted">
+                                                <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
+                                            </div>
                                         </div>
                                         <div className="flex flex-col items-center justify-center">
                                             <span className={`font-mono font-bold text-sm ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
@@ -445,7 +456,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                 </div>
                                             </div>
                                             <h3 className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">{tech.name}</h3>
-                                            <p className="text-[8px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{tech.role}</p>
+                                            <p className="text-[8px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{getPrimaryRoleLabel(tech)}</p>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -475,13 +486,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     <TabsContent value="staff" className="m-0">
                         {viewMode === 'rows' && (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,2fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
+                                <div className="grid grid-cols-[2fr,1.5fr,2fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
                                     <div className="text-left pl-0">STAFF MEMBER</div>
+                                    <div className="text-left">ROLE</div>
                                     <div className="text-left">CONTACT</div>
-                                    <div className="text-center">ROLE</div>
                                 </div>
                                 {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,2fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
+                                    <div key={s.id} className="grid grid-cols-[2fr,1.5fr,2fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
                                         <div className="flex items-center justify-start gap-2.5 pl-0">
                                             <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage src={s.avatarUrl} />
@@ -489,12 +500,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             </Avatar>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
                                         </div>
-                                        <div className="min-w-0 flex flex-col items-start justify-center">
-                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate"><Mail size={10} className="text-text-muted shrink-0"/>{s.email}</div>
-                                            <div className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={10} className="text-text-muted shrink-0"/>{s.phone}</div>
+                                        <div className="text-left">
+                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
                                         </div>
-                                        <div className="flex flex-wrap gap-1 justify-center">
-                                            {s.roles?.map(r => <Badge key={r} variant="secondary" className="text-[7px] uppercase h-3.5 px-1">{r.replace(/_/g, ' ')}</Badge>)}
+                                        <div className="min-w-0 flex flex-col items-start justify-center">
+                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
+                                                <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[9px] text-text-muted">
+                                                <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

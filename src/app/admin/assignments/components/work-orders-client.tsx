@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -29,19 +30,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
 import {
-  Briefcase,
   Calendar,
   Clock,
   MapPin,
   Pencil,
   UserPlus,
-  Layers,
   DollarSign,
   User,
   Search,
   Building2,
   Check,
-  Users,
   Navigation,
   Eye,
   ShieldCheck,
@@ -218,19 +216,16 @@ export function WorkOrdersClient({
   };
 
   const handleApprovePay = (orderId: string) => {
-    const order = allWorkOrders.find(o => o.id === orderId);
-    if (!order?.payChangeRequest) return;
-
     const updated = allWorkOrders.map(o => {
-      if (o.id === orderId) {
+      if (o.id === orderId && o.payChangeRequest) {
         return {
           ...o,
-          pay: o.payChangeRequest!.pay,
-          payType: o.payChangeRequest!.payType,
+          pay: o.payChangeRequest.pay,
+          payType: o.payChangeRequest.payType,
           payChangeRequest: undefined,
           history: [
             ...(o.history || []),
-            { type: 'note' as const, date: new Date().toISOString().split('T')[0], details: `Pay change approved. New rate: $${o.payChangeRequest!.pay}`, user: currentUser?.name || 'Super Admin' }
+            { type: 'note' as const, date: new Date().toISOString().split('T')[0], details: `Pay change approved. New rate: $${o.payChangeRequest.pay}`, user: currentUser?.name || 'Super Admin' }
           ]
         };
       }
@@ -315,41 +310,40 @@ export function WorkOrdersClient({
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: "500px" }} className="text-left pl-6">Assignment Identification & Status</th>
-              <th style={{ width: "160px" }} className="text-left">Schedule</th>
-              <th style={{ width: "140px" }} className="text-center">Route Status</th>
-              <th style={{ width: "250px" }} className="text-left">Site Coordinates</th>
-              <th style={{ width: "160px" }} className="text-center">{mode === 'scheduled' ? 'Operative' : 'Settlement Pay'}</th>
-              <th style={{ width: "140px" }} className="text-center"></th>
+              <th style={{ width: "200px" }} className="text-center">ID & Status</th>
+              <th style={{ width: "450px" }} className="text-left">Assignment Intelligence</th>
+              <th style={{ width: "160px" }} className="text-center">Schedule</th>
+              <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
+              <th style={{ width: "180px" }} className="text-center">{mode === 'scheduled' ? 'Operative' : 'Settlement Pay'}</th>
+              <th style={{ width: "120px" }} className="text-center"></th>
             </tr>
           </thead>
           <tbody>
             {paginatedOrders.map((order) => {
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
-              const route = routes.find(r => r.id === order.routeId);
               return (
                 <tr key={order.id} className="group">
-                  <td className="!py-3">
-                    <div className="flex items-center gap-4 pl-6 text-left">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1.5">
-                          <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
-                          {order.source === 'Imported' && (
-                            <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
-                              <ExternalLink size={10} />
-                            </a>
-                          )}
-                        </div>
-                        <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
+                  <td>
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
+                        {order.source === 'Imported' && (
+                          <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
+                            <ExternalLink size={10} />
+                          </a>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
-                      </div>
+                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
+                    </div>
+                  </td>
+                  <td className="!py-3 text-left">
+                    <div className="flex flex-col">
+                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
+                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
                     </div>
                   </td>
                   <td>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col items-center justify-center gap-1">
                       <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
                         <Calendar size={13} className="text-text-muted shrink-0" />
                         <span>{formatDateDisplay(order.scheduleDate)}</span>
@@ -361,20 +355,9 @@ export function WorkOrdersClient({
                     </div>
                   </td>
                   <td>
-                    <div className="flex flex-col items-center justify-center">
-                      {route ? (
-                          <Badge variant="outline" className="bg-bg-tertiary border-accent-gold/30 text-accent-gold text-[8px] uppercase tracking-widest gap-1 h-4 px-1.5">
-                              <Layers size={10}/> {route.name}
-                          </Badge>
-                      ) : (
-                          <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-tighter">Unallocated</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                    <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                       <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span>{order.location}</span>
+                      <span className="truncate max-w-[200px]">{order.location}</span>
                     </div>
                   </td>
                   <td>
@@ -776,7 +759,7 @@ export function WorkOrdersClient({
           <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
               <DialogHeader className="p-6 pb-2">
                   <div className="flex items-center gap-2 mb-1">
-                      <Users className="text-brand-red h-5 w-5" />
+                      <Building2 className="text-brand-red h-5 w-5" />
                       <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
                   </div>
                   <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>

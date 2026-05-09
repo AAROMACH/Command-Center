@@ -1,5 +1,6 @@
+
 'use client';
-import type { Technician, TimeOffRequest, WorkOrder, SiteRequest, AppRole } from '@/lib/types';
+import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,33 +10,26 @@ import {
     Mail, 
     Phone, 
     Plus, 
-    Map, 
-    UserCheck, 
-    Building, 
+    Map as MapIcon, 
     ChevronLeft,
     ChevronRight,
     Building2, 
     Rows3, 
     LayoutGrid, 
     Columns2,
-    Shield,
     Star,
     ArrowUpDown,
-    ClipboardList,
     MapPin,
     Calendar,
     Check,
     X,
     Clock,
-    AlertCircle,
+    Navigation,
     User
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { AddPersonnelDialog } from './add-personnel-dialog';
 import { EditPersonnelDialog } from './edit-personnel-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +42,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -293,6 +288,23 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const pendingRequestsCount = timeOffRequests.filter(r => r.status === 'pending').length + siteRequests.filter(r => r.status === 'pending').length;
 
+    const michiganSites = useMemo(() => {
+        const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
+        techniciansList.forEach(t => {
+            if (t.address?.includes('MI') || t.currentLocation?.includes('MI')) {
+                sites.push({ id: t.id, name: t.name, location: t.address || t.currentLocation, type: 'tech' });
+            }
+        });
+        personnel.filter(p => p.roles?.includes('client')).forEach(c => {
+            c.managedSites?.forEach(s => {
+                if (s.location.includes('MI')) {
+                    sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
+                }
+            });
+        });
+        return sites;
+    }, [techniciansList, personnel]);
+
     return (
         <>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -319,7 +331,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 onClick={() => setActiveTab('map')}
                                 className={cn("h-7 px-3 text-[10px]", activeTab === 'map' ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
                             >
-                                <Map size={11} className="mr-1.5"/>
+                                <MapIcon size={11} className="mr-1.5"/>
                                 MAP
                             </Button>
 
@@ -648,6 +660,75 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 </div>
                             </div>
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="map" className="m-0">
+                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px] mt-4">
+                            <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
+                                <div className="absolute inset-0 bg-bg-primary">
+                                     <iframe 
+                                        src="https://www.google.com/maps/embed/v1/view?key=AIzaSy...FAKEKEY&center=44.3148,-85.6024&zoom=7&maptype=satellite" 
+                                        width="100%" 
+                                        height="100%" 
+                                        style={{ border: 0, filter: 'grayscale(0.6) invert(1) contrast(1.2)' }} 
+                                        allowFullScreen={true} 
+                                        loading="lazy"
+                                    ></iframe>
+                                    <div className="absolute top-4 left-4 z-10 space-y-2">
+                                        <div className="flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-md border border-white/10 shadow-2xl">
+                                            <div className="h-2 w-2 rounded-full bg-brand-red animate-pulse" />
+                                            <p className="text-[10px] font-black uppercase text-white tracking-[0.2em]">Michigan Tactical View</p>
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-4 right-4 z-10 bg-black/80 backdrop-blur-md p-3 rounded-md border border-white/10 shadow-2xl">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-2 rounded-full bg-brand-red" />
+                                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">Technician Base</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-2 rounded-full bg-accent-gold" />
+                                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">Client Site</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                            
+                            <Card className="bg-bg-secondary border-border-main flex flex-col overflow-hidden">
+                                <div className="p-4 border-b border-border-sub bg-bg-tertiary/50">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                        <MapPin size={14} className="text-brand-red"/>
+                                        Coordinate Registry
+                                    </h3>
+                                </div>
+                                <ScrollArea className="flex-1">
+                                    <div className="divide-y divide-border-sub">
+                                        {michiganSites.map(site => (
+                                            <div key={site.id} className="p-4 hover:bg-bg-tertiary transition-colors cursor-pointer group">
+                                                <div className="flex items-start gap-3">
+                                                    <div className={cn(
+                                                        "p-2 rounded border border-border-sub shrink-0 transition-colors",
+                                                        site.type === 'tech' ? "bg-brand-red-dim/20 text-brand-red group-hover:bg-brand-red group-hover:text-white" : "bg-accent-gold-dim/20 text-accent-gold group-hover:bg-accent-gold group-hover:text-white"
+                                                    )}>
+                                                        {site.type === 'tech' ? <User size={14}/> : <Building2 size={14}/>}
+                                                    </div>
+                                                    <div className="space-y-0.5 overflow-hidden">
+                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{site.name}</p>
+                                                        <p className="text-[9px] text-text-muted uppercase tracking-tight flex items-center gap-1">
+                                                            <Navigation size={8}/> {site.location}
+                                                        </p>
+                                                        <Badge variant="outline" className="mt-2 text-[7px] uppercase tracking-tighter bg-bg-primary h-3.5">
+                                                            {site.type === 'tech' ? 'Operative Base' : 'Mission Target'}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </Card>
+                         </div>
                     </TabsContent>
                 </div>
 

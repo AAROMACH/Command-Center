@@ -1,24 +1,16 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { 
     Search, 
-    User, 
     MapPin, 
-    Activity, 
-    History, 
-    AlertTriangle, 
     X, 
-    FileText, 
-    CheckCircle2, 
-    Briefcase, 
     Clock, 
     Building2,
-    DollarSign,
-    ShieldAlert,
     ChevronRight,
-    ArrowUpRight,
-    ExternalLink
+    History,
+    AlertTriangle
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -26,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Select,
     SelectContent,
@@ -45,7 +36,7 @@ import { cn } from '@/lib/utils';
 import { PersonnelDetailDialog } from '../directory/components/personnel-detail-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays, isAfter } from 'date-fns';
 
 const AUDIT_ACTIONS = [
     { dot: "done", action: "Assignment assigned — aaro_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Manual work order assigned"' },

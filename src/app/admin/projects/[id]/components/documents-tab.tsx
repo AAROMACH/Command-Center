@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
@@ -174,10 +175,15 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
     return (
         <div className="space-y-8">
             <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 mb-3 px-1">
-                    <FileText size={14}/>
-                    Pre-Site Documents
-                </h3>
+                <div className="flex items-center justify-between mb-3 px-1">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
+                        <FileText size={14}/>
+                        Pre-Site Documents
+                    </h3>
+                    <Button variant="outline" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Upload terminal ready", description: "Select pre-site documentation for registry." })}>
+                        <Plus size={10} className="mr-1"/> Add Document
+                    </Button>
+                </div>
                 <PreSiteDocumentList docs={preSiteDocs} onDelete={handleDeleteDoc} />
             </div>
 

@@ -200,7 +200,7 @@ export function WorkOrdersClient({
               <AlertDialogTrigger asChild>
                 <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6">
                     <Send className="mr-2 h-3.5 w-3.5" />
-                    Confirm assignments and notify Techs ({sortedWorkOrders.length})
+                    Send Out Assignments
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-bg-elevated border-border-main">

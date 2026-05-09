@@ -221,7 +221,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     };
 
     const handleDeleteRoute = (id: string) => {
-        const route = routes.find(r => r.id === id);
+        const route = { ...routes.find(r => r.id === id) };
         onRoutesChange(routes.filter(r => r.id !== id));
         // Unset routeId on work orders
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: undefined } : wo));

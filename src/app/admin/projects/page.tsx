@@ -1,23 +1,38 @@
 'use client';
 
-import { projects, technicians } from "@/lib/data";
+import { projects as initialProjects, technicians } from "@/lib/data";
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { NewProjectDialog } from "./components/new-project-dialog";
+import type { Project } from "@/lib/types";
 
 export default function ProjectsPage() {
-  const [allProjects, setAllProjects] = useState(projects);
+  const [allProjects, setAllProjects] = useState<Project[]>(initialProjects);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  
   const allTechnicians = technicians;
   const { toast } = useToast();
 
-  const handleNewProject = () => {
+  const handleNewProject = (newProject: Project) => {
+    setAllProjects(prev => [newProject, ...prev]);
     toast({
       title: "Project Registry Initialized",
-      description: "A new project folder has been staged in the registry.",
+      description: `${newProject.name} has been staged in the operational registry.`,
     });
   };
+
+  const filteredProjects = useMemo(() => {
+    return allProjects.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [allProjects, searchQuery]);
 
   return (
     <div>
@@ -33,20 +48,31 @@ export default function ProjectsPage() {
         <div className="page-header-right items-center">
             <div className="search-wrap">
               <Search />
-              <input className="search-input !w-[220px]" placeholder="Search project folders..." />
+              <input 
+                className="search-input !w-[220px]" 
+                placeholder="Search project folders..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <Button variant="outline" size="sm" onClick={() => toast({ title: "Filter Terminal", description: "Project search parameters updated." })}>
+            <Button variant="outline" size="sm" onClick={() => toast({ title: "Filter Terminal", description: "Search constraints updated." })}>
               <SlidersHorizontal size={14} className="mr-2"/>
               Filter
             </Button>
-            <Button variant="default" size="default" onClick={handleNewProject}>
+            <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
                 <Plus size={14} className="mr-2"/>
                 New Project
             </Button>
         </div>
       </header>
 
-      <ProjectsTabs projects={allProjects} technicians={allTechnicians} />
+      <ProjectsTabs projects={filteredProjects} technicians={allTechnicians} />
+
+      <NewProjectDialog 
+        isOpen={isNewDialogOpen} 
+        setIsOpen={setIsNewDialogOpen} 
+        onSave={handleNewProject} 
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, X, Check } from 'lucide-react';
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ManageTeamDialog } from './manage-team-dialog';
@@ -20,7 +20,16 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
+    const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
+
+    useEffect(() => {
+        setLocalProjectData({
+            scope: project.scope,
+            onsiteContact: project.onsiteContact,
+            siteAccessInstructions: project.siteAccessInstructions
+        });
+    }, [project]);
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
@@ -56,6 +65,26 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
         }));
         toast({ title: "Note Removed", description: "Site intelligence has been updated." });
     };
+
+    const handleSaveChanges = () => {
+        setProject(prev => ({
+            ...prev,
+            ...localProjectData
+        }));
+        toast({
+            title: "Registry Updated",
+            description: "Operational briefing changes have been committed.",
+        });
+    };
+
+    const handleCancelChanges = () => {
+        setLocalProjectData({
+            scope: project.scope,
+            onsiteContact: project.onsiteContact,
+            siteAccessInstructions: project.siteAccessInstructions
+        });
+        toast({ title: "Changes Discarded", description: "Project briefing remains at last authorized state." });
+    }
     
     return (
         <>
@@ -67,12 +96,21 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
-                            <Textarea className="field-textarea" defaultValue={project.scope}></Textarea>
+                            <Textarea 
+                                className="field-textarea" 
+                                value={localProjectData.scope || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                            ></Textarea>
                         </div>
                         
                         <div className="field-row">
                             <label className="field-label">Onsite Contact</label>
-                            <Input className="field-input" placeholder="Name + phone number..." defaultValue={project.onsiteContact} />
+                            <Input 
+                                className="field-input" 
+                                placeholder="Name + phone number..." 
+                                value={localProjectData.onsiteContact || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, onsiteContact: e.target.value})}
+                            />
                         </div>
                         
                         <div className="field-row">
@@ -111,7 +149,12 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                     <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add Note</button>
                                 )}
                             </div>
-                            <Textarea className="field-textarea mt-2" placeholder="Parking, entry codes, badge requirements..." defaultValue={project.siteAccessInstructions}></Textarea>
+                            <Textarea 
+                                className="field-textarea mt-2" 
+                                placeholder="Parking, entry codes, badge requirements..." 
+                                value={localProjectData.siteAccessInstructions || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                            ></Textarea>
                         </div>
                     </div>
 
@@ -140,7 +183,6 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                     </div>
                 </div>
 
-                {/* Sidebar Content: Team */}
                 <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
@@ -165,14 +207,17 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                     </div>
                                 )
                             })}
+                            {project.team.length === 0 && (
+                                <p className="text-[10px] text-text-muted uppercase font-bold text-center py-4 border border-dashed border-border-sub rounded-md">No personnel assigned</p>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" size="sm" onClick={() => toast({ title: "Changes Discarded", description: "Project briefing remains at last authorized state." })}>Cancel</Button>
-                <Button variant="default" size="sm" onClick={() => toast({ title: "Registry Updated", description: "Operational briefing changes have been committed." })}>Save Changes</Button>
+                <Button variant="outline" size="sm" onClick={handleCancelChanges}>Cancel</Button>
+                <Button variant="default" size="sm" onClick={handleSaveChanges}>Save Changes</Button>
             </div>
             
             <ManageTeamDialog 

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 type DocumentsTabProps = {
     project: Project;
     documents: ProjectDocument[];
+    setDocuments: React.Dispatch<React.SetStateAction<ProjectDocument[]>>;
 };
 
 const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
@@ -21,7 +22,7 @@ const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
     return <FileText />;
 };
 
-const PreSiteDocumentList = ({ docs }: { docs: ProjectDocument[] }) => {
+const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDelete: (id: string) => void }) => {
     const { toast } = useToast();
     return (
         <div className="doc-list small border border-border-sub rounded-md bg-bg-secondary/30">
@@ -42,7 +43,7 @@ const PreSiteDocumentList = ({ docs }: { docs: ProjectDocument[] }) => {
                     </div>
                     <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Download Initiated", description: `${doc.name} transfer handshake complete.` })}><Download size={12} /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => toast({ variant: "destructive", title: "Asset Deleted", description: `${doc.name} removed from registry.` })}><Trash2 size={12} /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={12} /></Button>
                     </div>
                 </div>
             )) : (
@@ -54,7 +55,7 @@ const PreSiteDocumentList = ({ docs }: { docs: ProjectDocument[] }) => {
     );
 };
 
-const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: ProjectDocument[] }) => {
+const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, documents: ProjectDocument[], onDelete: (id: string) => void }) => {
     const { toast } = useToast();
     const requiredPhotoTasks = phase.tasks.filter(task => task.requiresPhoto);
 
@@ -71,18 +72,9 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                     <div className="h-4 w-4 rounded-full bg-brand-red text-[8px] font-bold text-white flex items-center justify-center">{phase.phaseNumber}</div>
                     <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">{phase.name}</h4>
                 </div>
-                <span className="text-[8px] font-bold text-text-muted uppercase tracking-widest">{requiredPhotoTasks.length} Documentation Targets</span>
+                <span className="text-[8px] font-bold text-text-muted uppercase tracking-widest">{requiredPhotoTasks.length} Targets</span>
              </header>
              <div className="p-4 space-y-4">
-                <div>
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Operational Intelligence / Field Notes</label>
-                    <Textarea 
-                        className="min-h-[60px] text-[11px] bg-bg-primary border-border-sub focus:border-brand-red resize-none" 
-                        defaultValue={phase.notes}
-                        placeholder="Add operational notes for this phase..."
-                    />
-                </div>
-
                 <div className="space-y-3">
                     <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted block border-b border-border-sub/30 pb-1">Field Documentation Feed</label>
                     {requiredPhotoTasks.length > 0 ? (
@@ -96,13 +88,10 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                                 <div className={cn("h-1.5 w-1.5 rounded-full", task.isCompleted ? "bg-text-green" : "bg-text-muted")} />
                                                 <span className={cn("text-[10px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
                                             </div>
-                                            <Button variant="outline" size="sm" className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Handshake Initiated", description: "Awaiting field evidence transmission." })}>
-                                                <Upload size={10} className="mr-1"/> Add Evidence
-                                            </Button>
                                         </div>
                                         
                                         {taskPhotos.length > 0 ? (
-                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                            <div className="grid grid-cols-2 gap-2">
                                                 {taskPhotos.map(photo => (
                                                     <div key={photo.id} className="group relative aspect-video rounded border border-border-sub bg-bg-primary overflow-hidden">
                                                         <Image src={photo.url || ''} alt={photo.name} fill className="object-cover transition-transform group-hover:scale-110" />
@@ -111,7 +100,7 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                                             <p className="text-[6px] text-text-secondary flex items-center gap-1"><User size={8}/> {photo.uploader}</p>
                                                             <div className="flex gap-1 mt-1">
                                                                 <button className="p-1 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => toast({ title: "Transferring...", description: "Visual asset download initiated." })}><Download size={8}/></button>
-                                                                <button className="p-1 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => toast({ variant: "destructive", title: "Asset Purged", description: "Visual evidence removed from phase registry." })}><Trash2 size={8}/></button>
+                                                                <button className="p-1 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => onDelete(photo.id)}><Trash2 size={8}/></button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -151,27 +140,43 @@ const MilestoneDocuments = ({ phase, documents }: { phase: Phase, documents: Pro
                                 </div>
                                 <div className="flex gap-0.5">
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast({ title: "Transferring...", description: "Phase asset download initiated." })}><Download size={10} /></Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-red" onClick={() => toast({ variant: "destructive", title: "Registry Purged", description: "Phase asset removed." })}><Trash2 size={10} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={10} /></Button>
                                 </div>
                             </div>
                         )) : (
-                             <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest mb-2">No additional technical assets for this phase</p>
+                             <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest mb-2">No additional technical assets</p>
                         )}
-                        <Button variant="outline" size="sm" className="w-full !h-7 !text-[8px] border-dashed border-border-sub hover:bg-bg-tertiary font-bold uppercase tracking-widest" onClick={() => toast({ title: "Uploader Open", description: "Awaiting local file selection for phase registry." })}>
-                            <Paperclip size={10} className="mr-1.5" /> Upload to this phase
-                        </Button>
                     </div>
                 </div>
-
              </div>
         </div>
     )
 }
 
 
-export function DocumentsTab({ project, documents }: DocumentsTabProps) {
+export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabProps) {
     const { toast } = useToast();
     const preSiteDocs = documents.filter(doc => !doc.phaseId);
+
+    const handleDeleteDoc = (id: string) => {
+        setDocuments(prev => prev.filter(d => d.id !== id));
+        toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
+    };
+
+    const simulateUpload = (phaseId?: string) => {
+        const newDoc: ProjectDocument = {
+            id: `doc-${Date.now()}`,
+            name: `Manual_Upload_${Date.now().toString().slice(-4)}.pdf`,
+            type: 'pdf',
+            label: 'Manual Upload',
+            uploader: 'System Admin',
+            uploadDate: 'Just Now',
+            size: '1.2 MB',
+            phaseId
+        };
+        setDocuments(prev => [newDoc, ...prev]);
+        toast({ title: "Registry Handshake Complete", description: "Asset appended to project folder." });
+    };
     
     return (
         <div className="space-y-8">
@@ -186,10 +191,10 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => toast({ title: "Registry Open", description: "Upload pre-site blueprints or documentation." })}>
+                    <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => simulateUpload()}>
                         <Plus size={12} className="mr-1.5"/> Pre-Site Doc
                     </Button>
-                    <Button variant="default" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => toast({ title: "Batch Uploader", description: "Initialize multi-file phase evidence upload." })}>
+                    <Button variant="default" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => simulateUpload(project.phases[0]?.id)}>
                         <Upload size={12} className="mr-1.5"/> Batch Phase Upload
                     </Button>
                 </div>
@@ -200,7 +205,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     <FileText size={14}/>
                     Strategic Repository
                 </h3>
-                <PreSiteDocumentList docs={preSiteDocs} />
+                <PreSiteDocumentList docs={preSiteDocs} onDelete={handleDeleteDoc} />
             </div>
 
             <div className="space-y-4">
@@ -210,7 +215,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                  </h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {project.phases.map(phase => (
-                        <MilestoneDocuments key={phase.id} phase={phase} documents={documents} />
+                        <MilestoneDocuments key={phase.id} phase={phase} documents={documents} onDelete={handleDeleteDoc} />
                     ))}
                  </div>
             </div>

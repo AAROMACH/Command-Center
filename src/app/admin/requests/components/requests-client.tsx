@@ -263,10 +263,10 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             <X size={14} className="mr-2" /> Reject
                         </Button>
                         <Button variant="outline" onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                            <Wrench size={14} className="mr-2" /> Assign
+                            <Wrench size={14} className="mr-2" /> Assignment
                         </Button>
                         <Button onClick={() => handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
-                            <Briefcase size={14} className="mr-2" /> Create Project
+                            <Briefcase size={14} className="mr-2" /> Project
                         </Button>
                     </DialogFooter>
                 </DialogContent>

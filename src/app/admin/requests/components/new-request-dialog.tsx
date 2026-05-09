@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2 } from 'lucide-react';
+import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase } from 'lucide-react';
 import type { ServiceRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -248,12 +248,20 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           </div>
         </div>
 
-        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">
+        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-col gap-4">
+          <div className="w-full">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">Convert to a(n):</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                <Wrench size={14} className="mr-2" /> Assignment
+              </Button>
+              <Button onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                <Briefcase size={14} className="mr-2" /> Project
+              </Button>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full h-10 px-8 uppercase font-bold text-[10px] tracking-widest">
             <X size={14} className="mr-2"/> Cancel Intake
-          </Button>
-          <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
-            <Check size={16} className="mr-2" /> Finalize Submission
           </Button>
         </DialogFooter>
       </DialogContent>

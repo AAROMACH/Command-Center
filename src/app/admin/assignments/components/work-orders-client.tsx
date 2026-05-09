@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
 import { getRecommendation } from "../actions";
+import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,10 @@ export function WorkOrdersClient({
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const { toast } = useToast();
+
+  const sortedWorkOrders = useMemo(() => {
+    return [...workOrders].sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
+  }, [workOrders]);
 
   const handleOpenAssignDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
@@ -151,6 +156,14 @@ export function WorkOrdersClient({
       }).sort((a, b) => a.distance - b.distance);
   }, [technicians, selectedOrder, techSearchQuery]);
 
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      return format(parseISO(dateStr), "MM-dd-yyyy");
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <>
       <div className="table-wrap">
@@ -167,7 +180,7 @@ export function WorkOrdersClient({
             </tr>
           </thead>
           <tbody>
-            {workOrders.map((order) => {
+            {sortedWorkOrders.map((order) => {
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
               const route = routes.find(r => r.id === order.routeId);
               return (
@@ -185,7 +198,7 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date"><Calendar />{order.scheduleDate}</div>
+                      <div className="cell-sched-date"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
                       <div className="cell-sched-time"><Clock />{order.scheduleTime}</div>
                     </div>
                   </td>
@@ -242,7 +255,7 @@ export function WorkOrdersClient({
                 </tr>
               );
             })}
-             {workOrders.length === 0 && (
+             {sortedWorkOrders.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>
@@ -297,7 +310,7 @@ export function WorkOrdersClient({
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                 <div>
-                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors">{tech.name}</p>
+                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
                                             <MapPin size={10}/> {tech.distance.toFixed(1)} MI FROM SITE

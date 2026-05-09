@@ -41,7 +41,7 @@ export default function AssignmentsHubPage() {
       const matchesDate = !filterDate || (wo.scheduleDate && isSameDay(parseISO(wo.scheduleDate), filterDate));
 
       return matchesSearch && matchesDate;
-    });
+    }).sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
   }, [workOrders, searchQuery, filterDate]);
 
   const activeWorkOrders = useMemo(() => 
@@ -51,6 +51,14 @@ export default function AssignmentsHubPage() {
   const archivedWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status === 'completed'),
   [filteredWorkOrders]);
+
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      return format(parseISO(dateStr), "MM-dd-yyyy");
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -153,7 +161,7 @@ export default function AssignmentsHubPage() {
                                                 <div className="pt-2 border-t border-border-sub space-y-1.5">
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
                                                         <Clock size={12} className="text-text-muted" />
-                                                        {job.scheduleTime} • {job.scheduleDate}
+                                                        {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
                                                         <MapPin size={12} className="text-text-muted" />
@@ -224,7 +232,7 @@ export default function AssignmentsHubPage() {
                                     </td>
                                     <td>
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-text-primary uppercase">{wo.scheduleDate}</span>
+                                            <span className="text-xs font-bold text-text-primary uppercase">{formatDateDisplay(wo.scheduleDate)}</span>
                                             <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
                                                 <User size={10}/> {tech?.name || 'Field Ops'}
                                             </div>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Clock, Timer, User } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 type ProjectsClientProps = {
     projects: Project[];
@@ -29,6 +30,14 @@ function getTotalTasksCount(project: Project): number {
 
 export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
     const router = useRouter();
+
+    const formatDateDisplay = (dateStr: string) => {
+        try {
+          return format(parseISO(dateStr), "MM-dd-yyyy");
+        } catch (e) {
+          return dateStr;
+        }
+    };
     
     if (projects.length === 0) {
         return (
@@ -87,7 +96,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                     <div className="cell-sched">
                                         <div className="cell-sched-date">
                                             <Calendar />
-                                            <span>{project.startDate}</span>
+                                            <span>{formatDateDisplay(project.startDate)}</span>
                                         </div>
                                         {project.startTime && (
                                             <div className="cell-sched-time">

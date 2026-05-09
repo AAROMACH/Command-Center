@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
 import { getRecommendation } from "../actions";
+import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,10 @@ export function WorkOrdersClient({
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const { toast } = useToast();
+
+  const sortedWorkOrders = useMemo(() => {
+    return [...workOrders].sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
+  }, [workOrders]);
 
   const handleOpenAssignDialog = (order: WorkOrder) => {
     setSelectedOrder(order);
@@ -171,9 +176,17 @@ export function WorkOrdersClient({
       }).sort((a, b) => a.distance - b.distance);
   }, [technicians, selectedOrder, techSearchQuery]);
 
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      return format(parseISO(dateStr), "MM-dd-yyyy");
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <>
-      {mode === 'assigned' && workOrders.length > 0 && (
+      {mode === 'assigned' && sortedWorkOrders.length > 0 && (
         <div className="mb-4 flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-sub">
             <div className="flex items-center gap-3">
                 <ShieldCheck className="text-text-green h-5 w-5" />
@@ -187,14 +200,14 @@ export function WorkOrdersClient({
               <AlertDialogTrigger asChild>
                 <Button className="h-9 bg-text-green hover:bg-text-green/90 px-6">
                     <Send className="mr-2 h-3.5 w-3.5" />
-                    Confirm assignments and notify Techs ({workOrders.length})
+                    Confirm assignments and notify Techs ({sortedWorkOrders.length})
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-bg-elevated border-border-main">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="uppercase tracking-wider">Authorize Mission Transmission?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will broadcast assignment details to {workOrders.length} field operatives. This action initiates the live tracking window.
+                    This will broadcast assignment details to {sortedWorkOrders.length} field operatives. This action initiates the live tracking window.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -222,7 +235,7 @@ export function WorkOrdersClient({
             </tr>
           </thead>
           <tbody>
-            {workOrders.map((order) => {
+            {sortedWorkOrders.map((order) => {
               const route = routes.find(r => r.id === order.routeId);
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
               
@@ -241,7 +254,7 @@ export function WorkOrdersClient({
                   </td>
                   <td>
                     <div className="cell-sched">
-                      <div className="cell-sched-date"><Calendar />{order.scheduleDate}</div>
+                      <div className="cell-sched-date"><Calendar />{formatDateDisplay(order.scheduleDate)}</div>
                       <div className="cell-sched-time"><Clock />{order.scheduleTime}</div>
                     </div>
                   </td>
@@ -306,7 +319,7 @@ export function WorkOrdersClient({
                 </tr>
               );
             })}
-             {workOrders.length === 0 && (
+             {sortedWorkOrders.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>

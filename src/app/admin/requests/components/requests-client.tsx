@@ -69,8 +69,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     if (requests.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12">
-                    No requests found in this category.
+                <div className="empty-state !py-8">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted italic opacity-40">No requests found in this category.</p>
                 </div>
             </div>
         )
@@ -87,7 +87,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         const isProject = destination === '/admin/projects';
         const isDispatch = destination === '/admin/dispatch';
         
-        // Simulate ID generation as per tactical requirements
         const generatedId = isProject 
             ? `PROJ-${Math.floor(1000 + Math.random() * 9000)}` 
             : isDispatch 
@@ -119,45 +118,49 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         <div className="table-wrap">
             <table className="tbl">
                 <thead>
-                    <tr>
-                        <th style={{ width: "140px" }}>Request ID</th>
-                        <th>Client & Location</th>
-                        <th style={{ width: "35%" }}>Description</th>
-                        <th style={{ width: "130px" }}>Request Type</th>
-                        <th style={{ width: "110px" }}>Priority</th>
-                        <th style={{ width: "200px" }}>Actions</th>
+                    <tr className="bg-bg-tertiary/50">
+                        <th style={{ width: "120px" }} className="!py-2">ID</th>
+                        <th className="!py-2">Client & Site</th>
+                        <th style={{ width: "40%" }} className="!py-2">Description</th>
+                        <th style={{ width: "110px" }} className="!py-2">Category</th>
+                        <th style={{ width: "90px" }} className="!py-2 text-center">Priority</th>
+                        <th style={{ width: "120px" }} className="!py-2 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {paginatedRequests.map((req) => (
-                        <tr key={req.id}>
-                            <td>
-                                <div className="cell-id">{req.id.toUpperCase()}</div>
-                                <span className="text-xs text-text-muted">{req.submittedDate}</span>
+                        <tr key={req.id} className="group hover:bg-bg-tertiary/80 transition-colors">
+                            <td className="!py-2">
+                                <div className="cell-id !text-[10px]">{req.id.toUpperCase()}</div>
+                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">{req.submittedDate}</span>
                             </td>
-                            <td>
-                                <div className="font-semibold text-text-primary text-sm mb-1">{req.clientName}</div>
-                                <div className="flex items-center gap-1.5 text-sm text-text-secondary">
-                                    <MapPin className="h-3.5 w-3.5 text-text-muted" />
-                                    <span>{req.location}</span>
+                            <td className="!py-2">
+                                <div className="font-bold text-text-primary text-[11px] uppercase tracking-tight truncate max-w-[150px]">{req.clientName}</div>
+                                <div className="flex items-center gap-1 text-[9px] text-text-muted font-bold truncate max-w-[150px]">
+                                    <MapPin size={10} className="shrink-0" />
+                                    <span className="truncate">{req.location}</span>
                                 </div>
                             </td>
-                            <td>
-                                <p className="text-sm text-text-secondary line-clamp-1">{req.description}</p>
+                            <td className="!py-2">
+                                <p className="text-[11px] text-text-secondary line-clamp-1 italic group-hover:text-text-primary transition-colors">{req.description}</p>
                             </td>
-                            <td>
-                                <Badge variant="secondary" className="normal-case bg-bg-tertiary text-text-secondary">{req.requestType}</Badge>
+                            <td className="!py-2">
+                                <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-widest bg-bg-tertiary border-border-sub text-text-muted">
+                                    {req.requestType}
+                                </Badge>
                             </td>
-                            <td>
-                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="normal-case">{req.priority}</Badge>
+                            <td className="!py-2 text-center">
+                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : req.priority === 'medium' ? 'medium' : 'low'} className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">
+                                    {req.priority}
+                                </Badge>
                             </td>
-                            <td>
-                                <div className="cell-actions">
-                                    <Button variant="outline" size="sm" onClick={() => handleOpenReview(req)}>
-                                        <Eye size={14} className="mr-2"/> Review
+                            <td className="!py-2 text-right">
+                                <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
+                                        <Eye size={14}/>
                                     </Button>
                                     {req.status === 'approved' && (
-                                        <Button size="sm" variant="secondary" onClick={() => router.push('/admin/dispatch')}>
+                                        <Button size="icon-sm" variant="secondary" className="h-7 w-7" onClick={() => router.push('/admin/dispatch')}>
                                             <ArrowRight size={14}/>
                                         </Button>
                                     )}
@@ -168,26 +171,26 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                 </tbody>
             </table>
 
-            {/* REGISTRY PAGINATION CONTROLS */}
+            {/* COMPACT PAGINATION FOOTER */}
             {requests.length > 0 && (
-              <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+              <div className="bg-bg-tertiary/30 px-3 py-2 flex items-center justify-between border-t border-border-sub">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                     <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                      <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                      <SelectTrigger className="h-6 w-[60px] bg-bg-primary text-[9px] font-bold border-border-sub p-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="10" className="text-[10px]">10</SelectItem>
+                        <SelectItem value="25" className="text-[10px]">25</SelectItem>
+                        <SelectItem value="50" className="text-[10px]">50</SelectItem>
+                        <SelectItem value="100" className="text-[10px]">100</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                    Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, requests.length)}</span> of <span className="text-text-primary">{requests.length}</span> entries
+                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+                    <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> / {requests.length}
                   </p>
                 </div>
                 
@@ -197,151 +200,121 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     size="icon-sm" 
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                    className="h-6 w-6 border-border-sub bg-bg-primary"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={12} />
                   </Button>
-                  <div className="flex items-center gap-1 px-2">
-                    <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
-                    <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
-                  </div>
+                  <span className="text-[9px] font-bold text-text-muted px-1 uppercase tracking-tighter">P{currentPage} of {totalPages}</span>
                   <Button 
                     variant="outline" 
                     size="icon-sm" 
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="h-7 w-7 border-border-sub bg-bg-primary"
+                    className="h-6 w-6 border-border-sub bg-bg-primary"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={12} />
                   </Button>
                 </div>
               </div>
             )}
 
+            {/* COMPACT REVIEW DIALOG */}
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
-                    <DialogHeader className="p-6 pb-2">
-                        <div className="flex items-center gap-2 mb-1">
-                            <ClipboardList className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Job Intake Audit</DialogTitle>
+                <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[85vh]">
+                    <DialogHeader className="p-4 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <ClipboardList className="text-brand-red h-4 w-4" />
+                            <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Intake Audit</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs">Review stakeholder requirements and authorize deployment path.</DialogDescription>
+                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted tracking-tight">Audit requirements for deployment path authorization.</DialogDescription>
                     </DialogHeader>
 
                     {selectedRequest && (
-                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">STAKEHOLDER / CLIENT</p>
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
+                        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-0.5">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">STAKEHOLDER</p>
+                                    <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.clientName}</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SUBMISSION DATE</p>
-                                    <p className="text-sm font-mono text-text-primary">{selectedRequest.submittedDate}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SITE LOCATION</p>
-                                <div className="flex items-center gap-2 text-sm text-text-primary">
-                                    <MapPin size={14} className="text-brand-red" />
-                                    <span>{selectedRequest.location}</span>
+                                <div className="space-y-0.5 text-right">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SUBMITTED</p>
+                                    <p className="text-xs font-mono font-bold text-text-primary">{selectedRequest.submittedDate}</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SERVICE CATEGORY</p>
-                                    <Badge variant="secondary" className="mt-1">{selectedRequest.requestType}</Badge>
+                            <div className="space-y-0.5">
+                                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SITE COORDINATES</p>
+                                <div className="flex items-center gap-1.5 text-xs text-text-primary">
+                                    <MapPin size={12} className="text-brand-red" />
+                                    <span className="font-bold">{selectedRequest.location}</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">PRIORITY LEVEL</p>
-                                    <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="mt-1 uppercase">
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 bg-bg-primary/40 p-2.5 rounded border border-border-sub">
+                                <div>
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-1">SERVICE TYPE</p>
+                                    <Badge variant="outline" className="text-[9px] uppercase tracking-tighter bg-bg-tertiary">{selectedRequest.requestType}</Badge>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-1">PRIORITY</p>
+                                    <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="text-[9px] uppercase tracking-tighter">
                                         {selectedRequest.priority}
                                     </Badge>
                                 </div>
                             </div>
 
-                            <Separator className="bg-border-sub" />
-
-                            <div className="space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">JOB SCOPE & DESCRIPTION</p>
-                                <div className="p-4 rounded bg-bg-primary border border-border-sub">
-                                    <p className="text-sm text-text-secondary leading-relaxed">
-                                        {selectedRequest.description}
+                            <div className="space-y-1.5">
+                                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SCOPE BRIEFING</p>
+                                <div className="p-3 rounded bg-bg-primary border border-border-sub">
+                                    <p className="text-[11px] text-text-secondary leading-relaxed italic">
+                                        &quot;{selectedRequest.description}&quot;
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                                        <Camera size={14} className="text-brand-red" />
-                                        Evidence Imagery
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                                        <Camera size={10} className="text-brand-red" /> VISUALS
                                     </p>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-2 gap-1.5">
                                         {selectedRequest.imageUrls && selectedRequest.imageUrls.length > 0 ? selectedRequest.imageUrls.map((img, i) => (
-                                            <div key={i} className="aspect-video rounded border border-border-sub overflow-hidden relative group">
+                                            <div key={i} className="aspect-square rounded border border-border-sub overflow-hidden relative group">
                                                 <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                                                    <ExternalLink size={14} className="text-white" />
-                                                </div>
                                             </div>
                                         )) : (
-                                            <div className="col-span-2 py-8 rounded border border-dashed border-border-sub flex items-center justify-center text-[10px] text-text-muted uppercase font-bold">
-                                                No visual evidence provided
-                                            </div>
+                                            <div className="col-span-2 py-4 rounded border border-dashed border-border-sub flex items-center justify-center text-[8px] text-text-muted uppercase font-bold">N/A</div>
                                         )}
                                     </div>
                                 </div>
-
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                                        <FileText size={14} className="text-accent-gold" />
-                                        Project Documentation
+                                <div className="space-y-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                                        <FileText size={10} className="text-accent-gold" /> ASSETS
                                     </p>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
                                         {selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0 ? selectedRequest.documentUrls.map((doc, i) => (
-                                            <div key={i} className="p-2 rounded bg-bg-primary border border-border-sub flex items-center justify-between group hover:border-accent-gold transition-colors">
-                                                <div className="flex items-center gap-2 overflow-hidden">
-                                                    <FileText size={12} className="text-text-muted shrink-0" />
-                                                    <span className="text-[10px] font-bold text-text-primary uppercase truncate">{doc}</span>
-                                                </div>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted group-hover:text-accent-gold">
-                                                    <ExternalLink size={12} />
-                                                </Button>
+                                            <div key={i} className="p-1.5 rounded bg-bg-primary border border-border-sub flex items-center justify-between group hover:border-accent-gold transition-colors">
+                                                <span className="text-[9px] font-bold text-text-primary uppercase truncate">{doc}</span>
+                                                <ExternalLink size={10} className="text-text-muted shrink-0" />
                                             </div>
                                         )) : (
-                                            <div className="py-8 rounded border border-dashed border-border-sub flex items-center justify-center text-[10px] text-text-muted uppercase font-bold">
-                                                No documentation attached
-                                            </div>
+                                            <div className="py-4 rounded border border-dashed border-border-sub flex items-center justify-center text-[8px] text-text-muted uppercase font-bold">N/A</div>
                                         )}
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="p-3 rounded bg-brand-red-dim/10 border border-brand-red/20 flex items-start gap-3">
-                                <AlertTriangle size={14} className="text-brand-red shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-text-secondary leading-normal font-bold uppercase tracking-tight">
-                                    Audit required: Verify technician availability before approving conversion to live job.
-                                </p>
                             </div>
                         </div>
                     )}
 
-                    <div className="px-6 py-2 bg-bg-tertiary/20">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Convert to a(n):</p>
-                    </div>
-
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-3 gap-2 mt-auto">
-                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 text-[10px] uppercase font-bold tracking-widest">
-                            <X size={14} className="mr-2" /> Reject
+                    <DialogFooter className="bg-bg-tertiary/50 p-4 border-t border-border-default grid grid-cols-3 gap-2">
+                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-9 text-[9px] uppercase font-bold tracking-widest">
+                            Reject
                         </Button>
-                        <Button onClick={handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
-                            <Wrench size={14} className="mr-2" /> Assignment
+                        <Button onClick={handleAction('approved', '/admin/dispatch')} className="h-9 text-[9px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                            Assign
                         </Button>
-                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/projects')} className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                            <Briefcase size={14} className="mr-2" /> Project
+                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/projects')} className="h-9 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                            Project
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -349,3 +322,4 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </div>
     );
 }
+

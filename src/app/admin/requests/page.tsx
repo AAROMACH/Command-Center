@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -30,35 +31,35 @@ export default function RequestsPage() {
   );
 
   return (
-    <div>
-      <header className="page-header">
+    <div className="space-y-4">
+      <header className="page-header !mb-2">
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <ClipboardList size={12} />
-            Client Service Funnel
+            Service Funnel
           </p>
-          <h1 className="page-title">Service Requests</h1>
-          <p className="page-subtitle">Manage all incoming client requests from intake to assignment.</p>
+          <h1 className="page-title !text-xl">Intake Registry</h1>
+          <p className="page-subtitle text-[11px]">Audit and route stakeholder service requests.</p>
         </div>
         <div className="page-header-right items-center">
-            <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
+            <Button variant="default" size="sm" onClick={() => setIsNewDialogOpen(true)} className="h-8 !text-[10px]">
                 <Plus size={14} className="mr-2"/>
-                New Request
+                Manual Request
             </Button>
         </div>
       </header>
 
-       <div className="mb-4 flex items-center justify-between">
-        <div className="search-wrap">
-          <Search />
+       <div className="mb-4 flex items-center justify-between gap-3 p-2 bg-bg-secondary/30 rounded-lg border border-border-sub">
+        <div className="search-wrap !mb-0 flex-1 md:max-w-[400px]">
+          <Search className="!h-3.5 !w-3.5" />
           <input 
-            className="search-input" 
-            placeholder="Search by client, location, or description..." 
+            className="search-input !h-8 !text-[11px] !w-full" 
+            placeholder="Search registry by client or coordinates..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="default"><SlidersHorizontal size={14} className="mr-2"/> Filters</Button>
+        <Button variant="outline" size="sm" className="h-8 !text-[10px]"><SlidersHorizontal size={12} className="mr-1.5"/> Filter</Button>
       </div>
 
       <RequestsTabs serviceRequests={filteredRequests} />
@@ -71,3 +72,4 @@ export default function RequestsPage() {
     </div>
   );
 }
+

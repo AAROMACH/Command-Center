@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
     Search, 
     Mail, 
@@ -25,7 +27,8 @@ import {
     X,
     Clock,
     Navigation,
-    User
+    User,
+    ShieldCheck
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -60,6 +63,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
     const [activeTab, setActiveTab] = useState('technicians');
+    const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -288,22 +292,25 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const pendingRequestsCount = timeOffRequests.filter(r => r.status === 'pending').length + siteRequests.filter(r => r.status === 'pending').length;
 
-    const michiganSites = useMemo(() => {
+    const mapLocations = useMemo(() => {
         const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
-        techniciansList.forEach(t => {
-            if (t.address?.includes('MI') || t.currentLocation?.includes('MI')) {
-                sites.push({ id: t.id, name: t.name, location: t.address || t.currentLocation, type: 'tech' });
-            }
-        });
-        personnel.filter(p => p.roles?.includes('client')).forEach(c => {
-            c.managedSites?.forEach(s => {
-                if (s.location.includes('MI')) {
-                    sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
+        if (mapViewMode === 'techs') {
+            techniciansList.forEach(t => {
+                if (t.address?.includes('MI') || t.currentLocation?.includes('MI')) {
+                    sites.push({ id: t.id, name: t.name, location: t.address || t.currentLocation, type: 'tech' });
                 }
             });
-        });
+        } else {
+            personnel.filter(p => p.roles?.includes('client')).forEach(c => {
+                c.managedSites?.forEach(s => {
+                    if (s.location.includes('MI')) {
+                        sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
+                    }
+                });
+            });
+        }
         return sites;
-    }, [techniciansList, personnel]);
+    }, [techniciansList, personnel, mapViewMode]);
 
     return (
         <>
@@ -496,69 +503,65 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsContent>
                     
                     <TabsContent value="staff" className="m-0">
-                        {viewMode === 'rows' && (
-                            <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1.5fr,2fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-left pl-0">STAFF MEMBER</div>
-                                    <div className="text-left">ROLE</div>
-                                    <div className="text-left">CONTACT</div>
-                                </div>
-                                {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,1.5fr,2fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
-                                        <div className="flex items-center justify-start gap-2.5 pl-0">
-                                            <Avatar className="h-7 w-7 shrink-0">
-                                                <AvatarImage src={s.avatarUrl} />
-                                                <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                            </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
+                        <div className="table-wrap">
+                            <div className="grid grid-cols-[2fr,1.5fr,2fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
+                                <div className="text-left pl-0">STAFF MEMBER</div>
+                                <div className="text-left">ROLE</div>
+                                <div className="text-left">CONTACT</div>
+                            </div>
+                            {paginatedStaff.map(s => (
+                                <div key={s.id} className="grid grid-cols-[2fr,1.5fr,2fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
+                                    <div className="flex items-center justify-start gap-2.5 pl-0">
+                                        <Avatar className="h-7 w-7 shrink-0">
+                                            <AvatarImage src={s.avatarUrl} />
+                                            <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
+                                    </div>
+                                    <div className="min-w-0 flex flex-col items-start justify-center">
+                                        <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
+                                            <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
                                         </div>
-                                        <div className="text-left">
-                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
-                                        </div>
-                                        <div className="min-w-0 flex flex-col items-start justify-center">
-                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
-                                                <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[9px] text-text-muted">
-                                                <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
-                                            </div>
+                                        <div className="flex items-center gap-1 text-[9px] text-text-muted">
+                                            <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                </div>
+                            ))}
+                        </div>
                     </TabsContent>
                     
                     <TabsContent value="clients" className="m-0">
-                        {viewMode === 'rows' && (
-                            <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-left pl-0">CORPORATE ENTITY</div>
-                                    <div className="text-left">CLASSIFICATION</div>
-                                    <div className="text-center">CONTACTS</div>
-                                    <div className="text-center">REGISTRY</div>
-                                </div>
-                                {paginatedCompanies.map(company => (
-                                    <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
-                                        <div className="flex items-center justify-start gap-2.5 pl-0">
-                                            <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
-                                                <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
-                                            </div>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
-                                        </div>
-                                        <div className="flex items-center justify-start">
-                                            <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
-                                        </div>
-                                        <div className="text-center flex items-center justify-center">
-                                            <Badge variant="outline" className="text-[8px] h-4 px-1.5">{company.contacts.length} C</Badge>
-                                        </div>
-                                        <div className="text-center flex items-center justify-center">
-                                            <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
-                                        </div>
-                                    </div>
-                                ))}
+                        <div className="table-wrap">
+                            <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
+                                <div className="text-left pl-0">CORPORATE ENTITY</div>
+                                <div className="text-left">CLASSIFICATION</div>
+                                <div className="text-center">CONTACTS</div>
+                                <div className="text-center">REGISTRY</div>
                             </div>
-                        )}
+                            {paginatedCompanies.map(company => (
+                                <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
+                                    <div className="flex items-center justify-start gap-2.5 pl-0">
+                                        <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                            <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                        </div>
+                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
+                                    </div>
+                                    <div className="flex items-center justify-start">
+                                        <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
+                                    </div>
+                                    <div className="text-center flex items-center justify-center">
+                                        <Badge variant="outline" className="text-[8px] h-4 px-1.5">{company.contacts.length} C</Badge>
+                                    </div>
+                                    <div className="text-center flex items-center justify-center">
+                                        <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="requests" className="m-0">
@@ -589,9 +592,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             <Calendar size={11} className="shrink-0 text-brand-red" /> {formatDateStr(req.startDate)} — {formatDateStr(req.endDate)}
                                                         </p>
                                                     </div>
-                                                    <div className="hidden lg:block ml-6 flex-1 max-w-[300px] text-center">
-                                                        <p className="text-[10px] text-text-secondary leading-tight line-clamp-1 italic">&quot;{req.reason}&quot;</p>
-                                                    </div>
                                                 </div>
                                                 <div className="flex items-center justify-center gap-1.5 mt-2 md:mt-0">
                                                     <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
@@ -604,11 +604,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             </div>
                                         );
                                     })}
-                                    {filteredTimeOffRequests.length === 0 && (
-                                        <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Absence ledger is clear</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -637,42 +632,32 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-center gap-3 mt-2 md:mt-0">
-                                                <div className="text-center hidden md:block mr-2">
-                                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contact</p>
-                                                    <p className="text-[9px] font-bold text-text-primary uppercase truncate max-w-[100px]">{req.managerName}</p>
-                                                </div>
-                                                <div className="flex gap-1.5 justify-center">
-                                                    <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
-                                                        <X size={10} className="mr-1"/> Deny
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
-                                                        <Check size={10} className="mr-1"/> Approve
-                                                    </Button>
-                                                </div>
+                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
+                                                    <X size={10} className="mr-1"/> Deny
+                                                </Button>
+                                                <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
+                                                    <Check size={10} className="mr-1"/> Approve
+                                                </Button>
                                             </div>
                                         </div>
                                     ))}
-                                    {filteredSiteRequests.length === 0 && (
-                                        <div className="py-8 text-center border border-dashed border-border-sub rounded-lg bg-bg-secondary/30">
-                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Coordinate registry audit complete</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
                     </TabsContent>
 
                     <TabsContent value="map" className="m-0">
-                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px] mt-4">
+                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[650px] mt-4">
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
                                      <iframe 
-                                        src="https://www.google.com/maps/embed/v1/view?key=AIzaSy...FAKEKEY&center=44.3148,-85.6024&zoom=7&maptype=satellite" 
+                                        src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3624053.354181654!2d-84.06883681645265!3d43.5584848511088!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus" 
                                         width="100%" 
                                         height="100%" 
                                         style={{ border: 0, filter: 'grayscale(0.6) invert(1) contrast(1.2)' }} 
                                         allowFullScreen={true} 
                                         loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
                                     <div className="absolute top-4 left-4 z-10 space-y-2">
                                         <div className="flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-md border border-white/10 shadow-2xl">
@@ -680,15 +665,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <p className="text-[10px] font-black uppercase text-white tracking-[0.2em]">Michigan Tactical View</p>
                                         </div>
                                     </div>
-                                    <div className="absolute bottom-4 right-4 z-10 bg-black/80 backdrop-blur-md p-3 rounded-md border border-white/10 shadow-2xl">
-                                        <div className="space-y-2">
+                                    <div className="absolute bottom-4 left-4 z-10 bg-black/80 backdrop-blur-md p-3 rounded-md border border-white/10 shadow-2xl">
+                                        <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-brand-red" />
-                                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">Technician Base</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-accent-gold" />
-                                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">Client Site</span>
+                                                <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-widest cursor-pointer">Technicians</Label>
+                                                <Switch 
+                                                    id="map-toggle" 
+                                                    checked={mapViewMode === 'sites'} 
+                                                    onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
+                                                />
+                                                <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-widest cursor-pointer">Client Sites</Label>
                                             </div>
                                         </div>
                                     </div>
@@ -698,13 +684,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <Card className="bg-bg-secondary border-border-main flex flex-col overflow-hidden">
                                 <div className="p-4 border-b border-border-sub bg-bg-tertiary/50">
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                                        <MapPin size={14} className="text-brand-red"/>
-                                        Coordinate Registry
+                                        {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}
+                                        {mapViewMode === 'techs' ? 'Operative Base Registry' : 'Mission Target Registry'}
                                     </h3>
                                 </div>
                                 <ScrollArea className="flex-1">
                                     <div className="divide-y divide-border-sub">
-                                        {michiganSites.map(site => (
+                                        {mapLocations.map(site => (
                                             <div key={site.id} className="p-4 hover:bg-bg-tertiary transition-colors cursor-pointer group">
                                                 <div className="flex items-start gap-3">
                                                     <div className={cn(
@@ -718,9 +704,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                         <p className="text-[9px] text-text-muted uppercase tracking-tight flex items-center gap-1">
                                                             <Navigation size={8}/> {site.location}
                                                         </p>
-                                                        <Badge variant="outline" className="mt-2 text-[7px] uppercase tracking-tighter bg-bg-primary h-3.5">
-                                                            {site.type === 'tech' ? 'Operative Base' : 'Mission Target'}
-                                                        </Badge>
                                                     </div>
                                                 </div>
                                             </div>

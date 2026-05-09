@@ -311,7 +311,7 @@ export function WorkOrdersClient({
           <thead>
             <tr>
               <th style={{ width: "200px" }} className="text-center">ID & Status</th>
-              <th style={{ width: "450px" }} className="text-left">Assignment Intelligence</th>
+              <th style={{ width: "450px" }} className="text-left pl-0">Assignment Intelligence</th>
               <th style={{ width: "160px" }} className="text-center">Schedule</th>
               <th style={{ width: "250px" }} className="text-center">Site Coordinates</th>
               <th style={{ width: "180px" }} className="text-center">{mode === 'scheduled' ? 'Operative' : 'Settlement Pay'}</th>
@@ -336,10 +336,10 @@ export function WorkOrdersClient({
                       <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                     </div>
                   </td>
-                  <td className="!py-3 text-left">
-                    <div className="flex flex-col">
-                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{order.description}</div>
-                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
+                  <td className="!py-3 text-left pl-0">
+                    <div className="flex items-center gap-4">
+                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{order.description}</div>
+                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{order.clientName}</div>
                     </div>
                   </td>
                   <td>

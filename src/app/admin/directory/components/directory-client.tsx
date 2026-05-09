@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -45,6 +46,7 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format, parseISO } from 'date-fns';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -243,12 +245,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
-            }
-            return dateStr;
+            const parts = dateStr.split(/[-/]/);
+            let d;
+            if (parts[0].length === 4) { d = new Date(dateStr); } 
+            else { d = parseISO(dateStr); }
+            return format(d, 'MM-dd-yyyy');
         } catch (e) {
             return dateStr;
         }
@@ -402,37 +403,39 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             )}
                         </div>
 
-                        <div className="search-wrap flex-1 md:flex-none">
-                            <Search className="h-3 w-3" />
-                            <input 
-                                className="search-input w-full md:w-[240px] h-7 !text-[11px]" 
-                                placeholder="Filter registry..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
+                        {activeTab !== 'map' && (
+                            <div className="search-wrap flex-1 md:flex-none">
+                                <Search className="h-3 w-3" />
+                                <input 
+                                    className="search-input w-full md:w-[240px] h-7 !text-[11px]" 
+                                    placeholder="Filter registry..." 
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
-                        {viewMode === 'rows' && (
-                            <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1.5fr,2fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
-                                    <div className="text-left pl-0">TECHNICIAN</div>
-                                    <div className="text-left pl-0">ROLE</div>
-                                    <div className="text-left pl-0">CONTACT</div>
-                                    <div className="text-center">RELIABILITY</div>
-                                    <div className="text-center">STATUS</div>
-                                </div>
+                        <div className="table-wrap">
+                            <div className="grid grid-cols-[2fr,1.2fr,2fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                <div className="text-left pl-0">TECHNICIAN</div>
+                                <div className="text-left pl-0">ROLE</div>
+                                <div className="text-left pl-0">CONTACT</div>
+                                <div className="text-center">RELIABILITY</div>
+                                <div className="text-center">STATUS</div>
+                            </div>
+                            <ScrollArea className="h-full">
                                 {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,1.5fr,2fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center justify-start gap-2.5 pl-0">
-                                            <Avatar className="h-7 w-7 shrink-0">
+                                    <div key={tech.id} className="grid grid-cols-[2fr,1.2fr,2fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
+                                        <div className="flex items-center justify-start gap-3 pl-0">
+                                            <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                 <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[9px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                <AvatarFallback className="text-[10px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{tech.name}</span>
                                         </div>
@@ -440,80 +443,38 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
                                         </div>
                                         <div className="min-w-0 flex flex-col items-start justify-center pl-0">
-                                            <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
-                                                <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
+                                            <div className="flex items-center gap-1.5 text-[11px] text-text-primary truncate">
+                                                <Mail size={11} className="text-text-muted shrink-0"/>{tech.email}
                                             </div>
-                                            <div className="flex items-center gap-1 text-[9px] text-text-muted">
-                                                <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted mt-0.5">
+                                                <Phone size={11} className="text-text-muted shrink-0"/>{tech.phone}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-center justify-center">
                                             <span className={`font-mono font-bold text-sm ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
                                         </div>
                                         <div className="flex items-center justify-center">
-                                            <Badge variant="active" className="text-[8px] h-4">ACTIVE</Badge>
+                                            <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
                                         </div>
                                     </div>
                                 )})}
-                            </div>
-                        )}
-
-                        {viewMode === 'grid' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                                {paginatedTechnicians.map(tech => (
-                                    <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
-                                        <CardContent className="p-2 text-center">
-                                            <div className="flex justify-between items-start mb-1.5">
-                                                <Avatar className="h-8 w-8 border border-border-sub">
-                                                    <AvatarImage src={tech.avatarUrl} />
-                                                    <AvatarFallback className="text-[10px]">{tech.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="text-right">
-                                                    <p className="text-[7px] font-bold text-text-muted uppercase tracking-widest">Rel.</p>
-                                                    <p className={cn("text-xs font-mono font-bold", tech.reliabilityScore > 90 ? 'text-text-green' : 'text-accent-gold')}>{tech.reliabilityScore}%</p>
-                                                </div>
-                                            </div>
-                                            <h3 className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">{tech.name}</h3>
-                                            <p className="text-[8px] text-accent-gold font-black uppercase tracking-widest mt-0.5">{getPrimaryRoleLabel(tech)}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        )}
-
-                        {viewMode === 'columns' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                                {paginatedTechnicians.map(tech => (
-                                    <div key={tech.id} className="p-1.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Avatar className="h-6 w-6 shrink-0">
-                                                <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0 flex-1 text-center">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase truncate">{tech.name}</p>
-                                            </div>
-                                            <Star size={9} className="text-accent-gold fill-current shrink-0" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                            </ScrollArea>
+                        </div>
                     </TabsContent>
                     
                     <TabsContent value="staff" className="m-0">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1.5fr,2fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
+                            <div className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">STAFF MEMBER</div>
                                 <div className="text-left pl-0">ROLE</div>
                                 <div className="text-left pl-0">CONTACT</div>
                             </div>
                             {paginatedStaff.map(s => (
-                                <div key={s.id} className="grid grid-cols-[2fr,1.5fr,2fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors" onClick={() => handleRowClick(s)}>
-                                    <div className="flex items-center justify-start gap-2.5 pl-0">
-                                        <Avatar className="h-7 w-7 shrink-0">
+                                <div key={s.id} className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
+                                    <div className="flex items-center justify-start gap-3 pl-0">
+                                        <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                             <AvatarImage src={s.avatarUrl} />
-                                            <AvatarFallback className="text-[9px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            <AvatarFallback className="text-[10px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                         </Avatar>
                                         <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
                                     </div>
@@ -521,11 +482,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
                                     </div>
                                     <div className="min-w-0 flex flex-col items-start justify-center pl-0">
-                                        <div className="flex items-center gap-1 text-[11px] text-text-primary truncate">
-                                            <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
+                                        <div className="flex items-center gap-1.5 text-[11px] text-text-primary truncate">
+                                            <Mail size={11} className="text-text-muted shrink-0"/>{s.email}
                                         </div>
-                                        <div className="flex items-center gap-1 text-[9px] text-text-muted">
-                                            <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
+                                        <div className="flex items-center gap-1.5 text-[10px] text-text-muted mt-0.5">
+                                            <Phone size={11} className="text-text-muted shrink-0"/>{s.phone}
                                         </div>
                                     </div>
                                 </div>
@@ -535,28 +496,28 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     
                     <TabsContent value="clients" className="m-0">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-2 py-1.5 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-wider">
+                            <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">CORPORATE ENTITY</div>
                                 <div className="text-left pl-0">CLASSIFICATION</div>
                                 <div className="text-center">CONTACTS</div>
                                 <div className="text-center">REGISTRY</div>
                             </div>
                             {paginatedCompanies.map(company => (
-                                <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center p-1.5 border-t border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors" onClick={() => handleCompanyClick(company.name)}>
-                                    <div className="flex items-center justify-start gap-2.5 pl-0">
-                                        <div className="p-1 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
-                                            <Building2 size={12} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
+                                    <div className="flex items-center justify-start gap-3 pl-0">
+                                        <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                            <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                         </div>
                                         <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
                                     </div>
                                     <div className="flex items-center justify-start pl-0">
-                                        <span className="text-[8px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
+                                        <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
                                     </div>
                                     <div className="text-center flex items-center justify-center">
-                                        <Badge variant="outline" className="text-[8px] h-4 px-1.5">{company.contacts.length} C</Badge>
+                                        <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length} C</Badge>
                                     </div>
                                     <div className="text-center flex items-center justify-center">
-                                        <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                        <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
                                     </div>
                                 </div>
                             ))}
@@ -659,15 +620,15 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
                                     <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1.5 rounded border border-white/10 shadow-2xl">
-                                        <div className="flex items-center gap-2">
-                                            <Label htmlFor="map-toggle" className="text-[9px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            <Label htmlFor="map-toggle" className="text-[8px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
                                             <Switch 
                                                 id="map-toggle" 
-                                                className="scale-75"
+                                                className="scale-[0.6] data-[state=checked]:bg-brand-red"
                                                 checked={mapViewMode === 'sites'} 
                                                 onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
                                             />
-                                            <Label htmlFor="map-toggle" className="text-[9px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
+                                            <Label htmlFor="map-toggle" className="text-[8px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
                                         </div>
                                     </div>
                                 </div>

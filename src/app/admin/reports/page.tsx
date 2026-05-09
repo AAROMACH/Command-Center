@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,8 @@ import {
     Building2,
     ChevronRight,
     History,
-    AlertTriangle
+    AlertTriangle,
+    Calendar as CalendarIcon
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
     technicians, 
     workOrders, 
@@ -166,6 +169,22 @@ export default function ReportsPage() {
 
                         <div className="mt-6">
                             <TabsContent value="tech" className="m-0 space-y-8">
+                                <div className="space-y-4">
+                                     <div className="flex items-center gap-3">
+                                        <Label className="text-[10px] font-bold uppercase text-text-muted tracking-widest">Selected Operative</Label>
+                                        <Select value={selectedTechId} onValueChange={setSelectedTechId}>
+                                            <SelectTrigger className="w-[220px] bg-bg-secondary h-9 text-xs uppercase font-bold tracking-wide border-border-sub">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
+                                                    <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                     </div>
+                                </div>
+
                                 {activeTech && techStats && (
                                     <>
                                         <Card className="bg-bg-secondary border-border-main shadow-none">
@@ -235,7 +254,7 @@ export default function ReportsPage() {
                                                         Follow-up camera adjustment <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
                                                         <span>Ann Arbor, MI · completed · aaro_wo_001</span>
                                                     </div>
                                                 </div>
@@ -245,7 +264,7 @@ export default function ReportsPage() {
                                                         Front camera offline <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
                                                         <span>Detroit, MI · completed · client_wo_001</span>
                                                     </div>
                                                 </div>
@@ -255,7 +274,7 @@ export default function ReportsPage() {
                                                         Aarons AP Refresh <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-17-2026</span>
                                                     </p>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={10} className="text-brand-red shrink-0"/> 
+                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
                                                         <span>Toledo, OH · scheduled · WO 18889221 · $70</span>
                                                     </div>
                                                 </div>
@@ -412,18 +431,20 @@ export default function ReportsPage() {
                                             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{AUDIT_ACTIONS.length} events retrieved</span>
                                         </div>
                                         
-                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
-                                            {AUDIT_ACTIONS.map((evt, i) => (
-                                                <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
-                                                    <div className={cn(
-                                                        "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
-                                                        evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
-                                                    )} />
-                                                    <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
-                                                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <ScrollArea className="h-full">
+                                            <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
+                                                {AUDIT_ACTIONS.map((evt, i) => (
+                                                    <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
+                                                        <div className={cn(
+                                                            "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
+                                                            evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
+                                                        )} />
+                                                        <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
+                                                        <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
                                     </div>
                                 )}
                             </TabsContent>

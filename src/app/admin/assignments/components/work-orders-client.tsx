@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -308,8 +309,8 @@ export function WorkOrdersClient({
       <div className="table-wrap">
         <table className="tbl">
           <thead>
-            <tr>
-              <th style={{ width: "200px" }} className="text-center">ID & Status</th>
+            <tr className="bg-bg-tertiary">
+              <th style={{ width: "160px" }} className="text-center pl-0">Status & ID</th>
               <th className="text-left pl-0">Assignment Intelligence</th>
               <th style={{ width: "160px" }} className="text-left pl-0">Schedule</th>
               <th style={{ width: "250px" }} className="text-left pl-0">Site Coordinates</th>
@@ -321,58 +322,58 @@ export function WorkOrdersClient({
             {paginatedOrders.map((order) => {
               const technician = technicians.find(t => t.id === order.assignedTechnicianId);
               return (
-                <tr key={order.id} className="group">
-                  <td>
-                    <div className="flex flex-col items-center justify-center gap-1">
+                <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors">
+                  <td className="pl-0 py-4">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
                       <div className="flex items-center gap-1.5">
-                        <div className="cell-id !text-[10px] font-mono group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
+                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
                         {order.source === 'Imported' && (
                           <a href={getFieldNationLink(order.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors">
                             <ExternalLink size={10} />
                           </a>
                         )}
                       </div>
-                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                     </div>
                   </td>
-                  <td className="!py-3 text-left pl-0">
+                  <td className="!py-4 text-left pl-0">
                     <div className="flex items-center gap-4">
                       <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{order.description}</div>
                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{order.clientName}</div>
                     </div>
                   </td>
-                  <td>
-                    <div className="flex flex-col items-start justify-center gap-1 pl-0">
-                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                  <td className="py-4">
+                    <div className="flex flex-col items-start justify-center gap-1.5 pl-0">
+                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
                         <Calendar size={13} className="text-text-muted shrink-0" />
                         <span>{formatDateDisplay(order.scheduleDate)}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                      <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
                         <Clock size={13} className="text-text-muted shrink-0" />
                         <span>{order.scheduleTime}</span>
                       </div>
                     </div>
                   </td>
-                  <td>
+                  <td className="py-4">
                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0">
-                      <MapPin size={10} className="text-brand-red shrink-0" />
+                      <MapPin size={11} className="text-brand-red shrink-0" />
                       <span className="truncate max-w-[200px]">{order.location}</span>
                     </div>
                   </td>
-                  <td>
+                  <td className="py-4">
                     <div className="flex flex-col items-center justify-center">
                         {mode === 'scheduled' || order.status === 'assigned' || order.status === 'completed' || order.status === 'in-progress' ? (
                         technician ? (
                             <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8 border border-border-sub">
+                                <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                     <AvatarImage src={technician.avatarUrl} />
-                                    <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px]">{technician.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="text-left">
                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-tight">{technician.name}</span>
                                 </div>
                             </div>
-                        ) : <span className="text-[10px] text-text-muted italic uppercase">Unallocated</span>
+                        ) : <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
                         ) : (
                             <div className="flex items-center gap-1.5 text-text-green">
                                 <DollarSign size={12} className="shrink-0" />
@@ -389,7 +390,7 @@ export function WorkOrdersClient({
                         )}
                     </div>
                   </td>
-                  <td>
+                  <td className="py-4">
                      <div className="flex items-center justify-center gap-1">
                        {order.status === 'unassigned' && (
                          <button 
@@ -521,7 +522,7 @@ export function WorkOrdersClient({
                     {filteredTechniciansRegistry.map(tech => (
                         <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center gap-4">
-                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors shadow-sm"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                 <div>
                                     <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
                                     <div className="flex items-center gap-3 mt-1">

@@ -194,9 +194,6 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
                     <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={() => simulateUpload()}>
                         <Plus size={12} className="mr-1.5"/> Pre-Site Doc
                     </Button>
-                    <Button variant="default" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => simulateUpload(project.phases[0]?.id)}>
-                        <Upload size={12} className="mr-1.5"/> Batch Phase Upload
-                    </Button>
                 </div>
             </div>
 

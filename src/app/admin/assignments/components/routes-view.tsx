@@ -70,7 +70,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-2.5 rounded bg-bg-primary border border-border-sub flex items-center justify-between group cursor-default transition-all",
+        "p-1.5 rounded bg-bg-primary border border-border-sub flex items-center justify-between group cursor-default transition-all",
         isDragging && "opacity-50 ring-2 ring-brand-red ring-offset-2 ring-offset-bg-secondary"
       )}
     >
@@ -78,14 +78,14 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary p-1 -ml-1">
           <GripVertical size={14} />
         </div>
-        <div className="space-y-0.5 overflow-hidden">
-          <p className="text-[10px] font-bold text-text-primary uppercase truncate">{job.description}</p>
-          <p className="text-[8px] text-text-muted font-mono">{job.id.toUpperCase()}</p>
+        <div className="space-y-0 overflow-hidden">
+          <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.description}</p>
+          <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
         </div>
       </div>
       <button 
         onClick={(e) => { e.stopPropagation(); onRemove(job.id); }}
-        className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-red transition-all ml-2"
+        className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-red transition-all ml-1"
       >
         <Trash2 size={12}/>
       </button>
@@ -125,26 +125,26 @@ function DroppableRoute({
             isOver && "border-brand-red ring-1 ring-brand-red bg-bg-tertiary scale-[1.02]"
         )}
     >
-        <CardHeader className="bg-bg-tertiary/50 border-b border-border-sub pb-4">
-            <div className="flex justify-between items-start mb-2">
-                <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20">ROUTE ID: {route.id.split('-')[1]}</Badge>
+        <CardHeader className="bg-bg-tertiary/50 border-b border-border-sub p-3">
+            <div className="flex justify-between items-start mb-1.5">
+                <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">ROUTE ID: {route.id.split('-')[1]}</Badge>
                 <button onClick={() => onDelete(route.id)} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
             </div>
-            <CardTitle className="text-lg font-bold text-text-primary uppercase tracking-wide">{route.name}</CardTitle>
+            <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none">{route.name}</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 flex-1 space-y-4">
-            <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted ml-1">Assigned Technician</label>
+        <CardContent className="p-3 flex-1 space-y-3">
+            <div className="space-y-1">
+                <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted ml-1">Assigned Technician</label>
                 <Select value={route.technicianName || ""} onValueChange={(val) => onTechChange(route.id, val)}>
-                    <SelectTrigger className="h-9 bg-bg-primary border-border-sub text-[11px] font-bold uppercase tracking-wider focus:ring-brand-red">
+                    <SelectTrigger className="h-8 bg-bg-primary border-border-sub text-[10px] font-bold uppercase tracking-wider focus:ring-brand-red">
                         <div className="flex items-center gap-2">
-                            <User size={12} className="text-text-muted" />
+                            <User size={10} className="text-text-muted" />
                             <SelectValue placeholder="Select operative..." />
                         </div>
                     </SelectTrigger>
                     <SelectContent>
                         {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
-                            <SelectItem key={tech.id} value={tech.name} className="text-xs font-bold uppercase">
+                            <SelectItem key={tech.id} value={tech.name} className="text-[10px] font-bold uppercase">
                                 {tech.name}
                             </SelectItem>
                         ))}
@@ -152,36 +152,36 @@ function DroppableRoute({
                 </Select>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-muted">Job Manifest ({routeJobs.length})</p>
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Manifest ({routeJobs.length})</p>
                 </div>
-                <div className="space-y-1.5 min-h-[100px] max-h-[250px] overflow-y-auto pr-1">
+                <div className="space-y-1 min-h-[80px] max-h-[180px] overflow-y-auto pr-1">
                     {routeJobs.map(job => (
                         <DraggableJob key={job.id} job={job} routeId={route.id} onRemove={(id) => onRemoveJob(id, route.id)} />
                     ))}
                     {routeJobs.length === 0 && (
-                        <div className="p-8 text-center border border-dashed border-border-main rounded-md">
-                            <p className="text-[9px] text-text-muted uppercase font-bold italic">No jobs allocated</p>
+                        <div className="p-6 text-center border border-dashed border-border-main rounded-md">
+                            <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest">No jobs allocated</p>
                         </div>
                     )}
                 </div>
                 <Button 
                     variant="default" 
-                    className="w-full h-10 text-[10px] font-bold uppercase tracking-widest bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white transition-all"
+                    className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white transition-all"
                     onClick={() => onAssignClick(route.id)}
                 >
-                    <Plus size={14} className="mr-1.5" /> Assign Jobs
+                    <Plus size={12} className="mr-1" /> Assign Jobs
                 </Button>
             </div>
         </CardContent>
-        <CardFooter className="bg-bg-tertiary/30 border-t border-border-sub p-4">
+        <CardFooter className="bg-bg-tertiary/30 border-t border-border-sub p-3">
             <div className="flex justify-between items-center w-full">
-                <div className="space-y-0.5">
-                    <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Est. Settlement Total</p>
-                    <p className="text-xl font-mono font-bold text-text-green">${totalPay.toFixed(2)}</p>
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black uppercase text-text-muted tracking-widest">Est. Settlement Total</p>
+                    <p className="text-lg font-mono font-bold text-text-green leading-none">${totalPay.toFixed(2)}</p>
                 </div>
-                <ChevronRight size={16} className="text-text-muted" />
+                <ChevronRight size={14} className="text-text-muted" />
             </div>
         </CardFooter>
     </Card>

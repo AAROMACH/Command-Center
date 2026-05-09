@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Project, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import { ChevronLeft, MapPin, Calendar, Clock, Users, Edit, Archive, Check, X, ShieldAlert, DollarSign, Timer, Building2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -150,7 +150,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
                     <div className="flex-1 overflow-y-auto px-6 py-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Left Column: Identity & Schedule */}
                             <div className="space-y-6">
                                 <div className="space-y-4">
                                     <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2">
@@ -235,7 +234,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Right Column: Briefing & Economics */}
                             <div className="space-y-6">
                                 <div className="space-y-4">
                                     <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">

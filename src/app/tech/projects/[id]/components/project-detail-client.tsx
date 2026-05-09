@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician } from '@/lib/types';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import {
   ChevronLeft,
   MapPin,
@@ -91,7 +91,6 @@ const PhaseBlock = ({
                       {task.name}
                     </label>
                     
-                    {/* Requirement Visibility for Techs */}
                     <div className="flex flex-wrap gap-1 mt-1">
                         {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
                         {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}

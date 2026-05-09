@@ -23,7 +23,6 @@ const SERVICE_CATEGORIES = [
     'Troubleshooting',
     'Maintenance',
     'Survey',
-    'Upgrade',
     'Repair',
     'Decommission'
 ];

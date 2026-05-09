@@ -153,7 +153,6 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                   <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
                   <SelectItem value="Maintenance">Maintenance</SelectItem>
                   <SelectItem value="Survey">Survey</SelectItem>
-                  <SelectItem value="Upgrade">Upgrade</SelectItem>
                   <SelectItem value="Repair">Repair</SelectItem>
                   <SelectItem value="Decommission">Decommission</SelectItem>
                 </SelectContent>

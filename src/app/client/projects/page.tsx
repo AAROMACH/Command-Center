@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -55,6 +56,20 @@ export default function ClientProjectsPage() {
         return Math.round((completedTasks / totalTasks) * 100);
     };
 
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     if (!mounted || !currentUserId) return null;
 
     return (
@@ -94,15 +109,15 @@ export default function ClientProjectsPage() {
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest">ID: {project.id}</span>
-                                            <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5">
-                                                {project.status.toUpperCase()}
+                                            <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest">ID: {project.id.toUpperCase()}</span>
+                                            <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5 uppercase">
+                                                {project.status}
                                             </Badge>
                                         </div>
                                         <CardTitle className="text-xl font-bold text-text-primary uppercase tracking-wide">{project.name}</CardTitle>
                                         <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                             <span className="flex items-center gap-1.5"><MapPin size={12}/> {project.location}</span>
-                                            <span className="flex items-center gap-1.5"><Calendar size={12}/> Started {project.startDate}</span>
+                                            <span className="flex items-center gap-1.5"><Calendar size={12}/> Started {formatDateStr(project.startDate)}</span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
@@ -164,7 +179,7 @@ export default function ClientProjectsPage() {
                                                     {logs.map(log => (
                                                         <div key={log.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2">
                                                             <div className="flex justify-between items-start">
-                                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{log.date}</p>
+                                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{formatDateStr(log.date)}</p>
                                                                 <p className="text-[10px] font-bold text-text-green uppercase tracking-widest">{log.hoursWorked} Hours Logged</p>
                                                             </div>
                                                             <p className="text-xs text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
@@ -195,7 +210,7 @@ export default function ClientProjectsPage() {
                                     </div>
                                     <div className="flex items-center gap-4 text-[9px] font-bold text-text-muted uppercase tracking-widest ml-auto">
                                         <span className="flex items-center gap-1.5"><Clock size={12}/> Est: {project.estimatedDuration}</span>
-                                        <span className="flex items-center gap-1.5"><Calendar size={12}/> Target: {project.startDate}</span>
+                                        <span className="flex items-center gap-1.5"><Calendar size={12}/> Target: {formatDateStr(project.startDate)}</span>
                                     </div>
                                 </div>
                             </CardContent>

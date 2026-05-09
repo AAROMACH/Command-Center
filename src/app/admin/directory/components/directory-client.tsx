@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -245,6 +246,20 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                        activeTab === 'staff' ? filteredStaff.length :
                        activeTab === 'clients' ? filteredCompanies.length : 0;
     const totalPages = Math.ceil(totalRecords / itemsPerPage);
+
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     const filteredTimeOffRequests = useMemo(() => {
         return timeOffRequests
@@ -549,8 +564,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
                                                             <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
                                                         </div>
-                                                        <p className="text-[10px] text-text-primary font-bold flex items-center gap-1.5">
-                                                            <Calendar size={11} className="shrink-0 text-brand-red" /> {req.startDate} — {req.endDate}
+                                                        <p className="text-[11px] text-text-primary font-bold flex items-center gap-1.5">
+                                                            <Calendar size={11} className="shrink-0 text-brand-red" /> {formatDateStr(req.startDate)} — {formatDateStr(req.endDate)}
                                                         </p>
                                                     </div>
                                                     <div className="hidden lg:block ml-6 flex-1 max-w-[300px]">
@@ -596,7 +611,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
                                                         <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
                                                     </div>
-                                                    <p className="text-[10px] text-text-primary font-bold flex items-center gap-1.5">
+                                                    <p className="text-[11px] text-text-primary font-bold flex items-center gap-1.5">
                                                         <MapPin size={11} className="shrink-0 text-brand-red"/> {req.location}
                                                     </p>
                                                 </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -54,6 +55,20 @@ export default function ClientSitesPage() {
         currentUserId ? technicians.find(t => t.id === currentUserId) : null
     , [currentUserId]);
 
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     const sitesData = useMemo(() => {
         if (!currentUser?.clientCompany) return [];
         
@@ -92,7 +107,8 @@ export default function ClientSitesPage() {
                 activeAssignments: [],
                 liveCheckIns: [],
                 contact: `${req.managerName || 'TBD'}`,
-                status: 'pending' as const
+                status: 'pending' as const,
+                submittedDate: req.submittedDate
             }));
 
         return [...authorizedSites, ...pendingSites].filter(s => 
@@ -247,8 +263,8 @@ export default function ClientSitesPage() {
                                                             <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
                                                             <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.scheduleTime} • {wo.id.toUpperCase()}</p>
                                                         </div>
-                                                        <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4">
-                                                            {wo.status.toUpperCase()}
+                                                        <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 uppercase">
+                                                            {wo.status}
                                                         </Badge>
                                                     </div>
                                                 ))}
@@ -319,7 +335,7 @@ export default function ClientSitesPage() {
                                                     </div>
                                                     <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                                         <span className="flex items-center gap-1.5"><MapPin size={12}/> {req.location}</span>
-                                                        <span className="flex items-center gap-1.5"><History size={12}/> Submitted {req.submittedDate}</span>
+                                                        <span className="flex items-center gap-1.5"><History size={12}/> Submitted {formatDateStr(req.submittedDate)}</span>
                                                     </div>
                                                 </div>
                                             </div>

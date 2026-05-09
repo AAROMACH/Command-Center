@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +22,7 @@ export default function TechEarningsPage() {
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [exportDates, setExportDates] = useState({
-        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        from: new Date(new Date().getFullYear(), new Date().month(), 1).toISOString().split('T')[0],
         to: new Date().toISOString().split('T')[0]
     });
     
@@ -67,6 +68,20 @@ export default function TechEarningsPage() {
         }
     };
 
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     const handleExportClick = () => {
         setIsExportDialogOpen(true);
     };
@@ -74,7 +89,7 @@ export default function TechEarningsPage() {
     const executeExport = () => {
         toast({
             title: "Export Initiated",
-            description: `Generating audit log from ${exportDates.from} to ${exportDates.to}. Your download will begin shortly.`,
+            description: `Generating audit log from ${formatDateStr(exportDates.from)} to ${formatDateStr(exportDates.to)}. Your download will begin shortly.`,
         });
         setIsExportDialogOpen(false);
     };
@@ -215,7 +230,7 @@ export default function TechEarningsPage() {
                                     <tbody>
                                         {myExpenses.map(expense => (
                                             <TableRow key={expense.id} className="hover:bg-bg-tertiary transition-colors">
-                                                <TableCell className="text-xs font-mono text-text-muted">{expense.date}</TableCell>
+                                                <TableCell className="text-xs font-mono text-text-muted">{formatDateStr(expense.date)}</TableCell>
                                                 <TableCell>
                                                     <div className="font-bold text-text-primary text-xs uppercase tracking-wide">{expense.description}</div>
                                                     <div className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{expense.category}</div>

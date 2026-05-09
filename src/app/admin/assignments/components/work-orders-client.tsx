@@ -259,9 +259,14 @@ export function WorkOrdersClient({
   }, [technicians, selectedOrder, techSearchQuery]);
 
   const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
     try {
-      const [year, month, day] = dateStr.split('-');
-      return `${month}-${day}-${year}`;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+          const [year, month, day] = parts;
+          return `${month}-${day}-${year}`;
+      }
+      return dateStr;
     } catch (e) {
       return dateStr;
     }

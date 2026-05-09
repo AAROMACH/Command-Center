@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -47,6 +48,20 @@ export default function TechAssignmentsPage() {
             title: "Schedule Confirmed",
             description: "Confirmation sent to operations. Reporting window locked.",
         });
+    };
+
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
     };
 
     if (!mounted || !currentTechId) {
@@ -109,7 +124,7 @@ export default function TechAssignmentsPage() {
                                             <div className="cell-sched">
                                                 <div className="cell-sched-date">
                                                     <Calendar size={13}/>
-                                                    <span>{wo.scheduleDate}</span>
+                                                    <span>{formatDateStr(wo.scheduleDate)}</span>
                                                 </div>
                                                 <div className="cell-sched-time">
                                                     <Clock size={13}/>
@@ -169,7 +184,7 @@ export default function TechAssignmentsPage() {
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="text-xs text-text-secondary">{wo.scheduleDate}</div>
+                                            <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
                                         </td>
                                         <td>
                                             <Badge variant="completed" className="uppercase text-[9px]">

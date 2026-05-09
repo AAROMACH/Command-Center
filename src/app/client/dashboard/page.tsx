@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -60,6 +61,20 @@ export default function ClientDashboardPage() {
             .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))
             .slice(0, 5);
     }, [currentUser]);
+
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     if (!mounted || !currentUserId) return null;
 
@@ -143,12 +158,12 @@ export default function ClientDashboardPage() {
                                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{project.name}</p>
                                                 <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold">
                                                     <span className="flex items-center gap-1"><MapPin size={10}/> {project.location}</span>
-                                                    <span className="flex items-center gap-1"><Calendar size={10}/> Started {project.startDate}</span>
+                                                    <span className="flex items-center gap-1"><Calendar size={10}/> Started {formatDateStr(project.startDate)}</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">
-                                                <Badge variant={project.status === 'active' ? 'active' : 'completed'}>
-                                                    {project.status.toUpperCase()}
+                                                <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5 uppercase">
+                                                    {project.status}
                                                 </Badge>
                                                 <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all"/>
                                             </div>
@@ -177,11 +192,11 @@ export default function ClientDashboardPage() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{activity.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">{activity.location} • {activity.scheduleDate}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">{activity.location} • {formatDateStr(activity.scheduleDate)} • {activity.id.toUpperCase()}</p>
                                             </div>
                                         </div>
-                                        <Badge variant={activity.status === 'completed' ? 'active' : activity.status === 'in-progress' ? 'inprogress' : 'scheduled'}>
-                                            {activity.status.toUpperCase()}
+                                        <Badge variant={activity.status === 'completed' ? 'active' : activity.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase h-5">
+                                            {activity.status}
                                         </Badge>
                                     </div>
                                 ))}
@@ -201,7 +216,7 @@ export default function ClientDashboardPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-[10px] text-text-secondary leading-relaxed">
+                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase">
                                 Your dedicated Command Center staff is standing by to assist with low voltage escalations or site requirements.
                             </p>
                             <div className="space-y-2">
@@ -225,11 +240,11 @@ export default function ClientDashboardPage() {
                                     <div key={request.id} className="p-3 flex flex-col gap-1.5 hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => router.push('/client/tickets')}>
                                         <div className="flex justify-between items-start">
                                             <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{request.description}</p>
-                                            <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[8px] h-4">
-                                                {request.status.toUpperCase()}
+                                            <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[8px] h-4 uppercase">
+                                                {request.status}
                                             </Badge>
                                         </div>
-                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">{request.requestType} • {request.submittedDate}</p>
+                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">{request.requestType} • {formatDateStr(request.submittedDate)}</p>
                                     </div>
                                 ))}
                                 {myRequests.length === 0 && (

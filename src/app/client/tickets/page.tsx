@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -58,6 +59,20 @@ export default function ClientTicketsPage() {
                 r.location.toLowerCase().includes(searchQuery.toLowerCase())
             );
     }, [currentUser, searchQuery]);
+
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}-${day}-${year}`;
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     const handleCreateTicket = (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,9 +153,9 @@ export default function ClientTicketsPage() {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="space-y-2 flex-1">
                                     <div className="flex items-center gap-3">
-                                        <span className="font-mono text-xs font-bold text-brand-red uppercase">ID: {ticket.id}</span>
-                                        <Badge variant={ticket.priority === 'critical' || ticket.priority === 'high' ? 'high' : 'medium'}>
-                                            {ticket.priority.toUpperCase()}
+                                        <span className="font-mono text-xs font-bold text-brand-red uppercase">ID: {ticket.id.toUpperCase()}</span>
+                                        <Badge variant={ticket.priority === 'critical' || ticket.priority === 'high' ? 'high' : 'medium'} className="h-5 uppercase">
+                                            {ticket.priority}
                                         </Badge>
                                         <Badge variant="outline" className="bg-bg-tertiary border-border-sub text-[9px] uppercase tracking-widest">
                                             {ticket.requestType}
@@ -152,7 +167,7 @@ export default function ClientTicketsPage() {
                                             <MapPin size={12} className="text-text-muted"/> {ticket.location}
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                            <Calendar size={12} className="text-text-muted"/> Submitted: {ticket.submittedDate}
+                                            <Calendar size={12} className="text-text-muted"/> Submitted: {formatDateStr(ticket.submittedDate)}
                                         </div>
                                     </div>
                                 </div>
@@ -175,7 +190,7 @@ export default function ClientTicketsPage() {
                                     <AlertTriangle size={14} className="text-accent-gold shrink-0 mt-0.5" />
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">Admin Review Note</p>
-                                        <p className="text-xs text-text-secondary leading-relaxed">
+                                        <p className="text-xs text-text-secondary leading-relaxed uppercase">
                                             Job pending technician availability check in {ticket.location}. Expected approval within 4 hours.
                                         </p>
                                     </div>

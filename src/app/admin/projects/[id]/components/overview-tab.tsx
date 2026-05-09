@@ -3,7 +3,7 @@ import type { Project, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, X } from 'lucide-react';
+import { FileText, DollarSign, AlertTriangle, Info, Plus, Users, X, Check } from 'lucide-react';
 import React, {useState} from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ type OverviewTabProps = {
 
 export function OverviewTab({ project, setProject, allTechnicians }: OverviewTabProps) {
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+    const [isAddingNote, setIsAddingNote] = useState(false);
+    const [newNoteText, setNewNoteText] = useState("");
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
@@ -28,16 +30,20 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
     }
 
-    const handleAddNote = () => {
-        const newNote = {
-            id: `note-${Date.now()}`,
-            text: 'New Site Intel',
-            type: 'info' as const
-        };
-        setProject(prev => ({
-            ...prev,
-            siteHazardNotes: [...prev.siteHazardNotes, newNote]
-        }));
+    const handleSaveNote = () => {
+        if (newNoteText.trim()) {
+            const newNote = {
+                id: `note-${Date.now()}`,
+                text: newNoteText.trim(),
+                type: 'info' as const
+            };
+            setProject(prev => ({
+                ...prev,
+                siteHazardNotes: [...prev.siteHazardNotes, newNote]
+            }));
+            setNewNoteText("");
+            setIsAddingNote(false);
+        }
     };
 
     const handleDeleteNote = (id: string) => {
@@ -80,7 +86,26 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                         </button>
                                     </div>
                                 ))}
-                                <button className="note-chip-add" onClick={handleAddNote}><Plus size={13}/> Add Note</button>
+                                
+                                {isAddingNote ? (
+                                    <div className="flex items-center gap-1.5 bg-bg-tertiary p-1 rounded-md border border-border-sub animate-in fade-in zoom-in-95 duration-200">
+                                        <Input 
+                                            className="h-6 text-[10px] w-32 bg-bg-primary border-none focus:ring-0 px-2" 
+                                            placeholder="Enter site intel..." 
+                                            value={newNoteText}
+                                            autoFocus
+                                            onChange={e => setNewNoteText(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') handleSaveNote();
+                                                if (e.key === 'Escape') setIsAddingNote(false);
+                                            }}
+                                        />
+                                        <button onClick={handleSaveNote} className="text-text-green hover:opacity-80 p-0.5"><Check size={14}/></button>
+                                        <button onClick={() => setIsAddingNote(false)} className="text-text-muted hover:text-text-red p-0.5"><X size={14}/></button>
+                                    </div>
+                                ) : (
+                                    <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add Note</button>
+                                )}
                             </div>
                             <Textarea className="field-textarea mt-2" placeholder="Parking, entry codes, badge requirements..." defaultValue={project.siteAccessInstructions}></Textarea>
                         </div>

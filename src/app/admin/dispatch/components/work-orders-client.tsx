@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -59,7 +60,8 @@ import {
   Navigation,
   AlertTriangle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ExternalLink
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -372,7 +374,20 @@ export function WorkOrdersClient({
               return (
                 <tr key={order.id}>
                   <td>
-                    <div className="cell-id">{order.id.toUpperCase()}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="cell-id">{order.id.toUpperCase()}</div>
+                      {order.source === 'Imported' && (
+                        <a 
+                          href={`https://app.fieldnation.com/workorders/${order.id.replace('wo-', '')}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-text-muted hover:text-brand-red transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
                     <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5">{order.status}</Badge>
                   </td>
                   <td>
@@ -439,13 +454,12 @@ export function WorkOrdersClient({
                   <td>
                      <div className="cell-actions">
                        {order.status === 'unassigned' && (
-                         <Button 
-                            variant="default" 
-                            className="h-6 !text-[9px] bg-brand-red hover:bg-brand-red-hover px-2"
+                         <button 
+                            className="btn-assign !h-6 !text-[9px] bg-brand-red hover:bg-brand-red-hover px-2 flex items-center gap-1"
                             onClick={() => handleOpenAssignDialog(order)}
                          >
-                            <UserPlus size={10} className="mr-1"/> Assign
-                         </Button>
+                            <UserPlus size={10}/> Assign
+                         </button>
                        )}
                        <button className="btn-edit" onClick={() => handleOpenEditDialog(order)}>
                          <Pencil size={16} />

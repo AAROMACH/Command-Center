@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -24,7 +25,8 @@ import {
   FileCheck,
   ChevronRight,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -70,7 +72,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {mission.id.toUpperCase()}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {mission.id.toUpperCase()}</span>
+                {mission.source === 'Imported' && (
+                  <a 
+                    href={`https://app.fieldnation.com/workorders/${mission.id.replace('wo-', '')}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-text-muted hover:text-brand-red transition-colors"
+                  >
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
               <Badge variant={mission.status === 'completed' ? 'active' : mission.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
                 {mission.status}
               </Badge>

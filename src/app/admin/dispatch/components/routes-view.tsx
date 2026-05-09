@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -17,7 +18,8 @@ import {
     Check,
     GripVertical,
     ClipboardList,
-    Send
+    Send,
+    ExternalLink
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -81,7 +83,20 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
         </div>
         <div className="space-y-0 overflow-hidden">
           <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.description}</p>
-          <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
+            {job.source === 'Imported' && (
+              <a 
+                href={`https://app.fieldnation.com/workorders/${job.id.replace('wo-', '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-text-muted hover:text-brand-red transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink size={9} />
+              </a>
+            )}
+          </div>
         </div>
       </div>
       <button 

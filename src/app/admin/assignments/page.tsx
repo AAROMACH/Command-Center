@@ -96,15 +96,13 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
 
   const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
     try {
       const parts = dateStr.split(/[-/]/);
       if (parts.length === 3) {
-          if (parts[0].length === 4) {
-              const [y, m, d] = parts;
-              return `${m}-${d}-${y}`;
-          }
-          const [a, b, c] = parts;
-          return `${a}-${b}-${c}`;
+          let m, d, y;
+          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
+          return `${m}-${d}-${y}`;
       }
       return dateStr;
     } catch (e) {
@@ -270,13 +268,13 @@ export default function AssignmentsHubPage() {
                                             <CardContent className="p-4 space-y-3">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col items-center">
                                                             <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
                                                             <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">
                                                                 {job.status}
                                                             </Badge>
                                                         </div>
-                                                        <div className="flex flex-col min-w-0">
+                                                        <div className="flex flex-col min-w-0 text-left">
                                                             <p className="text-xs font-bold text-text-primary uppercase leading-tight">{job.description}</p>
                                                             <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
                                                         </div>
@@ -337,8 +335,8 @@ export default function AssignmentsHubPage() {
                             return (
                                 <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
                                     <td>
-                                        <div className="flex items-center gap-3 px-6">
-                                            <div className="flex flex-col items-start">
+                                        <div className="flex items-center gap-3 px-6 justify-center">
+                                            <div className="flex flex-col items-center">
                                                 <div className="cell-id">{wo.id.toUpperCase()}</div>
                                                 <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                             </div>
@@ -357,7 +355,7 @@ export default function AssignmentsHubPage() {
                                     </td>
                                     <td>
                                         <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                            <MapPin size={12} className="text-text-muted shrink-0" />
+                                            <MapPin size={12} className="text-brand-red shrink-0" />
                                             <span className="max-w-[150px]">{wo.location}</span>
                                         </div>
                                     </td>

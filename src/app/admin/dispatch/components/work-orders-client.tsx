@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -285,6 +284,46 @@ export function WorkOrdersClient({
   const getFieldNationLink = (id: string) => {
     const cleanId = id.replace(/^wo-/, '');
     return `https://app.fieldnation.com/workorders/${cleanId}`;
+  };
+
+  // Registry Selection Logic
+  const clients = useMemo(() => {
+    return technicians.filter(t => 
+        t.roles?.includes('client') || 
+        t.role.toLowerCase().includes('client') || 
+        t.clientCompany
+    );
+  }, []);
+
+  const selectedClient = useMemo(() => {
+    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
+  }, [editedOrder?.clientName, clients]);
+
+  const filteredRegistry = useMemo(() => {
+    return clients.filter(c => 
+        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(registrySearch.toLowerCase())
+    );
+  }, [registrySearch, clients]);
+
+  const selectClientFromRegistry = (client: Technician) => {
+    const name = client.clientCompany || client.name;
+    if (editedOrder) {
+        setEditedOrder({
+            ...editedOrder,
+            clientName: name,
+            location: '' 
+        });
+    }
+    setIsRegistryOpen(false);
+  };
+
+  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
+    if (editedOrder) {
+        setEditedOrder({ ...editedOrder, location: site.location });
+    }
+    setIsSiteRegistryOpen(false);
   };
 
   return (

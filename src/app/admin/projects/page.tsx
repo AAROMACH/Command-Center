@@ -1,9 +1,10 @@
+
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown } from "lucide-react";
+import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon } from "lucide-react";
 import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
@@ -25,6 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import { format, isSameDay, parseISO } from 'date-fns';
 
 type SortOption = 'name' | 'date' | 'progress' | 'client';
 
@@ -33,6 +37,7 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date');
@@ -66,6 +71,7 @@ export default function ProjectsPage() {
   };
 
   const resetFilters = () => {
+    setDateRange(undefined);
     setActiveStatuses([]);
     setActiveClients([]);
     setSortBy('date');
@@ -90,8 +96,21 @@ export default function ProjectsPage() {
         
         const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(p.status);
         const matchesClient = activeClients.length === 0 || activeClients.includes(p.client);
+        
+        const matchesDate = !dateRange?.from || (p.startDate && (() => {
+            try {
+                const pDate = parseISO(p.startDate);
+                if (dateRange.from && dateRange.to) {
+                    return pDate >= dateRange.from && pDate <= dateRange.to;
+                }
+                if (dateRange.from) {
+                    return isSameDay(pDate, dateRange.from);
+                }
+                return true;
+            } catch (e) { return false; }
+        })());
 
-        return matchesSearch && matchesStatus && matchesClient;
+        return matchesSearch && matchesStatus && matchesClient && matchesDate;
       })
       .sort((a, b) => {
         switch (sortBy) {
@@ -103,9 +122,9 @@ export default function ProjectsPage() {
             return b.startDate.localeCompare(a.startDate);
         }
       });
-  }, [allProjects, searchQuery, activeStatuses, activeClients, sortBy]);
+  }, [allProjects, searchQuery, activeStatuses, activeClients, dateRange, sortBy]);
 
-  const hasActiveFilters = activeStatuses.length > 0 || activeClients.length > 0 || sortBy !== 'date';
+  const hasActiveFilters = !!dateRange?.from || activeStatuses.length > 0 || activeClients.length > 0 || sortBy !== 'date';
 
   return (
     <div>
@@ -130,6 +149,33 @@ export default function ProjectsPage() {
             </div>
             
             <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-10 px-4 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                      <CalendarIcon size={14} className="mr-2 text-brand-red" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>{format(dateRange.from, "MM-dd")} – {format(dateRange.to, "MM-dd")}</>
+                        ) : (
+                          format(dateRange.from, "MM-dd")
+                        )
+                      ) : (
+                        "Select Date"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                     <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
                         <div className="flex items-center gap-2">
@@ -150,7 +196,7 @@ export default function ProjectsPage() {
                     <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
                       <SlidersHorizontal size={14} className="mr-2"/>
                       Filter
-                      {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activeStatuses.length + activeClients.length}</Badge>}
+                      {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{(dateRange?.from ? 1 : 0) + activeStatuses.length + activeClients.length}</Badge>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
@@ -198,11 +244,6 @@ export default function ProjectsPage() {
                             </div>
                           </ScrollArea>
                         </div>
-                      </div>
-                      <div className="p-4 bg-bg-tertiary/50 border-t border-border-sub">
-                        <p className="text-[8px] text-text-muted uppercase font-medium leading-tight">
-                          Constraints are applied globally to the Project Registry.
-                        </p>
                       </div>
                   </PopoverContent>
                 </Popover>

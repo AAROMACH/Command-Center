@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -25,7 +26,6 @@ import {
   SlidersHorizontal
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
-import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
 import { format, isSameDay, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
@@ -57,13 +57,15 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 type SortOption = 'date' | 'client' | 'status' | 'pay';
 
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDates, setFilterDates] = useState<Date[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
@@ -95,11 +97,18 @@ export default function AssignmentsHubPage() {
           (tech && tech.name.toLowerCase().includes(query))
         );
 
-        const matchesDate = filterDates.length === 0 || (wo.scheduleDate && filterDates.some(d => {
+        const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
             try {
-                return isSameDay(parseISO(wo.scheduleDate), d);
+                const woDate = parseISO(wo.scheduleDate);
+                if (dateRange.from && dateRange.to) {
+                    return woDate >= dateRange.from && woDate <= dateRange.to;
+                }
+                if (dateRange.from) {
+                    return isSameDay(woDate, dateRange.from);
+                }
+                return true;
             } catch (e) { return false; }
-        }));
+        })());
 
         const matchesPriority = activePriorities.length === 0 || activePriorities.includes(wo.priority);
         const matchesSource = activeSources.length === 0 || (wo.source && activeSources.includes(wo.source));
@@ -116,7 +125,7 @@ export default function AssignmentsHubPage() {
             return a.scheduleDate.localeCompare(b.scheduleDate);
         }
       });
-  }, [workOrders, searchQuery, filterDates, sortBy, activePriorities, activeSources]);
+  }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
@@ -139,12 +148,8 @@ export default function AssignmentsHubPage() {
     }
   };
 
-  const handleRemoveDate = (dateToRemove: Date) => {
-    setFilterDates(filterDates.filter(d => !isSameDay(d, dateToRemove)));
-  };
-
   const resetFilters = () => {
-    setFilterDates([]);
+    setDateRange(undefined);
     setActivePriorities([]);
     setActiveSources([]);
     setSortBy('date');
@@ -210,7 +215,7 @@ export default function AssignmentsHubPage() {
     setIsSiteRegistryOpen(false);
   };
 
-  const hasActiveFilters = filterDates.length > 0 || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
+  const hasActiveFilters = !!dateRange?.from || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
   return (
     <div className="space-y-6">
@@ -254,7 +259,7 @@ export default function AssignmentsHubPage() {
                   <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
                     <SlidersHorizontal size={14} className="mr-2"/>
                     Filters
-                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{filterDates.length + activePriorities.length + activeSources.length}</Badge>}
+                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{(dateRange?.from ? 1 : 0) + activePriorities.length + activeSources.length}</Badge>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
@@ -311,26 +316,45 @@ export default function AssignmentsHubPage() {
       </header>
 
       <Tabs defaultValue="schedule" className="w-full">
-        <TabsList className="tabs">
-          <TabsTrigger value="schedule" className="tab">
-            Assignments <span className="tab-count">({activeWorkOrders.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="archive" className="tab">
-            Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <TabsList className="tabs !mb-0">
+            <TabsTrigger value="schedule" className="tab">
+              Assignments <span className="tab-count">({activeWorkOrders.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="archive" className="tab">
+              Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="schedule" className="mt-6 space-y-6">
-            <div className="rounded-lg border border-border-sub bg-bg-secondary/30 p-2 shadow-sm">
-                <GlobalScheduleCalendar 
-                    workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
-                    technicians={technicians} 
-                    selectedDates={filterDates}
-                    hideManifest={true}
-                    onDatesChange={(dates) => setFilterDates(dates)}
-                />
-            </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                <CalendarIcon size={14} className="mr-2 text-brand-red" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
+                  ) : (
+                    format(dateRange.from, "MM-dd-yyyy")
+                  )
+                ) : (
+                  "Select Date"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
+        <TabsContent value="schedule" className="mt-0 space-y-6">
             <div className="space-y-6">
                 <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
                     <div className="flex items-center gap-6">
@@ -339,18 +363,21 @@ export default function AssignmentsHubPage() {
                             <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {filterDates.map((date, idx) => (
-                                <Badge key={idx} variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                            {dateRange?.from && (
+                                <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
                                     <CalendarIcon size={12} />
-                                    <span className="text-[10px] uppercase font-bold tracking-widest">{format(date, 'MM-dd-yyyy')}</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">
+                                      {format(dateRange.from, 'MM-dd-yyyy')}
+                                      {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                                    </span>
                                     <button 
-                                        onClick={() => handleRemoveDate(date)}
+                                        onClick={() => setDateRange(undefined)}
                                         className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
                                     >
                                         <X size={12} />
                                     </button>
                                 </Badge>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </div>
@@ -415,8 +442,8 @@ export default function AssignmentsHubPage() {
                         <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">
-                                {filterDates.length > 0 
-                                    ? `No active jobs found for selected dates`
+                                {dateRange?.from 
+                                    ? `No active jobs found for selected range`
                                     : "No active jobs matching search criteria"
                                 }
                             </p>
@@ -431,12 +458,12 @@ export default function AssignmentsHubPage() {
             </div>
         </TabsContent>
 
-        <TabsContent value="archive" className="mt-6">
+        <TabsContent value="archive" className="mt-0">
             <div className="table-wrap">
                 <table className="tbl">
                     <thead>
                         <tr>
-                            <th className="text-center">Work Order</th>
+                            <th className="text-left pl-6">Assignment Identification</th>
                             <th className="text-center">Client & Service Result</th>
                             <th className="text-center">Deployment Coordinates</th>
                             <th className="text-center">Finalized Date</th>
@@ -448,8 +475,8 @@ export default function AssignmentsHubPage() {
                             const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
                             return (
                                 <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
-                                    <td>
-                                        <div className="flex items-center gap-3 px-6 justify-center">
+                                    <td className="text-left pl-6">
+                                        <div className="flex items-center gap-3">
                                             <div className="flex flex-col items-center">
                                                 <div className="cell-id">{wo.id.toUpperCase()}</div>
                                                 <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>

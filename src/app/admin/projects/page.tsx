@@ -1,4 +1,3 @@
-
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -217,7 +218,7 @@ export default function AssignmentsHubPage() {
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <CalendarIcon size={12} />
-            Job Schedule Terminal
+            Assignment Registry Audit
           </p>
           <h1 className="page-title">Assignments</h1>
           <p className="page-subtitle">Operational schedule oversight and historical job audit.</p>
@@ -313,7 +314,7 @@ export default function AssignmentsHubPage() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
           <TabsList className="tabs !mb-0">
             <TabsTrigger value="schedule" className="tab">
-              Assignments <span className="tab-count">({activeWorkOrders.length})</span>
+              Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
             </TabsTrigger>
             <TabsTrigger value="archive" className="tab">
               Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
@@ -422,7 +423,7 @@ export default function AssignmentsHubPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
                                                         <MapPin size={12} className="text-brand-red shrink-0" />
-                                                        <span className="max-w-[220px]">{job.location}</span>
+                                                        <span>{job.location}</span>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -490,7 +491,7 @@ export default function AssignmentsHubPage() {
                                         <td>
                                             <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
                                                 <MapPin size={12} className="text-brand-red shrink-0" />
-                                                <span className="max-w-[150px]">{wo.location}</span>
+                                                <span>{wo.location}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -743,7 +744,7 @@ export default function AssignmentsHubPage() {
                                   <User size={16} />
                               </div>
                               <div className="flex-1 overflow-hidden">
-                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                  <p className="text-xs font-bold text-text-primary uppercase">{client.clientCompany || client.name}</p>
                                   {client.businessType && (
                                       <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
                                   )}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";
@@ -131,7 +132,7 @@ export default function ProjectsPage() {
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <FolderKanban size={12} />
-            Low Voltage infrastructure
+            Infrastructure Deployment Control
           </p>
           <h1 className="page-title">Projects</h1>
           <p className="page-subtitle">Large-scale network and cabling deployments with phase-based job management.</p>
@@ -237,7 +238,7 @@ export default function ProjectsPage() {
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
                     <Activity size={16} className="text-brand-red" />
-                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Infrastructure Projects Registry</h2>
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operational Projects Registry</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {dateRange?.from && (

@@ -422,7 +422,7 @@ export default function AssignmentsHubPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
                                                         <MapPin size={12} className="text-brand-red shrink-0" />
-                                                        <span className="max-w-[220px] truncate">{job.location}</span>
+                                                        <span className="max-w-[220px]">{job.location}</span>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -474,7 +474,7 @@ export default function AssignmentsHubPage() {
                                                     <div className="cell-id">{wo.id.toUpperCase()}</div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
                                             </div>
                                         </td>
                                         <td>

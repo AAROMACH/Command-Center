@@ -711,6 +711,104 @@ export default function AssignmentsHubPage() {
             )}
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                      <Briefcase className="text-brand-red h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-2">
+                  <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                      <Input 
+                          placeholder="Filter registry by name or ID..." 
+                          value={registrySearch}
+                          onChange={(e) => setRegistrySearch(e.target.value)}
+                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                      />
+                  </div>
+              </div>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {filteredRegistry.map(client => (
+                          <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => selectClientFromRegistry(client)}
+                              className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                                  <User size={16} />
+                              </div>
+                              <div className="flex-1 overflow-hidden">
+                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                  {client.businessType && (
+                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                  )}
+                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                              </div>
+                              <CheckCircle2 size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                      ))}
+                      {filteredRegistry.length === 0 && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="text-accent-gold h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{editedOrder?.clientName}</span>.</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {selectedClient?.managedSites?.map(site => (
+                          <button
+                              key={site.id}
+                              type="button"
+                              onClick={() => selectSiteFromRegistry(site)}
+                              className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="flex justify-between items-start gap-3">
+                                  <div className="space-y-0.5">
+                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                      <p className="text-[10px] text-text-muted flex items-center gap-1.5">
+                                          <MapPin size={10} className="text-brand-red" />
+                                          {site.location}
+                                      </p>
+                                  </div>
+                                  <CheckCircle2 size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                              </div>
+                          </button>
+                      ))}
+                      {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">No verified sites on record for this client</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

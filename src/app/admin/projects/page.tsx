@@ -3,7 +3,7 @@
 import { projects as initialProjects, technicians } from "@/lib/data";
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon } from "lucide-react";
+import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity } from "lucide-react";
 import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
@@ -126,7 +126,7 @@ export default function ProjectsPage() {
   const hasActiveFilters = !!dateRange?.from || activeStatuses.length > 0 || activeClients.length > 0 || sortBy !== 'date';
 
   return (
-    <div>
+    <div className="space-y-6">
       <header className="page-header">
         <div>
           <p className="page-eyebrow flex items-center gap-2">
@@ -236,7 +236,7 @@ export default function ProjectsPage() {
         <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
-                    <FolderKanban size={16} className="text-brand-red" />
+                    <Activity size={16} className="text-brand-red" />
                     <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Infrastructure Projects Registry</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">

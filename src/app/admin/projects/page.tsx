@@ -3,7 +3,7 @@
 import { projects as initialProjects, technicians } from "@/lib/data";
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown } from "lucide-react";
 import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
@@ -17,7 +17,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+type SortOption = 'name' | 'date' | 'progress' | 'client';
 
 export default function ProjectsPage() {
   const [allProjects, setAllProjects] = useState<Project[]>(initialProjects);
@@ -26,6 +35,7 @@ export default function ProjectsPage() {
   
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<SortOption>('date');
 
   const allTechnicians = technicians;
   const { toast } = useToast();
@@ -58,25 +68,44 @@ export default function ProjectsPage() {
   const resetFilters = () => {
     setActiveStatuses([]);
     setActiveClients([]);
+    setSortBy('date');
     toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
   };
 
   const filteredProjects = useMemo(() => {
-    return allProjects.filter(p => {
-      const matchesSearch = 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.location.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(p.status);
-      const matchesClient = activeClients.length === 0 || activeClients.includes(p.client);
+    const getProgress = (project: Project) => {
+        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        if (allTasks.length === 0) return 0;
+        const completedTasks = allTasks.filter(task => task.isCompleted).length;
+        return (completedTasks / allTasks.length) * 100;
+    };
 
-      return matchesSearch && matchesStatus && matchesClient;
-    });
-  }, [allProjects, searchQuery, activeStatuses, activeClients]);
+    return allProjects
+      .filter(p => {
+        const matchesSearch = 
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.location.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(p.status);
+        const matchesClient = activeClients.length === 0 || activeClients.includes(p.client);
 
-  const hasActiveFilters = activeStatuses.length > 0 || activeClients.length > 0;
+        return matchesSearch && matchesStatus && matchesClient;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'name': return a.name.localeCompare(b.name);
+          case 'client': return a.client.localeCompare(b.client);
+          case 'progress': return getProgress(b) - getProgress(a);
+          case 'date': 
+          default:
+            return b.startDate.localeCompare(a.startDate);
+        }
+      });
+  }, [allProjects, searchQuery, activeStatuses, activeClients, sortBy]);
+
+  const hasActiveFilters = activeStatuses.length > 0 || activeClients.length > 0 || sortBy !== 'date';
 
   return (
     <div>
@@ -100,72 +129,89 @@ export default function ProjectsPage() {
               />
             </div>
             
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
-                  <SlidersHorizontal size={14} className="mr-2"/>
-                  Filter
-                  {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activeStatuses.length + activeClients.length}</Badge>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                  <div className="p-4 border-b border-border-sub bg-bg-tertiary">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
-                      {hasActiveFilters && (
-                        <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
-                          <X size={10} /> Reset
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-6">
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status Audit</p>
-                      <div className="space-y-2">
-                        {['active', 'on-hold', 'completed'].map(status => (
-                          <div key={status} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`status-${status}`} 
-                              checked={activeStatuses.includes(status)}
-                              onCheckedChange={() => toggleStatus(status)}
-                            />
-                            <Label htmlFor={`status-${status}`} className="text-[10px] uppercase font-semibold cursor-pointer capitalize">{status}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Client Entities</p>
-                      <ScrollArea className="h-[120px]">
-                        <div className="space-y-2 pr-4">
-                          {clients.map(client => (
-                            <div key={client} className="flex items-center space-x-2">
-                              <Checkbox 
-                                id={`client-${client}`} 
-                                checked={activeClients.includes(client)}
-                                onCheckedChange={() => toggleClient(client)}
-                              />
-                              <Label htmlFor={`client-${client}`} className="text-[10px] uppercase font-semibold cursor-pointer truncate">{client}</Label>
-                            </div>
-                          ))}
+            <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                    <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
+                        <div className="flex items-center gap-2">
+                            <ArrowUpDown size={14} className="text-text-muted" />
+                            <SelectValue placeholder="Sort By" />
                         </div>
-                      </ScrollArea>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-bg-tertiary/50 border-t border-border-sub">
-                    <p className="text-[8px] text-text-muted uppercase font-medium leading-tight">
-                      Constraints are applied globally to the Project Registry.
-                    </p>
-                  </div>
-              </PopoverContent>
-            </Popover>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="date" className="text-[10px] uppercase font-bold">Start Date</SelectItem>
+                        <SelectItem value="name" className="text-[10px] uppercase font-bold">Project Name</SelectItem>
+                        <SelectItem value="client" className="text-[10px] uppercase font-bold">Client Entity</SelectItem>
+                        <SelectItem value="progress" className="text-[10px] uppercase font-bold">Progress %</SelectItem>
+                    </SelectContent>
+                </Select>
 
-            <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
-                <Plus size={14} className="mr-2"/>
-                New Project
-            </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
+                      <SlidersHorizontal size={14} className="mr-2"/>
+                      Filter
+                      {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activeStatuses.length + activeClients.length}</Badge>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                      <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                          {hasActiveFilters && (
+                            <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                              <X size={10} /> Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-6">
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status Audit</p>
+                          <div className="space-y-2">
+                            {['active', 'on-hold', 'completed'].map(status => (
+                              <div key={status} className="flex items-center space-x-2">
+                                <Checkbox 
+                                  id={`status-${status}`} 
+                                  checked={activeStatuses.includes(status)}
+                                  onCheckedChange={() => toggleStatus(status)}
+                                />
+                                <Label htmlFor={`status-${status}`} className="text-[10px] uppercase font-semibold cursor-pointer capitalize">{status}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Client Entities</p>
+                          <ScrollArea className="h-[120px]">
+                            <div className="space-y-2 pr-4">
+                              {clients.map(client => (
+                                <div key={client} className="flex items-center space-x-2">
+                                  <Checkbox 
+                                    id={`client-${client}`} 
+                                    checked={activeClients.includes(client)}
+                                    onCheckedChange={() => toggleClient(client)}
+                                  />
+                                  <Label htmlFor={`client-${client}`} className="text-[10px] uppercase font-semibold cursor-pointer truncate">{client}</Label>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-bg-tertiary/50 border-t border-border-sub">
+                        <p className="text-[8px] text-text-muted uppercase font-medium leading-tight">
+                          Constraints are applied globally to the Project Registry.
+                        </p>
+                      </div>
+                  </PopoverContent>
+                </Popover>
+
+                <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
+                    <Plus size={14} className="mr-2"/>
+                    New Project
+                </Button>
+            </div>
         </div>
       </header>
 

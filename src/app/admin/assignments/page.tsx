@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,7 +20,9 @@ import {
   Check,
   Users,
   Navigation,
-  ExternalLink
+  ExternalLink,
+  ArrowUpDown,
+  SlidersHorizontal
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { GlobalScheduleCalendar } from "./components/global-schedule-calendar";
@@ -42,7 +43,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -51,12 +58,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
+type SortOption = 'date' | 'client' | 'status' | 'pay';
+
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDates, setFilterDates] = useState<Date[]>([]);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [activePriorities, setActivePriorities] = useState<string[]>([]);
+  const [activeSources, setActiveSources] = useState<string[]>([]);
 
   // Edit Logic
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -70,22 +83,40 @@ export default function AssignmentsHubPage() {
   const { toast } = useToast();
 
   const filteredWorkOrders = useMemo(() => {
-    return workOrders.filter(wo => {
-      const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
-      const query = searchQuery.toLowerCase();
-      
-      const matchesSearch = (
-        wo.id.toLowerCase().includes(query) ||
-        wo.description.toLowerCase().includes(query) ||
-        wo.clientName.toLowerCase().includes(query) ||
-        (tech && tech.name.toLowerCase().includes(query))
-      );
+    return workOrders
+      .filter(wo => {
+        const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+        const query = searchQuery.toLowerCase();
+        
+        const matchesSearch = (
+          wo.id.toLowerCase().includes(query) ||
+          wo.description.toLowerCase().includes(query) ||
+          wo.clientName.toLowerCase().includes(query) ||
+          (tech && tech.name.toLowerCase().includes(query))
+        );
 
-      const matchesDate = filterDates.length === 0 || (wo.scheduleDate && filterDates.some(d => isSameDay(parseISO(wo.scheduleDate), d)));
+        const matchesDate = filterDates.length === 0 || (wo.scheduleDate && filterDates.some(d => {
+            try {
+                return isSameDay(parseISO(wo.scheduleDate), d);
+            } catch (e) { return false; }
+        }));
 
-      return matchesSearch && matchesDate;
-    }).sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
-  }, [workOrders, searchQuery, filterDates]);
+        const matchesPriority = activePriorities.length === 0 || activePriorities.includes(wo.priority);
+        const matchesSource = activeSources.length === 0 || (wo.source && activeSources.includes(wo.source));
+
+        return matchesSearch && matchesDate && matchesPriority && matchesSource;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'client': return a.clientName.localeCompare(b.clientName);
+          case 'status': return a.status.localeCompare(b.status);
+          case 'pay': return b.pay - a.pay;
+          case 'date':
+          default:
+            return a.scheduleDate.localeCompare(b.scheduleDate);
+        }
+      });
+  }, [workOrders, searchQuery, filterDates, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
@@ -99,12 +130,10 @@ export default function AssignmentsHubPage() {
     if (!dateStr) return 'TBD';
     try {
       const parts = dateStr.split(/[-/]/);
-      if (parts.length === 3) {
-          let m, d, y;
-          if (parts[0].length === 4) { [y, m, d] = parts; } else { [m, d, y] = parts; }
-          return `${m}-${d}-${y}`;
-      }
-      return dateStr;
+      let d;
+      if (parts[0].length === 4) { d = new Date(dateStr); } 
+      else { d = parseISO(dateStr); }
+      return format(d, 'MM-dd-yyyy');
     } catch (e) {
       return dateStr;
     }
@@ -112,6 +141,14 @@ export default function AssignmentsHubPage() {
 
   const handleRemoveDate = (dateToRemove: Date) => {
     setFilterDates(filterDates.filter(d => !isSameDay(d, dateToRemove)));
+  };
+
+  const resetFilters = () => {
+    setFilterDates([]);
+    setActivePriorities([]);
+    setActiveSources([]);
+    setSortBy('date');
+    toast({ title: "Audit Constraints Reset", description: "Search parameters and filters cleared." });
   };
 
   const handleCardClick = (wo: WorkOrder) => {
@@ -173,6 +210,8 @@ export default function AssignmentsHubPage() {
     setIsSiteRegistryOpen(false);
   };
 
+  const hasActiveFilters = filterDates.length > 0 || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
+
   return (
     <div className="space-y-6">
       <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -184,14 +223,90 @@ export default function AssignmentsHubPage() {
           <h1 className="page-title">Assignments</h1>
           <p className="page-subtitle">Operational schedule oversight and historical job audit.</p>
         </div>
-        <div className="search-wrap">
-          <Search className="h-4 w-4" />
-          <input 
-            placeholder="Search Tech, ID, or Description..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input !w-full md:!w-[350px] bg-bg-secondary border-border-main h-10"
-          />
+        <div className="flex items-center gap-3">
+            <div className="search-wrap">
+              <Search className="h-4 w-4" />
+              <input 
+                placeholder="Search Tech, ID, or Description..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input !w-full md:!w-[300px] bg-bg-secondary border-border-main h-10"
+              />
+            </div>
+            
+            <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
+                    <div className="flex items-center gap-2">
+                        <ArrowUpDown size={14} className="text-text-muted" />
+                        <SelectValue placeholder="Sort" />
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="date" className="text-[10px] uppercase font-bold">By Date</SelectItem>
+                    <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
+                    <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
+                    <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
+                    <SlidersHorizontal size={14} className="mr-2"/>
+                    Filters
+                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{filterDates.length + activePriorities.length + activeSources.length}</Badge>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                  <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                      {hasActiveFilters && (
+                        <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                          <X size={10} /> Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-6">
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['critical', 'high', 'medium', 'low'].map(priority => (
+                          <div key={priority} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`prio-${priority}`} 
+                              checked={activePriorities.includes(priority)}
+                              onCheckedChange={(checked) => {
+                                setActivePriorities(prev => checked ? [...prev, priority] : prev.filter(p => p !== priority));
+                              }}
+                            />
+                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Job Source</p>
+                      <div className="space-y-2">
+                        {['Imported', 'Manual', 'Client'].map(source => (
+                          <div key={source} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`source-${source}`} 
+                              checked={activeSources.includes(source)}
+                              onCheckedChange={(checked) => {
+                                setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source));
+                              }}
+                            />
+                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+            </Popover>
         </div>
       </header>
 
@@ -206,7 +321,6 @@ export default function AssignmentsHubPage() {
         </TabsList>
 
         <TabsContent value="schedule" className="mt-6 space-y-6">
-            {/* IN-PAGE TACTICAL CALENDAR (ULTRA-THIN VIEW) */}
             <div className="rounded-lg border border-border-sub bg-bg-secondary/30 p-2 shadow-sm">
                 <GlobalScheduleCalendar 
                     workOrders={workOrders.filter(wo => wo.status !== 'completed')} 
@@ -248,12 +362,12 @@ export default function AssignmentsHubPage() {
 
                         return (
                             <div key={tech.id} className="space-y-4">
-                                <div className="flex items-center justify-center gap-3 border-b border-border-sub pb-2">
+                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
                                     <Avatar className="h-10 w-10 border border-border-sub">
                                         <AvatarImage src={tech.avatarUrl} />
                                         <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <div className="text-center">
+                                    <div className="text-left">
                                         <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
                                         <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
                                     </div>
@@ -280,14 +394,14 @@ export default function AssignmentsHubPage() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-center">
+                                                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-start">
                                                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                        <Clock size={12} className="text-text-muted" />
+                                                        <Clock size={12} className="text-brand-red" />
                                                         {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-center">
-                                                        <MapPin size={12} className="text-text-muted shrink-0" />
-                                                        <span className="max-w-[200px]">{job.location}</span>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
+                                                        <MapPin size={12} className="text-brand-red shrink-0" />
+                                                        <span className="max-w-[220px] truncate">{job.location}</span>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -300,15 +414,15 @@ export default function AssignmentsHubPage() {
                     {activeWorkOrders.length === 0 && (
                         <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-[0.2em] italic">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">
                                 {filterDates.length > 0 
                                     ? `No active jobs found for selected dates`
                                     : "No active jobs matching search criteria"
                                 }
                             </p>
-                            {filterDates.length > 0 && (
-                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={() => setFilterDates([])}>
-                                    Reset Date Selection
+                            {hasActiveFilters && (
+                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={resetFilters}>
+                                    Reset All Constraints
                                 </button>
                             )}
                         </div>
@@ -575,106 +689,6 @@ export default function AssignmentsHubPage() {
                 </div>
             )}
         </DialogContent>
-      </Dialog>
-
-      {/* CLIENT REGISTRY POPUP */}
-      <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
-          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-              <DialogHeader className="p-6 pb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                      <Users className="text-brand-red h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
-                  </div>
-                  <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
-              </DialogHeader>
-              <div className="px-6 py-2">
-                  <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                      <Input 
-                          placeholder="Filter registry by name or ID..." 
-                          value={registrySearch}
-                          onChange={(e) => setRegistrySearch(e.target.value)}
-                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
-                      />
-                  </div>
-              </div>
-              <ScrollArea className="flex-1 px-6 py-4">
-                  <div className="space-y-1">
-                      {filteredRegistry.map(client => (
-                          <button
-                              key={client.id}
-                              type="button"
-                              onClick={() => selectClientFromRegistry(client)}
-                              className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
-                          >
-                              <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
-                                  <Building2 size={16} />
-                              </div>
-                              <div className="flex-1 overflow-hidden">
-                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
-                                  {client.businessType && (
-                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
-                                  )}
-                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
-                              </div>
-                              <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </button>
-                      ))}
-                      {filteredRegistry.length === 0 && (
-                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
-                          </div>
-                      )}
-                  </div>
-              </ScrollArea>
-              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
-
-      {/* SITE REGISTRY POPUP */}
-      <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
-          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-              <DialogHeader className="p-6 pb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                      <Navigation className="text-accent-gold h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
-                  </div>
-                  <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{editedOrder?.clientName}</span>.</DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="flex-1 px-6 py-4">
-                  <div className="space-y-1">
-                      {selectedClient?.managedSites?.map(site => (
-                          <button
-                              key={site.id}
-                              type="button"
-                              onClick={() => selectSiteFromRegistry(site)}
-                              className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
-                          >
-                              <div className="flex justify-between items-start gap-3">
-                                  <div className="space-y-0.5">
-                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                      <p className="text-[10px] text-text-muted flex items-center gap-1.5">
-                                          <MapPin size={10} className="text-brand-red" />
-                                          {site.location}
-                                      </p>
-                                  </div>
-                                  <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-                              </div>
-                          </button>
-                      ))}
-                      {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
-                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
-                          </div>
-                      )}
-                  </div>
-              </ScrollArea>
-              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
-              </DialogFooter>
-          </DialogContent>
       </Dialog>
     </div>
   );

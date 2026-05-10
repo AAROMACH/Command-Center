@@ -24,13 +24,9 @@ import {
     Building2, 
     Rows3, 
     LayoutGrid, 
-    Columns2,
     ArrowUpDown,
     MapPin,
-    Calendar,
     Check,
-    X,
-    Clock,
     Navigation,
     User,
 } from 'lucide-react';
@@ -58,7 +54,7 @@ type DirectoryClientProps = {
     siteRequests: SiteRequest[];
 };
 
-type ViewMode = 'rows' | 'grid' | 'columns';
+type ViewMode = 'rows' | 'grid';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders, siteRequests: initialSiteRequests }: DirectoryClientProps) {
@@ -80,7 +76,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [isCompanyDetailOpen, setIsCompanyDetailOpen] = useState(false);
     
     const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
-    const [siteRequests, setSiteRequests] = useState(initialSiteRequests);
     
     const { toast } = useToast();
 
@@ -120,18 +115,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         toast({
             title: "Personnel Enrolled",
             description: `${newPerson.name} has been successfully registered.`
-        });
-    };
-
-    const handleTimeOffStatusChange = (requestId: string, newStatus: 'approved' | 'denied') => {
-        setTimeOffRequests(currentRequests =>
-            currentRequests.map(req =>
-                req.id === requestId ? { ...req, status: newStatus } : req
-            )
-        );
-        toast({
-            title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-            description: `Audit path complete.`,
         });
     };
 
@@ -233,19 +216,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                        activeTab === 'clients' ? filteredCompanies.length : 0;
     const totalPages = Math.ceil(totalRecords / itemsPerPage);
 
-    const formatDateStr = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split(/[-/]/);
-            let d;
-            if (parts[0].length === 4) { d = new Date(dateStr); } 
-            else { d = parseISO(dateStr); }
-            return format(d, 'MM-dd-yyyy');
-        } catch (e) {
-            return dateStr;
-        }
-    };
-
     const getPrimaryRoleLabel = (person: Technician) => {
         if (person.roles && person.roles.length > 0) {
             return person.roles[0].replace(/_/g, ' ').toUpperCase();
@@ -313,26 +283,24 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     {activeTab !== 'map' && (
                         <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
                             <div className="flex items-center gap-2">
-                                {activeTab !== 'requests' && (
-                                    <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon-sm" 
-                                            className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
-                                            onClick={() => setViewMode('rows')}
-                                        >
-                                            <Rows3 size={11} />
-                                        </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon-sm" 
-                                            className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
-                                            onClick={() => setViewMode('grid')}
-                                        >
-                                            <LayoutGrid size={11} />
-                                        </Button>
-                                    </div>
-                                )}
+                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon-sm" 
+                                        className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                        onClick={() => setViewMode('rows')}
+                                    >
+                                        <Rows3 size={11} />
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon-sm" 
+                                        className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                        onClick={() => setViewMode('grid')}
+                                    >
+                                        <LayoutGrid size={11} />
+                                    </Button>
+                                </div>
                                 <div className="flex items-center gap-1">
                                     <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                                         <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">

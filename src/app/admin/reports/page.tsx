@@ -99,7 +99,6 @@ export default function ReportsPage() {
 
     const handleResultClick = (result: any) => {
         if (result.type === 'Technician') {
-            // Select tech and switch to profile view instead of directory popup
             setSelectedTechId(result.id);
             setSearchQuery("");
             setActiveTab("tech");

@@ -347,6 +347,7 @@ export default function AssignmentsHubPage() {
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
                 onSelect={setDateRange}
+                numberOfMonths={1}
               />
             </PopoverContent>
           </Popover>

@@ -170,7 +170,6 @@ export default function AssignmentsHubPage() {
     toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
 
-  // Registry Selection Logic
   const clients = useMemo(() => {
     return technicians.filter(t => 
         t.roles?.includes('client') || 
@@ -531,7 +530,6 @@ export default function AssignmentsHubPage() {
         }}
       />
 
-      {/* FULL EDIT DIALOG */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2">

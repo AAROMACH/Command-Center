@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -348,7 +347,6 @@ export default function AssignmentsHubPage() {
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
                 onSelect={setDateRange}
-                numberOfMonths={2}
               />
             </PopoverContent>
           </Popover>

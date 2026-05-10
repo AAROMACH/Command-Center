@@ -1,4 +1,3 @@
-
 'use client';
 
 import { projects as initialProjects, technicians } from "@/lib/data";
@@ -171,7 +170,6 @@ export default function ProjectsPage() {
                       defaultMonth={dateRange?.from}
                       selected={dateRange}
                       onSelect={setDateRange}
-                      numberOfMonths={2}
                     />
                   </PopoverContent>
                 </Popover>

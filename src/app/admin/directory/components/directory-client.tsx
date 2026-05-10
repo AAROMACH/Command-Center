@@ -6,7 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+    Card, 
+    CardContent, 
+    CardHeader, 
+    CardTitle, 
+    CardDescription 
+} from "@/components/ui/card";
 import { 
     Search, 
     Mail, 
@@ -105,7 +111,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         }
         toast({
             title: "Operative Updated",
-            description: `Personnel records for ${updatedPerson.name} have been committed.`
+            description: `Personnel records for ${updatedPerson.name} committed.`
         });
     };
 
@@ -125,19 +131,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         );
         toast({
             title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-            description: `The time off request has been successfully ${newStatus}.`,
-        });
-    };
-
-    const handleSiteRequestStatusChange = (requestId: string, newStatus: 'approved' | 'denied') => {
-        setSiteRequests(current =>
-            current.map(req =>
-                req.id === requestId ? { ...req, status: newStatus } : req
-            )
-        );
-        toast({
-            title: `Registry Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-            description: `The site registry request has been ${newStatus}.`,
+            description: `Audit path complete.`,
         });
     };
 
@@ -259,36 +253,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         return person.role.toUpperCase();
     };
 
-    const filteredTimeOffRequests = useMemo(() => {
-        return timeOffRequests
-            .filter(req => {
-                const person = personnel.find(p => p.id === req.technicianId);
-                if (!person) return false;
-                
-                const matchesSearch = person.name.toLowerCase().includes(lowercasedQuery) ||
-                    req.startDate.toLowerCase().includes(lowercasedQuery) ||
-                    req.endDate.toLowerCase().includes(lowercasedQuery) ||
-                    req.type.toLowerCase().includes(lowercasedQuery);
-                
-                return matchesSearch && req.status === 'pending';
-            })
-            .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-    }, [timeOffRequests, personnel, lowercasedQuery]);
-
-    const filteredSiteRequests = useMemo(() => {
-        return siteRequests
-            .filter(req => {
-                const matchesSearch = req.clientName.toLowerCase().includes(lowercasedQuery) ||
-                    req.siteName.toLowerCase().includes(lowercasedQuery) ||
-                    req.location.toLowerCase().includes(lowercasedQuery);
-                
-                return matchesSearch && req.status === 'pending';
-            })
-            .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime());
-    }, [siteRequests, lowercasedQuery]);
-
-    const pendingRequestsCount = timeOffRequests.filter(r => r.status === 'pending').length + siteRequests.filter(r => r.status === 'pending').length;
-
     const mapLocations = useMemo(() => {
         const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
         if (mapViewMode === 'techs') {
@@ -320,9 +284,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <TabsTrigger value="clients" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">CLIENTS</TabsTrigger>
                             <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center justify-center gap-2 h-full">
                                 REQUESTS
-                                {pendingRequestsCount > 0 && (
+                                {timeOffRequests.filter(r => r.status === 'pending').length > 0 && (
                                     <Badge variant="destructive" className="h-3.5 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
-                                        {pendingRequestsCount}
+                                        {timeOffRequests.filter(r => r.status === 'pending').length}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -356,7 +320,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             size="icon-sm" 
                                             className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
                                             onClick={() => setViewMode('rows')}
-                                            title="Row View"
                                         >
                                             <Rows3 size={11} />
                                         </Button>
@@ -365,40 +328,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             size="icon-sm" 
                                             className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
                                             onClick={() => setViewMode('grid')}
-                                            title="Box View"
                                         >
                                             <LayoutGrid size={11} />
                                         </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon-sm" 
-                                            className={cn("h-6 w-6", viewMode === 'columns' && "bg-bg-secondary text-brand-red")}
-                                            onClick={() => setViewMode('columns')}
-                                            title="Column View"
-                                        >
-                                            <Columns2 size={11} />
-                                        </Button>
                                     </div>
                                 )}
-
-                                {activeTab !== 'requests' && (
-                                    <div className="flex items-center gap-1">
-                                        <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                            <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
-                                                <div className="flex items-center gap-1.5">
-                                                    <ArrowUpDown size={10} className="text-text-muted" />
-                                                    <SelectValue placeholder="Sort" />
-                                                </div>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
-                                                {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
-                                                {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
-                                                {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-1">
+                                    <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                                        <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
+                                            <div className="flex items-center gap-1.5">
+                                                <ArrowUpDown size={10} className="text-text-muted" />
+                                                <SelectValue placeholder="Sort" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
+                                            {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
+                                            {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
+                                            {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="search-wrap flex-1 md:flex-none">
@@ -417,10 +367,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1.2fr,2fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                            <div className="grid grid-cols-[2fr,1fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">TECHNICIAN</div>
-                                <div className="text-left pl-0">ROLE</div>
-                                <div className="text-left pl-0">CONTACT</div>
+                                <div className="text-left">ROLE</div>
+                                <div className="text-left">CONTACT</div>
                                 <div className="text-center">RELIABILITY</div>
                                 <div className="text-center">STATUS</div>
                             </div>
@@ -428,23 +378,23 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 {paginatedTechnicians.map(tech => {
                                     const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,1.2fr,2fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
+                                    <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
                                         <div className="flex items-center justify-start gap-3 pl-0">
                                             <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                 <AvatarImage src={tech.avatarUrl} />
                                                 <AvatarFallback className="text-[10px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{tech.name}</span>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{tech.name}</span>
                                         </div>
-                                        <div className="text-left pl-0">
+                                        <div className="text-left">
                                             <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
                                         </div>
-                                        <div className="min-w-0 flex flex-col items-start justify-center pl-0">
-                                            <div className="flex items-center gap-1.5 text-[11px] text-text-primary truncate">
-                                                <Mail size={11} className="text-text-muted shrink-0"/>{tech.email}
+                                        <div className="min-w-0 flex flex-col items-start justify-center">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                                <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted mt-0.5">
-                                                <Phone size={11} className="text-text-muted shrink-0"/>{tech.phone}
+                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                                <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-center justify-center">
@@ -463,8 +413,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <div className="table-wrap">
                             <div className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">STAFF MEMBER</div>
-                                <div className="text-left pl-0">ROLE</div>
-                                <div className="text-left pl-0">CONTACT</div>
+                                <div className="text-left">ROLE</div>
+                                <div className="text-left">CONTACT</div>
                             </div>
                             {paginatedStaff.map(s => (
                                 <div key={s.id} className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
@@ -473,17 +423,17 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             <AvatarImage src={s.avatarUrl} />
                                             <AvatarFallback className="text-[10px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                         </Avatar>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{s.name}</span>
+                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name}</span>
                                     </div>
-                                    <div className="text-left pl-0">
+                                    <div className="text-left">
                                         <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
                                     </div>
-                                    <div className="min-w-0 flex flex-col items-start justify-center pl-0">
-                                        <div className="flex items-center gap-1.5 text-[11px] text-text-primary truncate">
-                                            <Mail size={11} className="text-text-muted shrink-0"/>{s.email}
+                                    <div className="min-w-0 flex flex-col items-start justify-center">
+                                        <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                            <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-text-muted mt-0.5">
-                                            <Phone size={11} className="text-text-muted shrink-0"/>{s.phone}
+                                        <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                            <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
                                         </div>
                                     </div>
                                 </div>
@@ -495,7 +445,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         <div className="table-wrap">
                             <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">CORPORATE ENTITY</div>
-                                <div className="text-left pl-0">CLASSIFICATION</div>
+                                <div className="text-left">CLASSIFICATION</div>
                                 <div className="text-center">CONTACTS</div>
                                 <div className="text-center">REGISTRY</div>
                             </div>
@@ -505,101 +455,19 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
                                             <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                         </div>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px]">{company.name}</span>
+                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{company.name}</span>
                                     </div>
-                                    <div className="flex items-center justify-start pl-0">
+                                    <div className="flex items-center justify-start">
                                         <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
                                     </div>
                                     <div className="text-center flex items-center justify-center">
-                                        <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length} C</Badge>
+                                        <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length}</Badge>
                                     </div>
                                     <div className="text-center flex items-center justify-center">
                                         <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
                                     </div>
                                 </div>
                             ))}
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="requests" className="m-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
-                                    <Clock size={14} className="text-brand-red" />
-                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Personnel Absence Requests</h3>
-                                    <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredTimeOffRequests.length}</Badge>
-                                </div>
-                                
-                                <div className="space-y-1.5">
-                                    {filteredTimeOffRequests.map(req => {
-                                        const tech = personnel.find(p => p.id === req.technicianId);
-                                        return (
-                                            <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                                <div className="flex items-center justify-center gap-4 flex-1 text-center">
-                                                    <Avatar className="h-7 w-7 border border-border-sub group-hover:border-brand-red transition-colors shrink-0">
-                                                        <AvatarImage src={tech?.avatarUrl} />
-                                                        <AvatarFallback className="text-[9px]">{tech?.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="space-y-0.5 flex flex-col items-center">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
-                                                            <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.type}</Badge>
-                                                        </div>
-                                                        <p className="text-[11px] text-text-primary font-bold flex items-center justify-center gap-1.5">
-                                                            <Calendar size={11} className="shrink-0 text-brand-red" /> {formatDateStr(req.startDate)} — {formatDateStr(req.endDate)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-center gap-1.5 mt-2 md:mt-0">
-                                                    <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleTimeOffStatusChange(req.id, 'denied')}>
-                                                        <X size={10} className="mr-1"/> Deny
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleTimeOffStatusChange(req.id, 'approved')}>
-                                                        <Check size={10} className="mr-1"/> Approve
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 border-b border-border-sub pb-1.5">
-                                    <MapPin size={14} className="text-brand-red" />
-                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Site Registry Audit</h3>
-                                    <Badge variant="destructive" className="h-4 px-1 text-[8px] ml-auto">{filteredSiteRequests.length}</Badge>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    {filteredSiteRequests.map(req => (
-                                        <div key={req.id} className="flex flex-col md:flex-row items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:bg-bg-tertiary transition-colors group">
-                                            <div className="flex items-center justify-center gap-4 flex-1 text-center">
-                                                <div className="p-1.5 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors shrink-0">
-                                                    <Building2 size={14} />
-                                                </div>
-                                                <div className="space-y-0.5 flex flex-col items-center">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.siteName}</p>
-                                                        <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary">{req.clientName}</Badge>
-                                                    </div>
-                                                    <p className="text-[11px] text-text-primary font-bold flex items-center justify-center gap-1.5">
-                                                        <MapPin size={11} className="shrink-0 text-brand-red"/> {req.location}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-3 mt-2 md:mt-0">
-                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-red hover:bg-brand-red-dim border border-transparent hover:border-border-alert" onClick={() => handleSiteRequestStatusChange(req.id, 'denied')}>
-                                                    <X size={10} className="mr-1"/> Deny
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim" onClick={() => handleSiteRequestStatusChange(req.id, 'approved')}>
-                                                    <Check size={10} className="mr-1"/> Approve
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
                         </div>
                     </TabsContent>
 
@@ -616,16 +484,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
-                                    <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1.5 rounded border border-white/10 shadow-2xl">
-                                        <div className="flex items-center gap-1.5">
-                                            <Label htmlFor="map-toggle" className="text-[8px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
+                                    <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1 rounded border border-white/10 shadow-2xl">
+                                        <div className="flex items-center gap-1.5 px-1.5 py-0.5">
+                                            <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
                                             <Switch 
                                                 id="map-toggle" 
-                                                className="scale-[0.6] bg-brand-red data-[state=unchecked]:bg-brand-red data-[state=checked]:bg-brand-red"
+                                                className="scale-[0.6] data-[state=unchecked]:bg-brand-red data-[state=checked]:bg-brand-red"
                                                 checked={mapViewMode === 'sites'} 
                                                 onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
                                             />
-                                            <Label htmlFor="map-toggle" className="text-[8px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
+                                            <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
                                         </div>
                                     </div>
                                 </div>
@@ -668,20 +536,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 {activeTab !== 'map' && activeTab !== 'requests' && totalRecords > 0 && (
                     <div className="mt-3 flex items-center justify-between p-2 bg-bg-secondary rounded-lg border border-border-sub">
                         <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
-                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Show</p>
-                                <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                                    <SelectTrigger className="h-6 w-[55px] bg-bg-primary text-[9px] font-bold border-border-sub p-1">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10" className="text-[10px]">10</SelectItem>
-                                        <SelectItem value="25" className="text-[10px]">25</SelectItem>
-                                        <SelectItem value="50" className="text-[10px]">50</SelectItem>
-                                        <SelectItem value="100" className="text-[10px]">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
                                 <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalRecords)}</span> / {totalRecords}
                             </p>
@@ -698,7 +552,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 <ChevronLeft size={12} />
                             </Button>
                             <div className="flex items-center gap-1 px-2">
-                                <span className="text-[9px] font-bold text-text-primary uppercase tracking-tighter">P{currentPage} of {totalPages}</span>
+                                <span className="text-[9px] font-bold text-text-primary uppercase tracking-tighter">P{currentPage} / {totalPages}</span>
                             </div>
                             <Button 
                                 variant="outline" 

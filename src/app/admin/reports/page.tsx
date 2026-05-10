@@ -34,7 +34,6 @@ import {
     penaltyEvents,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { PersonnelDetailDialog } from '../directory/components/personnel-detail-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { format, parseISO, subDays, isAfter } from 'date-fns';
@@ -56,8 +55,6 @@ export default function ReportsPage() {
     const [clDays, setClDays] = useState("30");
     const [isClLoaded, setIsClLoaded] = useState(false);
 
-    const [isPersonnelOpen, setIsPersonnelOpen] = useState(false);
-    const [selectedPersonnel, setSelectedPersonnel] = useState<Technician | null>(null);
     const [isJobOpen, setIsJobOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
@@ -102,11 +99,10 @@ export default function ReportsPage() {
 
     const handleResultClick = (result: any) => {
         if (result.type === 'Technician') {
-            const tech = technicians.find(t => t.id === result.id);
-            if (tech) {
-                setSelectedPersonnel(tech);
-                setIsPersonnelOpen(true);
-            }
+            // Select tech and switch to profile view instead of directory popup
+            setSelectedTechId(result.id);
+            setSearchQuery("");
+            setActiveTab("tech");
         } else if (result.type === 'Assignment') {
             const wo = workOrders.find(w => w.id === result.id);
             if (wo) {
@@ -127,7 +123,7 @@ export default function ReportsPage() {
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input 
-                        placeholder="Search technicians, work orders, sites, projects…" 
+                        placeholder="Search technicians, assignments, sites, projects…" 
                         className="h-11 pl-10 bg-bg-secondary border-border-main text-xs uppercase font-bold tracking-wide"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -221,12 +217,6 @@ export default function ReportsPage() {
                                                             style={{ width: `${Math.min(100, (techStats.penaltyPoints / 10) * 100)}%` }} 
                                                         />
                                                     </div>
-                                                    <div className="flex justify-between items-center text-[8px] font-bold text-text-muted uppercase tracking-tighter">
-                                                        <span>0 — Reliable</span>
-                                                        <span>2.5</span>
-                                                        <span>7.5 — At risk</span>
-                                                        <span>8+ Restricted</span>
-                                                    </div>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -254,23 +244,6 @@ export default function ReportsPage() {
                                                         <span>Detroit, MI · completed · client_wo_001</span>
                                                     </div>
                                                 </div>
-                                                <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-accent-gold ring-4 ring-bg-primary" />
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
-                                                        Aarons AP Refresh <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-17-2026</span>
-                                                    </p>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
-                                                        <span>Toledo, OH · scheduled · WO 18889221 · $70</span>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-red ring-4 ring-bg-primary" />
-                                                    <p className="text-xs font-bold text-text-red uppercase tracking-wide">
-                                                        Penalty — late log <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
-                                                    </p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">3 pts · weekly log submitted after due date</p>
-                                                </div>
                                             </div>
                                         </div>
 
@@ -286,10 +259,6 @@ export default function ReportsPage() {
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">$45 · pending</span>
                                                 </div>
                                                 <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Time-off · 04-23-2026</span>
-                                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">pending</span>
-                                                </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                     <span className="text-[11px] font-bold text-text-primary uppercase">Project: Refresh</span>
                                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">project lead · ACTIVE</span>
                                                 </div>
@@ -303,109 +272,26 @@ export default function ReportsPage() {
                                 <div className="py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                                     <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-10" />
                                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites identified for this context</p>
-                                    <p className="text-[10px] text-text-muted max-w-[320px] mx-auto mt-2 uppercase leading-relaxed font-medium">
-                                        Once client coordinates are registered in the <code className="bg-bg-primary px-1 rounded text-brand-red">managedSites</code> collection, full visit history and site health will appear here.
-                                    </p>
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="flags" className="m-0 space-y-8">
                                 <div className="space-y-4">
                                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
-                                        Schema & Data Consistency — 2 require action
+                                        Consistency Audit
                                         <AlertTriangle size={14} className="text-text-red" />
                                     </h3>
                                     <div className="space-y-2">
                                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
                                             <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">5 Malformed assignment documents — swapped fields</p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">5 Malformed assignment documents — field inversion</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    IDs: 1dELYf5Y, BcHQYPPw, FbLchazU, SesOkMZ6… — Time and location parameters were inverted during batch ingestion. This inhibits assignment logic and GPS validation.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema inconsistency — project daily logs field mismatch</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    GD7bfWeRk uses <code className="text-text-primary">technicianId</code> instead of the collection standard <code className="text-text-primary">techId</code>. This breaks reporting queries on this project folder.
+                                                    IDs: 1dELYf5Y, BcHQYPPw, FbLchazU, SesOkMZ6… — Coordinate parameters were swapped during ingestion.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
-                                        Operational warnings — 3
-                                        <Clock size={14} className="text-accent-gold" />
-                                    </h3>
-                                    <div className="space-y-2">
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">4 Scheduled assignments unallocated</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    WO 18948530, 18967014, 18924409 — <code className="text-text-primary">techId</code> is null. These assignments will not appear in any technician's Calendar or Dispatch view and are currently invisible to the workforce.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">1 Weekly log overdue — not submitted</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    Corey Williams — week of 03-30-2026. Status: Draft. Log contains 3 work order items, 1 needing admin review.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 rounded-xl border border-border-gold bg-accent-gold-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-accent-gold uppercase tracking-wide">2 Session check-ins remain open</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    aaro_tl_001 and client_timelog_001 have no check-out signatures. GPS verification is pending and settlement duration cannot be calculated.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6 animate-in fade-in duration-500">
-                                    <div className="flex items-center justify-between px-1">
-                                        <div className="flex gap-3">
-                                            <Select value={clDays} onValueChange={(val) => setClDays(val)}>
-                                                <SelectTrigger className="w-[160px] bg-bg-secondary h-9 text-[10px] uppercase font-bold tracking-widest border-border-sub">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="7">Last 7 days</SelectItem>
-                                                    <SelectItem value="30">Last 30 days</SelectItem>
-                                                    <SelectItem value="60">Last 60 days</SelectItem>
-                                                    <SelectItem value="90">Last 90 days</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <Button variant="outline" size="sm" className="h-9" onClick={() => setIsClLoaded(false)}>Reset Terminal</Button>
-                                        </div>
-                                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{AUDIT_ACTIONS.length} events retrieved</span>
-                                    </div>
-                                    
-                                    <ScrollArea className="h-full">
-                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
-                                            {AUDIT_ACTIONS.map((evt, i) => (
-                                                <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
-                                                    <div className={cn(
-                                                        "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
-                                                        evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
-                                                    )} />
-                                                    <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
-                                                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
                                 </div>
                             </TabsContent>
 
@@ -415,7 +301,7 @@ export default function ReportsPage() {
                                         <History size={48} className="mx-auto text-text-muted opacity-20" />
                                         <div className="space-y-2">
                                             <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Change log is fetched on demand</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Keeps read costs low — only loads when you need it.</p>
+                                            <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Keeps operational costs low.</p>
                                         </div>
                                         <div className="flex items-center justify-center gap-3">
                                             <Select value={clDays} onValueChange={setClDays}>
@@ -425,47 +311,26 @@ export default function ReportsPage() {
                                                 <SelectContent>
                                                     <SelectItem value="7">Last 7 days</SelectItem>
                                                     <SelectItem value="30">Last 30 days</SelectItem>
-                                                    <SelectItem value="60">Last 60 days</SelectItem>
                                                     <SelectItem value="90">Last 90 days</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <Button onClick={() => setIsClLoaded(true)} className="h-10 px-8">Load change log</Button>
+                                            <Button onClick={() => setIsClLoaded(true)} className="h-10 px-8">Load terminal log</Button>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-6 animate-in fade-in duration-500">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div className="flex gap-3">
-                                                <Select value={clDays} onValueChange={(val) => setClDays(val)}>
-                                                    <SelectTrigger className="w-[160px] bg-bg-secondary h-9 text-[10px] uppercase font-bold tracking-widest border-border-sub">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="7">Last 7 days</SelectItem>
-                                                        <SelectItem value="30">Last 30 days</SelectItem>
-                                                        <SelectItem value="60">Last 60 days</SelectItem>
-                                                        <SelectItem value="90">Last 90 days</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <Button variant="outline" size="sm" className="h-9" onClick={() => setIsClLoaded(false)}>Reset Terminal</Button>
-                                            </div>
-                                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{AUDIT_ACTIONS.length} events retrieved</span>
+                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
+                                            {AUDIT_ACTIONS.map((evt, i) => (
+                                                <div key={i} className="space-y-1 relative group cursor-pointer">
+                                                    <div className={cn(
+                                                        "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
+                                                        evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
+                                                    )} />
+                                                    <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
+                                                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
+                                                </div>
+                                            ))}
                                         </div>
-                                        
-                                        <ScrollArea className="h-full">
-                                            <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
-                                                {AUDIT_ACTIONS.map((evt, i) => (
-                                                    <div key={i} className="space-y-1 relative group cursor-pointer" onClick={() => handleResultClick(evt)}>
-                                                        <div className={cn(
-                                                            "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
-                                                            evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
-                                                        )} />
-                                                        <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
-                                                        <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </ScrollArea>
                                     </div>
                                 )}
                             </TabsContent>
@@ -474,7 +339,7 @@ export default function ReportsPage() {
                 ) : (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div className="flex items-center justify-between border-b border-border-sub pb-3 px-1">
-                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} intelligence matches for &quot;{searchQuery}&quot;</h3>
+                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} matches for &quot;{searchQuery}&quot;</h3>
                         </div>
                         <div className="space-y-2">
                             {searchResults.length > 0 ? searchResults.map((r, i) => (
@@ -485,7 +350,7 @@ export default function ReportsPage() {
                                         r.type === 'Project' ? 'bg-accent-gold-dim text-accent-gold border-border-gold' :
                                         'bg-bg-tertiary text-text-primary'
                                     )}>
-                                        {r.type}
+                                        {r.type === 'Assignment' ? 'Assignment' : r.type}
                                     </Badge>
                                     <div className="space-y-1">
                                         <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{r.label}</p>
@@ -503,14 +368,6 @@ export default function ReportsPage() {
                     </div>
                 )}
             </div>
-
-            <PersonnelDetailDialog 
-                isOpen={isPersonnelOpen} 
-                setIsOpen={setIsPersonnelOpen} 
-                person={selectedPersonnel} 
-                workOrders={workOrders.filter(wo => wo.assignedTechnicianId === selectedPersonnel?.id)} 
-                timeOffRequests={[]}
-            />
 
             <JobDetailDialog 
                 isOpen={isJobOpen} 

@@ -79,8 +79,8 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                         <th className="text-center w-[160px] pl-0">Status & ID</th>
                         <th className="text-left pl-0">Project Intelligence</th>
                         <th className="text-center">Project Lead</th>
-                        <th className="text-left">Site Coordinates</th>
-                        <th className="text-left">Schedule Date</th>
+                        <th className="text-left pl-0">Site Coordinates</th>
+                        <th className="text-left pl-0">Schedule Date</th>
                         <th style={{ width: "220px" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
@@ -122,14 +122,14 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                         )}
                                     </div>
                                 </td>
-                                <td className="py-4">
-                                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0">
+                                <td className="py-4 pl-0">
+                                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
                                         <span className="truncate max-w-[180px]">{project.location}</span>
                                     </div>
                                 </td>
-                                <td className="py-4">
-                                    <div className="flex flex-col items-start justify-center gap-1.5 pl-0">
+                                <td className="py-4 pl-0">
+                                    <div className="flex flex-col items-start justify-center gap-1.5">
                                         <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
                                             <Calendar size={13} className="text-text-muted shrink-0" />
                                             <span>{formatDateDisplay(project.startDate)}</span>
@@ -160,20 +160,6 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
             {projects.length > 0 && (
               <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
-                    <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                      <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
                     Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, projects.length)}</span> of <span className="text-text-primary">{projects.length}</span> entries
                   </p>

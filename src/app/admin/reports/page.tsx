@@ -87,7 +87,7 @@ export default function ReportsPage() {
 
         workOrders.forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || wo.description.toLowerCase().includes(q)) {
-                results.push({ type: 'Work order', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: 'bg-blue' });
+                results.push({ type: 'Assignment', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: 'bg-blue' });
             }
         });
 
@@ -107,7 +107,7 @@ export default function ReportsPage() {
                 setSelectedPersonnel(tech);
                 setIsPersonnelOpen(true);
             }
-        } else if (result.type === 'Work order') {
+        } else if (result.type === 'Assignment') {
             const wo = workOrders.find(w => w.id === result.id);
             if (wo) {
                 setSelectedJob(wo);

@@ -125,10 +125,6 @@ export default function ProjectsPage() {
 
   const hasActiveFilters = !!dateRange?.from || activeStatuses.length > 0 || activeClients.length > 0 || sortBy !== 'date';
 
-  const activeProjectsCount = allProjects.filter(p => p.status === 'active').length;
-  const onHoldProjectsCount = allProjects.filter(p => p.status === 'on-hold').length;
-  const completedProjectsCount = allProjects.filter(p => p.status === 'completed').length;
-
   return (
     <div>
       <header className="page-header">
@@ -232,39 +228,62 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      <div className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-          <div className="tabs !mb-0 flex gap-1 p-0">
-            {/* We manually build the TabList parts here to inject the Select Date at the same level as the row container */}
-            <ProjectsTabs projects={filteredProjects} technicians={allTechnicians} />
-          </div>
+      <div className="w-full space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
+          <ProjectsTabs projects={filteredProjects} technicians={allTechnicians} />
+        </div>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
-                <CalendarIcon size={14} className="mr-2 text-brand-red" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
-                  ) : (
-                    format(dateRange.from, "MM-dd-yyyy")
-                  )
-                ) : (
-                  "Select Date"
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={1}
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+            <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                    <FolderKanban size={16} className="text-brand-red" />
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Infrastructure Projects Registry</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {dateRange?.from && (
+                        <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                            <CalendarIcon size={12} />
+                            <span className="text-[10px] uppercase font-bold tracking-widest">
+                                {format(dateRange.from, 'MM-dd-yyyy')}
+                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                            </span>
+                            <button 
+                                onClick={() => setDateRange(undefined)}
+                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </Badge>
+                    )}
+                </div>
+            </div>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                        <CalendarIcon size={14} className="mr-2 text-brand-red" />
+                        {dateRange?.from ? (
+                            dateRange.to ? (
+                                <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
+                            ) : (
+                                format(dateRange.from, "MM-dd-yyyy")
+                            )
+                        ) : (
+                            "Select Date"
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={1}
+                    />
+                </PopoverContent>
+            </Popover>
         </div>
       </div>
 

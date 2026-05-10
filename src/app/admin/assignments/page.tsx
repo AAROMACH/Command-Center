@@ -22,7 +22,8 @@ import {
   Navigation,
   ExternalLink,
   ArrowUpDown,
-  SlidersHorizontal
+  SlidersHorizontal,
+  History
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -324,63 +325,63 @@ export default function AssignmentsHubPage() {
               Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
             </TabsTrigger>
           </TabsList>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
-                <CalendarIcon size={14} className="mr-2 text-brand-red" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
-                  ) : (
-                    format(dateRange.from, "MM-dd-yyyy")
-                  )
-                ) : (
-                  "Select Date"
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={1}
-              />
-            </PopoverContent>
-          </Popover>
         </div>
 
-        <TabsContent value="schedule" className="mt-0 space-y-6">
-            <div className="space-y-6">
-                <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3">
-                            <Activity size={16} className="text-brand-red" />
-                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operative Deployments</h2>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {dateRange?.from && (
-                                <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                                    <CalendarIcon size={12} />
-                                    <span className="text-[10px] uppercase font-bold tracking-widest">
-                                      {format(dateRange.from, 'MM-dd-yyyy')}
-                                      {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                                    </span>
-                                    <button 
-                                        onClick={() => setDateRange(undefined)}
-                                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </Badge>
-                            )}
-                        </div>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
+                        <Activity size={16} className="text-brand-red" />
+                        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Operational Registry Audit</h2>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {dateRange?.from && (
+                            <Badge variant="secondary" className="h-7 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                                <CalendarIcon size={12} />
+                                <span className="text-[10px] uppercase font-bold tracking-widest">
+                                  {format(dateRange.from, 'MM-dd-yyyy')}
+                                  {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                                </span>
+                                <button 
+                                    onClick={() => setDateRange(undefined)}
+                                    className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </Badge>
+                        )}
                     </div>
                 </div>
 
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                        <CalendarIcon size={14} className="mr-2 text-brand-red" />
+                        {dateRange?.from ? (
+                        dateRange.to ? (
+                            <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
+                        ) : (
+                            format(dateRange.from, "MM-dd-yyyy")
+                        )
+                        ) : (
+                        "Select Date"
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={1}
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
+
+            <TabsContent value="schedule" className="mt-0 space-y-6">
                 <div className="grid grid-cols-1 gap-8">
                     {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
                         const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
@@ -454,77 +455,76 @@ export default function AssignmentsHubPage() {
                         </div>
                     )}
                 </div>
-            </div>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="archive" className="mt-0">
-            <div className="table-wrap">
-                <table className="tbl">
-                    <thead>
-                        <tr>
-                            <th className="text-left pl-6">Assignment Identification</th>
-                            <th className="text-center">Client & Service Result</th>
-                            <th className="text-center">Deployment Coordinates</th>
-                            <th className="text-center">Finalized Date</th>
-                            <th className="text-center">Audit Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {archivedWorkOrders.map(wo => {
-                            const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
-                            return (
-                                <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
-                                    <td className="text-left pl-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col items-center">
-                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                                <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
-                                            </div>
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="flex flex-col items-center justify-center">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
-                                                <Briefcase size={12}/> {wo.clientName}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
-                                                <CheckCircle2 size={14}/> Successfully Finalized
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                            <MapPin size={12} className="text-brand-red shrink-0" />
-                                            <span className="max-w-[150px]">{wo.location}</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="flex flex-col items-center justify-center text-center">
-                                            <span className="text-xs font-bold text-text-primary uppercase">{formatDateDisplay(wo.scheduleDate)}</span>
-                                            <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
-                                                <User size={10}/> {tech?.name || 'Field Ops'}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="text-center">
-                                        <div className="flex items-center justify-center">
-                                          <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                        {archivedWorkOrders.length === 0 && (
+            <TabsContent value="archive" className="mt-0">
+                <div className="table-wrap">
+                    <table className="tbl">
+                        <thead>
                             <tr>
-                                <td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching criteria.</td>
+                                <th className="text-left pl-6">Assignment Identification</th>
+                                <th className="text-center">Client & Service Result</th>
+                                <th className="text-center">Deployment Coordinates</th>
+                                <th className="text-center">Finalized Date</th>
+                                <th className="text-center">Audit Status</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </TabsContent>
-      </Tabs>
+                        </thead>
+                        <tbody>
+                            {archivedWorkOrders.map(wo => {
+                                const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+                                return (
+                                    <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
+                                        <td className="text-left pl-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                    <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
+                                                </div>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
+                                                    <Briefcase size={12}/> {wo.clientName}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
+                                                    <CheckCircle2 size={14}/> Successfully Finalized
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                                <MapPin size={12} className="text-brand-red shrink-0" />
+                                                <span className="max-w-[150px]">{wo.location}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <span className="text-xs font-bold text-text-primary uppercase">{formatDateDisplay(wo.scheduleDate)}</span>
+                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
+                                                    <User size={10}/> {tech?.name || 'Field Ops'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="text-center">
+                                            <div className="flex items-center justify-center">
+                                            <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                            {archivedWorkOrders.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching criteria.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </TabsContent>
+        </div>
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 

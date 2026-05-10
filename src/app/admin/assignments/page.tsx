@@ -16,14 +16,9 @@ import {
   Briefcase,
   Activity,
   X,
-  Building2,
-  Check,
-  Users,
-  Navigation,
-  ExternalLink,
   ArrowUpDown,
   SlidersHorizontal,
-  History
+  FileCheck
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';

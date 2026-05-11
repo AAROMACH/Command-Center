@@ -27,39 +27,23 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
     return (
         <Tabs defaultValue="active" className="w-full">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-                <TabsList className="tabs !mb-0">
-                  <TabsTrigger value="active" className="tab">
-                    Active Projects <span className="tab-count">({activeProjects.length})</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="on-hold" className="tab">
-                    On Hold <span className="tab-count">({onHoldProjects.length})</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="completed" className="tab">
-                    Completed <span className="tab-count">({completedProjects.length})</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <div className="flex items-center gap-3">
-                    {dateRange?.from && (
-                        <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                            <CalendarIcon size={12} />
-                            <span className="text-[10px] uppercase font-bold tracking-widest">
-                                {format(dateRange.from, 'MM-dd-yyyy')}
-                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                            </span>
-                            <button 
-                                onClick={() => setDateRange(undefined)}
-                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </Badge>
-                    )}
+                <div className="flex items-center gap-2">
+                    <TabsList className="tabs !mb-0">
+                      <TabsTrigger value="active" className="tab">
+                        Active Projects <span className="tab-count">({activeProjects.length})</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="on-hold" className="tab">
+                        On Hold <span className="tab-count">({onHoldProjects.length})</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="completed" className="tab">
+                        Completed <span className="tab-count">({completedProjects.length})</span>
+                      </TabsTrigger>
+                    </TabsList>
 
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
-                                <CalendarIcon size={14} className="mr-2 text-brand-red" />
+                            <Button variant="outline" size="sm" className={cn("h-8 px-4 border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                                <CalendarIcon size={12} className="mr-2 text-brand-red" />
                                 {dateRange?.from ? (
                                     dateRange.to ? (
                                         <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
@@ -82,6 +66,24 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                             />
                         </PopoverContent>
                     </Popover>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {dateRange?.from && (
+                        <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                            <CalendarIcon size={12} />
+                            <span className="text-[10px] uppercase font-bold tracking-widest">
+                                {format(dateRange.from, 'MM-dd-yyyy')}
+                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                            </span>
+                            <button 
+                                onClick={() => setDateRange(undefined)}
+                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </Badge>
+                    )}
                 </div>
             </div>
             

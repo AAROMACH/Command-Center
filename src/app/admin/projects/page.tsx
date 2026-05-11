@@ -98,7 +98,15 @@ export default function ProjectsPage() {
         
         const matchesDate = !dateRange?.from || (p.startDate && (() => {
             try {
-                const pDate = parseISO(p.startDate);
+                const parts = p.startDate.split('-');
+                let pDate;
+                if (parts[0].length === 4) {
+                    pDate = new Date(p.startDate);
+                } else {
+                    const [m, d, y] = parts;
+                    pDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                }
+                
                 if (dateRange.from && dateRange.to) {
                     return pDate >= dateRange.from && pDate <= dateRange.to;
                 }

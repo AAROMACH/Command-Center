@@ -94,7 +94,15 @@ export default function AssignmentsHubPage() {
 
         const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
             try {
-                const woDate = parseISO(wo.scheduleDate);
+                const parts = wo.scheduleDate.split('-');
+                let woDate;
+                if (parts[0].length === 4) {
+                    woDate = new Date(wo.scheduleDate);
+                } else {
+                    const [m, d, y] = parts;
+                    woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                }
+                
                 if (dateRange.from && dateRange.to) {
                     return woDate >= dateRange.from && woDate <= dateRange.to;
                 }
@@ -136,7 +144,10 @@ export default function AssignmentsHubPage() {
       const parts = dateStr.split(/[-/]/);
       let d;
       if (parts[0].length === 4) { d = new Date(dateStr); } 
-      else { d = parseISO(dateStr); }
+      else { 
+        const [m, day, y] = parts;
+        d = new Date(`${y}-${m}-${day}T12:00:00`);
+      }
       return format(d, 'MM-dd-yyyy');
     } catch (e) {
       return dateStr;
@@ -311,14 +322,43 @@ export default function AssignmentsHubPage() {
 
       <Tabs defaultValue="schedule" className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-          <TabsList className="tabs !mb-0">
-            <TabsTrigger value="schedule" className="tab">
-              Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="archive" className="tab">
-              Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <TabsList className="tabs !mb-0">
+              <TabsTrigger value="schedule" className="tab">
+                Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="archive" className="tab">
+                Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("h-8 px-4 border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
+                  <CalendarIcon size={12} className="mr-2 text-brand-red" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
+                    ) : (
+                      format(dateRange.from, "MM-dd-yyyy")
+                    )
+                  ) : (
+                    "Select Date"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={1}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
           <div className="flex items-center gap-3">
               {dateRange?.from && (
@@ -336,33 +376,6 @@ export default function AssignmentsHubPage() {
                       </button>
                   </Badge>
               )}
-
-              <Popover>
-                  <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-10 px-6 border-border-main bg-bg-secondary text-[11px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
-                      <CalendarIcon size={14} className="mr-2 text-brand-red" />
-                      {dateRange?.from ? (
-                      dateRange.to ? (
-                          <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
-                      ) : (
-                          format(dateRange.from, "MM-dd-yyyy")
-                      )
-                      ) : (
-                      "Select Date"
-                      )}
-                  </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                  <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={1}
-                  />
-                  </PopoverContent>
-              </Popover>
           </div>
         </div>
 

@@ -115,7 +115,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                                     <AvatarImage src={lead.avatarUrl} />
                                                     <AvatarFallback className="text-[10px]">{lead.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
-                                                <span className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[100px]">{lead.name}</span>
+                                                <span className="text-[10px] font-bold text-text-primary uppercase">{lead.name}</span>
                                             </div>
                                         ) : (
                                             <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
@@ -125,7 +125,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                 <td className="py-4 pl-0">
                                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="whitespace-normal max-w-[180px]">{project.location}</span>
+                                        <span className="whitespace-normal">{project.location}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 pl-0">

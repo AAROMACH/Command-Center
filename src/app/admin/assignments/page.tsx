@@ -21,7 +21,8 @@ import {
   FileCheck,
   Building2,
   Table as TableIcon,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -516,7 +517,7 @@ export default function AssignmentsHubPage() {
                                             </td>
                                             <td className="text-left pl-0 py-4">
                                                 <div className="flex flex-col min-w-0">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.description}</p>
                                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{wo.clientName}</p>
                                                 </div>
                                             </td>
@@ -536,7 +537,7 @@ export default function AssignmentsHubPage() {
                                             <td className="py-4 pl-0">
                                                 <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                                     <MapPin size={11} className="text-brand-red shrink-0" />
-                                                    <span>{wo.location}</span>
+                                                    <span className="whitespace-normal">{wo.location}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 pl-0">
@@ -606,7 +607,7 @@ export default function AssignmentsHubPage() {
                                                     <div className="cell-id font-mono text-brand-red">{wo.id.toUpperCase()}</div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.description}</p>
                                             </div>
                                         </td>
                                         <td className="py-4">
@@ -622,7 +623,7 @@ export default function AssignmentsHubPage() {
                                         <td className="py-4">
                                             <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                                 <MapPin size={12} className="text-brand-red shrink-0" />
-                                                <span>{wo.location}</span>
+                                                <span className="whitespace-normal">{wo.location}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 text-center">
@@ -979,7 +980,7 @@ function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo
                             </Badge>
                         </div>
                         <div className="flex flex-col min-w-0 text-left">
-                            <p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors">{job.description}</p>
+                            <p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{job.description}</p>
                             <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
                         </div>
                     </div>
@@ -991,7 +992,7 @@ function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
                         <MapPin size={12} className="text-brand-red shrink-0" />
-                        <span>{job.location}</span>
+                        <span className="whitespace-normal">{job.location}</span>
                     </div>
                 </div>
             </CardContent>

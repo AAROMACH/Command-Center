@@ -94,7 +94,7 @@ export default function AssignmentsHubPage() {
 
         const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
             try {
-                const parts = wo.scheduleDate.split('-');
+                const parts = wo.scheduleDate.split(/[-/]/);
                 let woDate;
                 if (parts[0].length === 4) {
                     woDate = new Date(wo.scheduleDate);
@@ -813,6 +813,7 @@ export default function AssignmentsHubPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
+    </Tabs>
     </div>
   );
 }

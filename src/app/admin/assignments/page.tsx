@@ -322,7 +322,7 @@ export default function AssignmentsHubPage() {
 
       <Tabs defaultValue="schedule" className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <TabsList className="tabs !mb-0">
               <TabsTrigger value="schedule" className="tab">
                 Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
@@ -347,7 +347,7 @@ export default function AssignmentsHubPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
                 <Calendar
                   initialFocus
                   mode="range"
@@ -358,24 +358,22 @@ export default function AssignmentsHubPage() {
                 />
               </PopoverContent>
             </Popover>
-          </div>
 
-          <div className="flex items-center gap-3">
-              {dateRange?.from && (
-                  <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                      <CalendarIcon size={12} />
-                      <span className="text-[10px] uppercase font-bold tracking-widest">
-                        {format(dateRange.from, 'MM-dd-yyyy')}
-                        {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                      </span>
-                      <button 
-                          onClick={() => setDateRange(undefined)}
-                          className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                      >
-                          <X size={12} />
-                      </button>
-                  </Badge>
-              )}
+            {dateRange?.from && (
+                <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                    <CalendarIcon size={12} />
+                    <span className="text-[10px] uppercase font-bold tracking-widest">
+                      {format(dateRange.from, 'MM-dd-yyyy')}
+                      {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                    </span>
+                    <button 
+                        onClick={() => setDateRange(undefined)}
+                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                    >
+                        <X size={12} />
+                    </button>
+                </Badge>
+            )}
           </div>
         </div>
 
@@ -460,7 +458,7 @@ export default function AssignmentsHubPage() {
                 <div className="table-wrap">
                     <table className="tbl">
                         <thead>
-                            <tr>
+                            <tr className="bg-bg-tertiary">
                                 <th className="text-left pl-6">Assignment Identification</th>
                                 <th className="text-center">Client & Service Result</th>
                                 <th className="text-center">Deployment Coordinates</th>
@@ -472,17 +470,17 @@ export default function AssignmentsHubPage() {
                             {archivedWorkOrders.map(wo => {
                                 const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
                                 return (
-                                    <tr key={wo.id} className="cursor-pointer" onClick={() => handleCardClick(wo)}>
-                                        <td className="text-left pl-6">
+                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
+                                        <td className="text-left pl-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-center">
-                                                    <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                    <div className="cell-id font-mono text-brand-red">{wo.id.toUpperCase()}</div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td className="py-4">
                                             <div className="flex flex-col items-center justify-center">
                                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
                                                     <Briefcase size={12}/> {wo.clientName}
@@ -492,23 +490,26 @@ export default function AssignmentsHubPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                                        <td className="py-4">
+                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                                 <MapPin size={12} className="text-brand-red shrink-0" />
                                                 <span>{wo.location}</span>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className="flex flex-col items-center justify-center text-center">
-                                                <span className="text-xs font-bold text-text-primary uppercase">{formatDateDisplay(wo.scheduleDate)}</span>
+                                        <td className="py-4 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight">
+                                                    <CalendarIcon size={12} className="text-text-muted" />
+                                                    {formatDateDisplay(wo.scheduleDate)}
+                                                </div>
                                                 <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
                                                     <User size={10}/> {tech?.name || 'Field Ops'}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="text-center">
+                                        <td className="py-4 text-center">
                                             <div className="flex items-center justify-center">
-                                            <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
+                                              <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
                                             </div>
                                         </td>
                                     </tr>
@@ -812,6 +813,6 @@ export default function AssignmentsHubPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
-    </Tabs>
+    </div>
   );
 }

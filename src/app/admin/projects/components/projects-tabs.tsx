@@ -27,7 +27,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
     return (
         <Tabs defaultValue="active" className="w-full">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <TabsList className="tabs !mb-0">
                       <TabsTrigger value="active" className="tab">
                         Active Projects <span className="tab-count">({activeProjects.length})</span>
@@ -55,7 +55,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                        <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
                             <Calendar
                                 initialFocus
                                 mode="range"
@@ -66,9 +66,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                             />
                         </PopoverContent>
                     </Popover>
-                </div>
 
-                <div className="flex items-center gap-3">
                     {dateRange?.from && (
                         <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
                             <CalendarIcon size={12} />

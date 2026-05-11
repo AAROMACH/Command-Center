@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,7 +77,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                 <thead>
                     <tr className="bg-bg-tertiary">
                         <th className="text-center w-[160px] pl-0">Status & ID</th>
-                        <th className="text-left pl-0">Project Intelligence</th>
+                        <th className="text-left pl-0">Project Identification</th>
                         <th className="text-center">Project Lead</th>
                         <th className="text-left pl-0">Site Coordinates</th>
                         <th className="text-left pl-0">Schedule Date</th>
@@ -103,7 +103,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                 </td>
                                 <td className="!py-4 text-left pl-0">
                                     <div className="flex flex-col min-w-0">
-                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
+                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</div>
                                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
                                     </div>
                                 </td>
@@ -125,7 +125,7 @@ export function ProjectsClient({ projects, technicians }: { projects: Project[],
                                 <td className="py-4 pl-0">
                                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="truncate max-w-[180px]">{project.location}</span>
+                                        <span className="whitespace-normal max-w-[180px]">{project.location}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 pl-0">

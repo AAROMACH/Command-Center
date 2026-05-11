@@ -136,12 +136,41 @@ export default function AssignmentsHubPage() {
   }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status !== 'completed' && wo.assignedTechnicianId),
+    filteredWorkOrders.filter(wo => wo.status !== 'completed'),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status === 'completed'),
   [filteredWorkOrders]);
+
+  const groupedByClient = useMemo(() => {
+    if (sortBy !== 'client') return null;
+    const uniqueClientNames = Array.from(new Set(activeWorkOrders.map(wo => wo.clientName)));
+    
+    // Registered clients from directory
+    const registeredClients = technicians.filter(t => t.roles?.includes('client') || t.clientCompany);
+    
+    const regGroups = registeredClients
+        .map(client => {
+            const clientName = client.clientCompany || client.name;
+            const jobs = activeWorkOrders.filter(wo => wo.clientName === clientName);
+            if (jobs.length === 0) return null;
+            return { client, jobs, isRegistered: true };
+        })
+        .filter(Boolean);
+
+    const unregNames = uniqueClientNames.filter(name => 
+        !registeredClients.some(c => (c.clientCompany || c.name) === name)
+    );
+
+    const unregGroups = unregNames.map(name => ({
+        client: { name, avatarUrl: '', businessType: 'Unregistered Entity' },
+        jobs: activeWorkOrders.filter(wo => wo.clientName === name),
+        isRegistered: false
+    }));
+
+    return [...regGroups, ...unregGroups];
+  }, [activeWorkOrders, sortBy]);
 
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -184,45 +213,6 @@ export default function AssignmentsHubPage() {
     ));
     setIsEditDialogOpen(false);
     toast({ title: "Registry Updated", description: "Assignment parameters committed." });
-  };
-
-  const clientsRegistry = useMemo(() => {
-    return technicians.filter(t => 
-        t.roles?.includes('client') || 
-        t.role.toLowerCase().includes('client') || 
-        t.clientCompany
-    );
-  }, []);
-
-  const selectedClient = useMemo(() => {
-    return clientsRegistry.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clientsRegistry]);
-
-  const filteredRegistry = useMemo(() => {
-    return clientsRegistry.filter(c => 
-        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
-        c.id.toLowerCase().includes(registrySearch.toLowerCase())
-    );
-  }, [registrySearch, clientsRegistry]);
-
-  const selectClientFromRegistry = (client: Technician) => {
-    const name = client.clientCompany || client.name;
-    if (editedOrder) {
-        setEditedOrder({
-            ...editedOrder,
-            clientName: name,
-            location: '' 
-        });
-    }
-    setIsRegistryOpen(false);
-  };
-
-  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
-    if (editedOrder) {
-        setEditedOrder({ ...editedOrder, location: site.location });
-    }
-    setIsSiteRegistryOpen(false);
   };
 
   const hasActiveFilters = !!dateRange?.from || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
@@ -418,72 +408,34 @@ export default function AssignmentsHubPage() {
                 )}
 
                 {/* SORT BY CLIENT GROUPING */}
-                {sortBy === 'client' && (
+                {sortBy === 'client' && groupedByClient && (
                     <div className="grid grid-cols-1 gap-8">
-                        {(() => {
-                            const uniqueClientNames = Array.from(new Set(activeWorkOrders.map(wo => wo.clientName)));
-                            const registeredClients = clientsRegistry.filter(c => uniqueClientNames.includes(c.clientCompany || c.name));
-                            const unregisteredClients = uniqueClientNames.filter(name => !clientsRegistry.some(c => (c.clientCompany || c.name) === name));
-
-                            return (
-                                <>
-                                    {/* Registered Clients First */}
-                                    {registeredClients.map(client => {
-                                        const clientName = client.clientCompany || client.name;
-                                        const clientJobs = activeWorkOrders.filter(wo => wo.clientName === clientName);
-                                        return (
-                                            <div key={client.id} className="space-y-4">
-                                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
-                                                    <div className="relative">
-                                                        <Avatar className="h-10 w-10 border border-border-sub">
-                                                            <AvatarImage src={client.avatarUrl} />
-                                                            <AvatarFallback><Building2 size={16} /></AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary">
-                                                            <Briefcase size={8} className="text-white" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{clientName}</h3>
-                                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
-                                                            {client.businessType || 'Strategic Partner'} • {clientJobs.length} Active Jobs
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    {clientJobs.map(job => (
-                                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {/* Unregistered Clients at Bottom */}
-                                    {unregisteredClients.map(name => {
-                                        const clientJobs = activeWorkOrders.filter(wo => wo.clientName === name);
-                                        return (
-                                            <div key={name} className="space-y-4">
-                                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 opacity-70">
-                                                    <div className="p-2.5 bg-bg-tertiary rounded border border-border-sub text-text-muted">
-                                                        <Building2 size={20} />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{name}</h3>
-                                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Unregistered Entity • {clientJobs.length} Active Jobs</p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    {clientJobs.map(job => (
-                                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </>
-                            );
-                        })()}
+                        {groupedByClient.map((group, idx) => (
+                            <div key={group.client.name + idx} className="space-y-4">
+                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                                    <div className="relative">
+                                        <Avatar className="h-10 w-10 border border-border-sub">
+                                            <AvatarImage src={group.client.avatarUrl} />
+                                            <AvatarFallback><Building2 size={16} /></AvatarFallback>
+                                        </Avatar>
+                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary">
+                                            <Briefcase size={8} className="text-white" />
+                                        </div>
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{group.client.name}</h3>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
+                                            {group.client.businessType || 'Strategic Partner'} • {group.jobs.length} Active Jobs
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {group.jobs.map(job => (
+                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -572,11 +524,6 @@ export default function AssignmentsHubPage() {
                                 : "No active jobs matching search criteria"
                             }
                         </p>
-                        {hasActiveFilters && (
-                            <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={resetFilters}>
-                                Reset All Constraints
-                            </button>
-                        )}
                     </div>
                 )}
             </TabsContent>
@@ -671,18 +618,6 @@ export default function AssignmentsHubPage() {
             </DialogHeader>
             {editedOrder && (
                 <div className="px-6 py-4 space-y-6">
-                    {editedOrder.payChangeRequest && (
-                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <AlertTriangle className="text-brand-red h-5 w-5" />
-                                <div>
-                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Pay Change Pending Approval</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Requested: ${editedOrder.payChangeRequest.pay} ({editedOrder.payChangeRequest.payType})</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div className="space-y-2">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
                         <Textarea 
@@ -696,120 +631,44 @@ export default function AssignmentsHubPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                            <div className="space-y-1.5">
-                                <Input 
-                                    placeholder="Type client name..." 
-                                    value={editedOrder.clientName}
-                                    onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
-                                    className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
-                                />
-                                <button 
-                                    type="button" 
-                                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5 bg-transparent"
-                                    onClick={() => setIsRegistryOpen(true)}
-                                >
-                                    <Search size={12}/> Search Registry
-                                </button>
-                            </div>
+                            <Input 
+                                placeholder="Type client name..." 
+                                value={editedOrder.clientName}
+                                onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
+                                className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red"
+                            />
                         </div>
-
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                            <div className="space-y-1.5">
-                                <Input 
-                                    placeholder="Full address or coordinates..." 
-                                    value={editedOrder.location}
-                                    onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
-                                    className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
-                                />
-                                <button 
-                                    type="button" 
-                                    disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
-                                    className={cn(
-                                        "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5 bg-transparent",
-                                        (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
-                                            ? "text-text-muted opacity-50 cursor-not-allowed" 
-                                            : "text-accent-gold hover:bg-accent-gold/10"
-                                    )}
-                                    onClick={() => setIsSiteRegistryOpen(true)}
-                                >
-                                    <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                                </button>
-                            </div>
+                            <Input 
+                                placeholder="Full address..." 
+                                value={editedOrder.location}
+                                onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
+                                className="bg-bg-primary h-10 text-xs focus:border-brand-red"
+                            />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-                        <Input 
-                            type="number"
-                            placeholder="0.00"
-                            value={editedOrder.pay || ''}
-                            onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})}
-                            className="bg-bg-primary h-10 font-mono text-text-green text-sm"
-                        />
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                            <Input 
+                                type="number"
+                                value={editedOrder.pay || ''}
+                                onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})}
+                                className="bg-bg-primary h-10 font-mono text-text-green text-sm"
+                            />
                         </div>
                         <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
-                        <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
-                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="fixed">Fixed Rate</SelectItem>
-                                <SelectItem value="hourly">Hourly Logic</SelectItem>
-                                <SelectItem value="blended">Blended / Complex</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
-                        <Input 
-                            type="date"
-                            value={editedOrder.scheduleDate}
-                            onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})}
-                            className="bg-bg-primary h-10 text-xs"
-                        />
-                        </div>
-                        <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-                        <Input 
-                            placeholder="e.g. 10:00 AM EST"
-                            value={editedOrder.scheduleTime}
-                            onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})}
-                            className="bg-bg-primary h-10 text-xs"
-                        />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
-                        <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
-                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="low">Low</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="critical">Critical</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        </div>
-                        <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-                        <Select value={editedOrder.projectType} onValueChange={(val: any) => setEditedOrder({...editedOrder, projectType: val})}>
-                            <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Installation">Installation</SelectItem>
-                                <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
-                                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                <SelectItem value="Survey">Survey</SelectItem>
-                                <SelectItem value="Repair">Repair</SelectItem>
-                                <SelectItem value="Decommission">Decommission</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                            <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
+                                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fixed">Fixed Rate</SelectItem>
+                                    <SelectItem value="hourly">Hourly Logic</SelectItem>
+                                    <SelectItem value="blended">Blended / Complex</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 

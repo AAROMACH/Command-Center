@@ -331,6 +331,24 @@ export default function AssignmentsHubPage() {
                 Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
               </TabsTrigger>
             </TabsList>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {dateRange?.from && (
+                <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                    <CalendarIcon size={12} />
+                    <span className="text-[10px] uppercase font-bold tracking-widest">
+                      {format(dateRange.from, 'MM-dd-yyyy')}
+                      {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                    </span>
+                    <button 
+                        onClick={() => setDateRange(undefined)}
+                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                    >
+                        <X size={12} />
+                    </button>
+                </Badge>
+            )}
 
             <Popover>
               <PopoverTrigger asChild>
@@ -347,7 +365,7 @@ export default function AssignmentsHubPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
+              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                 <Calendar
                   initialFocus
                   mode="range"
@@ -358,22 +376,6 @@ export default function AssignmentsHubPage() {
                 />
               </PopoverContent>
             </Popover>
-
-            {dateRange?.from && (
-                <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                    <CalendarIcon size={12} />
-                    <span className="text-[10px] uppercase font-bold tracking-widest">
-                      {format(dateRange.from, 'MM-dd-yyyy')}
-                      {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                    </span>
-                    <button 
-                        onClick={() => setDateRange(undefined)}
-                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                    >
-                        <X size={12} />
-                    </button>
-                </Badge>
-            )}
           </div>
         </div>
 
@@ -525,6 +527,7 @@ export default function AssignmentsHubPage() {
                 </div>
             </TabsContent>
         </div>
+      </Tabs>
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 
@@ -540,7 +543,7 @@ export default function AssignmentsHubPage() {
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{editedOrder?.id.toUpperCase()}</span></p>
             </DialogHeader>
             {editedOrder && (
                 <div className="px-6 py-4 space-y-6">
@@ -813,7 +816,6 @@ export default function AssignmentsHubPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
-    </Tabs>
     </div>
   );
 }

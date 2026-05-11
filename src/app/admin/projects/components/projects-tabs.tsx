@@ -39,6 +39,24 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                         Completed <span className="tab-count">({completedProjects.length})</span>
                       </TabsTrigger>
                     </TabsList>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {dateRange?.from && (
+                        <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
+                            <CalendarIcon size={12} />
+                            <span className="text-[10px] uppercase font-bold tracking-widest">
+                                {format(dateRange.from, 'MM-dd-yyyy')}
+                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
+                            </span>
+                            <button 
+                                onClick={() => setDateRange(undefined)}
+                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </Badge>
+                    )}
 
                     <Popover>
                         <PopoverTrigger asChild>
@@ -55,7 +73,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
+                        <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                             <Calendar
                                 initialFocus
                                 mode="range"
@@ -66,22 +84,6 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                             />
                         </PopoverContent>
                     </Popover>
-
-                    {dateRange?.from && (
-                        <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                            <CalendarIcon size={12} />
-                            <span className="text-[10px] uppercase font-bold tracking-widest">
-                                {format(dateRange.from, 'MM-dd-yyyy')}
-                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                            </span>
-                            <button 
-                                onClick={() => setDateRange(undefined)}
-                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </Badge>
-                    )}
                 </div>
             </div>
             

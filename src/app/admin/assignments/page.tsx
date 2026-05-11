@@ -18,9 +18,7 @@ import {
   X,
   ArrowUpDown,
   SlidersHorizontal,
-  FileCheck,
   Building2,
-  Table as TableIcon,
   ChevronRight,
   DollarSign
 } from "lucide-react";
@@ -72,11 +70,9 @@ export default function AssignmentsHubPage() {
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeSources, setActiveSources] = useState<string[]>([]);
 
-  // Edit Logic
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
-  // Registry Popup States for Edit Flow
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
@@ -342,7 +338,7 @@ export default function AssignmentsHubPage() {
             </TabsList>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-auto">
             {dateRange?.from && (
                 <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
                     <CalendarIcon size={12} />
@@ -670,7 +666,7 @@ export default function AssignmentsHubPage() {
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{editedOrder?.id.toUpperCase()}</span></p>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
             </DialogHeader>
             {editedOrder && (
                 <div className="px-6 py-4 space-y-6">

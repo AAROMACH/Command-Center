@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,10 @@ import {
   X,
   ArrowUpDown,
   SlidersHorizontal,
-  FileCheck
+  FileCheck,
+  Building2,
+  Table as TableIcon,
+  ChevronRight
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -55,7 +58,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 
-type SortOption = 'date' | 'client' | 'status' | 'pay';
+type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -123,6 +126,10 @@ export default function AssignmentsHubPage() {
           case 'client': return a.clientName.localeCompare(b.clientName);
           case 'status': return a.status.localeCompare(b.status);
           case 'pay': return b.pay - a.pay;
+          case 'tech': 
+            const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
+            const techB = technicians.find(t => t.id === b.assignedTechnicianId)?.name || 'Unassigned';
+            return techA.localeCompare(techB);
           case 'date':
           default:
             return a.scheduleDate.localeCompare(b.scheduleDate);
@@ -181,7 +188,7 @@ export default function AssignmentsHubPage() {
     toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
 
-  const clients = useMemo(() => {
+  const clientsRegistry = useMemo(() => {
     return technicians.filter(t => 
         t.roles?.includes('client') || 
         t.role.toLowerCase().includes('client') || 
@@ -190,16 +197,16 @@ export default function AssignmentsHubPage() {
   }, []);
 
   const selectedClient = useMemo(() => {
-    return clients.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
-  }, [editedOrder?.clientName, clients]);
+    return clientsRegistry.find(c => (c.clientCompany || c.name) === editedOrder?.clientName);
+  }, [editedOrder?.clientName, clientsRegistry]);
 
   const filteredRegistry = useMemo(() => {
-    return clients.filter(c => 
+    return clientsRegistry.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
         c.id.toLowerCase().includes(registrySearch.toLowerCase())
     );
-  }, [registrySearch, clients]);
+  }, [registrySearch, clientsRegistry]);
 
   const selectClientFromRegistry = (client: Technician) => {
     const name = client.clientCompany || client.name;
@@ -253,6 +260,7 @@ export default function AssignmentsHubPage() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="date" className="text-[10px] uppercase font-bold">By Date</SelectItem>
+                    <SelectItem value="tech" className="text-[10px] uppercase font-bold">By Technician</SelectItem>
                     <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
                     <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
                     <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
@@ -381,79 +389,198 @@ export default function AssignmentsHubPage() {
 
         <div className="space-y-6">
             <TabsContent value="schedule" className="mt-0 space-y-6">
-                <div className="grid grid-cols-1 gap-8">
-                    {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
-                        const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
-                        if (techJobs.length === 0) return null;
+                {/* SORT BY TECHNICIAN GROUPING */}
+                {sortBy === 'tech' && (
+                    <div className="grid grid-cols-1 gap-8">
+                        {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
+                            const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
+                            if (techJobs.length === 0) return null;
 
-                        return (
-                            <div key={tech.id} className="space-y-4">
-                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
-                                    <Avatar className="h-10 w-10 border border-border-sub">
-                                        <AvatarImage src={tech.avatarUrl} />
-                                        <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="text-left">
-                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
+                            return (
+                                <div key={tech.id} className="space-y-4">
+                                    <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                                        <Avatar className="h-10 w-10 border border-border-sub">
+                                            <AvatarImage src={tech.avatarUrl} />
+                                            <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="text-left">
+                                            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
+                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {techJobs.map(job => (
+                                            <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {techJobs.map(job => (
-                                        <Card 
-                                            key={job.id} 
-                                            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
-                                            onClick={() => handleCardClick(job)}
-                                        >
-                                            <CardContent className="p-4 space-y-3">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
-                                                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">
-                                                                {job.status}
-                                                            </Badge>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* SORT BY CLIENT GROUPING */}
+                {sortBy === 'client' && (
+                    <div className="grid grid-cols-1 gap-8">
+                        {(() => {
+                            const uniqueClientNames = Array.from(new Set(activeWorkOrders.map(wo => wo.clientName)));
+                            const registeredClients = clientsRegistry.filter(c => uniqueClientNames.includes(c.clientCompany || c.name));
+                            const unregisteredClients = uniqueClientNames.filter(name => !clientsRegistry.some(c => (c.clientCompany || c.name) === name));
+
+                            return (
+                                <>
+                                    {/* Registered Clients First */}
+                                    {registeredClients.map(client => {
+                                        const clientName = client.clientCompany || client.name;
+                                        const clientJobs = activeWorkOrders.filter(wo => wo.clientName === clientName);
+                                        return (
+                                            <div key={client.id} className="space-y-4">
+                                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                                                    <div className="relative">
+                                                        <Avatar className="h-10 w-10 border border-border-sub">
+                                                            <AvatarImage src={client.avatarUrl} />
+                                                            <AvatarFallback><Building2 size={16} /></AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary">
+                                                            <Briefcase size={8} className="text-white" />
                                                         </div>
-                                                        <div className="flex flex-col min-w-0 text-left">
-                                                            <p className="text-xs font-bold text-text-primary uppercase leading-tight">{job.description}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
-                                                        </div>
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{clientName}</h3>
+                                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
+                                                            {client.businessType || 'Strategic Partner'} • {clientJobs.length} Active Jobs
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-start">
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                                                        <Clock size={12} className="text-brand-red" />
-                                                        {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {clientJobs.map(job => (
+                                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Unregistered Clients at Bottom */}
+                                    {unregisteredClients.map(name => {
+                                        const clientJobs = activeWorkOrders.filter(wo => wo.clientName === name);
+                                        return (
+                                            <div key={name} className="space-y-4">
+                                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 opacity-70">
+                                                    <div className="p-2.5 bg-bg-tertiary rounded border border-border-sub text-text-muted">
+                                                        <Building2 size={20} />
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
-                                                        <MapPin size={12} className="text-brand-red shrink-0" />
-                                                        <span>{job.location}</span>
+                                                    <div className="text-left">
+                                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{name}</h3>
+                                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Unregistered Entity • {clientJobs.length} Active Jobs</p>
                                                     </div>
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    {activeWorkOrders.length === 0 && (
-                        <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                            <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">
-                                {dateRange?.from 
-                                    ? `No active jobs found for selected range`
-                                    : "No active jobs matching search criteria"
-                                }
-                            </p>
-                            {hasActiveFilters && (
-                                <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={resetFilters}>
-                                    Reset All Constraints
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {clientJobs.map(job => (
+                                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
+
+                {/* LIST FORM FOR OTHER SORTS */}
+                {(sortBy === 'date' || sortBy === 'status' || sortBy === 'pay') && (
+                    <div className="table-wrap">
+                        <table className="tbl">
+                            <thead>
+                                <tr className="bg-bg-tertiary">
+                                    <th className="text-left pl-6 w-[180px]">Status & ID</th>
+                                    <th className="text-left pl-0">Assignment Identification</th>
+                                    <th className="text-center">Operative</th>
+                                    <th className="text-left pl-0">Site Coordinates</th>
+                                    <th className="text-left pl-0">Schedule Date</th>
+                                    <th className="text-right pr-6">Financials</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeWorkOrders.map(wo => {
+                                    const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+                                    return (
+                                        <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
+                                            <td className="text-left pl-6 py-4">
+                                                <div className="flex flex-col items-start gap-1.5">
+                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
+                                                    <div className="cell-id font-mono text-brand-red font-bold">{wo.id.toUpperCase()}</div>
+                                                </div>
+                                            </td>
+                                            <td className="text-left pl-0 py-4">
+                                                <div className="flex flex-col min-w-0">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{wo.clientName}</p>
+                                                </div>
+                                            </td>
+                                            <td className="py-4">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    {tech ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="h-8 w-8 border border-border-sub">
+                                                                <AvatarImage src={tech.avatarUrl} />
+                                                                <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
+                                                        </div>
+                                                    ) : <span className="text-[10px] text-text-muted italic">Unallocated</span>}
+                                                </div>
+                                            </td>
+                                            <td className="py-4 pl-0">
+                                                <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                                    <MapPin size={11} className="text-brand-red shrink-0" />
+                                                    <span>{wo.location}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 pl-0">
+                                                <div className="flex flex-col items-start justify-center gap-1.5">
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
+                                                        <CalendarIcon size={13} className="text-text-muted shrink-0" />
+                                                        <span>{formatDateDisplay(wo.scheduleDate)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                                                        <Clock size={13} className="text-text-muted shrink-0" />
+                                                        <span>{wo.scheduleTime}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="text-right pr-6 py-4">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-sm font-mono font-bold text-text-green">${wo.pay.toFixed(2)}</span>
+                                                    <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {activeWorkOrders.length === 0 && (
+                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                        <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">
+                            {dateRange?.from 
+                                ? `No active jobs found for selected range`
+                                : "No active jobs matching search criteria"
+                            }
+                        </p>
+                        {hasActiveFilters && (
+                            <button className="mt-4 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:underline" onClick={resetFilters}>
+                                Reset All Constraints
+                            </button>
+                        )}
+                    </div>
+                )}
             </TabsContent>
 
             <TabsContent value="archive" className="mt-0">
@@ -461,7 +588,7 @@ export default function AssignmentsHubPage() {
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
-                                <th className="text-left pl-6">Assignment Identification</th>
+                                <th className="text-left pl-6 w-[200px]">Assignment Identification</th>
                                 <th className="text-center">Client & Service Result</th>
                                 <th className="text-center">Deployment Coordinates</th>
                                 <th className="text-center">Finalized Date</th>
@@ -527,7 +654,6 @@ export default function AssignmentsHubPage() {
                 </div>
             </TabsContent>
         </div>
-      </Tabs>
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 
@@ -818,4 +944,57 @@ export default function AssignmentsHubPage() {
       </Dialog>
     </div>
   );
+}
+
+function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo: WorkOrder) => void }) {
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+          const parts = dateStr.split(/[-/]/);
+          let d;
+          if (parts[0].length === 4) { d = new Date(dateStr); } 
+          else { 
+            const [m, day, y] = parts;
+            d = new Date(`${y}-${m}-${day}T12:00:00`);
+          }
+          return format(d, 'MM-dd-yyyy');
+        } catch (e) {
+          return dateStr;
+        }
+    };
+
+    return (
+        <Card 
+            key={job.id} 
+            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group"
+            onClick={() => onCardClick(job)}
+        >
+            <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center">
+                            <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
+                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">
+                                {job.status}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-col min-w-0 text-left">
+                            <p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors">{job.description}</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-start">
+                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
+                        <Clock size={12} className="text-brand-red" />
+                        {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
+                        <MapPin size={12} className="text-brand-red shrink-0" />
+                        <span>{job.location}</span>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
 }

@@ -63,7 +63,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                 if (clientProjects.length === 0) return null;
                 return { client, projects: clientProjects, isRegistered: true };
             })
-            .filter(Boolean);
+            .filter((group): group is { client: any; projects: Project[]; isRegistered: boolean } => group !== null);
 
         const unregNames = uniqueClientNames.filter(name => 
             !registeredClients.some(c => (c.clientCompany || c.name) === name)
@@ -75,7 +75,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
             isRegistered: false
         }));
 
-        return [...regGroups, ...unregGroups] as { client: any; projects: Project[]; isRegistered: boolean }[];
+        return [...regGroups, ...unregGroups];
     }, [projects, sortBy, technicians]);
 
     const totalPages = Math.ceil(projects.length / itemsPerPage);
@@ -115,8 +115,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                         <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
-                                    <AvatarImage src={group.client.avatarUrl} />
-                                    <AvatarFallback><Building2 size={16} /></AvatarFallback>
+                                    <AvatarImage src={group.client.avatarUrl} /><AvatarFallback><Building2 size={16} /></AvatarFallback>
                                 </Avatar>
                                 <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary">
                                     <Briefcase size={8} className="text-white" />

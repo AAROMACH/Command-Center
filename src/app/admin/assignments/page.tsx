@@ -130,7 +130,6 @@ export default function AssignmentsHubPage() {
       });
   }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
-  // CRITICAL FIX: Unassigned jobs should not be in active assignments
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => (wo.status === 'assigned' || wo.status === 'in-progress')),
   [filteredWorkOrders]);
@@ -151,7 +150,7 @@ export default function AssignmentsHubPage() {
             if (jobs.length === 0) return null;
             return { client, jobs, isRegistered: true };
         })
-        .filter(Boolean);
+        .filter((group): group is { client: Technician; jobs: WorkOrder[]; isRegistered: boolean } => group !== null);
 
     const unregNames = uniqueClientNames.filter(name => 
         !registeredClients.some(c => (c.clientCompany || c.name) === name)
@@ -163,7 +162,7 @@ export default function AssignmentsHubPage() {
         isRegistered: false
     }));
 
-    return [...regGroups, ...unregGroups] as { client: any; jobs: WorkOrder[]; isRegistered: boolean }[];
+    return [...regGroups, ...unregGroups];
   }, [activeWorkOrders, sortBy]);
 
   const formatDateDisplay = (dateStr: string) => {
@@ -525,6 +524,7 @@ export default function AssignmentsHubPage() {
                 </div>
             </TabsContent>
         </div>
+      </Tabs>
 
       <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

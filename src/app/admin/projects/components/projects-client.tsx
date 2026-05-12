@@ -114,7 +114,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
             <div className="grid grid-cols-1 gap-8">
                 {groupedByClient.map((group, idx) => (
                     <div key={group.client.name + idx} className="space-y-4">
-                        <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                        <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={group.client.avatarUrl} />
@@ -169,8 +169,8 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
                                 <td className="pl-0 py-4">
                                     <div className="flex flex-col items-center justify-center gap-1.5">
-                                        <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
                                         <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{project.id.toUpperCase()}</div>
+                                        <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
                                     </div>
                                 </td>
                                 <td className="!py-4 text-left pl-0">

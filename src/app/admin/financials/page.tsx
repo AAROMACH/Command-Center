@@ -9,6 +9,7 @@ import { expenses as initialExpenses, reports, weeklyLogs as initialWeeklyLogs, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';

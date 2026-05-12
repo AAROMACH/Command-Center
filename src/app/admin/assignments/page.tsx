@@ -19,7 +19,9 @@ import {
   SlidersHorizontal,
   Building2,
   ChevronRight,
-  DollarSign
+  DollarSign,
+  Pencil,
+  Eye
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -534,20 +536,59 @@ export default function AssignmentsHubPage() {
         
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-              <DialogHeader className="p-6 pb-2"><DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle><p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p></DialogHeader>
+              <DialogHeader className="p-6 pb-2">
+                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
+                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
+              </DialogHeader>
               {editedOrder && (
                   <div className="px-6 py-4 space-y-6">
-                      <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label><Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" /></div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                        <Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label><Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" /></div>
-                          <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label><Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" /></div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                            <Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                            <Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                          </div>
                       </div>
                       <Separator className="bg-border-sub" />
                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label><Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}><SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red"><SelectValue placeholder="Select Technician" /></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>{technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}</SelectContent></Select></div>
-                          <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label><Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}><SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">UNASSIGNED</SelectItem><SelectItem value="assigned">ASSIGNED</SelectItem><SelectItem value="in-progress">IN PROGRESS</SelectItem><SelectItem value="completed">COMPLETED</SelectItem></SelectContent></Select></div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                            <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                              <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
+                                <SelectValue placeholder="Select Technician" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                                {technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                            <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                              <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">UNASSIGNED</SelectItem>
+                                <SelectItem value="assigned">ASSIGNED</SelectItem>
+                                <SelectItem value="in-progress">IN PROGRESS</SelectItem>
+                                <SelectItem value="completed">COMPLETED</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                       </div>
-                      <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4"><Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button><Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Commit Assignment Updates</Button></DialogFooter>
+                      <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Commit Assignment Updates</Button>
+                      </DialogFooter>
                   </div>
               )}
           </DialogContent>

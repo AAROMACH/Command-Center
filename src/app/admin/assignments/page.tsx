@@ -131,7 +131,6 @@ export default function AssignmentsHubPage() {
       });
   }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
-  // EXCLUDE UNASSIGNED FROM ACTIVE ASSIGNMENTS
   const activeWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
   [filteredWorkOrders]);
@@ -143,8 +142,6 @@ export default function AssignmentsHubPage() {
   const groupedByClient = useMemo(() => {
     if (sortBy !== 'client') return null;
     const uniqueClientNames = Array.from(new Set(activeWorkOrders.map(wo => wo.clientName)));
-    
-    // Registered clients from directory
     const registeredClients = technicians.filter(t => t.roles?.includes('client') || t.clientCompany);
     
     const regGroups = registeredClients
@@ -314,17 +311,15 @@ export default function AssignmentsHubPage() {
       </header>
 
       <Tabs defaultValue="schedule" className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-          <div className="flex items-center gap-3">
-            <TabsList className="tabs !mb-0">
-              <TabsTrigger value="schedule" className="tab">
-                Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
-              </TabsTrigger>
-              <TabsTrigger value="archive" className="tab">
-                Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+          <TabsList className="tabs !mb-0">
+            <TabsTrigger value="schedule" className="tab">
+              Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="archive" className="tab">
+              Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
+            </TabsTrigger>
+          </TabsList>
 
           <div className="flex items-center gap-3">
             {dateRange?.from && (
@@ -334,12 +329,7 @@ export default function AssignmentsHubPage() {
                       {format(dateRange.from, 'MM-dd-yyyy')}
                       {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
                     </span>
-                    <button 
-                        onClick={() => setDateRange(undefined)}
-                        className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                    >
-                        <X size={12} />
-                    </button>
+                    <button onClick={() => setDateRange(undefined)} className="hover:bg-brand-red/20 rounded-full p-0.5"><X size={12} /></button>
                 </Badge>
             )}
 
@@ -347,26 +337,11 @@ export default function AssignmentsHubPage() {
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={cn("h-8 px-4 border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
                   <CalendarIcon size={12} className="mr-2 text-brand-red" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</>
-                    ) : (
-                      format(dateRange.from, "MM-dd-yyyy")
-                    )
-                  ) : (
-                    "Select Date"
-                  )}
+                  {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")) : "Select Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={1}
-                />
+                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
               </PopoverContent>
             </Popover>
           </div>
@@ -374,19 +349,16 @@ export default function AssignmentsHubPage() {
 
         <div className="space-y-6">
             <TabsContent value="schedule" className="mt-0 space-y-6">
-                {/* SORT BY TECHNICIAN GROUPING */}
                 {sortBy === 'tech' && (
                     <div className="grid grid-cols-1 gap-8">
                         {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
                             const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
                             if (techJobs.length === 0) return null;
-
                             return (
                                 <div key={tech.id} className="space-y-4">
                                     <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
                                         <Avatar className="h-10 w-10 border border-border-sub">
-                                            <AvatarImage src={tech.avatarUrl} />
-                                            <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                            <AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                         <div className="text-left">
                                             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
@@ -394,9 +366,7 @@ export default function AssignmentsHubPage() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {techJobs.map(job => (
-                                            <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
-                                        ))}
+                                        {techJobs.map(job => <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />)}
                                     </div>
                                 </div>
                             );
@@ -404,7 +374,6 @@ export default function AssignmentsHubPage() {
                     </div>
                 )}
 
-                {/* SORT BY CLIENT GROUPING */}
                 {sortBy === 'client' && groupedByClient && (
                     <div className="grid grid-cols-1 gap-8">
                         {groupedByClient.map((group, idx) => (
@@ -412,31 +381,23 @@ export default function AssignmentsHubPage() {
                                 <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
                                     <div className="relative">
                                         <Avatar className="h-10 w-10 border border-border-sub">
-                                            <AvatarImage src={group.client.avatarUrl} />
-                                            <AvatarFallback><Building2 size={16} /></AvatarFallback>
+                                            <AvatarImage src={group.client.avatarUrl} /><AvatarFallback><Building2 size={16} /></AvatarFallback>
                                         </Avatar>
-                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary">
-                                            <Briefcase size={8} className="text-white" />
-                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary"><Briefcase size={8} className="text-white" /></div>
                                     </div>
                                     <div className="text-left">
                                         <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{group.client.name}</h3>
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
-                                            {group.client.businessType || 'Strategic Partner'} • {group.jobs.length} Active Jobs
-                                        </p>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{group.client.businessType || 'Strategic Partner'} • {group.jobs.length} Active Jobs</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {group.jobs.map(job => (
-                                        <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />
-                                    ))}
+                                    {group.jobs.map(job => <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />)}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* LIST FORM FOR OTHER SORTS */}
                 {(sortBy === 'date' || sortBy === 'status' || sortBy === 'pay') && (
                     <div className="table-wrap">
                         <table className="tbl">
@@ -471,9 +432,8 @@ export default function AssignmentsHubPage() {
                                                 <div className="flex flex-col items-center justify-center">
                                                     {tech ? (
                                                         <div className="flex items-center gap-3">
-                                                            <Avatar className="h-8 w-8 border border-border-sub">
-                                                                <AvatarImage src={tech.avatarUrl} />
-                                                                <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                            <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
+                                                                <AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
                                                         </div>
@@ -482,27 +442,17 @@ export default function AssignmentsHubPage() {
                                             </td>
                                             <td className="py-4 pl-0">
                                                 <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                                    <MapPin size={11} className="text-brand-red shrink-0" />
-                                                    <span className="whitespace-normal">{wo.location}</span>
+                                                    <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal">{wo.location}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 pl-0">
                                                 <div className="flex flex-col items-start justify-center gap-1.5">
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
-                                                        <CalendarIcon size={13} className="text-text-muted shrink-0" />
-                                                        <span>{formatDateDisplay(wo.scheduleDate)}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
-                                                        <Clock size={13} className="text-text-muted shrink-0" />
-                                                        <span>{wo.scheduleTime}</span>
-                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold"><CalendarIcon size={13} className="text-text-muted shrink-0" /><span>{formatDateDisplay(wo.scheduleDate)}</span></div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono"><Clock size={13} className="text-text-muted shrink-0" /><span>{wo.scheduleTime}</span></div>
                                                 </div>
                                             </td>
                                             <td className="text-right pr-6 py-4">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-sm font-mono font-bold text-text-green">${wo.pay.toFixed(2)}</span>
-                                                    <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span>
-                                                </div>
+                                                <div className="flex flex-col items-end"><span className="text-sm font-mono font-bold text-text-green">${wo.pay.toFixed(2)}</span><span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span></div>
                                             </td>
                                         </tr>
                                     );
@@ -515,12 +465,7 @@ export default function AssignmentsHubPage() {
                 {activeWorkOrders.length === 0 && (
                     <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                         <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">
-                            {dateRange?.from 
-                                ? `No active jobs found for selected range`
-                                : "No active jobs matching search criteria"
-                            }
-                        </p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No active jobs found matching search criteria</p>
                     </div>
                 )}
             </TabsContent>
@@ -553,43 +498,27 @@ export default function AssignmentsHubPage() {
                                         </td>
                                         <td className="py-4">
                                             <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
-                                                    <Briefcase size={12}/> {wo.clientName}
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase">
-                                                    <CheckCircle2 size={14}/> Successfully Finalized
-                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1"><Briefcase size={12}/> {wo.clientName}</div>
+                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase"><CheckCircle2 size={14}/> Successfully Finalized</div>
                                             </div>
                                         </td>
                                         <td className="py-4">
-                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                                <MapPin size={12} className="text-brand-red shrink-0" />
-                                                <span className="whitespace-normal">{wo.location}</span>
-                                            </div>
+                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{wo.location}</span></div>
                                         </td>
                                         <td className="py-4 text-center">
                                             <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight">
-                                                    <CalendarIcon size={12} className="text-text-muted" />
-                                                    {formatDateDisplay(wo.scheduleDate)}
-                                                </div>
-                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase">
-                                                    <User size={10}/> {tech?.name || 'Field Ops'}
-                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}</div>
+                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase"><User size={10}/> {tech?.name || 'Field Ops'}</div>
                                             </div>
                                         </td>
                                         <td className="py-4 text-center">
-                                            <div className="flex items-center justify-center">
-                                              <Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge>
-                                            </div>
+                                            <div className="flex items-center justify-center"><Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge></div>
                                         </td>
                                     </tr>
                                 )
                             })}
                             {archivedWorkOrders.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching criteria.</td>
-                                </tr>
+                                <tr><td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -598,115 +527,23 @@ export default function AssignmentsHubPage() {
         </div>
       </Tabs>
 
-      <JobDetailDialog 
-        isOpen={isDetailOpen} 
-        setIsOpen={setIsDetailOpen} 
-        mission={selectedJob} 
-        onEdit={(m) => {
-          setIsDetailOpen(false);
-          handleOpenEditDialog(m);
-        }}
-      />
-
+      <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-            <DialogHeader className="p-6 pb-2">
-                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
-            </DialogHeader>
+            <DialogHeader className="p-6 pb-2"><DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle><p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p></DialogHeader>
             {editedOrder && (
                 <div className="px-6 py-4 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-                        <Textarea 
-                            placeholder="Primary objective and requirements..." 
-                            value={editedOrder.description}
-                            onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})}
-                            className="bg-bg-primary border-border-sub h-20 text-xs"
-                        />
-                    </div>
-
+                    <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label><Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" /></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                            <Input 
-                                placeholder="Type client name..." 
-                                value={editedOrder.clientName}
-                                onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})}
-                                className="bg-bg-primary h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                            <Input 
-                                placeholder="Full address..." 
-                                value={editedOrder.location}
-                                onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})}
-                                className="bg-bg-primary h-10 text-xs focus:border-brand-red"
-                            />
-                        </div>
+                        <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label><Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" /></div>
+                        <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label><Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" /></div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-                            <Input 
-                                type="number"
-                                value={editedOrder.pay || ''}
-                                onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})}
-                                className="bg-bg-primary h-10 font-mono text-text-green text-sm"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
-                            <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
-                                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="fixed">Fixed Rate</SelectItem>
-                                    <SelectItem value="hourly">Hourly Logic</SelectItem>
-                                    <SelectItem value="blended">Blended / Complex</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
                     <Separator className="bg-border-sub" />
-
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                            <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
-                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
-                                    <SelectValue placeholder="Select Technician" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                    {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
-                                        <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
-                            <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="unassigned">UNASSIGNED</SelectItem>
-                                    <SelectItem value="assigned">ASSIGNED</SelectItem>
-                                    <SelectItem value="in-progress">IN PROGRESS</SelectItem>
-                                    <SelectItem value="completed">COMPLETED</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label><Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}><SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red"><SelectValue placeholder="Select Technician" /></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>{technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label><Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}><SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">UNASSIGNED</SelectItem><SelectItem value="assigned">ASSIGNED</SelectItem><SelectItem value="in-progress">IN PROGRESS</SelectItem><SelectItem value="completed">COMPLETED</SelectItem></SelectContent></Select></div>
                     </div>
-
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                        <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
-                            Commit Assignment Updates
-                        </Button>
-                    </DialogFooter>
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4"><Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button><Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Commit Assignment Updates</Button></DialogFooter>
                 </div>
             )}
         </DialogContent>
@@ -733,35 +570,17 @@ function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo
     };
 
     return (
-        <Card 
-            key={job.id} 
-            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group"
-            onClick={() => onCardClick(job)}
-        >
+        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group" onClick={() => onCardClick(job)}>
             <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center">
-                            <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
-                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">
-                                {job.status}
-                            </Badge>
-                        </div>
-                        <div className="flex flex-col min-w-0 text-left">
-                            <p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{job.description}</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p>
-                        </div>
+                        <div className="flex flex-col items-center"><span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span><Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">{job.status}</Badge></div>
+                        <div className="flex flex-col min-w-0 text-left"><p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{job.description}</p><p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p></div>
                     </div>
                 </div>
                 <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-start">
-                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                        <Clock size={12} className="text-brand-red" />
-                        {job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
-                        <MapPin size={12} className="text-brand-red shrink-0" />
-                        <span className="whitespace-normal">{job.location}</span>
-                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight"><Clock size={12} className="text-brand-red" />{job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}</div>
+                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{job.location}</span></div>
                 </div>
             </CardContent>
         </Card>

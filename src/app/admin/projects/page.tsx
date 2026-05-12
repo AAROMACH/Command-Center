@@ -79,7 +79,7 @@ export default function ProjectsPage() {
   };
 
   const filteredProjects = useMemo(() => {
-    const getProgress = (project: Project) => {
+    const getProgressValue = (project: Project) => {
         const allTasks = project.phases.flatMap(phase => phase.tasks);
         if (allTasks.length === 0) return 0;
         const completedTasks = allTasks.filter(task => task.isCompleted).length;
@@ -124,7 +124,7 @@ export default function ProjectsPage() {
         switch (sortBy) {
           case 'name': return a.name.localeCompare(b.name);
           case 'client': return a.client.localeCompare(b.client);
-          case 'progress': return getProgress(b) - getProgress(a);
+          case 'progress': return getProgressValue(b) - getProgressValue(a);
           case 'date': 
           default:
             return b.startDate.localeCompare(a.startDate);
@@ -243,6 +243,7 @@ export default function ProjectsPage() {
           technicians={allTechnicians} 
           dateRange={dateRange}
           setDateRange={setDateRange}
+          sortBy={sortBy}
         />
       </div>
 

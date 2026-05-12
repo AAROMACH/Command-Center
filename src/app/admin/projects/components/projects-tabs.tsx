@@ -13,34 +13,35 @@ import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
+type SortOption = 'name' | 'date' | 'progress' | 'client';
+
 type ProjectsTabsProps = {
     projects: Project[];
     technicians: Technician[];
     dateRange?: DateRange;
     setDateRange: (range: DateRange | undefined) => void;
+    sortBy?: SortOption;
 };
 
-export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }: ProjectsTabsProps) {
+export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, sortBy }: ProjectsTabsProps) {
     const activeProjects = projects.filter(p => p.status === 'active');
     const onHoldProjects = projects.filter(p => p.status === 'on-hold');
     const completedProjects = projects.filter(p => p.status === 'completed');
 
     return (
         <Tabs defaultValue="active" className="w-full">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-                <div className="flex items-center gap-3">
-                    <TabsList className="tabs !mb-0">
-                      <TabsTrigger value="active" className="tab">
-                        Active Projects <span className="tab-count">({activeProjects.length})</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="on-hold" className="tab">
-                        On Hold <span className="tab-count">({onHoldProjects.length})</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="completed" className="tab">
-                        Completed <span className="tab-count">({completedProjects.length})</span>
-                      </TabsTrigger>
-                    </TabsList>
-                </div>
+            <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+                <TabsList className="tabs !mb-0">
+                  <TabsTrigger value="active" className="tab">
+                    Active Projects <span className="tab-count">({activeProjects.length})</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="on-hold" className="tab">
+                    On Hold <span className="tab-count">({onHoldProjects.length})</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="tab">
+                    Completed <span className="tab-count">({completedProjects.length})</span>
+                  </TabsTrigger>
+                </TabsList>
 
                 <div className="flex items-center gap-3">
                     {dateRange?.from && (
@@ -89,13 +90,13 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
             </div>
             
             <TabsContent value="active" className="mt-0">
-              <ProjectsClient projects={activeProjects} technicians={technicians} />
+              <ProjectsClient projects={activeProjects} technicians={technicians} sortBy={sortBy} />
             </TabsContent>
             <TabsContent value="on-hold" className="mt-0">
-              <ProjectsClient projects={onHoldProjects} technicians={technicians} />
+              <ProjectsClient projects={onHoldProjects} technicians={technicians} sortBy={sortBy} />
             </TabsContent>
             <TabsContent value="completed" className="mt-0">
-              <ProjectsClient projects={completedProjects} technicians={technicians} />
+              <ProjectsClient projects={completedProjects} technicians={technicians} sortBy={sortBy} />
             </TabsContent>
       </Tabs>
     );

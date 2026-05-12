@@ -36,11 +36,11 @@ function Calendar({
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 z-10 cursor-pointer"
         ),
         month_grid: "border-collapse w-full",
-        weekdays: "flex",
+        weekdays: "flex justify-center",
         weekday:
           "text-muted-foreground font-normal text-[0.8rem] flex items-center justify-center w-9 h-9",
         weeks: "flex flex-col gap-1 mt-1",
-        week: "flex",
+        week: "flex justify-center",
         day: "flex items-center justify-center p-0 h-9 w-9 text-sm relative focus-within:z-20",
         day_button: cn(
           buttonVariants({ variant: "ghost" }),

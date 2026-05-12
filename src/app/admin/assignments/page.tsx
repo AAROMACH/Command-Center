@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -78,6 +79,9 @@ export default function AssignmentsHubPage() {
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
+        // PRECISE FILTER: Only assigned and in-progress jobs allowed in Active Assignments
+        if (wo.status === 'unassigned' || wo.status === 'completed') return false;
+
         const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
         const query = searchQuery.toLowerCase();
         
@@ -92,11 +96,10 @@ export default function AssignmentsHubPage() {
             try {
                 const parts = wo.scheduleDate.split(/[-/]/);
                 let woDate;
-                if (parts[0].length === 4) {
-                    woDate = new Date(wo.scheduleDate);
-                } else {
-                    const [m, d, y] = parts;
-                    woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                if (parts[0].length === 4) { woDate = new Date(wo.scheduleDate); } 
+                else { 
+                  const [m, d, y] = parts;
+                  woDate = new Date(`${y}-${m}-${d}T12:00:00`);
                 }
                 
                 if (dateRange.from && dateRange.to) {
@@ -135,8 +138,12 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status === 'completed'),
-  [filteredWorkOrders]);
+    initialWorkOrders.filter(wo => wo.status === 'completed')
+      .filter(wo => {
+        const query = searchQuery.toLowerCase();
+        return wo.id.toLowerCase().includes(query) || wo.description.toLowerCase().includes(query) || wo.clientName.toLowerCase().includes(query);
+      }),
+  [initialWorkOrders, searchQuery]);
 
   const groupedByClient = useMemo(() => {
     if (sortBy !== 'client') return null;
@@ -179,14 +186,6 @@ export default function AssignmentsHubPage() {
     } catch (e) {
       return dateStr;
     }
-  };
-
-  const resetFilters = () => {
-    setDateRange(undefined);
-    setActivePriorities([]);
-    setActiveSources([]);
-    setSortBy('date');
-    toast({ title: "Audit Constraints Reset", description: "Search parameters and filters cleared." });
   };
 
   const handleCardClick = (wo: WorkOrder) => {
@@ -261,7 +260,7 @@ export default function AssignmentsHubPage() {
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
                       {hasActiveFilters && (
-                        <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                        <button onClick={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); setSortBy('date'); }} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                           <X size={10} /> Reset
                         </button>
                       )}
@@ -324,7 +323,7 @@ export default function AssignmentsHubPage() {
             <Popover>
               <PopoverTrigger asChild>
                 <div className={cn(
-                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group",
+                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
                     dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                 )}>
                     <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
@@ -338,7 +337,7 @@ export default function AssignmentsHubPage() {
                     </span>
                     {dateRange?.from && (
                         <button 
-                            className="ml-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                            className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
                             onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
                         >
                             <X size={10} />
@@ -531,30 +530,30 @@ export default function AssignmentsHubPage() {
                 </div>
             </TabsContent>
         </div>
-      </Tabs>
 
-      <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
-      
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-            <DialogHeader className="p-6 pb-2"><DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle><p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p></DialogHeader>
-            {editedOrder && (
-                <div className="px-6 py-4 space-y-6">
-                    <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label><Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label><Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" /></div>
-                        <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label><Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" /></div>
-                    </div>
-                    <Separator className="bg-border-sub" />
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label><Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}><SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red"><SelectValue placeholder="Select Technician" /></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>{technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}</SelectContent></Select></div>
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label><Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}><SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">UNASSIGNED</SelectItem><SelectItem value="assigned">ASSIGNED</SelectItem><SelectItem value="in-progress">IN PROGRESS</SelectItem><SelectItem value="completed">COMPLETED</SelectItem></SelectContent></Select></div>
-                    </div>
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4"><Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button><Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Commit Assignment Updates</Button></DialogFooter>
-                </div>
-            )}
-        </DialogContent>
-      </Dialog>
+        <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
+        
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
+              <DialogHeader className="p-6 pb-2"><DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle><p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p></DialogHeader>
+              {editedOrder && (
+                  <div className="px-6 py-4 space-y-6">
+                      <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label><Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label><Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" /></div>
+                          <div className="space-y-2"><Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label><Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" /></div>
+                      </div>
+                      <Separator className="bg-border-sub" />
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label><Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}><SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red"><SelectValue placeholder="Select Technician" /></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>{technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}</SelectContent></Select></div>
+                          <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label><Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}><SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">UNASSIGNED</SelectItem><SelectItem value="assigned">ASSIGNED</SelectItem><SelectItem value="in-progress">IN PROGRESS</SelectItem><SelectItem value="completed">COMPLETED</SelectItem></SelectContent></Select></div>
+                      </div>
+                      <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4"><Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button><Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">Commit Assignment Updates</Button></DialogFooter>
+                  </div>
+              )}
+          </DialogContent>
+        </Dialog>
+      </Tabs>
     </div>
   );
 }

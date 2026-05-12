@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -46,7 +47,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
                     <Popover>
                         <PopoverTrigger asChild>
                             <div className={cn(
-                                "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group",
+                                "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
                                 dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                             )}>
                                 <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
@@ -60,7 +61,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
                                 </span>
                                 {dateRange?.from && (
                                     <button 
-                                        className="ml-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                        className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
                                         onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
                                     >
                                         <X size={10} />

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -158,7 +157,7 @@ export default function AssignmentsHubPage() {
     );
 
     const unregGroups = unregNames.map(name => ({
-        client: { name, avatarUrl: '', businessType: 'Unregistered Entity' },
+        client: { name, avatarUrl: '', businessType: 'Unregistered Entity' } as Technician,
         jobs: activeWorkOrders.filter(wo => wo.clientName === name),
         isRegistered: false
     }));
@@ -321,23 +320,36 @@ export default function AssignmentsHubPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-8 px-4 border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
-                  <CalendarIcon size={12} className="mr-2 text-brand-red" />
-                  {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")) : "Select Date"}
-                </Button>
+                <div className={cn(
+                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group",
+                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                )}>
+                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                    <span className={cn(
+                        "text-[10px] font-bold uppercase tracking-widest",
+                        dateRange?.from ? "text-text-primary" : "text-text-muted"
+                    )}>
+                        {dateRange?.from ? (
+                            dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
+                        ) : "Select Date"}
+                    </span>
+                    {dateRange?.from && (
+                        <button 
+                            className="ml-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
+                        >
+                            <X size={10} />
+                        </button>
+                    )}
+                </div>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                 <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
               </PopoverContent>
             </Popover>
-            {dateRange?.from && (
-                <Button variant="ghost" size="icon-sm" onClick={() => setDateRange(undefined)} className="h-8 w-8 text-text-muted hover:text-brand-red">
-                    <X size={14} />
-                </Button>
-            )}
           </div>
         </div>
 
@@ -522,6 +534,7 @@ export default function AssignmentsHubPage() {
       </Tabs>
 
       <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
+      
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2"><DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle><p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p></DialogHeader>

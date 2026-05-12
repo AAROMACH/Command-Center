@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,6 +55,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -82,7 +81,7 @@ export default function AssignmentsHubPage() {
         // EXCLUDE UNASSIGNED FROM ACTIVE REGISTRY
         if (wo.status === 'unassigned') return false;
 
-        const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+        const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || ''));
         const query = searchQuery.toLowerCase();
         
         const matchesSearch = (
@@ -138,12 +137,12 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
-    initialWorkOrders.filter(wo => wo.status === 'completed')
+    workOrders.filter(wo => wo.status === 'completed')
       .filter(wo => {
         const query = searchQuery.toLowerCase();
         return wo.id.toLowerCase().includes(query) || wo.description.toLowerCase().includes(query) || wo.clientName.toLowerCase().includes(query);
       }),
-  [initialWorkOrders, searchQuery]);
+  [workOrders, searchQuery]);
 
   const groupedByClient = useMemo(() => {
     if (sortBy !== 'client') return null;
@@ -328,7 +327,7 @@ export default function AssignmentsHubPage() {
                 )}>
                     <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
                     <span className={cn(
-                        "text-[10px] font-bold uppercase tracking-widest",
+                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
                         dateRange?.from ? "text-text-primary" : "text-text-muted"
                     )}>
                         {dateRange?.from ? (
@@ -553,7 +552,7 @@ export default function AssignmentsHubPage() {
               )}
           </DialogContent>
         </Dialog>
-      </Tabs>
+      </div>
     </div>
   );
 }

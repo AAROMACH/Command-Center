@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -43,22 +44,6 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
                 </TabsList>
 
                 <div className="flex items-center gap-3">
-                    {dateRange?.from && (
-                        <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
-                            <CalendarIcon size={12} />
-                            <span className="text-[10px] uppercase font-bold tracking-widest">
-                                {format(dateRange.from, 'MM-dd-yyyy')}
-                                {dateRange.to && ` – ${format(dateRange.to, 'MM-dd-yyyy')}`}
-                            </span>
-                            <button 
-                                onClick={() => setDateRange(undefined)}
-                                className="hover:bg-brand-red/20 rounded-full p-0.5 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </Badge>
-                    )}
-
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className={cn("h-8 px-4 border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest", dateRange?.from && "border-brand-red text-brand-red")}>
@@ -85,6 +70,11 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
                             />
                         </PopoverContent>
                     </Popover>
+                    {dateRange?.from && (
+                        <Button variant="ghost" size="icon-sm" onClick={() => setDateRange(undefined)} className="h-8 w-8 text-text-muted hover:text-brand-red">
+                            <X size={14} />
+                        </Button>
+                    )}
                 </div>
             </div>
             

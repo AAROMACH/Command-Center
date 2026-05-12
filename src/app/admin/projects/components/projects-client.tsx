@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -316,7 +317,7 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                     
                     <div className="pt-2 border-t border-border-sub space-y-2 flex flex-col items-start">
                         <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                            <Calendar size={12} className="text-brand-red" />
+                            <CalendarIcon size={12} className="text-brand-red" />
                             Start: {formatDateDisplay(project.startDate)}
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">

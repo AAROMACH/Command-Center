@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
     Search, 
     MapPin, 
@@ -10,7 +11,21 @@ import {
     ChevronRight,
     History,
     AlertTriangle,
-    Calendar as CalendarIcon
+    Calendar as CalendarIcon,
+    RefreshCw,
+    User,
+    Mail,
+    Phone,
+    Briefcase,
+    ShieldAlert,
+    Check,
+    Coins,
+    LogOut,
+    Eye,
+    Activity as ActivityIcon,
+    SearchX,
+    FileText,
+    ArrowLeft
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -32,31 +47,45 @@ import {
     workOrders, 
     projects, 
     penaltyEvents,
+    weeklyLogs,
+    expenses,
+    timeOffRequests,
+    assignmentTimeLogs,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import type { Technician, WorkOrder } from '@/lib/types';
-import { format, parseISO, subDays, isAfter } from 'date-fns';
+import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project } from '@/lib/types';
+import { format, parseISO, subDays, isAfter, isBefore } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
-const AUDIT_ACTIONS = [
-    { dot: "done", action: "Assignment assigned — aaro_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Manual work order assigned"' },
-    { dot: "done", action: "Assignment assigned — client_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Client work order assigned"' },
-    { dot: "done", action: "Assignment assigned — fn_asmt_001", sub: 'by System Administrator · 04-04-2026 · "Initial assignment created"' },
-    { dot: "warn", action: "Penalty recorded — late log · 3 pts", sub: "Corey Williams · 04-04-2026 · weekly log submitted after due date" },
-    { dot: "done", action: "Import batch — field_nation_csv", sub: "field_nation_jobs.csv · 1 row · 1 created · by System Administrator · 04-04-2026" },
-    { dot: "flag", action: 'Client request rejected — "Computers Down!"', sub: "by System Administrator · 04-23-2026 · client fields blank at submission" },
-    { dot: "warn", action: "Time-off request — Personal Time Off", sub: "Corey Williams · starts 04-23-2026 · status: pending" },
+// --- MOCK CHANGE LOG DATA ---
+const CL_ENTRIES = [
+  {id:"ah1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"assignment",dot:"done",headline:"Assignment assigned",chips:["assignment: aaro_asmt_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Event",v:"assigned"},{l:"Assignment ID",v:"aaro_asmt_001"},{l:"Changed by",v:"System Administrator"},{l:"Timestamp",v:"Apr 4, 2026 12:00 PM"},{l:"Note",v:"Manual work order assigned to technician"}],si:"aaro_asmt_001 system administrator assignment assigned apr 4"},
+  {id:"ah2",ts:new Date("2026-04-04T11:50Z").getTime(),type:"assignment",dot:"done",headline:"Assignment created",chips:["assignment: fn_asmt_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Event",v:"created"},{l:"Assignment ID",v:"fn_asmt_001"},{l:"Changed by",v:"System Administrator"},{l:"Timestamp",v:"Apr 4, 2026 11:50 AM"},{l:"Note",v:"Initial assignment created"}],si:"fn_asmt_001 system administrator assignment created apr 4"},
+  {id:"pe1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"penalty",dot:"warn",headline:"Penalty — late log · 3 pts",chips:["tech: Alex Johnson","3 pts","Apr 4, 2026"],details:[{l:"Penalty type",v:"late log"},{l:"Technician",v:"Alex Johnson (tech-001)"},{l:"Points",v:"3"},{l:"Weekly log ID",v:"wl-1"},{l:"Reason",v:"Weekly log submitted after due date"},{l:"Recorded at",v:"Apr 4, 2026 12:00 PM"}],si:"alex johnson tech-001 late log penalty apr 4 3 pts weekly"},
+  {id:"pe2",ts:new Date("2026-04-15T09:22Z").getTime(),type:"penalty",dot:"warn",headline:"Penalty — late checkin · 1 pt",chips:["tech: Maria Garcia","1 pt","Apr 15, 2026"],details:[{l:"Penalty type",v:"late checkin"},{l:"Technician",v:"Maria Garcia (tech-002)"},{l:"Points",v:"1"},{l:"Assignment ID",v:"wo-101"},{l:"Reason",v:"Arrived 22 minutes after scheduled start"},{l:"Recorded at",v:"Apr 15, 2026 9:22 AM"}],si:"maria garcia tech-002 late checkin penalty apr 15 1 pt"},
+  {id:"ib1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"import",dot:"def",headline:"Import batch — field_nation_csv",chips:["batch: batch_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Batch ID",v:"batch_001"},{l:"Source",v:"field_nation_csv"},{l:"File",v:"field_nation_jobs.csv"},{l:"Rows",v:"1 total · 1 created · 0 duplicates"},{l:"Status",v:"completed"},{l:"Uploaded by",v:"System Administrator"}],si:"batch_001 field_nation_csv system administrator import apr 4"},
 ];
 
 export default function ReportsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("tech");
-    const [selectedTechId, setSelectedTechId] = useState("tech-001");
-    const [clDays, setClDays] = useState("30");
+    const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+    const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+    
+    // Change Log States
     const [isClLoaded, setIsClLoaded] = useState(false);
+    const [clSearch, setClSearch] = useState("");
+    const [clType, setClType] = useState("all");
+    const [expandedClIds, setExpandedClIds] = useState<Set<string>>(new Set());
 
+    // Job Detail state
     const [isJobOpen, setIsJobOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
+
+    const { toast } = useToast();
+
+    // ── DATA RESOLUTION ──────────────────────────────────────────────────
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId]);
 
@@ -64,33 +93,59 @@ export default function ReportsPage() {
         if (!selectedTechId) return null;
         const myJobs = workOrders.filter(wo => wo.assignedTechnicianId === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
-        const totalPts = penaltyEvents.filter(pe => pe.technicianId === selectedTechId).reduce((acc, curr) => acc + Math.abs(curr.points), 0);
-        const reliability = Math.max(0, 100 - (totalPts * 5));
+        const penalties = penaltyEvents.filter(pe => pe.technicianId === selectedTechId);
+        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
+        const reliability = Math.max(0, 100 - (points * 5));
         
-        return { total: myJobs.length, completed, reliability, penaltyPoints: totalPts };
+        return { total: myJobs.length, completed, reliability, penaltyPoints: points, penalties };
     }, [selectedTechId]);
+
+    const siteList = useMemo(() => {
+        const uniqueSites = new Map();
+        // Add from managed sites
+        technicians.forEach(t => {
+            t.managedSites?.forEach(s => uniqueSites.set(s.location, { ...s, client: t.clientCompany || 'Strategic Partner' }));
+        });
+        // Add from work orders
+        workOrders.forEach(wo => {
+            if (!uniqueSites.has(wo.location)) {
+                uniqueSites.set(wo.location, { id: `site-${wo.id}`, name: wo.location.split(',')[0], location: wo.location, client: wo.clientName });
+            }
+        });
+        return Array.from(uniqueSites.values());
+    }, []);
+
+    const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
+
+    const anomalyCounts = useMemo(() => {
+        const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
+        const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
+        const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
+        return unassigned + overdueLogs + openCheckins + 2; // +2 for mock schema errors
+    }, []);
+
+    // ── SEARCH LOGIC ─────────────────────────────────────────────────────
 
     const searchResults = useMemo(() => {
         if (!searchQuery.trim()) return [];
         const q = searchQuery.toLowerCase();
-        
         const results: any[] = [];
         
         technicians.forEach(t => {
             if (t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)) {
-                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'bg-green' });
+                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'bg-green-dim text-text-green' });
             }
         });
 
         workOrders.forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || wo.description.toLowerCase().includes(q)) {
-                results.push({ type: 'Assignment', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · ${wo.scheduleDate} · $${wo.pay} · ${wo.status}`, cls: 'bg-blue' });
+                results.push({ type: 'Assignment', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · $${wo.pay} · ${wo.status}`, cls: 'bg-bg-tertiary text-text-primary' });
             }
         });
 
         projects.forEach(p => {
             if (p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) {
-                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.startDate} · ${p.status}`, cls: 'bg-amber' });
+                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.status}`, cls: 'bg-accent-gold-dim text-accent-gold' });
             }
         });
 
@@ -111,256 +166,563 @@ export default function ReportsPage() {
         }
     };
 
-    return (
-        <div className="max-w-[900px] mx-auto space-y-6">
-            <header className="space-y-1 text-center">
-                <h1 className="text-xl font-bold uppercase tracking-widest text-text-primary">Activity Audit Terminal</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest">Operational intelligence & cross-system lookup</p>
-            </header>
+    // ── COMPONENT HELPERS ────────────────────────────────────────────────
+
+    const renderTechnicianRoster = () => (
+        <div className="space-y-2">
+            <div className="flex justify-between items-center px-1 mb-4">
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
+                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => setActiveTab('tech')}>
+                    <RefreshCw size={12} className="mr-1.5"/> Refresh
+                </Button>
+            </div>
+            {technicians.filter(t => !t.roles?.includes('client')).map(t => {
+                const pts = penaltyEvents.filter(p => p.technicianId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
+                const isReliable = pts <= 2;
+                return (
+                    <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <Avatar className="h-10 w-10 border border-border-sub">
+                                    <AvatarImage src={t.avatarUrl} />
+                                    <AvatarFallback>{t.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                {assignmentTimeLogs.some(log => log.technicianId === t.id && !log.checkOutTime) && (
+                                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{t.name}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{t.email}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <div className="text-right">
+                                <p className={cn("text-xs font-bold uppercase", isReliable ? 'text-text-green' : 'text-accent-gold')}>
+                                    {pts} PTS · {isReliable ? 'Reliable' : 'At Risk'}
+                                </p>
+                            </div>
+                            <Badge variant={isReliable ? 'active' : 'onhold'} className="h-5 text-[8px] uppercase tracking-widest">
+                                {isReliable ? 'Clean' : 'Audit Required'}
+                            </Badge>
+                            <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-all" />
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    const renderTechnicianProfile = () => {
+        if (!activeTech || !techStats) return null;
+        
+        const openCheckins = assignmentTimeLogs.filter(atl => atl.technicianId === activeTech.id && !atl.checkOutTime);
+        const overdueLogs = weeklyLogs.filter(wl => wl.technicianId === activeTech.id && wl.status === 'Draft');
+        const pendingReimb = expenses.filter(e => e.submittedBy === activeTech.name && e.status === 'Pending');
+        const pendingTimeOff = timeOffRequests.filter(tor => tor.technicianId === activeTech.id && tor.status === 'pending');
+
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+                        <ArrowLeft size={14} className="mr-1.5"/> Back to Roster
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold">
+                        <RefreshCw size={12} className="mr-1.5"/> Sync Records
+                    </Button>
+                </div>
+
+                <Card className="bg-bg-secondary border-border-main shadow-2xl">
+                    <CardContent className="p-6 space-y-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                                <Avatar className="h-16 w-16 border-2 border-border-sub">
+                                    <AvatarImage src={activeTech.avatarUrl} />
+                                    <AvatarFallback className="text-lg">{activeTech.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="space-y-1">
+                                    <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
+                                    <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email} · {activeTech.id.toUpperCase()}</p>
+                                </div>
+                            </div>
+                            <Badge variant="active" className="h-6 px-4 uppercase text-[10px] tracking-widest">Active Profile</Badge>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
+                                <p className="text-2xl font-bold text-text-primary">{techStats.total}</p>
+                                <p className="text-[8px] text-text-muted uppercase">lifetime</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
+                                <p className="text-2xl font-bold text-text-primary">{techStats.completed}</p>
+                                <p className="text-[8px] text-text-muted uppercase">confirmed</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
+                                <p className={cn("text-2xl font-bold", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
+                                <p className="text-[8px] text-text-muted uppercase">Integrity Score</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center px-1">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Penalty Points Audit</p>
+                                <p className="text-[10px] font-bold text-text-red uppercase">{techStats.penaltyPoints} PTS</p>
+                            </div>
+                            <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub">
+                                <div 
+                                    className={cn("h-full rounded-full transition-all duration-500", techStats.penaltyPoints > 5 ? 'bg-text-red' : 'bg-accent-gold')} 
+                                    style={{ width: `${Math.min(100, (techStats.penaltyPoints / 10) * 100)}%` }} 
+                                />
+                            </div>
+                            <div className="flex justify-between items-center text-[8px] font-black text-text-muted uppercase tracking-widest px-1">
+                                <span>Reliable</span>
+                                <span>Monitored</span>
+                                <span>Restricted</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* DISCREPANCIES / ACTION ITEMS */}
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Tactical Audit & Actions</h3>
+                    
+                    <div className="space-y-2">
+                        {openCheckins.map(ci => (
+                            <div key={ci.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-green animate-pulse">
+                                        <Play size={18} fill="currentColor" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Open Session Terminal</p>
+                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">Checked In: {format(parseISO(ci.checkInTime), 'MMM d, h:mm a')} · Site Verification Pending</p>
+                                    </div>
+                                </div>
+                                <Button variant="destructive-outline" size="sm" className="h-8 text-[9px] uppercase font-bold" onClick={() => toast({ title: "Admin Override", description: "Technician session terminated by command center." })}>
+                                    Force Checkout
+                                </Button>
+                            </div>
+                        ))}
+
+                        {pendingTimeOff.map(tor => (
+                            <div key={tor.id} className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim/10 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-accent-gold">
+                                        <CalendarIcon size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Time-Off Request: {tor.type}</p>
+                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{tor.startDate} → {tor.endDate} · Pending Lead Audit</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold hover:text-text-red">Deny</Button>
+                                    <Button size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90 border-none">Approve</Button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {pendingReimb.map(exp => (
+                            <div key={exp.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-green">
+                                        <Coins size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{exp.category} Reimbursement — ${exp.amount}</p>
+                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{exp.description} · {exp.date}</p>
+                                    </div>
+                                </div>
+                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-green border-text-green/40 hover:bg-text-green/10" onClick={() => toast({ title: "Financial Settlement", description: "Expense authorized for next payout cycle." })}>
+                                    Authorize
+                                </Button>
+                            </div>
+                        ))}
+
+                        {overdueLogs.map(log => (
+                            <div key={log.id} className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-red">
+                                        <ShieldAlert size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-text-red uppercase tracking-wide">Weekly Log Overdue</p>
+                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">Week of {log.weekOf} · Submission Threshold Exceeded</p>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold hover:text-text-red">Nudge Tech</Button>
+                            </div>
+                        ))}
+
+                        {!openCheckins.length && !pendingTimeOff.length && !pendingReimb.length && !overdueLogs.length && (
+                            <div className="p-12 text-center border-2 border-dashed border-border-main rounded-xl opacity-40">
+                                <Check size={32} className="mx-auto text-text-green mb-2" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">No active discrepancies identified</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* PENALTY LOG */}
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Penalty Ledger</h3>
+                    <div className="space-y-2">
+                        {techStats.penalties.map(p => (
+                            <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-primary flex items-center justify-between group">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1.5 shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{p.reason}</p>
+                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{p.date} · Points Deducted: {p.points}</p>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Audit Adjustment", description: "Penalty dismissed. Reliability score recalculated." })}>
+                                    Dismiss
+                                </Button>
+                            </div>
+                        ))}
+                        {!techStats.penalties.length && (
+                            <div className="p-12 text-center italic text-text-muted text-[10px] uppercase font-bold tracking-widest">No penalties on record.</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderSiteActivity = () => {
+        if (selectedSiteId && activeSite) {
+            return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedSiteId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+                            <ArrowLeft size={14} className="mr-1.5"/> Back to Site Index
+                        </Button>
+                    </div>
+
+                    <Card className="bg-bg-secondary border-border-main shadow-2xl">
+                        <CardHeader className="pb-4">
+                            <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-lg uppercase tracking-wider">{activeSite.name}</CardTitle>
+                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                        <MapPin size={10} className="text-brand-red"/> {activeSite.location}
+                                    </p>
+                                </div>
+                                <Badge variant="active" className="text-[8px] uppercase tracking-widest">Managed Asset</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
+                                    <p className="text-2xl font-bold text-text-primary">12</p>
+                                    <p className="text-[8px] text-text-muted uppercase">all time</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
+                                    <p className="text-2xl font-bold text-text-primary">0</p>
+                                    <p className="text-[8px] text-text-green uppercase">Service Clean</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
+                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
+                                    <p className="text-[8px] text-text-muted uppercase">Contract SLA</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Deployment History</h3>
+                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2">
+                            {workOrders.filter(wo => wo.location === activeSite.location).slice(0, 5).map(wo => (
+                                <div key={wo.id} className="relative group cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary transition-all group-hover:scale-125" />
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                        <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">
+                                            {wo.scheduleDate} · {wo.status} · {wo.assignedTechnicianId || 'Field Ops'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-2">
+                <div className="flex justify-between items-center px-1 mb-4">
+                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Site Coordinates</p>
+                </div>
+                {siteList.map(site => (
+                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-text-muted transition-all cursor-pointer group">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                                <Building2 size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{site.client} · {site.location}</p>
+                            </div>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-all" />
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderAnomalyFlags = () => (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="space-y-4">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
+                    Schema & Logic Inconsistencies
+                    <Badge variant="destructive" className="h-4 px-1.5 text-[8px] uppercase">Action Required</Badge>
+                </h3>
+                <div className="space-y-2">
+                    <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
+                        <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema Drift — <code>project_daily_logs</code></p>
+                            <p className="text-[10px] text-text-muted leading-relaxed uppercase">
+                                Document <code>atl-GD7bfWeRk</code> uses <code>technicianId</code> instead of the system-standard <code>techId</code>. 
+                                This breaks aggregate field analytics queries on the administrative dashboard.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
+                        <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Malformed Ingestion — 5 Documents</p>
+                            <p className="text-[10px] text-text-muted leading-relaxed uppercase">
+                                Range: <code>WO-18967010</code> to <code>WO-18967015</code>. Time and Location parameters were inverted during the FieldNation CSV import phase. 
+                                Manual axis correction required for calendar visibility.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div className="space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Operational Alerts</h3>
+                <div className="space-y-2">
+                    {assignmentTimeLogs.filter(atl => !atl.checkOutTime).map(ci => (
+                        <div key={ci.id} className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim/5 flex gap-4 text-left">
+                             <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
+                             <div className="space-y-1">
+                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Stale Check-In Detected</p>
+                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
+                                    Tech <code>{ci.technicianId}</code> has been checked into site <code>{ci.workOrderId}</code> for 14+ hours without a checkout or activity signature.
+                                </p>
+                             </div>
+                        </div>
+                    ))}
+                    {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
+                        <div key={wo.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex gap-4 text-left group hover:border-brand-red transition-all cursor-pointer" onClick={() => router.push('/admin/dispatch')}>
+                             <div className="h-1.5 w-1.5 rounded-full bg-text-muted mt-1 shrink-0" />
+                             <div className="space-y-1">
+                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Unassigned Mission in Active Window</p>
+                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
+                                    <code>{wo.id.toUpperCase()}</code> for <code>{wo.clientName}</code> scheduled for <code>{wo.scheduleDate}</code> has no technician allocated.
+                                </p>
+                             </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderChangeLog = () => {
+        if (!isClLoaded) {
+            return (
+                <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-2xl space-y-6">
+                    <History size={48} className="mx-auto text-text-muted opacity-20" />
+                    <div className="space-y-2">
+                        <p className="text-sm font-bold uppercase text-text-primary tracking-wide">System Change Log is Loaded on Demand</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Maintains high terminal performance and lowers query costs.</p>
+                    </div>
+                    <Button onClick={() => setIsClLoaded(true)} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-widest">
+                        Load operational change log
+                    </Button>
+                </div>
+            );
+        }
+
+        const filteredCl = CL_ENTRIES.filter(e => {
+            if (clType !== 'all' && e.type !== clType) return false;
+            if (clSearch && !e.si.includes(clSearch.toLowerCase())) return false;
+            return true;
+        });
+
+        return (
+            <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="flex flex-col md:flex-row items-center gap-4 bg-bg-secondary p-4 rounded-xl border border-border-sub">
+                    <div className="flex items-center gap-2 flex-1 w-full">
+                        <Select value={clType} onValueChange={setClType}>
+                            <SelectTrigger className="w-[160px] bg-bg-primary h-10 text-[10px] font-bold uppercase tracking-widest">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="assignment">Assignments</SelectItem>
+                                <SelectItem value="penalty">Penalties</SelectItem>
+                                <SelectItem value="import">Imports</SelectItem>
+                                <SelectItem value="client_request">Client Req</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                            <Input 
+                                placeholder="Filter by tech, ID, WO#, date..." 
+                                className="h-10 pl-9 bg-bg-primary text-[10px] uppercase font-bold"
+                                value={clSearch}
+                                onChange={e => setClSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{filteredCl.length} of {CL_ENTRIES.length} system events</p>
+                </div>
+
+                <div className="relative pl-6 space-y-10 border-l border-border-sub ml-2">
+                    {filteredCl.map(entry => {
+                        const isExpanded = expandedClIds.has(entry.id);
+                        return (
+                            <div key={entry.id} className="relative group">
+                                <div className={cn(
+                                    "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all",
+                                    entry.dot === 'done' ? 'bg-text-green' : entry.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
+                                )} />
+                                <button 
+                                    className="w-full text-left space-y-1 focus:outline-none"
+                                    onClick={() => {
+                                        const newSet = new Set(expandedClIds);
+                                        if (isExpanded) newSet.delete(entry.id);
+                                        else newSet.add(entry.id);
+                                        setExpandedClIds(newSet);
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{entry.headline}</p>
+                                        <ChevronRight size={14} className={cn("text-text-muted transition-transform", isExpanded && "rotate-90")} />
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {entry.chips.map((c, i) => (
+                                            <span key={i} className="text-[9px] font-mono font-bold text-text-muted uppercase px-1.5 py-0.5 rounded bg-bg-secondary border border-border-sub">{c}</span>
+                                        ))}
+                                    </div>
+                                </button>
+                                
+                                {isExpanded && (
+                                    <div className="mt-4 rounded-xl border border-border-sub bg-bg-secondary/50 overflow-hidden animate-in slide-in-from-top-1 duration-200">
+                                        {entry.details.map((d, i) => (
+                                            <div key={i} className="grid grid-cols-[120px,1fr] gap-4 px-4 py-2 text-[10px] border-b border-border-sub last:border-none hover:bg-bg-primary/50 transition-colors">
+                                                <span className="font-bold text-text-muted uppercase tracking-widest">{d.l}</span>
+                                                <span className="font-bold text-text-primary uppercase tracking-tight">{d.v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="max-w-[1000px] mx-auto space-y-8">
+            <header className="space-y-1 text-center">
+                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Activity Audit</h1>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system changes</p>
+            </header>
+
+            <div className="space-y-6">
+                {/* GLOBAL SEARCH TERMINAL */}
+                <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted group-focus-within:text-brand-red transition-colors" />
                     <Input 
-                        placeholder="Search technicians, assignments, sites, projects…" 
-                        className="h-11 pl-10 bg-bg-secondary border-border-main text-xs uppercase font-bold tracking-wide"
+                        placeholder="Search technicians, work orders, site coordinates, projects…" 
+                        className="h-14 pl-12 bg-bg-secondary border-border-main text-sm uppercase font-bold tracking-wide focus:border-brand-red rounded-2xl shadow-xl"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     {searchQuery && (
                         <button 
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1 rounded-full hover:bg-bg-tertiary transition-all"
                             onClick={() => setSearchQuery("")}
                         >
-                            <X size={16} />
+                            <X size={20} />
                         </button>
                     )}
                 </div>
 
                 {!searchQuery ? (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center">
-                            <TabsTrigger value="tech" className="tab-trigger-report">Technician profile</TabsTrigger>
-                            <TabsTrigger value="sites" className="tab-trigger-report">Site history</TabsTrigger>
-                            <TabsTrigger value="flags" className="tab-trigger-report flex items-center gap-2">
-                                Anomaly flags <Badge variant="destructive" className="h-4 px-1 text-[8px] min-w-[16px] flex items-center justify-center">5</Badge>
-                            </TabsTrigger>
-                            <TabsTrigger value="changelog" className="tab-trigger-report">Change log</TabsTrigger>
-                        </TabsList>
+                        <div className="flex justify-center">
+                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-12 justify-center mb-8">
+                                <TabsTrigger value="tech" className="tab-trigger-activity">Technician activity</TabsTrigger>
+                                <TabsTrigger value="sites" className="tab-trigger-activity">Site activity</TabsTrigger>
+                                <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
+                                    Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger value="changelog" className="tab-trigger-activity">Change log</TabsTrigger>
+                            </TabsList>
+                        </div>
 
-                        <div className="mt-6">
-                            <TabsContent value="tech" className="m-0 space-y-8">
-                                <div className="space-y-4">
-                                     <div className="flex items-center gap-3">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted tracking-widest">Selected Operative</Label>
-                                        <Select value={selectedTechId} onValueChange={setSelectedTechId}>
-                                            <SelectTrigger className="w-[220px] bg-bg-secondary h-9 text-xs uppercase font-bold tracking-wide border-border-sub">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
-                                                    <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                     </div>
-                                </div>
-
-                                {activeTech && techStats && (
-                                    <>
-                                        <Card className="bg-bg-secondary border-border-main shadow-none">
-                                            <CardHeader className="pb-4">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-4">
-                                                        <Avatar className="h-12 w-12 border border-border-sub">
-                                                            <AvatarImage src={activeTech.avatarUrl} />
-                                                            <AvatarFallback>{activeTech.name.charAt(0)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="space-y-0.5">
-                                                            <CardTitle className="text-base">{activeTech.name}</CardTitle>
-                                                            <p className="text-[10px] text-text-muted font-mono uppercase tracking-tighter">
-                                                                {activeTech.email} · {activeTech.id.slice(0, 12)}…
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <Badge variant="active" className="text-[8px] uppercase tracking-widest">Active</Badge>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                <div className="grid grid-cols-3 gap-2 text-center">
-                                                    <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Assignments</p>
-                                                        <p className="text-xl font-bold text-text-primary">{techStats.total}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">lifetime</p>
-                                                    </div>
-                                                    <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Completed</p>
-                                                        <p className="text-xl font-bold text-text-primary">{techStats.completed}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">confirmed</p>
-                                                    </div>
-                                                    <div className="p-3 rounded-lg bg-bg-primary border border-border-sub space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Reliability</p>
-                                                        <p className={cn("text-xl font-bold", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
-                                                        <p className="text-[8px] text-text-muted uppercase">at risk</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Penalty points this period</p>
-                                                        <p className="text-[10px] font-bold text-text-red uppercase">{techStats.penaltyPoints} pts</p>
-                                                    </div>
-                                                    <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub">
-                                                        <div 
-                                                            className={cn("h-full rounded-full transition-all duration-500", techStats.penaltyPoints > 5 ? 'bg-text-red' : 'bg-accent-gold')} 
-                                                            style={{ width: `${Math.min(100, (techStats.penaltyPoints / 10) * 100)}%` }} 
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        <div className="space-y-4">
-                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Assignment history</h3>
-                                            <div className="relative pl-6 space-y-6 border-l border-border-sub ml-2 text-left">
-                                                <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
-                                                        Follow-up camera adjustment <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
-                                                    </p>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
-                                                        <span>Ann Arbor, MI · completed · aaro_wo_001</span>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1 relative">
-                                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary" />
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
-                                                        Front camera offline <span className="text-[10px] text-text-muted normal-case font-normal ml-2">· 04-04-2026</span>
-                                                    </p>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-widest">
-                                                        <MapPin size={11} className="text-brand-red shrink-0"/> 
-                                                        <span>Detroit, MI · completed · client_wo_001</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-center">Linked records</h3>
-                                            <div className="space-y-1.5">
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Weekly log — week of Mar 30, 2026</span>
-                                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">draft · due 04-06</span>
-                                                </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Reimbursement — materials</span>
-                                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">$45 · pending</span>
-                                                </div>
-                                                <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                                    <span className="text-[11px] font-bold text-text-primary uppercase">Project: Refresh</span>
-                                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">project lead · ACTIVE</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                        <div className="min-h-[400px]">
+                            <TabsContent value="tech" className="m-0">
+                                {selectedTechId ? renderTechnicianProfile() : renderTechnicianRoster()}
                             </TabsContent>
 
                             <TabsContent value="sites" className="m-0">
-                                <div className="py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                                    <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-10" />
-                                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No managed sites identified for this context</p>
-                                </div>
+                                {renderSiteActivity()}
                             </TabsContent>
 
-                            <TabsContent value="flags" className="m-0 space-y-8">
-                                <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
-                                        Consistency Audit
-                                        <AlertTriangle size={14} className="text-text-red" />
-                                    </h3>
-                                    <div className="space-y-2">
-                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">5 Malformed assignment documents — field inversion</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    IDs: 1dELYf5Y, BcHQYPPw, FbLchazU, SesOkMZ6… — Coordinate parameters were swapped during ingestion.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <TabsContent value="flags" className="m-0">
+                                {renderAnomalyFlags()}
                             </TabsContent>
 
                             <TabsContent value="changelog" className="m-0">
-                                {!isClLoaded ? (
-                                    <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-xl space-y-6">
-                                        <History size={48} className="mx-auto text-text-muted opacity-20" />
-                                        <div className="space-y-2">
-                                            <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Change log is fetched on demand</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Keeps operational costs low.</p>
-                                        </div>
-                                        <div className="flex items-center justify-center gap-3">
-                                            <Select value={clDays} onValueChange={setClDays}>
-                                                <SelectTrigger className="w-[180px] bg-bg-primary h-10 text-[10px] uppercase font-bold tracking-widest">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="7">Last 7 days</SelectItem>
-                                                    <SelectItem value="30">Last 30 days</SelectItem>
-                                                    <SelectItem value="90">Last 90 days</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <Button onClick={() => setIsClLoaded(true)} className="h-10 px-8">Load terminal log</Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6 animate-in fade-in duration-500">
-                                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2 text-left">
-                                            {AUDIT_ACTIONS.map((evt, i) => (
-                                                <div key={i} className="space-y-1 relative group cursor-pointer">
-                                                    <div className={cn(
-                                                        "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all group-hover:scale-125",
-                                                        evt.dot === 'done' ? 'bg-text-green' : evt.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
-                                                    )} />
-                                                    <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-none">{evt.action}</p>
-                                                    <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest leading-relaxed">{evt.sub}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                                {renderChangeLog()}
                             </TabsContent>
                         </div>
                     </Tabs>
                 ) : (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="flex items-center justify-between border-b border-border-sub pb-3 px-1">
-                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} matches for &quot;{searchQuery}&quot;</h3>
+                        <div className="flex items-center justify-between border-b border-border-sub pb-4 px-1">
+                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} tactical matches for &quot;{searchQuery}&quot;</h3>
                         </div>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-3">
                             {searchResults.length > 0 ? searchResults.map((r, i) => (
-                                <div key={i} onClick={() => handleResultClick(r)} className="p-4 rounded-xl border border-border-main bg-bg-secondary hover:border-text-muted transition-all flex gap-4 group cursor-pointer text-left">
+                                <div key={i} onClick={() => handleResultClick(r)} className="p-5 rounded-2xl border border-border-main bg-bg-secondary hover:border-brand-red transition-all flex gap-5 group cursor-pointer text-left shadow-sm">
                                     <Badge variant="outline" className={cn(
-                                        "h-5 text-[8px] uppercase tracking-widest shrink-0 mt-0.5",
-                                        r.type === 'Technician' ? 'bg-green-dim text-text-green border-green-border' :
-                                        r.type === 'Project' ? 'bg-accent-gold-dim text-accent-gold border-border-gold' :
-                                        'bg-bg-tertiary text-text-primary'
+                                        "h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black",
+                                        r.cls
                                     )}>
-                                        {r.type === 'Assignment' ? 'Assignment' : r.type}
+                                        {r.type}
                                     </Badge>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{r.label}</p>
-                                        <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium leading-relaxed">{r.meta}</p>
+                                    <div className="space-y-1.5 flex-1 min-w-0">
+                                        <p className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors truncate">{r.label}</p>
+                                        <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold leading-relaxed">{r.meta}</p>
                                     </div>
-                                    <ChevronRight size={16} className="ml-auto text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                    <ChevronRight size={20} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all self-center" />
                                 </div>
                             )) : (
-                                <div className="py-24 text-center border border-dashed border-border-main rounded-xl opacity-60">
-                                    <Search size={48} className="mx-auto text-text-muted mb-4" />
-                                    <p className="text-sm font-bold uppercase tracking-widest text-text-muted">No tactical matches in registry</p>
+                                <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30">
+                                    <SearchX size={48} className="mx-auto text-text-muted mb-4" />
+                                    <p className="text-sm font-bold uppercase tracking-widest text-text-muted">No operational matches in registry</p>
+                                    <p className="text-[10px] text-text-muted uppercase mt-1">Refine your tactical search parameters</p>
                                 </div>
                             )}
                         </div>
@@ -375,10 +737,11 @@ export default function ReportsPage() {
             />
             
             <style jsx global>{`
-                .tab-trigger-report {
-                    @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+                .tab-trigger-activity {
+                    @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
                 }
             `}</style>
         </div>
     );
 }
+

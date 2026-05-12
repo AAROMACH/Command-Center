@@ -74,10 +74,6 @@ export default function AssignmentsHubPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
-  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
-  const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
-  const [registrySearch, setRegistrySearch] = useState("");
-
   const { toast } = useToast();
 
   const filteredWorkOrders = useMemo(() => {
@@ -169,7 +165,7 @@ export default function AssignmentsHubPage() {
         isRegistered: false
     }));
 
-    return [...regGroups, ...unregGroups];
+    return [...regGroups, ...unregGroups] as { client: any; jobs: WorkOrder[]; isRegistered: boolean }[];
   }, [activeWorkOrders, sortBy]);
 
   const formatDateDisplay = (dateStr: string) => {
@@ -599,6 +595,7 @@ export default function AssignmentsHubPage() {
                 </div>
             </TabsContent>
         </div>
+      </Tabs>
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 

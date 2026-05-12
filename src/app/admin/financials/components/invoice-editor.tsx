@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Trash2, Plus, FileText, Wrench, FolderKanban } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
@@ -29,22 +29,31 @@ const defaultLineItem: Omit<InvoiceLineItem, 'id'> = {
 };
 
 const premadeLineItems = [
-    { id: 'labor_std', description: 'Standard Labor ($95/hr)', unitPrice: 95 },
-    { id: 'labor_ot', description: 'Overtime Labor ($145/hr)', unitPrice: 145 },
-    { id: 'labor_crit', description: 'Emergency Labor ($195/hr)', unitPrice: 195 },
-    { id: 'service_call', description: 'Service Call Fee', unitPrice: 75 },
-    { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450 },
-    { id: 'cat6_riser', description: 'CAT6 Riser Cable (1000ft)', unitPrice: 320 },
-    { id: 'cat6_keystone', description: 'CAT6 Shielded Keystone Jack', unitPrice: 7.50 },
-    { id: 'rj45_pack', description: 'RJ45 Connectors (Pack of 50)', unitPrice: 25 },
-    { id: 'patch_24', description: '24-Port Patch Panel', unitPrice: 85 },
-    { id: 'patch_48', description: '48-Port Patch Panel', unitPrice: 155 },
-    { id: 'wall_plate', description: 'Single Gang Wall Plate', unitPrice: 1.50 },
-    { id: 'rack_shelf', description: '1U Cantilever Rack Shelf', unitPrice: 35 },
-    { id: 'rack_6u', description: '6U Wall Mount Rack Enclosure', unitPrice: 180 },
-    { id: 'velcro', description: 'Velcro Cable Ties (Roll)', unitPrice: 15 },
-    { id: 'poe_8', description: '8-Port Managed PoE Switch', unitPrice: 195 },
-    { id: 'ap_ac', description: 'Enterprise Wireless Access Point', unitPrice: 245 },
+    { group: 'Labor & Services', items: [
+        { id: 'labor_std', description: 'Standard Labor ($95/hr)', unitPrice: 95 },
+        { id: 'labor_ot', description: 'Overtime Labor ($145/hr)', unitPrice: 145 },
+        { id: 'labor_crit', description: 'Emergency Labor ($195/hr)', unitPrice: 195 },
+        { id: 'service_call', description: 'Service Call Fee', unitPrice: 75 },
+    ]},
+    { group: 'Cabling & Wiring', items: [
+        { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450 },
+        { id: 'cat6_riser', description: 'CAT6 Riser Cable (1000ft)', unitPrice: 320 },
+        { id: 'fiber_patch', description: 'LC-LC Duplex Fiber Patch (3m)', unitPrice: 24 },
+    ]},
+    { group: 'Network & Infrastructure', items: [
+        { id: 'poe_8', description: '8-Port Managed PoE Switch', unitPrice: 195 },
+        { id: 'ap_ac', description: 'Enterprise Wireless Access Point', unitPrice: 245 },
+        { id: 'rack_6u', description: '6U Wall Mount Rack Enclosure', unitPrice: 180 },
+        { id: 'rack_shelf', description: '1U Cantilever Rack Shelf', unitPrice: 35 },
+        { id: 'patch_24', description: '24-Port Patch Panel', unitPrice: 85 },
+        { id: 'patch_48', description: '48-Port Patch Panel', unitPrice: 155 },
+    ]},
+    { group: 'Terminations & Consumables', items: [
+        { id: 'cat6_keystone', description: 'CAT6 Shielded Keystone Jack', unitPrice: 7.50 },
+        { id: 'rj45_pack', description: 'RJ45 Connectors (Pack of 50)', unitPrice: 25 },
+        { id: 'wall_plate', description: 'Single Gang Wall Plate', unitPrice: 1.50 },
+        { id: 'velcro', description: 'Velcro Cable Ties (Roll)', unitPrice: 15 },
+    ]}
 ];
 
 export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, workOrders, onSave }: InvoiceEditorProps) {
@@ -107,7 +116,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
     };
 
      const handlePremadeItemSelect = (index: number, itemId: string) => {
-        const premade = premadeLineItems.find(p => p.id === itemId);
+        const allItems = premadeLineItems.flatMap(g => g.items);
+        const premade = allItems.find(p => p.id === itemId);
         if (!premade) return;
 
         const updatedLineItems = [...(invoiceData.lineItems || [])];
@@ -167,7 +177,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 </SheetHeader>
                 
                 <div className="py-6 space-y-8">
-                    {/* Header Fields */}
                     <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6">
                         <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2">
@@ -183,11 +192,11 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                     <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link to existing mission..." /></SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
-                                            <Label className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Active Projects</Label>
+                                            <SelectLabel className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Active Projects</SelectLabel>
                                             {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-xs uppercase font-bold">{p.name}</SelectItem>)}
                                         </SelectGroup>
                                          <SelectGroup>
-                                            <Label className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Assignments Pool</Label>
+                                            <SelectLabel className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Assignments Pool</SelectLabel>
                                             {workOrders.map(wo => <SelectItem key={wo.id} value={wo.id} className="text-xs uppercase font-bold">{wo.id.toUpperCase()} - {wo.description}</SelectItem>)}
                                         </SelectGroup>
                                     </SelectContent>
@@ -210,7 +219,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                          </div>
                     </div>
                     
-                    {/* Line Items */}
                     <div className="space-y-3">
                          <div className="flex items-center justify-between px-1">
                             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Line Itemized Ledger</h3>
@@ -228,8 +236,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                     <Select onValueChange={(val) => handlePremadeItemSelect(index, val)}>
                                         <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Select Material..."/></SelectTrigger>
                                         <SelectContent>
-                                            {premadeLineItems.map(pi => (
-                                                <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
+                                            {premadeLineItems.map(group => (
+                                                <SelectGroup key={group.group}>
+                                                    <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
+                                                    {group.items.map(pi => (
+                                                        <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
+                                                    ))}
+                                                </SelectGroup>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -243,7 +256,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         <Button variant="dashed" size="sm" className="w-full mt-2 h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={addLineItem}><Plus size={16} className="mr-2"/> Add Custom Terminal Entry</Button>
                     </div>
 
-                    {/* Totals & Notes */}
                     <div className="grid grid-cols-2 gap-8 pt-4">
                          <div className="space-y-2">
                             <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Internal / Client Notes</Label>

@@ -79,8 +79,8 @@ export default function AssignmentsHubPage() {
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        // PRECISE FILTER: Only assigned and in-progress jobs allowed in Active Assignments
-        if (wo.status === 'unassigned' || wo.status === 'completed') return false;
+        // EXCLUDE UNASSIGNED FROM ACTIVE REGISTRY
+        if (wo.status === 'unassigned') return false;
 
         const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
         const query = searchQuery.toLowerCase();

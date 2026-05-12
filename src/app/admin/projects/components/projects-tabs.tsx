@@ -42,7 +42,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange }:
                     </TabsList>
                 </div>
 
-                <div className="flex items-center gap-3 ml-auto">
+                <div className="flex items-center gap-3">
                     {dateRange?.from && (
                         <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
                             <CalendarIcon size={12} />

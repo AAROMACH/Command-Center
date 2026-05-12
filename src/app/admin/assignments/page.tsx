@@ -131,8 +131,9 @@ export default function AssignmentsHubPage() {
       });
   }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
+  // EXCLUDE UNASSIGNED FROM ACTIVE ASSIGNMENTS
   const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status !== 'completed'),
+    filteredWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
@@ -325,7 +326,7 @@ export default function AssignmentsHubPage() {
             </TabsList>
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-3">
             {dateRange?.from && (
                 <Badge variant="secondary" className="h-8 gap-2 border-brand-red/30 bg-brand-red-dim/20 text-brand-red px-3">
                     <CalendarIcon size={12} />

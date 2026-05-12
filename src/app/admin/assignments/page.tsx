@@ -552,7 +552,7 @@ export default function AssignmentsHubPage() {
               )}
           </DialogContent>
         </Dialog>
-      </div>
+      </Tabs>
     </div>
   );
 }

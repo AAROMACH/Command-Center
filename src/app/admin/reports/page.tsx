@@ -114,8 +114,8 @@ export default function ReportsPage() {
     return (
         <div className="max-w-[900px] mx-auto space-y-6">
             <header className="space-y-1 text-center">
-                <h1 className="text-xl font-bold uppercase tracking-widest text-text-primary">Operational Intelligence</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest">Historical oversight & cross-system lookup terminal</p>
+                <h1 className="text-xl font-bold uppercase tracking-widest text-text-primary">Activity Audit Terminal</h1>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest">Operational intelligence & cross-system lookup</p>
             </header>
 
             <div className="space-y-4">

@@ -344,7 +344,7 @@ export default function FinancialsPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="reports" className="mt-6">
-                     <Card>
+                    <Card>
                         <CardHeader>
                             <CardTitle>Generated Reports</CardTitle>
                             <CardDescription>Download previously generated financial and operational reports.</CardDescription>

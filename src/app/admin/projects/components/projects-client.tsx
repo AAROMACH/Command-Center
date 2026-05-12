@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -108,7 +107,6 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
         )
     }
 
-    // GROUPED CLIENT CARD VIEW
     if (sortBy === 'client' && groupedByClient) {
         return (
             <div className="grid grid-cols-1 gap-8">
@@ -142,7 +140,6 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
         );
     }
 
-    // STANDARD TABLE LIST VIEW
     return (
         <div className="table-wrap">
             <table className="tbl">

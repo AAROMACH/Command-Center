@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -132,7 +131,7 @@ export default function AssignmentsHubPage() {
   }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
+    filteredWorkOrders.filter(wo => (wo.status === 'assigned' || wo.status === 'in-progress')),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
@@ -163,6 +162,7 @@ export default function AssignmentsHubPage() {
         isRegistered: false
     }));
 
+    // prioritize registered clients
     return [...regGroups, ...unregGroups] as { client: any; jobs: WorkOrder[]; isRegistered: boolean }[];
   }, [activeWorkOrders, sortBy]);
 
@@ -356,7 +356,7 @@ export default function AssignmentsHubPage() {
                             if (techJobs.length === 0) return null;
                             return (
                                 <div key={tech.id} className="space-y-4">
-                                    <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                                    <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
                                         <Avatar className="h-10 w-10 border border-border-sub">
                                             <AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                         </Avatar>
@@ -378,7 +378,7 @@ export default function AssignmentsHubPage() {
                     <div className="grid grid-cols-1 gap-8">
                         {groupedByClient.map((group, idx) => (
                             <div key={group.client.name + idx} className="space-y-4">
-                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2">
+                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
                                     <div className="relative">
                                         <Avatar className="h-10 w-10 border border-border-sub">
                                             <AvatarImage src={group.client.avatarUrl} /><AvatarFallback><Building2 size={16} /></AvatarFallback>
@@ -418,8 +418,8 @@ export default function AssignmentsHubPage() {
                                         <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
                                             <td className="text-left pl-6 py-4">
                                                 <div className="flex flex-col items-start gap-1.5">
-                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                                     <div className="cell-id font-mono text-brand-red font-bold">{wo.id.toUpperCase()}</div>
+                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                                 </div>
                                             </td>
                                             <td className="text-left pl-0 py-4">

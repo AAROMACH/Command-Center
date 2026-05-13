@@ -61,9 +61,9 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
             <NotificationBell />
             {canSwap && techPortal && (
-                <Button variant="outline" size="default" className="h-10" onClick={() => router.push(techPortal.path)}>
-                    <MonitorUp size={14} className="mr-2" />
-                    Swap to Technician View
+                <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest border-border-main" onClick={() => router.push(techPortal.path)}>
+                    <MonitorUp size={12} className="mr-1.5 text-text-muted" />
+                    Swap View
                 </Button>
             )}
         </div>
@@ -136,7 +136,7 @@ export default function DashboardPage() {
                                 <TableCell>{job.clientName}</TableCell>
                                 <TableCell>{job.location}</TableCell>
                                 <TableCell>
-                                    <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : job.priority === 'medium' ? 'medium' : 'low'}>{job.priority}</Badge>
+                                    <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch')}>Assign</Button>

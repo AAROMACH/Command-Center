@@ -100,8 +100,8 @@ export function Navbar() {
             key={item.href}
             href={item.href}
             className={cn(
-              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#888888] transition-all whitespace-nowrap',
-              pathname === item.href ? 'bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap',
+              pathname === item.href ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <item.icon className="h-3.5 w-3.5" />

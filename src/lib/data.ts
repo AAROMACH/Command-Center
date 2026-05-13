@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice, AdminMessage } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -426,14 +426,13 @@ export const projects: Project[] = [
 ];
 
 export const projectDocuments: ProjectDocument[] = [
-  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', label: 'Site Doc', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB' },
-  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', label: 'Contract', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
-  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', label: 'Contract', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB' },
+  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
+  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB' },
   { 
     id: 'doc-4', 
     name: 'Deinstallation_Signoff.pdf', 
     type: 'pdf', 
-    label: 'Sign-off', 
     uploader: 'David Smith', 
     uploadDate: '04-19-2026', 
     size: '800 KB',
@@ -443,7 +442,6 @@ export const projectDocuments: ProjectDocument[] = [
     id: 'doc-5',
     name: 'cabling_removed.jpg',
     type: 'img',
-    label: 'Photo',
     uploader: 'David Smith',
     uploadDate: '04-19-2026',
     size: '1.8 MB',
@@ -654,4 +652,37 @@ export const invoices: Invoice[] = [
     total: 2700,
     notes: 'To be sent EOD.',
   },
+];
+
+export const adminMessages: AdminMessage[] = [
+  {
+    id: 'msg-001',
+    senderId: 'admin-001',
+    senderName: 'Sarah Connor',
+    subject: 'System Maintenance Window',
+    body: 'The Command Center will undergo scheduled maintenance tonight at 23:00 EST. Please finalize all sessions before the window.',
+    timestamp: '2024-07-28T10:00:00Z',
+    type: 'warning',
+    targetPortal: 'all'
+  },
+  {
+    id: 'msg-002',
+    senderId: 'admin-001',
+    senderName: 'Sarah Connor',
+    subject: 'Incomplete Field Log Policy',
+    body: 'Friendly reminder to all technicians: field logs must be submitted by Monday 09:00 EST to ensure timely payout processing.',
+    timestamp: '2024-07-27T14:30:00Z',
+    type: 'info',
+    targetPortal: 'tech'
+  },
+  {
+    id: 'msg-003',
+    senderId: 'staff-002',
+    senderName: 'Corey Williams',
+    subject: 'CRITICAL: Site Access Detroit',
+    body: 'Badge readers at the Detroit site are currently offline. Use the temporary access code 5592 at the security gate.',
+    timestamp: '2024-07-28T08:15:00Z',
+    type: 'critical',
+    targetPortal: 'tech'
+  }
 ];

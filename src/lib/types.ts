@@ -7,6 +7,17 @@ export type AppRole =
   | 'field_technician' 
   | 'client';
 
+export type AdminMessage = {
+  id: string;
+  senderId: string;
+  senderName: string;
+  subject: string;
+  body: string;
+  timestamp: string;
+  type: 'critical' | 'warning' | 'info' | 'success';
+  targetPortal: 'admin' | 'tech' | 'client' | 'all';
+};
+
 export type WorkOrder = {
   id: string;
   description: string;

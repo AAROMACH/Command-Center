@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, AlertTriangle, Clock, FileCheck, CalendarCheck, FileWarning, Briefcase, ClipboardList, Play, ChevronRight, Info } from 'lucide-react';
+import { Bell, Info, AlertTriangle, Clock, Play, FileCheck, CalendarCheck, FileWarning, Briefcase, ClipboardList, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -10,128 +10,32 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRouter, usePathname } from 'next/navigation';
-import { technicians, workOrders, weeklyLogs, projects, serviceRequests } from '@/lib/data';
-import { addDays } from 'date-fns';
+import { usePathname } from 'next/navigation';
+import { adminMessages } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 
 export function NotificationBell() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
-    if (!userId) return;
-
-    const user = technicians.find(t => t.id === userId);
-    if (!user) return;
-
-    const currentAlerts: any[] = [];
-
-    if (pathname.includes('/tech')) {
-      const activeJob = workOrders.find(wo => wo.assignedTechnicianId === userId && wo.status === 'in-progress');
-      if (activeJob) {
-        currentAlerts.push({
-          id: 'tech-active',
-          type: 'success',
-          text: `LIVE SESSION`,
-          description: `On-site at ${activeJob.location.split(',')[0]}`,
-          icon: Play,
-          actionPath: '/tech/dashboard',
-        });
-      }
-
-      const tomorrow = addDays(new Date(), 1);
-      const now = new Date();
-      const upcomingJobsCount = workOrders.filter(wo =>
-        wo.assignedTechnicianId === userId &&
-        new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
-        wo.status === 'assigned'
-      ).length;
-
-      if (upcomingJobsCount > 0) {
-        currentAlerts.push({
-          id: 'tech-upcoming',
-          type: 'info',
-          text: `Upcoming Jobs`,
-          description: `${upcomingJobsCount} missions in 24h`,
-          icon: CalendarCheck,
-          actionPath: '/tech/assignments',
-        });
-      }
-
-      const pendingLogsCount = weeklyLogs.filter(log =>
-        log.technicianId === userId && log.status === 'Draft'
-      ).length;
-
-      if (pendingLogsCount > 0) {
-        currentAlerts.push({
-          id: 'tech-logs',
-          type: 'warning',
-          text: `Draft Logs`,
-          description: `${pendingLogsCount} weekly work logs pending`,
-          icon: FileWarning,
-          actionPath: '/tech/logs',
-        });
-      }
-    } else if (pathname.includes('/client')) {
-      const company = user.clientCompany;
-      if (company) {
-        const activeProjectsCount = projects.filter(p => p.client === company && p.status === 'active').length;
-        const pendingRequestsCount = serviceRequests.filter(r => r.clientName === company && r.status === 'new').length;
-
-        if (activeProjectsCount > 0) {
-          currentAlerts.push({
-            id: 'client-projects',
-            type: 'info',
-            text: `Active Projects`,
-            description: `${activeProjectsCount} deployment sites in progress`,
-            icon: Briefcase,
-            actionPath: '/client/projects',
-          });
-        }
-
-        if (pendingRequestsCount > 0) {
-          currentAlerts.push({
-            id: 'client-tickets',
-            type: 'warning',
-            text: `New Requests`,
-            description: `${pendingRequestsCount} tickets under audit`,
-            icon: ClipboardList,
-            actionPath: '/client/tickets',
-          });
-        }
-      }
-    } else { 
-      const unassignedJobsCount = workOrders.filter(wo => wo.status === 'unassigned').length;
-      const logsToAuditCount = weeklyLogs.filter(log => log.status === 'Submitted').length;
-
-      if (unassignedJobsCount > 0) {
-        currentAlerts.push({
-          id: 'admin-unassigned',
-          type: 'critical',
-          text: `Unassigned Work`,
-          description: `${unassignedJobsCount} missions require dispatch`,
-          icon: AlertTriangle,
-          actionPath: '/admin/dispatch',
-        });
-      }
-
-      if (logsToAuditCount > 0) {
-        currentAlerts.push({
-          id: 'admin-audit',
-          type: 'info',
-          text: `Pending Audits`,
-          description: `${logsToAuditCount} logs awaiting authorization`,
-          icon: FileCheck,
-          actionPath: '/admin/financials',
-        });
-      }
-    }
-
-    setAlerts(currentAlerts);
+    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    const filtered = adminMessages.filter(m => m.targetPortal === 'all' || m.targetPortal === currentPortal);
+    
+    // Sort by timestamp descending
+    const sorted = [...filtered].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setMessages(sorted);
   }, [pathname]);
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'critical': return AlertTriangle;
+      case 'warning': return Clock;
+      case 'success': return CheckCircle2;
+      default: return Info;
+    }
+  };
 
   return (
     <Popover>
@@ -139,9 +43,9 @@ export function NotificationBell() {
         <Button variant="outline" className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group">
           <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
-            Operational Alerts
+            Command Comms
           </span>
-          {alerts.length > 0 && (
+          {messages.length > 0 && (
             <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]" />
           )}
         </Button>
@@ -149,54 +53,50 @@ export function NotificationBell() {
       <PopoverContent className="w-80 p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
         <div className="p-4 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Operational Message Center</h3>
-            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub font-mono">{alerts.length} Active</Badge>
+            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub font-mono">{messages.length} Active</Badge>
         </div>
         <ScrollArea className="max-h-[350px]">
-            {alerts.length > 0 ? (
+            {messages.length > 0 ? (
                 <div className="divide-y divide-border-sub">
-                    {alerts.map((alert) => (
-                        <div 
-                            key={alert.id} 
-                            className="p-4 hover:bg-bg-tertiary cursor-pointer transition-all group"
-                            onClick={() => {
-                                router.push(alert.actionPath);
-                            }}
-                        >
-                            <div className="flex gap-4">
-                                <div className={cn(
-                                    "p-2 rounded-lg shrink-0 h-fit transition-colors",
-                                    alert.type === 'critical' ? "bg-brand-red-dim text-text-red border border-brand-red/30" :
-                                    alert.type === 'warning' ? "bg-accent-gold-dim text-accent-gold border border-accent-gold/30" :
-                                    alert.type === 'success' ? "bg-green-dim text-text-green border border-green-border/30" :
-                                    "bg-bg-secondary text-text-secondary border border-border-sub"
-                                )}>
-                                    <alert.icon size={14} className={alert.type === 'success' ? 'animate-pulse' : ''} />
+                    {messages.map((msg) => {
+                        const Icon = getIcon(msg.type);
+                        return (
+                            <div key={msg.id} className="p-4 hover:bg-bg-tertiary cursor-default transition-all group">
+                                <div className="flex gap-4">
+                                    <div className={cn(
+                                        "p-2 rounded-lg shrink-0 h-fit transition-colors",
+                                        msg.type === 'critical' ? "bg-brand-red-dim text-text-red border border-brand-red/30" :
+                                        msg.type === 'warning' ? "bg-accent-gold-dim text-accent-gold border border-accent-gold/30" :
+                                        msg.type === 'success' ? "bg-green-dim text-text-green border border-green-border/30" :
+                                        "bg-bg-secondary text-text-secondary border border-border-sub"
+                                    )}>
+                                        <Icon size={14} />
+                                    </div>
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
+                                            <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'HH:mm')}</span>
+                                        </div>
+                                        <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2">{msg.body}</p>
+                                        <div className="flex items-center gap-1.5 pt-1.5 opacity-60">
+                                            <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
+                                                {msg.senderName.charAt(0)}
+                                            </div>
+                                            <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Admin: {msg.senderName}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-0.5 min-w-0">
-                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors truncate">{alert.text}</p>
-                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-tighter leading-relaxed">{alert.description}</p>
-                                </div>
-                                <ChevronRight size={12} className="text-text-muted mt-1 ml-auto opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5" />
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             ) : (
                 <div className="p-12 text-center space-y-2">
                     <Info size={24} className="mx-auto text-text-muted opacity-20" />
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">Registry clear</p>
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">No official messages</p>
                 </div>
             )}
         </ScrollArea>
-        <div className="p-3 border-t border-border-sub bg-bg-tertiary/30">
-            <Button 
-                variant="ghost" 
-                className="w-full h-8 text-[9px] uppercase font-bold tracking-widest text-text-muted hover:text-text-primary"
-                onClick={() => router.push('/admin/reports')}
-            >
-                Access Comprehensive Audit
-            </Button>
-        </div>
       </PopoverContent>
     </Popover>
   );

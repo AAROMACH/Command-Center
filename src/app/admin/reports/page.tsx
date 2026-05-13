@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -25,13 +24,15 @@ import {
     Activity as ActivityIcon,
     SearchX,
     FileText,
-    ArrowLeft
+    ArrowLeft,
+    Send,
+    MessageSquare
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
     Select,
@@ -41,6 +42,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
     technicians, 
@@ -51,10 +53,11 @@ import {
     expenses,
     timeOffRequests,
     assignmentTimeLogs,
+    adminMessages as initialMessages,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project } from '@/lib/types';
+import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -73,6 +76,16 @@ export default function ReportsPage() {
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     
+    // Messaging State
+    const [messages, setMessages] = useState<AdminMessage[]>(initialMessages);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const [newMessage, setNewMessage] = useState<Partial<AdminMessage>>({
+        type: 'info',
+        targetPortal: 'all',
+        subject: '',
+        body: ''
+    });
+
     // Change Log States
     const [isClLoaded, setIsClLoaded] = useState(false);
     const [clSearch, setClSearch] = useState("");
@@ -102,11 +115,9 @@ export default function ReportsPage() {
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
-        // Add from managed sites
         technicians.forEach(t => {
             t.managedSites?.forEach(s => uniqueSites.set(s.location, { ...s, client: t.clientCompany || 'Strategic Partner' }));
         });
-        // Add from work orders
         workOrders.forEach(wo => {
             if (!uniqueSites.has(wo.location)) {
                 uniqueSites.set(wo.location, { id: `site-${wo.id}`, name: wo.location.split(',')[0], location: wo.location, client: wo.clientName });
@@ -121,8 +132,33 @@ export default function ReportsPage() {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
         const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
-        return unassigned + overdueLogs + openCheckins + 2; // +2 for mock schema errors
+        return unassigned + overdueLogs + openCheckins + 2;
     }, []);
+
+    // ── BROADCAST LOGIC ──────────────────────────────────────────────────
+
+    const handleBroadcast = () => {
+        if (!newMessage.subject || !newMessage.body) {
+            toast({ variant: 'destructive', title: 'Broadcast Error', description: 'Please provide both a subject and a message body.' });
+            return;
+        }
+
+        const msg: AdminMessage = {
+            id: `msg-${Date.now()}`,
+            senderId: 'admin-001',
+            senderName: 'Sarah Connor',
+            subject: newMessage.subject!,
+            body: newMessage.body!,
+            timestamp: new Date().toISOString(),
+            type: newMessage.type as any,
+            targetPortal: newMessage.targetPortal as any
+        };
+
+        setMessages([msg, ...messages]);
+        setIsBroadcasting(false);
+        setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '' });
+        toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
+    };
 
     // ── SEARCH LOGIC ─────────────────────────────────────────────────────
 
@@ -166,7 +202,7 @@ export default function ReportsPage() {
         }
     };
 
-    // ── COMPONENT HELPERS ────────────────────────────────────────────────
+    // ── RENDER HELPERS ───────────────────────────────────────────────────
 
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
@@ -213,186 +249,125 @@ export default function ReportsPage() {
         </div>
     );
 
-    const renderTechnicianProfile = () => {
-        if (!activeTech || !techStats) return null;
-        
-        const openCheckins = assignmentTimeLogs.filter(atl => atl.technicianId === activeTech.id && !atl.checkOutTime);
-        const overdueLogs = weeklyLogs.filter(wl => wl.technicianId === activeTech.id && wl.status === 'Draft');
-        const pendingReimb = expenses.filter(e => e.submittedBy === activeTech.name && e.status === 'Pending');
-        const pendingTimeOff = timeOffRequests.filter(tor => tor.technicianId === activeTech.id && tor.status === 'pending');
-
-        return (
-            <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
-                        <ArrowLeft size={14} className="mr-1.5"/> Back to Roster
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold">
-                        <RefreshCw size={12} className="mr-1.5"/> Sync Records
-                    </Button>
-                </div>
-
-                <Card className="bg-bg-secondary border-border-main shadow-2xl">
-                    <CardContent className="p-6 space-y-8">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-6">
-                                <Avatar className="h-16 w-16 border-2 border-border-sub">
-                                    <AvatarImage src={activeTech.avatarUrl} />
-                                    <AvatarFallback className="text-lg">{activeTech.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="space-y-1">
-                                    <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
-                                    <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email} · {activeTech.id.toUpperCase()}</p>
-                                </div>
-                            </div>
-                            <Badge variant="active" className="h-6 px-4 uppercase text-[10px] tracking-widest">Active Profile</Badge>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
-                                <p className="text-2xl font-bold text-text-primary">{techStats.total}</p>
-                                <p className="text-[8px] text-text-muted uppercase">lifetime</p>
-                            </div>
-                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
-                                <p className="text-2xl font-bold text-text-primary">{techStats.completed}</p>
-                                <p className="text-[8px] text-text-muted uppercase">confirmed</p>
-                            </div>
-                            <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
-                                <p className={cn("text-2xl font-bold", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
-                                <p className="text-[8px] text-text-muted uppercase">Integrity Score</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center px-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Penalty Points Audit</p>
-                                <p className="text-[10px] font-bold text-text-red uppercase">{techStats.penaltyPoints} PTS</p>
-                            </div>
-                            <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub">
-                                <div 
-                                    className={cn("h-full rounded-full transition-all duration-500", techStats.penaltyPoints > 5 ? 'bg-text-red' : 'bg-accent-gold')} 
-                                    style={{ width: `${Math.min(100, (techStats.penaltyPoints / 10) * 100)}%` }} 
-                                />
-                            </div>
-                            <div className="flex justify-between items-center text-[8px] font-black text-text-muted uppercase tracking-widest px-1">
-                                <span>Reliable</span>
-                                <span>Monitored</span>
-                                <span>Restricted</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* DISCREPANCIES / ACTION ITEMS */}
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Tactical Audit & Actions</h3>
-                    
-                    <div className="space-y-2">
-                        {openCheckins.map(ci => (
-                            <div key={ci.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-green animate-pulse">
-                                        <Play size={18} fill="currentColor" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Open Session Terminal</p>
-                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">Checked In: {format(parseISO(ci.checkInTime), 'MMM d, h:mm a')} · Site Verification Pending</p>
-                                    </div>
-                                </div>
-                                <Button variant="destructive-outline" size="sm" className="h-8 text-[9px] uppercase font-bold" onClick={() => toast({ title: "Admin Override", description: "Technician session terminated by command center." })}>
-                                    Force Checkout
-                                </Button>
-                            </div>
-                        ))}
-
-                        {pendingTimeOff.map(tor => (
-                            <div key={tor.id} className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim/10 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-accent-gold">
-                                        <CalendarIcon size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Time-Off Request: {tor.type}</p>
-                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{tor.startDate} → {tor.endDate} · Pending Lead Audit</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold hover:text-text-red">Deny</Button>
-                                    <Button size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90 border-none">Approve</Button>
-                                </div>
-                            </div>
-                        ))}
-
-                        {pendingReimb.map(exp => (
-                            <div key={exp.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-green">
-                                        <Coins size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{exp.category} Reimbursement — ${exp.amount}</p>
-                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{exp.description} · {exp.date}</p>
-                                    </div>
-                                </div>
-                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-green border-text-green/40 hover:bg-text-green/10" onClick={() => toast({ title: "Financial Settlement", description: "Expense authorized for next payout cycle." })}>
-                                    Authorize
-                                </Button>
-                            </div>
-                        ))}
-
-                        {overdueLogs.map(log => (
-                            <div key={log.id} className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-red">
-                                        <ShieldAlert size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-text-red uppercase tracking-wide">Weekly Log Overdue</p>
-                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">Week of {log.weekOf} · Submission Threshold Exceeded</p>
-                                    </div>
-                                </div>
-                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold hover:text-text-red">Nudge Tech</Button>
-                            </div>
-                        ))}
-
-                        {!openCheckins.length && !pendingTimeOff.length && !pendingReimb.length && !overdueLogs.length && (
-                            <div className="p-12 text-center border-2 border-dashed border-border-main rounded-xl opacity-40">
-                                <Check size={32} className="mx-auto text-text-green mb-2" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">No active discrepancies identified</p>
-                            </div>
-                        )}
+    const renderMessaging = () => (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-xl border border-border-sub">
+                <div className="flex items-center gap-3">
+                    <MessageSquare className="text-brand-red h-5 w-5" />
+                    <div>
+                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">Operational Communications</h3>
+                        <p className="text-[10px] text-text-muted uppercase tracking-widest">System-wide broadcast terminal</p>
                     </div>
                 </div>
+                <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-widest">
+                    <Send size={14} className="mr-2" />
+                    Broadcast Message
+                </Button>
+            </div>
 
-                {/* PENALTY LOG */}
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Penalty Ledger</h3>
-                    <div className="space-y-2">
-                        {techStats.penalties.map(p => (
-                            <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-primary flex items-center justify-between group">
-                                <div className="flex items-start gap-4">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1.5 shrink-0" />
+            <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Message Ledger</h3>
+                <div className="space-y-2">
+                    {messages.map(msg => (
+                        <div key={msg.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "p-2 rounded-lg border",
+                                        msg.type === 'critical' ? "bg-brand-red-dim text-text-red border-brand-red/30" :
+                                        msg.type === 'warning' ? "bg-accent-gold-dim text-accent-gold border-accent-gold/30" :
+                                        msg.type === 'success' ? "bg-green-dim text-text-green border-green-border/30" :
+                                        "bg-bg-primary text-text-secondary border-border-sub"
+                                    )}>
+                                        <ActivityIcon size={14} />
+                                    </div>
                                     <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{p.reason}</p>
-                                        <p className="text-[10px] text-text-muted uppercase mt-0.5">{p.date} · Points Deducted: {p.points}</p>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
+                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
+                                            {format(parseISO(msg.timestamp), 'MMM d, yyyy HH:mm')} · Target: {msg.targetPortal}
+                                        </p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Audit Adjustment", description: "Penalty dismissed. Reliability score recalculated." })}>
-                                    Dismiss
-                                </Button>
+                                <Badge variant="outline" className="text-[8px] uppercase">{msg.type}</Badge>
                             </div>
-                        ))}
-                        {!techStats.penalties.length && (
-                            <div className="p-12 text-center italic text-text-muted text-[10px] uppercase font-bold tracking-widest">No penalties on record.</div>
-                        )}
-                    </div>
+                            <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium">{msg.body}</p>
+                            <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[8px] font-bold">
+                                        {msg.senderName.charAt(0)}
+                                    </div>
+                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Sent by {msg.senderName}</span>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-muted hover:text-text-red">Revoke Broadcast</Button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
-        );
-    };
+
+            {/* BROADCAST DIALOG */}
+            <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <DialogTitle className="uppercase tracking-widest font-bold">Compose Broadcast</DialogTitle>
+                        <DialogDescription className="text-xs">Transmit a tactical message to the selected portal registry.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Target Portal</Label>
+                                <Select value={newMessage.targetPortal} onValueChange={(val: any) => setNewMessage({...newMessage, targetPortal: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Channels</SelectItem>
+                                        <SelectItem value="tech">Technicians Only</SelectItem>
+                                        <SelectItem value="client">Clients Only</SelectItem>
+                                        <SelectItem value="admin">Admin Staff</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Priority Level</Label>
+                                <Select value={newMessage.type} onValueChange={(val: any) => setNewMessage({...newMessage, type: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="info">Informational</SelectItem>
+                                        <SelectItem value="warning">System Alert</SelectItem>
+                                        <SelectItem value="critical">Critical/Emergency</SelectItem>
+                                        <SelectItem value="success">Operational Success</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Subject / Headline</Label>
+                            <Input 
+                                placeholder="Clear, concise directive..." 
+                                value={newMessage.subject}
+                                onChange={e => setNewMessage({...newMessage, subject: e.target.value})}
+                                className="h-10 bg-bg-primary text-xs uppercase font-bold"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Message Body</Label>
+                            <Textarea 
+                                placeholder="Provide full context and required actions..." 
+                                value={newMessage.body}
+                                onChange={e => setNewMessage({...newMessage, body: e.target.value})}
+                                className="bg-bg-primary text-xs h-32 leading-relaxed uppercase font-medium"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
+                        <Button variant="outline" onClick={() => setIsBroadcasting(false)}>Cancel</Button>
+                        <Button onClick={handleBroadcast} className="bg-brand-red hover:bg-brand-red-hover px-10">
+                            <Send size={16} className="mr-2" /> Execute Broadcast
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
 
     const renderSiteActivity = () => {
         if (selectedSiteId && activeSite) {
@@ -436,23 +411,6 @@ export default function ReportsPage() {
                             </div>
                         </CardContent>
                     </Card>
-
-                    <div className="space-y-4">
-                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] border-b border-border-sub pb-2 px-1">Deployment History</h3>
-                        <div className="relative pl-6 space-y-8 border-l border-border-sub ml-2">
-                            {workOrders.filter(wo => wo.location === activeSite.location).slice(0, 5).map(wo => (
-                                <div key={wo.id} className="relative group cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                    <div className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-text-green ring-4 ring-bg-primary transition-all group-hover:scale-125" />
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
-                                        <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">
-                                            {wo.scheduleDate} · {wo.status} · {wo.assignedTechnicianId || 'Field Ops'}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             );
         }
@@ -480,171 +438,12 @@ export default function ReportsPage() {
         );
     };
 
-    const renderAnomalyFlags = () => (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center justify-between">
-                    Schema & Logic Inconsistencies
-                    <Badge variant="destructive" className="h-4 px-1.5 text-[8px] uppercase">Action Required</Badge>
-                </h3>
-                <div className="space-y-2">
-                    <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                        <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
-                        <div className="space-y-1">
-                            <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema Drift — <code>project_daily_logs</code></p>
-                            <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                Document <code>atl-GD7bfWeRk</code> uses <code>technicianId</code> instead of the system-standard <code>techId</code>. 
-                                This breaks aggregate field analytics queries on the administrative dashboard.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                        <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
-                        <div className="space-y-1">
-                            <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Malformed Ingestion — 5 Documents</p>
-                            <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                Range: <code>WO-18967010</code> to <code>WO-18967015</code>. Time and Location parameters were inverted during the FieldNation CSV import phase. 
-                                Manual axis correction required for calendar visibility.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Operational Alerts</h3>
-                <div className="space-y-2">
-                    {assignmentTimeLogs.filter(atl => !atl.checkOutTime).map(ci => (
-                        <div key={ci.id} className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim/5 flex gap-4 text-left">
-                             <div className="h-1.5 w-1.5 rounded-full bg-accent-gold mt-1 shrink-0" />
-                             <div className="space-y-1">
-                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Stale Check-In Detected</p>
-                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                    Tech <code>{ci.technicianId}</code> has been checked into site <code>{ci.workOrderId}</code> for 14+ hours without a checkout or activity signature.
-                                </p>
-                             </div>
-                        </div>
-                    ))}
-                    {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                        <div key={wo.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex gap-4 text-left group hover:border-brand-red transition-all cursor-pointer" onClick={() => router.push('/admin/dispatch')}>
-                             <div className="h-1.5 w-1.5 rounded-full bg-text-muted mt-1 shrink-0" />
-                             <div className="space-y-1">
-                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Unassigned Mission in Active Window</p>
-                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                    <code>{wo.id.toUpperCase()}</code> for <code>{wo.clientName}</code> scheduled for <code>{wo.scheduleDate}</code> has no technician allocated.
-                                </p>
-                             </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderChangeLog = () => {
-        if (!isClLoaded) {
-            return (
-                <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-2xl space-y-6">
-                    <History size={48} className="mx-auto text-text-muted opacity-20" />
-                    <div className="space-y-2">
-                        <p className="text-sm font-bold uppercase text-text-primary tracking-wide">System Change Log is Loaded on Demand</p>
-                        <p className="text-[10px] text-text-muted uppercase tracking-widest font-medium">Maintains high terminal performance and lowers query costs.</p>
-                    </div>
-                    <Button onClick={() => setIsClLoaded(true)} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-widest">
-                        Load operational change log
-                    </Button>
-                </div>
-            );
-        }
-
-        const filteredCl = CL_ENTRIES.filter(e => {
-            if (clType !== 'all' && e.type !== clType) return false;
-            if (clSearch && !e.si.includes(clSearch.toLowerCase())) return false;
-            return true;
-        });
-
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex flex-col md:flex-row items-center gap-4 bg-bg-secondary p-4 rounded-xl border border-border-sub">
-                    <div className="flex items-center gap-2 flex-1 w-full">
-                        <Select value={clType} onValueChange={setClType}>
-                            <SelectTrigger className="w-[160px] bg-bg-primary h-10 text-[10px] font-bold uppercase tracking-widest">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="assignment">Assignments</SelectItem>
-                                <SelectItem value="penalty">Penalties</SelectItem>
-                                <SelectItem value="import">Imports</SelectItem>
-                                <SelectItem value="client_request">Client Req</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                            <Input 
-                                placeholder="Filter by tech, ID, WO#, date..." 
-                                className="h-10 pl-9 bg-bg-primary text-[10px] uppercase font-bold"
-                                value={clSearch}
-                                onChange={e => setClSearch(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{filteredCl.length} of {CL_ENTRIES.length} system events</p>
-                </div>
-
-                <div className="relative pl-6 space-y-10 border-l border-border-sub ml-2">
-                    {filteredCl.map(entry => {
-                        const isExpanded = expandedClIds.has(entry.id);
-                        return (
-                            <div key={entry.id} className="relative group">
-                                <div className={cn(
-                                    "absolute -left-[27px] top-1.5 h-2 w-2 rounded-full ring-4 ring-bg-primary transition-all",
-                                    entry.dot === 'done' ? 'bg-text-green' : entry.dot === 'warn' ? 'bg-accent-gold' : 'bg-text-red'
-                                )} />
-                                <button 
-                                    className="w-full text-left space-y-1 focus:outline-none"
-                                    onClick={() => {
-                                        const newSet = new Set(expandedClIds);
-                                        if (isExpanded) newSet.delete(entry.id);
-                                        else newSet.add(entry.id);
-                                        setExpandedClIds(newSet);
-                                    }}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{entry.headline}</p>
-                                        <ChevronRight size={14} className={cn("text-text-muted transition-transform", isExpanded && "rotate-90")} />
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {entry.chips.map((c, i) => (
-                                            <span key={i} className="text-[9px] font-mono font-bold text-text-muted uppercase px-1.5 py-0.5 rounded bg-bg-secondary border border-border-sub">{c}</span>
-                                        ))}
-                                    </div>
-                                </button>
-                                
-                                {isExpanded && (
-                                    <div className="mt-4 rounded-xl border border-border-sub bg-bg-secondary/50 overflow-hidden animate-in slide-in-from-top-1 duration-200">
-                                        {entry.details.map((d, i) => (
-                                            <div key={i} className="grid grid-cols-[120px,1fr] gap-4 px-4 py-2 text-[10px] border-b border-border-sub last:border-none hover:bg-bg-primary/50 transition-colors">
-                                                <span className="font-bold text-text-muted uppercase tracking-widest">{d.l}</span>
-                                                <span className="font-bold text-text-primary uppercase tracking-tight">{d.v}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="max-w-[1000px] mx-auto space-y-8">
             <header className="space-y-1 text-center">
                 <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
                 <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Activity Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system changes</p>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, messaging, and system changes</p>
             </header>
 
             <div className="space-y-6">
@@ -657,14 +456,6 @@ export default function ReportsPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                    {searchQuery && (
-                        <button 
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1 rounded-full hover:bg-bg-tertiary transition-all"
-                            onClick={() => setSearchQuery("")}
-                        >
-                            <X size={20} />
-                        </button>
-                    )}
                 </div>
 
                 {!searchQuery ? (
@@ -673,6 +464,7 @@ export default function ReportsPage() {
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-12 justify-center mb-8">
                                 <TabsTrigger value="tech" className="tab-trigger-activity">Technician activity</TabsTrigger>
                                 <TabsTrigger value="sites" className="tab-trigger-activity">Site activity</TabsTrigger>
+                                <TabsTrigger value="messaging" className="tab-trigger-activity">Broadcast Comms</TabsTrigger>
                                 <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                                     Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
                                 </TabsTrigger>
@@ -682,59 +474,114 @@ export default function ReportsPage() {
 
                         <div className="min-h-[400px]">
                             <TabsContent value="tech" className="m-0">
-                                {selectedTechId ? renderTechnicianProfile() : renderTechnicianRoster()}
+                                {selectedTechId ? (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-center justify-between">
+                                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+                                                <ArrowLeft size={14} className="mr-1.5"/> Back to Roster
+                                            </Button>
+                                        </div>
+                                        <Card className="bg-bg-secondary border-border-main shadow-2xl">
+                                            <CardContent className="p-6 space-y-8">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-6">
+                                                        <Avatar className="h-16 w-16 border-2 border-border-sub">
+                                                            <AvatarImage src={activeTech?.avatarUrl} />
+                                                            <AvatarFallback className="text-lg">{activeTech?.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="space-y-1">
+                                                            <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech?.name}</h2>
+                                                            <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech?.email} · {activeTech?.id.toUpperCase()}</p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant="active" className="h-6 px-4 uppercase text-[10px] tracking-widest">Active Profile</Badge>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
+                                                        <p className="text-2xl font-bold text-text-primary">{techStats?.total}</p>
+                                                    </div>
+                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
+                                                        <p className="text-2xl font-bold text-text-primary">{techStats?.completed}</p>
+                                                    </div>
+                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
+                                                        <p className={cn("text-2xl font-bold", techStats && techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats?.reliability}%</p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                ) : renderTechnicianRoster()}
                             </TabsContent>
 
                             <TabsContent value="sites" className="m-0">
                                 {renderSiteActivity()}
                             </TabsContent>
 
+                            <TabsContent value="messaging" className="m-0">
+                                {renderMessaging()}
+                            </TabsContent>
+
                             <TabsContent value="flags" className="m-0">
-                                {renderAnomalyFlags()}
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
+                                    <div className="space-y-2">
+                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema Drift — <code>project_daily_logs</code></p>
+                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase">
+                                                    Document <code>atl-GD7bfWeRk</code> uses <code>technicianId</code> instead of the system-standard <code>techId</code>. 
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="changelog" className="m-0">
-                                {renderChangeLog()}
+                                {!isClLoaded ? (
+                                    <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-2xl space-y-6">
+                                        <History size={48} className="mx-auto text-text-muted opacity-20" />
+                                        <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Load Operational Change Log</p>
+                                        <Button onClick={() => setIsClLoaded(true)} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-widest">
+                                            Load From Archive
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <p className="text-xs text-text-muted uppercase font-bold italic text-center">Change log streaming active...</p>
+                                    </div>
+                                )}
                             </TabsContent>
                         </div>
                     </Tabs>
                 ) : (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="flex items-center justify-between border-b border-border-sub pb-4 px-1">
-                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{searchResults.length} tactical matches for &quot;{searchQuery}&quot;</h3>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3">
-                            {searchResults.length > 0 ? searchResults.map((r, i) => (
-                                <div key={i} onClick={() => handleResultClick(r)} className="p-5 rounded-2xl border border-border-main bg-bg-secondary hover:border-brand-red transition-all flex gap-5 group cursor-pointer text-left shadow-sm">
-                                    <Badge variant="outline" className={cn(
-                                        "h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black",
-                                        r.cls
-                                    )}>
-                                        {r.type}
-                                    </Badge>
-                                    <div className="space-y-1.5 flex-1 min-w-0">
-                                        <p className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors truncate">{r.label}</p>
-                                        <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold leading-relaxed">{r.meta}</p>
-                                    </div>
-                                    <ChevronRight size={20} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all self-center" />
+                        {searchResults.length > 0 ? searchResults.map((r, i) => (
+                            <div key={i} onClick={() => handleResultClick(r)} className="p-5 rounded-2xl border border-border-main bg-bg-secondary hover:border-brand-red transition-all flex gap-5 group cursor-pointer text-left shadow-sm">
+                                <Badge variant="outline" className={cn("h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black", r.cls)}>
+                                    {r.type}
+                                </Badge>
+                                <div className="space-y-1.5 flex-1 min-w-0">
+                                    <p className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors truncate">{r.label}</p>
+                                    <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold leading-relaxed">{r.meta}</p>
                                 </div>
-                            )) : (
-                                <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30">
-                                    <SearchX size={48} className="mx-auto text-text-muted mb-4" />
-                                    <p className="text-sm font-bold uppercase tracking-widest text-text-muted">No operational matches in registry</p>
-                                    <p className="text-[10px] text-text-muted uppercase mt-1">Refine your tactical search parameters</p>
-                                </div>
-                            )}
-                        </div>
+                                <ChevronRight size={20} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all self-center" />
+                            </div>
+                        )) : (
+                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30">
+                                <SearchX size={48} className="mx-auto text-text-muted mb-4" />
+                                <p className="text-sm font-bold uppercase tracking-widest text-text-muted">No operational matches found</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            <JobDetailDialog 
-                isOpen={isJobOpen} 
-                setIsOpen={setIsJobOpen} 
-                mission={selectedJob} 
-            />
+            <JobDetailDialog isOpen={isJobOpen} setIsOpen={setIsJobOpen} mission={selectedJob} />
             
             <style jsx global>{`
                 .tab-trigger-activity {
@@ -744,4 +591,3 @@ export default function ReportsPage() {
         </div>
     );
 }
-

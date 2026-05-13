@@ -204,12 +204,12 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
 
                 {viewMode === 'week' ? (
                     <div className="week-grid !mb-6">
-                        {weekDays.map(day => {
+                        {weekDays.map((day, idx) => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                             return (
                                 <div 
-                                  key={day.toString()} 
+                                  key={`${day.toISOString()}-${idx}`} 
                                   className={cn("day-pill", {
                                     'selected': isSelected,
                                     'today': isToday(day)
@@ -226,17 +226,17 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                 ) : (
                     <div className="month-grid-wrap !mb-6">
                         <div className="month-header">
-                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(dayName => (
-                                <div key={dayName} className="month-header-cell">{dayName}</div>
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((dayName, idx) => (
+                                <div key={`${dayName}-${idx}`} className="month-header-cell">{dayName}</div>
                             ))}
                         </div>
                         <div className="month-days">
-                            {monthDays.map(day => {
+                            {monthDays.map((day, idx) => {
                                 const dateStr = format(day, 'yyyy-MM-dd');
                                 const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                                 return (
                                     <div 
-                                      key={day.toString()}
+                                      key={`${day.toISOString()}-${idx}`}
                                       className={cn("month-day !h-10 !text-xs", {
                                         'selected': isSelected,
                                         'today': isToday(day),

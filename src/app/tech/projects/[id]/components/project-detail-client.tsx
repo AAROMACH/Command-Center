@@ -240,11 +240,31 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
 
 const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSession, onManualAdd }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onCheckIn: () => void, onCheckOut: () => void, activeSession: any, onManualAdd: (log: ProjectDailyLog) => void }) => {
     const [isManualOpen, setIsManualOpen] = useState(false);
+    const [elapsedTime, setElapsedTime] = useState('00:00:00');
     const { toast } = useToast();
 
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (activeSession) {
+            interval = setInterval(() => {
+                const now = new Date();
+                const diff = now.getTime() - activeSession.startTime.getTime();
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                setElapsedTime(
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                );
+            }, 1000);
+        } else {
+            setElapsedTime('00:00:00');
+        }
+        return () => clearInterval(interval);
+    }, [activeSession]);
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Check-In / Check-Out Shared Console */}
                 <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
                     <div className="flex items-center justify-between mb-4">
@@ -284,7 +304,7 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
-                                        <p className="text-xl font-mono font-bold text-text-primary">02:42:15</p>
+                                        <p className="text-xl font-mono font-bold text-text-primary">{elapsedTime}</p>
                                     </div>
                                 </div>
                                 <div className="w-full space-y-4">
@@ -335,31 +355,6 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                         )}
                     </div>
                 </section>
-            </div>
-
-            <div className="space-y-6">
-                <Card className="bg-bg-tertiary/30 border-border-sub">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2">
-                            <ShieldAlert size={14} className="text-accent-gold"/> Reporting Protocol
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                            The timesheet terminal automatically calculates hours and maps GPS coordinates for administrative audit. All sessions must include a work summary for successful settlement.
-                        </p>
-                        <div className="space-y-2">
-                            <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
-                                <p className="text-[9px] font-bold text-text-muted uppercase">EOD Cutoff</p>
-                                <p className="text-[10px] font-bold text-text-primary uppercase">08:00 PM</p>
-                            </div>
-                             <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
-                                <p className="text-[9px] font-bold text-text-muted uppercase">SLA Window</p>
-                                <p className="text-[10px] font-bold text-text-primary uppercase">24h Audit</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
 
             <ManualSessionDialog 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
+import { Bell, Info, AlertTriangle, Clock, CheckCircle2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -15,37 +15,68 @@ import { adminMessages as initialMessages } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export function NotificationBell() {
   const pathname = usePathname();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
 
+  const fetchMessages = () => {
+    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    
+    // 1. Load Broadcast Ledger
+    let storedMessages: AdminMessage[] = [];
+    try {
+        const json = localStorage.getItem('aaromach_broadcast_ledger');
+        if (json) storedMessages = JSON.parse(json);
+    } catch (e) {}
+
+    // 2. Load Cleared Registry
+    let clearedIds: string[] = [];
+    try {
+        const clearedJson = localStorage.getItem('aaromach_cleared_messages');
+        if (clearedJson) clearedIds = JSON.parse(clearedJson);
+    } catch (e) {}
+
+    const allMessages = [...storedMessages, ...initialMessages];
+    
+    // Filter by Portal AND verify not cleared
+    const filtered = allMessages.filter(m => 
+        (m.targetPortal === 'all' || m.targetPortal === currentPortal) && 
+        !clearedIds.includes(m.id)
+    );
+    
+    // Deduplicate and Sort
+    const unique = Array.from(new Map(filtered.map(m => [m.id, m])).values());
+    const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    setMessages(sorted);
+  };
+
   useEffect(() => {
-    const fetchMessages = () => {
-        const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
-        
-        // Combine initial seed data with any pushed messages in localStorage
-        let storedMessages: AdminMessage[] = [];
-        try {
-            const json = localStorage.getItem('aaromach_broadcast_ledger');
-            if (json) storedMessages = JSON.parse(json);
-        } catch (e) {}
-
-        const allMessages = [...storedMessages, ...initialMessages];
-        const filtered = allMessages.filter(m => m.targetPortal === 'all' || m.targetPortal === currentPortal);
-        
-        // Deduplicate by ID and Sort by timestamp descending
-        const unique = Array.from(new Map(filtered.map(m => [m.id, m])).values());
-        const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        
-        setMessages(sorted);
-    };
-
     fetchMessages();
-    // Refresh when popover might be opened or storage changes
     window.addEventListener('storage', fetchMessages);
     return () => window.removeEventListener('storage', fetchMessages);
   }, [pathname]);
+
+  const handleClearMessage = (id: string, subject: string) => {
+    let clearedIds: string[] = [];
+    try {
+        const clearedJson = localStorage.getItem('aaromach_cleared_messages');
+        if (clearedJson) clearedIds = JSON.parse(clearedJson);
+    } catch (e) {}
+
+    if (!clearedIds.includes(id)) {
+        clearedIds.push(id);
+        localStorage.setItem('aaromach_cleared_messages', JSON.stringify(clearedIds));
+        fetchMessages();
+        toast({
+            title: "Directive Acknowledged",
+            description: `Message "${subject}" cleared from active terminal.`,
+        });
+    }
+  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -80,7 +111,7 @@ export function NotificationBell() {
                     {messages.map((msg) => {
                         const Icon = getIcon(msg.type);
                         return (
-                            <div key={msg.id} className="p-4 hover:bg-bg-tertiary cursor-default transition-all group">
+                            <div key={msg.id} className="p-4 hover:bg-bg-tertiary/50 cursor-default transition-all group relative pr-12">
                                 <div className="flex gap-4">
                                     <div className={cn(
                                         "p-2 rounded-lg shrink-0 h-fit transition-colors",
@@ -105,14 +136,23 @@ export function NotificationBell() {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                {/* Acknowledge / Seen Button */}
+                                <button 
+                                    onClick={() => handleClearMessage(msg.id, msg.subject)}
+                                    title="Acknowledge Directive"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100"
+                                >
+                                    <Eye size={16} />
+                                </button>
                             </div>
                         )
                     })}
                 </div>
             ) : (
                 <div className="p-12 text-center space-y-2">
-                    <Info size={24} className="mx-auto text-text-muted opacity-20" />
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">No official messages</p>
+                    <CheckCircle2 size={24} className="mx-auto text-text-green opacity-20" />
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">All directives acknowledged</p>
                 </div>
             )}
         </ScrollArea>

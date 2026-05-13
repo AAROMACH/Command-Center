@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
+import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -29,7 +29,11 @@ import {
   Download,
   ImageIcon,
   History,
-  Circle
+  Circle,
+  Play,
+  LogOut,
+  CheckCircle2,
+  ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,12 +41,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // --- HELPERS ---
 function getProgress(project: Project): number {
@@ -169,11 +174,11 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                     <Plus size={14} className="mr-1.5"/> Add Document
                 </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
                 {documents.map(doc => (
                     <Card key={doc.id} className="bg-bg-secondary border-border-sub hover:border-text-muted transition-all group">
                         <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-6">
                                 <div className={cn(
                                     "p-2.5 rounded border flex items-center justify-center",
                                     doc.type === 'pdf' ? "bg-brand-red-dim border-brand-red text-text-red" :
@@ -183,22 +188,29 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                                     {doc.type === 'img' ? <ImageIcon size={20}/> : <FileText size={20}/>}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-bold text-text-primary uppercase truncate tracking-tight">{doc.name}</p>
-                                    <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[400px]">{doc.name}</p>
+                                    <div className="flex items-center gap-4 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                         <span>{doc.size}</span>
                                         <span>•</span>
-                                        <span>{doc.uploader}</span>
+                                        <span className="flex items-center gap-1"><User size={10}/> {doc.uploader}</span>
+                                        <span>•</span>
+                                        <span>{doc.uploadDate}</span>
                                     </div>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Handshake Initiated", description: `${doc.name} download in progress.`})}>
-                                <Download size={16} />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Handshake Initiated", description: `${doc.name} download in progress.`})}>
+                                    <Download size={18} />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-red">
+                                    <Trash2 size={18} />
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 ))}
                 {documents.length === 0 && (
-                    <div className="col-span-full py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                    <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                         <FileText size={48} className="mx-auto text-text-muted mb-2" />
                         <p className="text-[10px] font-bold uppercase tracking-widest">Project document registry is empty</p>
                     </div>
@@ -208,36 +220,63 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     );
 };
 
-const LogsTab = ({ dailyLogs, technicians, onSubmit }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onSubmit: () => void }) => {
+const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSession }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onCheckIn: () => void, onCheckOut: () => void, activeSession: any }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
             <div className="lg:col-span-2 space-y-6">
-                <section className="field-group">
-                    <h3 className="field-group-title"><Clock size={14}/> Submit Daily Activity Log</h3>
-                    <div className="space-y-4 pt-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Hours Logged</label>
-                                <Input type="number" placeholder="e.g., 8.5" className="bg-bg-primary h-10 text-xs"/>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Reporting Date</label>
-                                <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="bg-bg-primary h-10 text-xs"/>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Mission Summary</label>
-                            <Textarea className="bg-bg-primary min-h-[120px] text-xs leading-relaxed" placeholder="Summarize achievements, site conditions, or technical obstacles..."/>
-                        </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <Button variant="outline" size="sm" className="h-9 px-6"><Paperclip size={14} className="mr-2"/> Attach Photo</Button>
-                            <Button className="h-9 px-10" onClick={onSubmit}><Send size={16} className="mr-2"/> Commit Log</Button>
-                        </div>
+                {/* Check-In / Check-Out Shared Console */}
+                <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
+                        {activeSession ? (
+                            <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
+                        ) : (
+                            <Badge variant="outline" className="text-text-muted">IDLE</Badge>
+                        )}
+                    </div>
+                    
+                    <div className="p-6 rounded-xl bg-bg-primary border border-border-sub flex flex-col items-center text-center space-y-6">
+                        {!activeSession ? (
+                            <>
+                                <div className="p-4 bg-bg-tertiary rounded-full border border-border-sub text-text-muted">
+                                    <MapPin size={32} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Awaiting On-Site Verification</p>
+                                    <p className="text-xs text-text-muted max-w-xs">GPS-verified check-in is required to initiate a billable field session.</p>
+                                </div>
+                                <Button className="w-full max-w-sm h-12 bg-brand-red hover:bg-brand-red-hover text-sm font-bold uppercase tracking-widest" onClick={onCheckIn}>
+                                    <Play size={18} className="mr-2 fill-current" /> Initialize Session
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 gap-12 w-full max-w-sm">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Started At</p>
+                                        <p className="text-xl font-mono font-bold text-text-green">{format(activeSession.startTime, 'HH:mm:ss')}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
+                                        <p className="text-xl font-mono font-bold text-text-primary">02:42:15</p>
+                                    </div>
+                                </div>
+                                <div className="w-full space-y-4">
+                                    <div className="space-y-1.5 text-left">
+                                        <label className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">EOD Mission Summary</label>
+                                        <Textarea className="bg-bg-secondary min-h-[100px] text-xs leading-relaxed" placeholder="Document achievements and site conditions..."/>
+                                    </div>
+                                    <Button variant="destructive" className="w-full h-12 text-sm font-bold uppercase tracking-widest" onClick={onCheckOut}>
+                                        <LogOut size={18} className="mr-2" /> Finalize & Check-Out
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </section>
 
                 <section className="space-y-3">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Activity Timeline</h3>
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Timesheet Manifest</h3>
                     <div className="space-y-2">
                         {dailyLogs.map(log => {
                             const tech = technicians.find(t => t.id === log.technicianId);
@@ -254,7 +293,9 @@ const LogsTab = ({ dailyLogs, technicians, onSubmit }: { dailyLogs: ProjectDaily
                                                 <p className="text-[9px] text-text-muted font-mono uppercase tracking-widest">{formatDateDisplay(log.date)}</p>
                                             </div>
                                         </div>
-                                        <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub">{log.hoursWorked} HOURS</Badge>
+                                        <div className="text-right">
+                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{log.hoursWorked} HOURS</Badge>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{log.workSummary}&quot;</p>
                                 </div>
@@ -263,7 +304,7 @@ const LogsTab = ({ dailyLogs, technicians, onSubmit }: { dailyLogs: ProjectDaily
                         {dailyLogs.length === 0 && (
                             <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                 <History size={32} className="mx-auto mb-2 text-text-muted" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Timeline registry clear</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">No verified sessions found</p>
                             </div>
                         )}
                     </div>
@@ -279,11 +320,17 @@ const LogsTab = ({ dailyLogs, technicians, onSubmit }: { dailyLogs: ProjectDaily
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                            Daily logs are used to verify mission progress and trigger logistical updates in the Command Center. Ensure all significant site anomalies are documented.
+                            The timesheet terminal automatically calculates hours and maps GPS coordinates for administrative audit. All sessions must include a work summary for successful settlement.
                         </p>
-                        <div className="p-3 rounded bg-bg-primary border border-border-sub">
-                            <p className="text-[9px] font-bold text-text-muted uppercase mb-1">Standard Cutoff</p>
-                            <p className="text-[11px] font-bold text-text-primary uppercase">EOD 20:00 LOCAL</p>
+                        <div className="space-y-2">
+                            <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
+                                <p className="text-[9px] font-bold text-text-muted uppercase">EOD Cutoff</p>
+                                <p className="text-[10px] font-bold text-text-primary uppercase">20:00 Local</p>
+                            </div>
+                             <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
+                                <p className="text-[9px] font-bold text-text-muted uppercase">SLA Window</p>
+                                <p className="text-[10px] font-bold text-text-primary uppercase">24h Audit</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -372,7 +419,7 @@ const PhaseBlock = ({
                                 {taskPhotos.map(photo => (
                                     <div key={photo.id} className="relative group aspect-video rounded border border-border-sub overflow-hidden bg-bg-primary">
                                         <Image src={photo.url || ''} alt={photo.name} fill className="object-cover" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                                        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
                                             <p className="text-[8px] text-white font-bold uppercase truncate">{photo.name}</p>
                                             <p className="text-[7px] text-text-secondary flex items-center gap-1"><User size={8}/> {photo.uploader}</p>
                                         </div>
@@ -403,9 +450,9 @@ const PhaseBlock = ({
 export function ProjectDetailClient({ project: initialProject, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [project, setProject] = useState(initialProject);
     const [activeTab, setActiveTab] = useState('overview');
+    const [activeSession, setActiveSession] = useState<any>(null);
     const { toast } = useToast();
 
-    // Sync project data if initialProject changes (e.g. from parent re-fetching)
     useEffect(() => {
         setProject(initialProject);
     }, [initialProject]);
@@ -440,8 +487,17 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
         });
     };
 
-    const handleSubmitLog = () => {
-        toast({ title: 'Daily Log Committed', description: 'Activity has been recorded in the project registry.' });
+    const handleCheckIn = () => {
+        setActiveSession({
+            startTime: new Date(),
+            location: project.location
+        });
+        toast({ title: 'Checked In', description: 'GPS verified. Project session initialized.' });
+    };
+
+    const handleCheckOut = () => {
+        setActiveSession(null);
+        toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
     }
 
     return (
@@ -462,9 +518,9 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>
                         <div className="pdh-meta">
-                            <div className="pdh-meta-item"><MapPin/>{project.location}</div>
-                            <div className="pdh-meta-item"><Calendar/>Started {formatDateDisplay(project.startDate)}</div>
-                            <div className="pdh-meta-item"><Users/>{project.team.length} Team Members</div>
+                            <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
+                            <div className="pdh-meta-item"><Calendar size={12}/> Started {formatDateDisplay(project.startDate)}</div>
+                            <div className="pdh-meta-item"><Users size={12}/> {project.team.length} Team Members</div>
                         </div>
                     </div>
                 </div>
@@ -483,7 +539,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                         <TabsTrigger value="overview" className="tab-trigger-tech">Project Overview</TabsTrigger>
                         <TabsTrigger value="milestones" className="tab-trigger-tech">Milestones</TabsTrigger>
                         <TabsTrigger value="documents" className="tab-trigger-tech">Documents</TabsTrigger>
-                        <TabsTrigger value="logs" className="tab-trigger-tech">Logs</TabsTrigger>
+                        <TabsTrigger value="timesheets" className="tab-trigger-tech">Timesheets</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -497,8 +553,14 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                     <TabsContent value="documents" className="m-0">
                         <DocumentsTab documents={documents} />
                     </TabsContent>
-                    <TabsContent value="logs" className="m-0">
-                        <LogsTab dailyLogs={dailyLogs} technicians={technicians} onSubmit={handleSubmitLog} />
+                    <TabsContent value="timesheets" className="m-0">
+                        <TimesheetsTab 
+                            dailyLogs={dailyLogs} 
+                            technicians={technicians} 
+                            onCheckIn={handleCheckIn} 
+                            onCheckOut={handleCheckOut} 
+                            activeSession={activeSession}
+                        />
                     </TabsContent>
                 </div>
             </Tabs>

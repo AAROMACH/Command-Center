@@ -17,7 +17,6 @@ import {
   BarChart3
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
-import { NotificationBell } from '@/components/notification-bell';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useState, useEffect } from 'react';
 import type { Technician } from '@/lib/types';
@@ -112,7 +111,6 @@ export function Navbar() {
       </div>
 
       <div className="flex w-1/5 items-center justify-end gap-2.5">
-        <NotificationBell />
         <UserNav />
       </div>
     </nav>

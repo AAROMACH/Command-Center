@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -20,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useMemo } from 'react';
 import { getAvailablePortals } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
+import { NotificationBell } from '@/components/notification-bell';
 
 export default function DashboardPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -58,12 +58,15 @@ export default function DashboardPage() {
             A high-level overview of all field service operations.
           </p>
         </div>
-        {canSwap && techPortal && (
-            <Button variant="outline" size="sm" onClick={() => router.push(techPortal.path)}>
-                <MonitorUp size={14} className="mr-2" />
-                Swap to Technician View
-            </Button>
-        )}
+        <div className="flex items-center gap-3">
+            <NotificationBell />
+            {canSwap && techPortal && (
+                <Button variant="outline" size="default" className="h-10" onClick={() => router.push(techPortal.path)}>
+                    <MonitorUp size={14} className="mr-2" />
+                    Swap to Technician View
+                </Button>
+            )}
+        </div>
       </header>
 
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">

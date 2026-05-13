@@ -29,7 +29,7 @@ export function NotificationBell() {
 
     const currentAlerts: any[] = [];
 
-    if (pathname.startsWith('/tech')) {
+    if (pathname.includes('/tech')) {
       const activeJob = workOrders.find(wo => wo.assignedTechnicianId === userId && wo.status === 'in-progress');
       if (activeJob) {
         currentAlerts.push({
@@ -75,7 +75,7 @@ export function NotificationBell() {
           actionPath: '/tech/logs',
         });
       }
-    } else if (pathname.startsWith('/client')) {
+    } else if (pathname.includes('/client')) {
       const company = user.clientCompany;
       if (company) {
         const activeProjectsCount = projects.filter(p => p.client === company && p.status === 'active').length;
@@ -136,8 +136,11 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-text-muted hover:text-text-primary hover:bg-bg-tertiary">
-          <Bell size={18} />
+        <Button variant="outline" className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group">
+          <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
+          <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
+            Operational Alerts
+          </span>
           {alerts.length > 0 && (
             <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]" />
           )}
@@ -145,7 +148,7 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
         <div className="p-4 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Registry Alerts</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Operational Message Center</h3>
             <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub font-mono">{alerts.length} Active</Badge>
         </div>
         <ScrollArea className="max-h-[350px]">
@@ -189,7 +192,7 @@ export function NotificationBell() {
             <Button 
                 variant="ghost" 
                 className="w-full h-8 text-[9px] uppercase font-bold tracking-widest text-text-muted hover:text-text-primary"
-                onClick={() => router.push(pathname.startsWith('/admin') ? '/admin/reports' : '/')}
+                onClick={() => router.push('/admin/reports')}
             >
                 Access Comprehensive Audit
             </Button>

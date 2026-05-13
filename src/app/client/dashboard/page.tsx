@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { NotificationBell } from '@/components/notification-bell';
 
 export default function ClientDashboardPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -89,8 +89,9 @@ export default function ClientDashboardPage() {
                     <h1 className="page-title">Command Dashboard</h1>
                     <p className="page-subtitle">Real-time job tracking for {currentUser?.clientCompany}.</p>
                 </div>
-                <div className="page-header-right">
-                    <Button variant="default" onClick={() => router.push('/client/tickets')}>
+                <div className="page-header-right items-center">
+                    <NotificationBell />
+                    <Button variant="default" className="h-10" onClick={() => router.push('/client/tickets')}>
                         <Plus size={14} className="mr-2"/>
                         Submit Service Request
                     </Button>

@@ -344,6 +344,23 @@ export const workOrders: WorkOrder[] = [
     payType: 'fixed',
     isAcknowledged: false,
     source: 'Manual',
+  },
+  {
+    id: 'wo-corey-1',
+    description: 'Emergency Fiber Splicing - Rack 4',
+    location: 'Jersey City Data Center, NJ',
+    requiredSkills: ['Fiber Optics', 'Networking'],
+    priority: 'high',
+    status: 'assigned',
+    assignedTechnicianId: 'staff-002',
+    clientName: 'DataConnect LLC',
+    projectType: 'Repair',
+    scheduleDate: '07-28-2024',
+    scheduleTime: '09:00 AM EST',
+    pay: 450.00,
+    payType: 'fixed',
+    isAcknowledged: false,
+    source: 'Manual',
   }
 ];
 
@@ -458,6 +475,27 @@ export const projects: Project[] = [
     estimatedHours: 600,
     actualBudget: 22000,
     actualHours: 85,
+    phases: [],
+  },
+  {
+    id: 'proj-corey-hospital',
+    name: 'Metro Hospital Wi-Fi Expansion',
+    client: 'City Health Systems',
+    location: 'Newark, NJ',
+    status: 'active',
+    startDate: '07-15-2024',
+    startTime: '08:00 AM EST',
+    estimatedDuration: '4 weeks',
+    assignedTechnicianIds: ['staff-002', 'tech-002'],
+    team: [{ technicianId: 'staff-002', role: 'Project Lead' }, { technicianId: 'tech-002', role: 'Network Specialist'}],
+    scope: 'Installation of 50 additional access points across the pediatric and surgery wings. Includes ceiling mounts and ethernet termination.',
+    onsiteContact: 'Dr. Aris - 555-444-3333',
+    siteAccessInstructions: 'Enter through Service Entrance G. Badge required. PPE mandatory in surgery wing.',
+    siteHazardNotes: [
+      { id: 'h-corey-1', text: 'Sterile Environment', type: 'info'},
+    ],
+    projectBudget: 45000,
+    estimatedHours: 160,
     phases: [],
   }
 ];
@@ -594,6 +632,15 @@ export const weeklyLogs: WeeklyLog[] = [
     items: [],
     reimbursements: [],
     totalPayout: 450.00
+  },
+  {
+    id: 'wl-corey-log',
+    technicianId: 'staff-002',
+    weekOf: '07-29-2024',
+    status: 'Draft',
+    items: [],
+    reimbursements: [],
+    totalPayout: 0,
   }
 ];
 

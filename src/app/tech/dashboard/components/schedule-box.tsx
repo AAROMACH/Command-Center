@@ -31,7 +31,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { MissionDetailDialog } from '@/components/mission-detail-dialog';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type ViewMode = 'week' | 'month';
 
@@ -63,9 +63,11 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     }, [allWorkOrders]);
 
     const isAllSelected = useMemo(() => {
-        const currentDays = viewMode === 'week' ? weekDays : monthDays;
+        const currentDays = viewMode === 'week' 
+            ? weekDays 
+            : monthDays.filter(day => isSameMonth(day, currentDate));
         return currentDays.every(day => selectedDates.some(sd => isSameDay(sd, day)));
-    }, [viewMode, weekDays, monthDays, selectedDates]);
+    }, [viewMode, weekDays, monthDays, selectedDates, currentDate]);
 
     const handleDayClick = (day: Date) => {
         const isAlreadySelected = selectedDates.some(d => isSameDay(d, day));
@@ -77,11 +79,13 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     };
 
     const handleSeeAllToggle = () => {
-        const currentDays = viewMode === 'week' ? weekDays : monthDays;
         if (isAllSelected) {
             setSelectedDates([new Date()]);
         } else {
-            setSelectedDates(currentDays);
+            const daysToSelect = viewMode === 'week' 
+                ? weekDays 
+                : monthDays.filter(day => isSameMonth(day, currentDate));
+            setSelectedDates(daysToSelect);
         }
     };
 
@@ -298,7 +302,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                 </div>
             </div>
 
-            <MissionDetailDialog 
+            <JobDetailDialog 
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
                 mission={selectedMission} 

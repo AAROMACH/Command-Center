@@ -328,6 +328,23 @@ export const workOrders: WorkOrder[] = [
         { type: 'note', date: '07-28-2024', details: 'Technician on-site. Began draining existing unit.', user: 'Alex Johnson' }
     ]
   },
+  {
+    id: 'wo-mock-88',
+    description: 'Audit Server Rack Terminations',
+    location: '999 Tech Plaza, Boston, MA',
+    requiredSkills: ['Networking', 'Cabling'],
+    priority: 'high',
+    status: 'assigned',
+    assignedTechnicianId: 'tech-001',
+    clientName: 'Cloud Solutions Inc.',
+    projectType: 'Audit',
+    scheduleDate: '07-28-2024',
+    scheduleTime: '10:00 AM EST',
+    pay: 220.00,
+    payType: 'fixed',
+    isAcknowledged: false,
+    source: 'Manual',
+  }
 ];
 
 export const projects: Project[] = [
@@ -422,6 +439,26 @@ export const projects: Project[] = [
         ],
       },
     ],
+  },
+  {
+    id: 'proj-999',
+    name: 'Regional Fiber Backbone',
+    client: 'Metro Comm',
+    location: 'Boston, MA',
+    status: 'active',
+    startDate: '07-10-2024',
+    startTime: '7:30 AM EST',
+    estimatedDuration: '8 weeks',
+    assignedTechnicianIds: ['tech-001'],
+    team: [{ technicianId: 'tech-001', role: 'Infrastructure Lead' }],
+    scope: 'High-density fiber rollout for metro sector. Requires strict adherence to splicing standards and GPS documentation of all vaults.',
+    onsiteContact: 'Bill Miller - 555-900-1111',
+    siteHazardNotes: [],
+    projectBudget: 125000,
+    estimatedHours: 600,
+    actualBudget: 22000,
+    actualHours: 85,
+    phases: [],
   }
 ];
 
@@ -548,6 +585,15 @@ export const weeklyLogs: WeeklyLog[] = [
     items: [],
     reimbursements: [],
     totalPayout: 1850.75,
+  },
+  {
+    id: 'wl-mock-88',
+    technicianId: 'tech-001',
+    weekOf: '07-29-2024',
+    status: 'Draft',
+    items: [],
+    reimbursements: [],
+    totalPayout: 450.00
   }
 ];
 

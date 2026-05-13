@@ -18,7 +18,8 @@ import {
   Camera,
   Coins,
   Navigation,
-  FileCheck
+  FileCheck,
+  AlertCircle
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO } from 'date-fns';
@@ -82,6 +83,11 @@ export default function TechDashboardPage() {
             .sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime))[0];
     }, [todaysWorkOrders, activeJob]);
 
+    const unsubmittedLogs = useMemo(() => {
+        if (!currentTechId) return [];
+        return weeklyLogs.filter(l => l.technicianId === currentTechId && l.status === 'Draft');
+    }, [currentTechId]);
+
     const handleLogSelect = (log: WeeklyLog) => {
         setSelectedLog(log);
         setIsLogSelectionOpen(false);
@@ -137,11 +143,16 @@ export default function TechDashboardPage() {
 
                 <Button 
                     variant="outline" 
-                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
+                    className="flex-1 min-w-[200px] relative h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
                     onClick={() => setIsLogSelectionOpen(true)}
                 >
                     <ClipboardList size={16} className="text-accent-gold mr-2" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Submit weekly log</span>
+                    {unsubmittedLogs.length > 0 && (
+                        <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red border-2 border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)] animate-pulse">
+                            <span className="text-[8px] font-black text-white">{unsubmittedLogs.length}</span>
+                        </div>
+                    )}
                 </Button>
             </div>
 
@@ -235,7 +246,7 @@ export default function TechDashboardPage() {
             <LogSelectionDialog
                 isOpen={isLogSelectionOpen}
                 setIsOpen={setIsLogSelectionOpen}
-                logs={[]}
+                logs={unsubmittedLogs}
                 onSelect={handleLogSelect}
             />
 
@@ -258,6 +269,15 @@ export default function TechDashboardPage() {
                 setIsOpen={setIsDetailOpen} 
                 mission={selectedJob} 
             />
+
+            {selectedLog && (
+                <WeeklyLogDialog 
+                    isOpen={!!selectedLog} 
+                    setIsOpen={() => setSelectedLog(null)} 
+                    log={selectedLog} 
+                    onSubmitted={() => setSelectedLog(null)}
+                />
+            )}
         </div>
     );
 }

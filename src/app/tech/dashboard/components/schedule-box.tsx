@@ -62,6 +62,11 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
         return allWorkOrders.find(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
 
+    const isAllSelected = useMemo(() => {
+        const currentDays = viewMode === 'week' ? weekDays : monthDays;
+        return currentDays.every(day => selectedDates.some(sd => isSameDay(sd, day)));
+    }, [viewMode, weekDays, monthDays, selectedDates]);
+
     const handleDayClick = (day: Date) => {
         const isAlreadySelected = selectedDates.some(d => isSameDay(d, day));
         if (isAlreadySelected) {
@@ -71,11 +76,12 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
         }
     };
 
-    const handleSeeAll = () => {
-        if (viewMode === 'week') {
-            setSelectedDates(weekDays);
+    const handleSeeAllToggle = () => {
+        const currentDays = viewMode === 'week' ? weekDays : monthDays;
+        if (isAllSelected) {
+            setSelectedDates([new Date()]);
         } else {
-            setSelectedDates(monthDays);
+            setSelectedDates(currentDays);
         }
     };
 
@@ -178,10 +184,13 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={handleSeeAll} 
-                            className="h-6 text-[9px] uppercase font-bold tracking-widest ml-2 px-2 border border-border-sub hover:bg-bg-tertiary"
+                            onClick={handleSeeAllToggle} 
+                            className={cn(
+                                "h-6 text-[9px] uppercase font-bold tracking-widest ml-2 px-2 border border-border-sub hover:bg-bg-tertiary transition-all",
+                                isAllSelected && "bg-brand-red text-white border-brand-red hover:bg-brand-red-hover"
+                            )}
                         >
-                            See All
+                            {isAllSelected ? 'Reset View' : 'See All'}
                         </Button>
                     </div>
                     <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">

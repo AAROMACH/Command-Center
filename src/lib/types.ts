@@ -14,6 +14,8 @@ export type AdminMessage = {
   subject: string;
   body: string;
   timestamp: string;
+  expiresAt?: string;
+  isLocked?: boolean;
   type: 'critical' | 'warning' | 'info' | 'success';
   targetPortal: 'admin' | 'tech' | 'client' | 'all';
 };

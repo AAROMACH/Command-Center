@@ -26,7 +26,8 @@ import {
     FileText,
     ArrowLeft,
     Send,
-    MessageSquare
+    MessageSquare,
+    Lock
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { 
     technicians, 
     workOrders, 
@@ -66,7 +68,7 @@ import {
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
-import { format, parseISO, subDays, isAfter, isBefore } from 'date-fns';
+import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ActivityAuditPage() {
@@ -82,8 +84,10 @@ export default function ActivityAuditPage() {
         type: 'info',
         targetPortal: 'all',
         subject: '',
-        body: ''
+        body: '',
+        isLocked: false
     });
+    const [durationHours, setDurationHours] = useState("24");
 
     // Change Log States
     const [isClLoaded, setIsClLoaded] = useState(false);
@@ -149,13 +153,23 @@ export default function ActivityAuditPage() {
             return;
         }
 
+        let expiresAt: string | undefined = undefined;
+        const now = new Date();
+        if (durationHours === "1") expiresAt = addHours(now, 1).toISOString();
+        else if (durationHours === "4") expiresAt = addHours(now, 4).toISOString();
+        else if (durationHours === "24") expiresAt = addDays(now, 1).toISOString();
+        else if (durationHours === "168") expiresAt = addWeeks(now, 1).toISOString();
+        // Permanent doesn't set expiresAt
+
         const msg: AdminMessage = {
             id: `msg-${Date.now()}`,
             senderId: 'admin-001',
             senderName: 'Sarah Connor',
             subject: newMessage.subject!,
             body: newMessage.body!,
-            timestamp: new Date().toISOString(),
+            timestamp: now.toISOString(),
+            expiresAt,
+            isLocked: newMessage.isLocked,
             type: newMessage.type as any,
             targetPortal: newMessage.targetPortal as any
         };
@@ -171,7 +185,8 @@ export default function ActivityAuditPage() {
         window.dispatchEvent(new Event('storage'));
 
         setIsBroadcasting(false);
-        setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '' });
+        setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
+        setDurationHours("24");
         toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
     };
 
@@ -297,9 +312,13 @@ export default function ActivityAuditPage() {
                                         <ActivityIcon size={14} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
+                                            {msg.isLocked && <Lock size={12} className="text-brand-red" />}
+                                        </div>
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
                                             {format(parseISO(msg.timestamp), 'MMM d, yyyy HH:mm')} · Target: {msg.targetPortal}
+                                            {msg.expiresAt && ` · Expires: ${format(parseISO(msg.expiresAt), 'MMM d, HH:mm')}`}
                                         </p>
                                     </div>
                                 </div>
@@ -360,6 +379,34 @@ export default function ActivityAuditPage() {
                                 </Select>
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Broadcast Duration</Label>
+                                <Select value={durationHours} onValueChange={setDurationHours}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">1 Hour</SelectItem>
+                                        <SelectItem value="4">4 Hours</SelectItem>
+                                        <SelectItem value="24">24 Hours</SelectItem>
+                                        <SelectItem value="168">7 Days</SelectItem>
+                                        <SelectItem value="permanent">Permanent</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted block mb-2">Registry Lock</Label>
+                                <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub h-10">
+                                    <span className="text-[9px] font-bold uppercase text-text-muted">Lock Directive</span>
+                                    <Switch 
+                                        checked={newMessage.isLocked} 
+                                        onCheckedChange={(val) => setNewMessage({...newMessage, isLocked: val})}
+                                        className="scale-75"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Subject / Headline</Label>
                             <Input 

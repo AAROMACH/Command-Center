@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Clock, CheckCircle2, Eye } from 'lucide-react';
+import { Bell, Info, AlertTriangle, Clock, CheckCircle2, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePathname } from 'next/navigation';
 import { adminMessages as initialMessages } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,6 +24,7 @@ export function NotificationBell() {
 
   const fetchMessages = () => {
     const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    const now = new Date();
     
     // 1. Load Broadcast Ledger
     let storedMessages: AdminMessage[] = [];
@@ -41,11 +42,14 @@ export function NotificationBell() {
 
     const allMessages = [...storedMessages, ...initialMessages];
     
-    // Filter by Portal AND verify not cleared
-    const filtered = allMessages.filter(m => 
-        (m.targetPortal === 'all' || m.targetPortal === currentPortal) && 
-        !clearedIds.includes(m.id)
-    );
+    // Filter by Portal AND verify not cleared AND not expired
+    const filtered = allMessages.filter(m => {
+        const matchesPortal = (m.targetPortal === 'all' || m.targetPortal === currentPortal);
+        const isNotCleared = !clearedIds.includes(m.id);
+        const isNotExpired = !m.expiresAt || isAfter(parseISO(m.expiresAt), now);
+        
+        return matchesPortal && isNotCleared && isNotExpired;
+    });
     
     // Deduplicate and Sort
     const unique = Array.from(new Map(filtered.map(m => [m.id, m])).values());
@@ -56,8 +60,13 @@ export function NotificationBell() {
 
   useEffect(() => {
     fetchMessages();
+    // Poll for expiry every minute
+    const interval = setInterval(fetchMessages, 60000);
     window.addEventListener('storage', fetchMessages);
-    return () => window.removeEventListener('storage', fetchMessages);
+    return () => {
+        window.removeEventListener('storage', fetchMessages);
+        clearInterval(interval);
+    };
   }, [pathname]);
 
   const handleClearMessage = (id: string, subject: string) => {
@@ -124,7 +133,10 @@ export function NotificationBell() {
                                     </div>
                                     <div className="space-y-1 min-w-0">
                                         <div className="flex justify-between items-start gap-2">
-                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
+                                                {msg.isLocked && <Lock size={10} className="text-brand-red" />}
+                                            </div>
                                             <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'HH:mm')}</span>
                                         </div>
                                         <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2">{msg.body}</p>
@@ -137,14 +149,22 @@ export function NotificationBell() {
                                     </div>
                                 </div>
                                 
-                                {/* Acknowledge / Seen Button */}
-                                <button 
-                                    onClick={() => handleClearMessage(msg.id, msg.subject)}
-                                    title="Acknowledge Directive"
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <Eye size={16} />
-                                </button>
+                                {/* Acknowledge / Seen Button - Only show if not locked */}
+                                {!msg.isLocked && (
+                                    <button 
+                                        onClick={() => handleClearMessage(msg.id, msg.subject)}
+                                        title="Acknowledge Directive"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Eye size={16} />
+                                    </button>
+                                )}
+
+                                {msg.isLocked && (
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-brand-red opacity-30" title="Locked Directive">
+                                        <Lock size={16} />
+                                    </div>
+                                )}
                             </div>
                         )
                     })}

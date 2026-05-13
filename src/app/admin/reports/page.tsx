@@ -61,23 +61,14 @@ import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, Assignm
 import { format, parseISO, subDays, isAfter, isBefore } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
-// --- MOCK CHANGE LOG DATA ---
-const CL_ENTRIES = [
-  {id:"ah1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"assignment",dot:"done",headline:"Assignment assigned",chips:["assignment: aaro_asmt_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Event",v:"assigned"},{l:"Assignment ID",v:"aaro_asmt_001"},{l:"Changed by",v:"System Administrator"},{l:"Timestamp",v:"Apr 4, 2026 12:00 PM"},{l:"Note",v:"Manual work order assigned to technician"}],si:"aaro_asmt_001 system administrator assignment assigned apr 4"},
-  {id:"ah2",ts:new Date("2026-04-04T11:50Z").getTime(),type:"assignment",dot:"done",headline:"Assignment created",chips:["assignment: fn_asmt_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Event",v:"created"},{l:"Assignment ID",v:"fn_asmt_001"},{l:"Changed by",v:"System Administrator"},{l:"Timestamp",v:"Apr 4, 2026 11:50 AM"},{l:"Note",v:"Initial assignment created"}],si:"fn_asmt_001 system administrator assignment created apr 4"},
-  {id:"pe1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"penalty",dot:"warn",headline:"Penalty — late log · 3 pts",chips:["tech: Alex Johnson","3 pts","Apr 4, 2026"],details:[{l:"Penalty type",v:"late log"},{l:"Technician",v:"Alex Johnson (tech-001)"},{l:"Points",v:"3"},{l:"Weekly log ID",v:"wl-1"},{l:"Reason",v:"Weekly log submitted after due date"},{l:"Recorded at",v:"Apr 4, 2026 12:00 PM"}],si:"alex johnson tech-001 late log penalty apr 4 3 pts weekly"},
-  {id:"pe2",ts:new Date("2026-04-15T09:22Z").getTime(),type:"penalty",dot:"warn",headline:"Penalty — late checkin · 1 pt",chips:["tech: Maria Garcia","1 pt","Apr 15, 2026"],details:[{l:"Penalty type",v:"late checkin"},{l:"Technician",v:"Maria Garcia (tech-002)"},{l:"Points",v:"1"},{l:"Assignment ID",v:"wo-101"},{l:"Reason",v:"Arrived 22 minutes after scheduled start"},{l:"Recorded at",v:"Apr 15, 2026 9:22 AM"}],si:"maria garcia tech-002 late checkin penalty apr 15 1 pt"},
-  {id:"ib1",ts:new Date("2026-04-04T12:00Z").getTime(),type:"import",dot:"def",headline:"Import batch — field_nation_csv",chips:["batch: batch_001","by: System Administrator","Apr 4, 2026"],details:[{l:"Batch ID",v:"batch_001"},{l:"Source",v:"field_nation_csv"},{l:"File",v:"field_nation_jobs.csv"},{l:"Rows",v:"1 total · 1 created · 0 duplicates"},{l:"Status",v:"completed"},{l:"Uploaded by",v:"System Administrator"}],si:"batch_001 field_nation_csv system administrator import apr 4"},
-];
-
-export default function ReportsPage() {
+export default function ActivityAuditPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("tech");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     
     // Messaging State
-    const [messages, setMessages] = useState<AdminMessage[]>(initialMessages);
+    const [messages, setMessages] = useState<AdminMessage[]>([]);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [newMessage, setNewMessage] = useState<Partial<AdminMessage>>({
         type: 'info',
@@ -97,6 +88,13 @@ export default function ReportsPage() {
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     const { toast } = useToast();
+
+    // Load messages from registry
+    useEffect(() => {
+        const stored = localStorage.getItem('aaromach_broadcast_ledger');
+        const localMsgs = stored ? JSON.parse(stored) : [];
+        setMessages([...localMsgs, ...initialMessages]);
+    }, []);
 
     // ── DATA RESOLUTION ──────────────────────────────────────────────────
 
@@ -154,7 +152,16 @@ export default function ReportsPage() {
             targetPortal: newMessage.targetPortal as any
         };
 
-        setMessages([msg, ...messages]);
+        const updatedMessages = [msg, ...messages];
+        setMessages(updatedMessages);
+        
+        // Save to local storage for the Notification Bell to pick up
+        const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
+        
+        // Trigger storage event for other tabs/components
+        window.dispatchEvent(new Event('storage'));
+
         setIsBroadcasting(false);
         setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '' });
         toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
@@ -293,7 +300,7 @@ export default function ReportsPage() {
                             <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium">{msg.body}</p>
                             <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[8px] font-bold">
+                                    <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
                                         {msg.senderName.charAt(0)}
                                     </div>
                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Sent by {msg.senderName}</span>
@@ -302,6 +309,12 @@ export default function ReportsPage() {
                             </div>
                         </div>
                     ))}
+                    {messages.length === 0 && (
+                        <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                            <MessageSquare size={32} className="mx-auto mb-2 text-text-muted" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">Broadcast registry is empty</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -443,7 +456,7 @@ export default function ReportsPage() {
             <header className="space-y-1 text-center">
                 <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
                 <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Activity Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, messaging, and system changes</p>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system changes</p>
             </header>
 
             <div className="space-y-6">
@@ -551,8 +564,11 @@ export default function ReportsPage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="space-y-6">
-                                        <p className="text-xs text-text-muted uppercase font-bold italic text-center">Change log streaming active...</p>
+                                    <div className="space-y-6 text-center">
+                                        <p className="text-xs text-text-muted uppercase font-bold italic">Change log streaming active...</p>
+                                        <div className="text-text-muted text-[10px] uppercase font-bold tracking-widest p-12 border border-dashed border-border-sub rounded-xl">
+                                            Historical timeline data will be populated here as events are recorded.
+                                        </div>
                                     </div>
                                 )}
                             </TabsContent>

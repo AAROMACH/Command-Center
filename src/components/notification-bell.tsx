@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Clock, Play, FileCheck, CalendarCheck, FileWarning, Briefcase, ClipboardList, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Bell, Info, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -11,21 +11,40 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePathname } from 'next/navigation';
-import { adminMessages } from '@/lib/data';
+import { adminMessages as initialMessages } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
+import type { AdminMessage } from '@/lib/types';
 
 export function NotificationBell() {
   const pathname = usePathname();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
 
   useEffect(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
-    const filtered = adminMessages.filter(m => m.targetPortal === 'all' || m.targetPortal === currentPortal);
-    
-    // Sort by timestamp descending
-    const sorted = [...filtered].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setMessages(sorted);
+    const fetchMessages = () => {
+        const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+        
+        // Combine initial seed data with any pushed messages in localStorage
+        let storedMessages: AdminMessage[] = [];
+        try {
+            const json = localStorage.getItem('aaromach_broadcast_ledger');
+            if (json) storedMessages = JSON.parse(json);
+        } catch (e) {}
+
+        const allMessages = [...storedMessages, ...initialMessages];
+        const filtered = allMessages.filter(m => m.targetPortal === 'all' || m.targetPortal === currentPortal);
+        
+        // Deduplicate by ID and Sort by timestamp descending
+        const unique = Array.from(new Map(filtered.map(m => [m.id, m])).values());
+        const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        setMessages(sorted);
+    };
+
+    fetchMessages();
+    // Refresh when popover might be opened or storage changes
+    window.addEventListener('storage', fetchMessages);
+    return () => window.removeEventListener('storage', fetchMessages);
   }, [pathname]);
 
   const getIcon = (type: string) => {

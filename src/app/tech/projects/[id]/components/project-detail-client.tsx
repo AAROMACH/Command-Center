@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
 import Link from 'next/link';
 import {
@@ -28,7 +28,8 @@ import {
   ShieldAlert,
   Download,
   ImageIcon,
-  History
+  History,
+  Circle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -148,6 +149,12 @@ const MilestonesTab = ({ project, onTaskToggle, documents }: { project: Project,
             {project.phases.map(phase => (
                 <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} />
             ))}
+            {project.phases.length === 0 && (
+                <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                    <History size={48} className="mx-auto text-text-muted mb-2" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">No milestones defined for this mission registry</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -398,7 +405,18 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
     const [activeTab, setActiveTab] = useState('overview');
     const { toast } = useToast();
 
-    const progress = getProgress(project);
+    // Sync project data if initialProject changes (e.g. from parent re-fetching)
+    useEffect(() => {
+        setProject(initialProject);
+    }, [initialProject]);
+
+    const progress = useMemo(() => {
+        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        if (allTasks.length === 0) return 0;
+        const completedTasks = allTasks.filter(task => task.isCompleted).length;
+        return (completedTasks / allTasks.length) * 100;
+    }, [project.phases]);
+
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
     const handleTaskToggle = (phaseId: string, taskId: string) => {
@@ -427,7 +445,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
     }
 
     return (
-        <div>
+        <div className="animate-in fade-in duration-500">
             <div className="detail-nav">
                 <Link href="/tech/projects" className="detail-back">
                     <ChevronLeft size={16} />

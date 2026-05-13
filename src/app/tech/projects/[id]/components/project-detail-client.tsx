@@ -33,19 +33,37 @@ import {
   Play,
   LogOut,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  X,
+  Check
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { format, parseISO, differenceInMinutes, addDays } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -220,7 +238,10 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     );
 };
 
-const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSession }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onCheckIn: () => void, onCheckOut: () => void, activeSession: any }) => {
+const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSession, onManualAdd }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onCheckIn: () => void, onCheckOut: () => void, activeSession: any, onManualAdd: (log: ProjectDailyLog) => void }) => {
+    const [isManualOpen, setIsManualOpen] = useState(false);
+    const { toast } = useToast();
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
             <div className="lg:col-span-2 space-y-6">
@@ -228,11 +249,16 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                 <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
-                        {activeSession ? (
-                            <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
-                        ) : (
-                            <Badge variant="outline" className="text-text-muted">IDLE</Badge>
-                        )}
+                        <div className="flex items-center gap-3">
+                            <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => setIsManualOpen(true)}>
+                                <History size={12} className="mr-1.5"/> Manual Entry
+                            </Button>
+                            {activeSession ? (
+                                <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
+                            ) : (
+                                <Badge variant="outline" className="text-text-muted">IDLE</Badge>
+                            )}
+                        </div>
                     </div>
                     
                     <div className="p-6 rounded-xl bg-bg-primary border border-border-sub flex flex-col items-center text-center space-y-6">
@@ -254,7 +280,7 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                                 <div className="grid grid-cols-2 gap-12 w-full max-w-sm">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Started At</p>
-                                        <p className="text-xl font-mono font-bold text-text-green">{format(activeSession.startTime, 'HH:mm:ss')}</p>
+                                        <p className="text-xl font-mono font-bold text-text-green">{format(activeSession.startTime, 'hh:mm:ss a')}</p>
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
@@ -325,7 +351,7 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                         <div className="space-y-2">
                             <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
                                 <p className="text-[9px] font-bold text-text-muted uppercase">EOD Cutoff</p>
-                                <p className="text-[10px] font-bold text-text-primary uppercase">20:00 Local</p>
+                                <p className="text-[10px] font-bold text-text-primary uppercase">08:00 PM</p>
                             </div>
                              <div className="p-3 rounded bg-bg-primary border border-border-sub flex justify-between items-center">
                                 <p className="text-[9px] font-bold text-text-muted uppercase">SLA Window</p>
@@ -335,7 +361,97 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                     </CardContent>
                 </Card>
             </div>
+
+            <ManualSessionDialog 
+                isOpen={isManualOpen} 
+                setIsOpen={setIsManualOpen} 
+                onSave={(log) => {
+                    onManualAdd(log);
+                    setIsManualOpen(false);
+                }}
+            />
         </div>
+    );
+};
+
+const ManualSessionDialog = ({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (log: ProjectDailyLog) => void }) => {
+    const [formData, setFormData] = useState({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        startTime: '09:00',
+        endTime: '17:00',
+        summary: ''
+    });
+
+    const handleSave = () => {
+        if (!formData.summary) return;
+
+        const start = new Date(`${formData.date}T${formData.startTime}`);
+        const end = new Date(`${formData.date}T${formData.endTime}`);
+        const durationMinutes = differenceInMinutes(end, start);
+        const hours = (durationMinutes / 60).toFixed(1);
+
+        const newLog: ProjectDailyLog = {
+            id: `pdl-manual-${Date.now()}`,
+            projectId: '', // Parent will set
+            technicianId: localStorage.getItem('currentUserId') || 'unknown',
+            date: formData.date,
+            hoursWorked: parseFloat(hours),
+            workSummary: formData.summary,
+            taskIdsProgressed: [],
+            taskIdsCompleted: [],
+            phaseIdsWorked: [],
+            materialsUsed: [],
+            photoUrls: []
+        };
+
+        onSave(newLog);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
+                <DialogHeader>
+                    <div className="flex items-center gap-2 mb-1">
+                        <History className="text-accent-gold h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Log Manual Session</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs">Provide historical work parameters for administrative audit.</DialogDescription>
+                </DialogHeader>
+
+                <div className="py-4 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
+                        <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Start Time</Label>
+                            <Input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">End Time</Label>
+                            <Input type="time" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Mission Summary</Label>
+                        <Textarea 
+                            placeholder="Detailed account of tasks performed..." 
+                            value={formData.summary}
+                            onChange={e => setFormData({...formData, summary: e.target.value})}
+                            className="bg-bg-primary min-h-[120px] text-xs leading-relaxed"
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSave} className="bg-brand-red hover:bg-brand-red-hover px-8">
+                        <Check size={16} className="mr-2"/> Commit to Registry
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
@@ -447,8 +563,9 @@ const PhaseBlock = ({
 
 
 // --- MAIN COMPONENT ---
-export function ProjectDetailClient({ project: initialProject, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
+export function ProjectDetailClient({ project: initialProject, dailyLogs: initialDailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [project, setProject] = useState(initialProject);
+    const [dailyLogs, setDailyLogs] = useState(initialDailyLogs);
     const [activeTab, setActiveTab] = useState('overview');
     const [activeSession, setActiveSession] = useState<any>(null);
     const { toast } = useToast();
@@ -498,7 +615,12 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
     const handleCheckOut = () => {
         setActiveSession(null);
         toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
-    }
+    };
+
+    const handleManualAdd = (log: ProjectDailyLog) => {
+        setDailyLogs(prev => [log, ...prev]);
+        toast({ title: 'Manual Entry Recorded', description: 'Timesheet record appended to mission manifest.' });
+    };
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -560,6 +682,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs, techni
                             onCheckIn={handleCheckIn} 
                             onCheckOut={handleCheckOut} 
                             activeSession={activeSession}
+                            onManualAdd={handleManualAdd}
                         />
                     </TabsContent>
                 </div>

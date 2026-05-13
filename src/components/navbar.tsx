@@ -14,7 +14,7 @@ import {
   MapPin,
   FileText,
   Calendar,
-  BarChart3
+  Activity
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -37,7 +37,7 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
-  { href: '/admin/reports', label: 'Activity', icon: BarChart3, permission: 'view_reports' },
+  { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },
 ];
 
 const clientNavItems: NavItem[] = [

@@ -393,7 +393,7 @@ export default function ActivityAuditPage() {
     const renderSiteActivity = () => {
         if (selectedSiteId && activeSite) {
             return (
-                <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-8 animate-in fade-in duration-300">
                     <div className="flex items-center justify-between">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedSiteId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
                             <ArrowLeft size={14} className="mr-1.5"/> Back to Site Index
@@ -496,7 +496,7 @@ export default function ActivityAuditPage() {
                         <div className="min-h-[400px]">
                             <TabsContent value="tech" className="m-0">
                                 {selectedTechId ? (
-                                    <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="space-y-8 animate-in fade-in duration-300">
                                         <div className="flex items-center justify-between">
                                             <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
                                                 <ArrowLeft size={14} className="mr-1.5"/> Back to Roster

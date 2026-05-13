@@ -41,7 +41,7 @@ type ScheduleBoxProps = {
 export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDates, setSelectedDates] = useState<Date[]>([new Date()]);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
     const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -51,15 +51,25 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
         return allWorkOrders.find(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
 
-    const assignmentsForSelectedDay = useMemo(() => {
+    const handleDayClick = (day: Date) => {
+        const isAlreadySelected = selectedDates.some(d => isSameDay(d, day));
+        if (isAlreadySelected) {
+            setSelectedDates(selectedDates.filter(d => !isSameDay(d, day)));
+        } else {
+            setSelectedDates([...selectedDates, day]);
+        }
+    };
+
+    const assignmentsForSelectedDays = useMemo(() => {
         return allWorkOrders.filter(wo => {
             try {
-                return isSameDay(parseISO(wo.scheduleDate), selectedDate);
+                const woDate = parseISO(wo.scheduleDate);
+                return selectedDates.some(sd => isSameDay(woDate, sd));
             } catch (e) {
                 return false;
             }
         });
-    }, [allWorkOrders, selectedDate]);
+    }, [allWorkOrders, selectedDates]);
     
     const eventsByDate = useMemo(() => {
       return allWorkOrders.reduce((acc, wo) => {
@@ -149,7 +159,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                 <div className="cal-controls !mb-6">
                     <div className="cal-nav">
                         <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
-                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest">
+                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest text-center">
                             {viewMode === 'week' 
                                 ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
                                 : format(currentDate, 'MMMM yyyy')
@@ -158,7 +168,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
                     </div>
                     <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                       {format(selectedDate, 'EEEE, MMM d')}
+                       {selectedDates.length === 1 ? format(selectedDates[0], 'EEEE, MMM d') : `${selectedDates.length} Dates Selected`}
                     </div>
                 </div>
 
@@ -166,14 +176,15 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                     <div className="week-grid !mb-6">
                         {weekDays.map(day => {
                             const dateStr = format(day, 'yyyy-MM-dd');
+                            const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                             return (
                                 <div 
                                   key={day.toString()} 
                                   className={cn("day-pill", {
-                                    'selected': isSameDay(day, selectedDate),
+                                    'selected': isSelected,
                                     'today': isToday(day)
                                   })}
-                                  onClick={() => setSelectedDate(day)}
+                                  onClick={() => handleDayClick(day)}
                                 >
                                     <span className="day-name">{format(day, 'EEE')}</span>
                                     <span className="day-num">{format(day, 'd')}</span>
@@ -192,15 +203,16 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         <div className="month-days">
                             {monthDays.map(day => {
                                 const dateStr = format(day, 'yyyy-MM-dd');
+                                const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                                 return (
                                     <div 
                                       key={day.toString()}
                                       className={cn("month-day !h-10 !text-xs", {
-                                        'selected': isSameDay(day, selectedDate),
+                                        'selected': isSelected,
                                         'today': isToday(day),
                                         'other-month': !isSameMonth(day, currentDate)
                                       })}
-                                      onClick={() => setSelectedDate(day)}
+                                      onClick={() => handleDayClick(day)}
                                     >
                                         {format(day, 'd')}
                                         {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="month-day-dot"></div>}
@@ -212,8 +224,8 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                 )}
 
                 <div className="space-y-2 mt-4">
-                    {assignmentsForSelectedDay.length > 0 ? (
-                        assignmentsForSelectedDay.map(wo => (
+                    {assignmentsForSelectedDays.length > 0 ? (
+                        assignmentsForSelectedDays.map(wo => (
                             <div key={wo.id} 
                                 className={cn("job-card !mb-0 cursor-pointer", { 'active': wo.status === 'in-progress'})}
                                 onClick={() => handleCardClick(wo)}
@@ -254,7 +266,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         ))
                     ) : (
                         <div className="p-8 text-center border border-dashed border-border-main rounded-md">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments for this date</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments for selected dates</div>
                         </div>
                     )}
                 </div>

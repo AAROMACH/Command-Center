@@ -1,4 +1,4 @@
-import { TechNavbar } from '@/components/tech-navbar';
+import { Navbar } from '@/components/navbar';
 import { AlertBand } from '@/components/alert-band';
 
 export default function TechPortalLayout({
@@ -8,7 +8,7 @@ export default function TechPortalLayout({
 }) {
   return (
     <>
-      <TechNavbar />
+      <Navbar />
       <div className="page-wrapper pt-[52px]">
         <AlertBand />
         <div className="page-content">{children}</div>

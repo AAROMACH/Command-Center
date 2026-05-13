@@ -14,7 +14,9 @@ import {
   MapPin,
   FileText,
   Calendar,
-  Activity
+  Activity,
+  ScrollText,
+  Coins
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -48,6 +50,14 @@ const clientNavItems: NavItem[] = [
   { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
 ];
 
+const techNavItems: NavItem[] = [
+  { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
+  { href: '/tech/projects', label: 'Projects', icon: Briefcase, permission: 'view_assigned_projects_only' },
+  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
+  { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
+  { href: '/tech/earnings', label: 'Earnings', icon: Coins, permission: 'field_logs' },
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
@@ -65,14 +75,18 @@ export function Navbar() {
   if (!mounted) return null;
 
   const isClientPortal = pathname.startsWith('/client');
-  const navItems = isClientPortal ? clientNavItems : adminNavItems;
+  const isTechPortal = pathname.startsWith('/tech');
+  
+  const navItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
+  const portalLabel = isTechPortal ? 'Technician Portal' : isClientPortal ? 'Client Portal' : 'Admin Portal';
+  const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
   
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 shadow-md">
       <div className="flex w-1/5 items-center">
-        <Link href={isClientPortal ? "/client/dashboard" : "/admin/dashboard"} className="flex items-center gap-2 group">
+        <Link href={dashboardHref} className="flex items-center gap-2 group">
           {logo && (
             <Image 
               src={logo.imageUrl} 
@@ -88,7 +102,7 @@ export function Navbar() {
           <div className="flex flex-col">
             <span className="font-mono text-base font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-red">
-                {isClientPortal ? 'Client Portal' : 'Admin Portal'}
+                {portalLabel}
             </span>
           </div>
         </Link>

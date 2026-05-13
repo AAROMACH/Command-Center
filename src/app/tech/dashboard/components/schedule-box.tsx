@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import { MissionDetailDialog } from '@/components/mission-detail-dialog';
 
 type ViewMode = 'week' | 'month';
@@ -47,6 +48,16 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
 
+    const weekDays = useMemo(() => eachDayOfInterval({
+        start: startOfWeek(currentDate, { weekStartsOn: 0 }),
+        end: endOfWeek(currentDate, { weekStartsOn: 0 }),
+    }), [currentDate]);
+
+    const monthDays = useMemo(() => eachDayOfInterval({
+        start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }),
+        end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
+    }), [currentDate]);
+
     const activeSession = useMemo(() => {
         return allWorkOrders.find(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
@@ -57,6 +68,14 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
             setSelectedDates(selectedDates.filter(d => !isSameDay(d, day)));
         } else {
             setSelectedDates([...selectedDates, day]);
+        }
+    };
+
+    const handleSeeAll = () => {
+        if (viewMode === 'week') {
+            setSelectedDates(weekDays);
+        } else {
+            setSelectedDates(monthDays);
         }
     };
 
@@ -126,16 +145,6 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
         setIsDetailOpen(true);
     };
 
-    const weekDays = eachDayOfInterval({
-        start: startOfWeek(currentDate, { weekStartsOn: 0 }),
-        end: endOfWeek(currentDate, { weekStartsOn: 0 }),
-    });
-
-    const monthDays = eachDayOfInterval({
-        start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }),
-        end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
-    });
-
     return (
         <>
             <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
@@ -166,6 +175,14 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                             }
                         </span>
                         <button className="nav-btn" onClick={handleNext}><ChevronRight size={16}/></button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleSeeAll} 
+                            className="h-6 text-[9px] uppercase font-bold tracking-widest ml-2 px-2 border border-border-sub hover:bg-bg-tertiary"
+                        >
+                            See All
+                        </Button>
                     </div>
                     <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
                        {selectedDates.length === 1 ? format(selectedDates[0], 'EEEE, MMM d') : `${selectedDates.length} Dates Selected`}

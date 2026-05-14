@@ -21,7 +21,10 @@ import {
     Info,
     LayoutList,
     ChevronRight,
-    ArrowLeft
+    ArrowLeft,
+    Search,
+    ArrowUpDown,
+    SlidersHorizontal
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +32,13 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { format, parseISO } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -38,10 +48,18 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
+type SortOption = 'newest' | 'oldest' | 'status';
+
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [activeLog, setActiveLog] = useState<WeeklyLog | null>(null);
     const [mounted, setMounted] = useState(false);
+    
+    // Filter State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [sortBy, setSortBy] = useState<SortOption>('newest');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -50,10 +68,29 @@ export default function TechWeeklyLogPage() {
         setCurrentTechId(userId);
     }, []);
 
-    const availableLogs = useMemo(() => {
+    const filteredAndSortedLogs = useMemo(() => {
         if (!currentTechId) return [];
-        return weeklyLogs.filter(wl => wl.technicianId === currentTechId);
-    }, [currentTechId]);
+        let filtered = weeklyLogs.filter(wl => wl.technicianId === currentTechId);
+        
+        // Status Filter
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(l => l.status === statusFilter);
+        }
+
+        // Search Filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(l => l.weekOf.includes(q));
+        }
+
+        // Sorting
+        return filtered.sort((a, b) => {
+            if (sortBy === 'newest') return b.weekOf.localeCompare(a.weekOf);
+            if (sortBy === 'oldest') return a.weekOf.localeCompare(b.weekOf);
+            if (sortBy === 'status') return a.status.localeCompare(b.status);
+            return 0;
+        });
+    }, [currentTechId, searchQuery, sortBy, statusFilter]);
 
     const handleLogSelection = (log: WeeklyLog) => {
         setActiveLog(JSON.parse(JSON.stringify(log))); // Clone for local state
@@ -128,9 +165,53 @@ export default function TechWeeklyLogPage() {
                     </div>
                 </header>
 
+                {/* SEARCH & FILTER BAR */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6">
+                    <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
+                        <Search className="h-4 w-4" />
+                        <input 
+                            placeholder="Filter by week period (MM-DD)..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold uppercase"
+                        />
+                    </div>
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                                <div className="flex items-center gap-2">
+                                    <SlidersHorizontal size={14} className="text-text-muted" />
+                                    <SelectValue placeholder="Status" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Statuses</SelectItem>
+                                <SelectItem value="Draft" className="text-[10px] uppercase font-bold">Drafts</SelectItem>
+                                <SelectItem value="Submitted" className="text-[10px] uppercase font-bold">Submitted</SelectItem>
+                                <SelectItem value="Approved" className="text-[10px] uppercase font-bold">Approved</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                                <div className="flex items-center gap-2">
+                                    <ArrowUpDown size={14} className="text-text-muted" />
+                                    <SelectValue placeholder="Sort" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
+                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                                <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
-                    {availableLogs.length > 0 ? (
-                        availableLogs.map(log => (
+                    {filteredAndSortedLogs.length > 0 ? (
+                        filteredAndSortedLogs.map(log => (
                             <Card 
                                 key={log.id} 
                                 className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
@@ -166,8 +247,18 @@ export default function TechWeeklyLogPage() {
                         ))
                     ) : (
                         <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
-                            <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">Log terminal clear: No assignments registered for audit.</p>
+                            {searchQuery || statusFilter !== 'all' ? (
+                                <>
+                                    <Search size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                    <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">No logs match your registry constraints.</p>
+                                    <Button variant="link" onClick={() => { setSearchQuery(""); setStatusFilter("all"); }} className="text-brand-red text-xs mt-2 uppercase font-bold tracking-widest">Clear All Filters</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                    <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">Log terminal clear: No assignments registered for audit.</p>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

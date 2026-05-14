@@ -34,7 +34,6 @@ const DISPUTE_REASONS = [
     "Revisit needed, not complete",
     "I don't recognize this job",
     "Wrong date on my log",
-    "Payout looks incorrect",
     "This appears to be a duplicate"
 ];
 

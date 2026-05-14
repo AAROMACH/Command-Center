@@ -201,6 +201,9 @@ export type AssignmentTimeLog = {
 export type WeeklyLogItem = {
   id: string;
   workOrderId: string;
+  confirmationStatus?: 'confirmed' | 'disputed';
+  disputeReason?: string;
+  disputeNotes?: string;
   outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';
   isComplete: boolean;
   isAdminReviewed: boolean;
@@ -223,6 +226,7 @@ export type WeeklyLog = {
   items: WeeklyLogItem[];
   reimbursements: FinancialRecord[];
   totalPayout?: number;
+  submittedAt?: string;
 };
 
 export type TimeOffRequest = {

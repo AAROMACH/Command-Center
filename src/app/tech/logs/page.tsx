@@ -1,377 +1,336 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, FinancialRecord } from '@/lib/types';
-import { weeklyLogs, workOrders } from '@/lib/data';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import { weeklyLogs, workOrders, technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Check, Edit, Plus, Coins, ScrollText, Trash2, ChevronLeft, ChevronRight, Eye, FileText, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { 
+    Check, 
+    X, 
+    AlertTriangle, 
+    Clock, 
+    MapPin, 
+    Calendar,
+    Send,
+    CircleCheck,
+    History,
+    ChevronDown,
+    ShieldAlert,
+    Info,
+    LayoutList
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
-export default function TechLogsPage() {
+const DISPUTE_REASONS = [
+    "Another tech did this job",
+    "Revisit needed, not complete",
+    "I don't recognize this job",
+    "Wrong date on my log",
+    "Payout looks incorrect",
+    "This appears to be a duplicate"
+];
+
+export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [allLogs, setAllLogs] = useState<WeeklyLog[]>([]);
-    const [editingLogId, setEditingLogId] = useState<string | null>(null);
+    const [activeLog, setActiveLog] = useState<WeeklyLog | null>(null);
+    const [mounted, setMounted] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
+        setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
         if (userId) {
-            setAllLogs(weeklyLogs.filter(wl => wl.technicianId === userId));
+            // Find the most relevant log (Submitted or Draft for current period)
+            const log = weeklyLogs.find(wl => wl.technicianId === userId && (wl.status === 'Draft' || wl.status === 'Submitted'));
+            if (log) {
+                setActiveLog(JSON.parse(JSON.stringify(log))); // Clone for local state
+            }
         }
     }, []);
 
-    const editingLog = useMemo(() => 
-        editingLogId ? allLogs.find(l => l.id === editingLogId) : null
-    , [editingLogId, allLogs]);
+    const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
 
-    const groupedLogs = useMemo(() => {
-        return {
-            open: allLogs.filter(l => ['Draft', 'Submitted'].includes(l.status)),
-            closed: allLogs.filter(l => ['Approved', 'Rejected'].includes(l.status))
-        };
-    }, [allLogs]);
-
-    if (!currentTechId) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Log Terminal...</div>;
-    }
-
-    const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
-
-    const handleOutcomeChange = (itemId: string, outcome: 'worked_completed' | 'worked_revisit' | 'other') => {
-        setAllLogs(prev => prev.map(log => {
-            if (log.id === editingLogId) {
-                return {
-                    ...log,
-                    items: log.items.map(item => item.id === itemId ? { ...item, outcomeCode: outcome } : item)
-                };
-            }
-            return log;
-        }));
+    const handleConfirm = (itemId: string) => {
+        if (isLocked) return;
+        setActiveLog(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                items: prev.items.map(item => 
+                    item.id === itemId 
+                        ? { ...item, confirmationStatus: 'confirmed', disputeReason: undefined, disputeNotes: undefined } 
+                        : item
+                )
+            };
+        });
     };
 
-    const handleReimbursementChange = (index: number, field: 'description' | 'amount', value: string) => {
-        setAllLogs(prev => prev.map(log => {
-            if (log.id === editingLogId) {
-                const newReimbursements = [...log.reimbursements];
-                const val = field === 'amount' ? parseFloat(value) || 0 : value;
-                (newReimbursements[index] as any)[field] = val;
-                return { ...log, reimbursements: newReimbursements };
-            }
-            return log;
-        }));
-    }
+    const handleDispute = (itemId: string, reason: string, notes?: string) => {
+        if (isLocked) return;
+        setActiveLog(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                items: prev.items.map(item => 
+                    item.id === itemId 
+                        ? { ...item, confirmationStatus: 'disputed', disputeReason: reason, disputeNotes: notes } 
+                        : item
+                )
+            };
+        });
+    };
 
-    const handleAddReimbursement = () => {
-        if (!currentTechId || !editingLogId) return;
-        const newReimbursement: FinancialRecord = {
-            id: `fr-${Date.now()}`,
-            technicianId: currentTechId,
-            date: new Date().toISOString().split('T')[0],
-            type: 'reimbursement',
-            amount: 0,
-            description: '',
+    const handleSubmit = () => {
+        if (!activeLog) return;
+        setActiveLog(prev => prev ? ({ ...prev, status: 'Submitted', submittedAt: new Date().toISOString() }) : null);
+        toast({
+            title: "Log Submitted",
+            description: "Weekly assignments manifest has been transmitted for audit.",
+        });
+    };
+
+    const counts = useMemo(() => {
+        if (!activeLog) return { total: 0, confirmed: 0, disputed: 0, pending: 0 };
+        return {
+            total: activeLog.items.length,
+            confirmed: activeLog.items.filter(i => i.confirmationStatus === 'confirmed').length,
+            disputed: activeLog.items.filter(i => i.confirmationStatus === 'disputed').length,
+            pending: activeLog.items.filter(i => !i.confirmationStatus).length
         };
-        setAllLogs(prev => prev.map(log => 
-            log.id === editingLogId ? { ...log, reimbursements: [...log.reimbursements, newReimbursement] } : log
-        ));
-    }
-    
-    const handleRemoveReimbursement = (index: number) => {
-        setAllLogs(prev => prev.map(log => {
-            if (log.id === editingLogId) {
-                const newReimbursements = [...log.reimbursements];
-                newReimbursements.splice(index, 1);
-                return { ...log, reimbursements: newReimbursements };
-            }
-            return log;
-        }));
+    }, [activeLog]);
+
+    const canSubmit = counts.total > 0 && counts.pending === 0;
+
+    if (!mounted || !currentTechId) {
+        return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Initializing Terminal...</div>;
     }
 
-    const handleSubmitLog = () => {
-        setAllLogs(prev => prev.map(log => 
-            log.id === editingLogId ? { ...log, status: 'Submitted' } : log
-        ));
-        toast({ title: "Log Submitted", description: "Your field job log is now with the admins for audit." });
-        setEditingLogId(null);
-    }
-
-    // MAIN DASHBOARD VIEW
-    if (!editingLogId) {
+    if (!activeLog) {
         return (
-            <div className="space-y-12">
+            <div className="space-y-6">
                 <header className="page-header">
                     <div>
-                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Payroll & Logs</p>
-                        <h1 className="page-title">Work Logs</h1>
-                        <p className="page-subtitle">Submit low voltage job logs for audit and payroll processing.</p>
+                        <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Payroll Audit</p>
+                        <h1 className="page-title">Weekly Log Finalization</h1>
                     </div>
                 </header>
-
-                <div className="space-y-10">
-                    {/* SECTION 1: OPEN LOGS */}
-                    <section>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
-                                <Clock size={14}/>
-                                Pending Audit & Drafts
-                            </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.open.length} log(s)</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {groupedLogs.open.map(log => (
-                                <Card key={log.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all group">
-                                    <CardHeader className="pb-4">
-                                        <div className="flex justify-between items-start">
-                                            <Badge variant={log.status === 'Draft' ? 'pending' : 'onhold'} className="text-[9px] uppercase tracking-widest">
-                                                {log.status}
-                                            </Badge>
-                                            <span className="font-mono text-xs text-text-muted">ID: {log.id}</span>
-                                        </div>
-                                        <CardTitle className="text-lg mt-2 uppercase tracking-wide">Week of {log.weekOf}</CardTitle>
-                                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">
-                                            {log.items.length} Jobs • {log.reimbursements.length} Expenses
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
-                                            <span className="text-[10px] font-bold uppercase text-text-muted">Est. Payout</span>
-                                            <span className="font-mono text-text-green font-bold">${(log.totalPayout || 0).toFixed(2)}</span>
-                                        </div>
-                                        {log.status === 'Draft' ? (
-                                            <Button className="w-full h-11" onClick={() => setEditingLogId(log.id)}>
-                                                <Edit size={16} className="mr-2"/> Edit & Finalize
-                                            </Button>
-                                        ) : (
-                                             <Button variant="outline" className="w-full h-11 border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => setEditingLogId(log.id)}>
-                                                <Eye size={16} className="mr-2"/> Review Submission
-                                            </Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))}
-                            {groupedLogs.open.length === 0 && (
-                                <div className="col-span-full py-12 text-center border border-dashed border-border-main rounded-lg bg-bg-secondary/50">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No pending field logs.</p>
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* SECTION 2: CLOSED LOGS */}
-                    <section>
-                         <div className="flex items-center justify-between mb-6 border-b border-border-main pb-4">
-                            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                                <FileText size={14}/>
-                                Finalized History
-                            </h2>
-                            <span className="text-[10px] font-bold text-text-muted uppercase">{groupedLogs.closed.length} log(s)</span>
-                        </div>
-                        <div className="space-y-2">
-                            {groupedLogs.closed.map(log => (
-                                <div key={log.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => setEditingLogId(log.id)}>
-                                    <div className="flex items-center gap-6">
-                                        <div className="p-2 bg-bg-primary rounded-md group-hover:bg-bg-secondary transition-colors">
-                                            <ScrollText size={18} className="text-text-muted"/>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Week of {log.weekOf}</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">Finalized • ID: {log.id}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-8">
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Final Status</p>
-                                            <Badge variant={log.status === 'Approved' ? 'active' : 'missed'} className="text-[9px] uppercase tracking-widest h-5 mt-1">
-                                                {log.status}
-                                            </Badge>
-                                        </div>
-                                        <div className="text-right min-w-[120px]">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Payout</p>
-                                            <p className="font-mono font-bold text-text-green text-lg">${(log.totalPayout || 0).toFixed(2)}</p>
-                                        </div>
-                                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all"/>
-                                    </div>
-                                </div>
-                            ))}
-                            {groupedLogs.closed.length === 0 && (
-                                <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No historical field logs found.</div>
-                            )}
-                        </div>
-                    </section>
+                <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
+                    <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                    <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">Log terminal clear: No active assignments found for this period</p>
                 </div>
             </div>
         );
     }
 
-    // EDITING / DETAIL VIEW
-    const isSubmitted = editingLog.status !== 'Draft';
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* SUMMARY COMMAND BAR */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl">
+                <div className="flex items-center gap-6">
+                    <div className={cn(
+                        "p-3 rounded-xl border",
+                        activeLog.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : "bg-green-dim border-green-border/30 text-text-green"
+                    )}>
+                        <ShieldAlert size={24} />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary">Week of {activeLog.weekOf}</h2>
+                            <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[9px] tracking-widest">
+                                {activeLog.status}
+                            </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                                <Check className="text-text-green h-3 w-3"/> {counts.confirmed} Confirmed
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                                <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest">
+                                <Clock size={12}/> {counts.pending} Awaiting Action
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    {isLocked ? (
+                        <div className="flex flex-col items-end">
+                            <p className="text-[10px] font-black text-text-green uppercase tracking-widest">Terminal Locked</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, HH:mm') : 'N/A'}</p>
+                        </div>
+                    ) : (
+                        <Button 
+                            disabled={!canSubmit} 
+                            onClick={handleSubmit}
+                            className="h-12 px-10 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-[0.2em]"
+                        >
+                            <Send size={16} className="mr-2"/> Finalize & Submit Manifest
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* ASSIGNMENT FEED */}
+            <div className="space-y-4 max-w-4xl mx-auto">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Tactical Assignment Registry</h3>
+                <div className="space-y-3">
+                    {activeLog.items.map(item => (
+                        <JobAuditCard 
+                            key={item.id} 
+                            item={item} 
+                            isLocked={isLocked}
+                            onConfirm={handleConfirm}
+                            onDispute={handleDispute}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {!isLocked && (
+                <div className="p-6 rounded-xl bg-bg-tertiary/30 border border-border-sub flex items-start gap-4 max-w-4xl mx-auto">
+                    <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Audit Directive</p>
+                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                            Every assignment listed in this manifest must be verified for operational accuracy. 
+                            Disputed jobs will trigger a manual audit by the Command Center to ensure financial integrity.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLogItem, isLocked: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void }) {
+    const job = workOrders.find(wo => wo.id === item.workOrderId);
+    const [isDisputing, setIsDisputing] = useState(false);
+    const [reason, setReason] = useState(item.disputeReason || "");
+    const [notes, setNotes] = useState(item.disputeNotes || "");
+
+    if (!job) return null;
+
+    const hasDecision = !!item.confirmationStatus;
+    const isDisputed = item.confirmationStatus === 'disputed';
 
     return (
-        <div>
-            <header className="page-header">
-                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => setEditingLogId(null)} className="h-10 w-10">
-                        <ChevronLeft size={24}/>
-                    </Button>
-                    <div>
-                        <p className="page-eyebrow flex items-center gap-2"><ScrollText size={12}/> Field log Editor</p>
-                        <h1 className="page-title">Week of {editingLog.weekOf}</h1>
-                        <p className="page-subtitle">Status: <span className="font-bold text-text-primary uppercase">{editingLog.status}</span></p>
-                    </div>
-                </div>
-                <div className="page-header-right">
-                    {!isSubmitted && (
-                        <Button onClick={handleSubmitLog} className="h-11 px-8"><Check size={16} className="mr-2"/> Submit field log</Button>
-                    )}
-                    {isSubmitted && (
-                        <Button variant="outline" onClick={() => setEditingLogId(null)}>Back to History</Button>
-                    )}
-                </div>
-            </header>
-
-            <Card className="max-w-4xl mx-auto bg-bg-secondary border-border-main">
-                <CardHeader className="border-b border-border-sub">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="text-lg">Audit Verification</CardTitle>
-                            <CardDescription>Review all field jobs and add any material reimbursements before finalizing the log.</CardDescription>
+        <Card className={cn(
+            "bg-bg-secondary border-border-main overflow-hidden transition-all",
+            isDisputed ? "border-brand-red ring-1 ring-brand-red/20" : 
+            item.confirmationStatus === 'confirmed' ? "border-green-border" : "hover:border-text-muted"
+        )}>
+            <CardContent className="p-0">
+                <div className="p-5 flex items-center justify-between gap-6">
+                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                        <div className={cn(
+                            "h-12 w-12 rounded-xl border flex items-center justify-center shrink-0",
+                            isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
+                            item.confirmationStatus === 'confirmed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
+                        )}>
+                            {isDisputed ? <X size={24}/> : item.confirmationStatus === 'confirmed' ? <Check size={24}/> : <Calendar size={24}/>}
                         </div>
-                        <Badge variant={editingLog.status === 'Approved' ? 'active' : editingLog.status === 'Submitted' ? 'onhold' : 'pending'}>
-                            {editingLog.status}
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-3">
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.description}</h4>
+                                <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
+                                <span className="flex items-center gap-1.5"><Calendar size={10}/> {job.scheduleDate}</span>
+                                <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {!isLocked && (
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant={item.confirmationStatus === 'confirmed' ? 'default' : 'outline'}
+                                size="sm"
+                                className={cn(
+                                    "h-9 px-4 uppercase text-[10px] tracking-widest",
+                                    item.confirmationStatus === 'confirmed' ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim"
+                                )}
+                                onClick={() => { onConfirm(item.id); setIsDisputing(false); }}
+                            >
+                                <Check size={16} className="mr-1.5"/> Confirm
+                            </Button>
+                            <Button 
+                                variant={isDisputed ? 'default' : 'outline'}
+                                size="sm"
+                                className={cn(
+                                    "h-9 px-4 uppercase text-[10px] tracking-widest",
+                                    isDisputed ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim"
+                                )}
+                                onClick={() => setIsDisputing(!isDisputing)}
+                            >
+                                <X size={16} className="mr-1.5"/> Dispute
+                            </Button>
+                        </div>
+                    )}
+
+                    {isLocked && item.confirmationStatus && (
+                        <Badge variant={isDisputed ? 'missed' : 'active'} className="h-6 px-4 uppercase tracking-[0.2em] font-black">
+                            {item.confirmationStatus}
                         </Badge>
-                    </div>
-                </CardHeader>
-                <CardContent className="py-6 space-y-8">
-                    <div className="space-y-4">
-                        <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
-                             <Check size={14} className="text-brand-red"/>
-                             Completed Field Jobs
-                        </h3>
-                        <div className="table-wrap border border-border-sub overflow-hidden">
-                            <table className="tbl">
-                                <thead className="bg-bg-tertiary">
-                                    <tr className="border-b border-border-sub">
-                                        <th className="text-[10px] uppercase font-bold text-text-muted">Work Order</th>
-                                        <th className="text-[10px] uppercase font-bold text-text-muted">Client Context</th>
-                                        <th className="text-right w-64 text-[10px] uppercase font-bold text-text-muted">Outcome Verification</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {editingLog.items.map(item => {
-                                        const wo = workOrderDetails(item.workOrderId);
-                                        return (
-                                            <tr key={item.id} className="border-b border-border-sub hover:bg-bg-primary transition-colors">
-                                                <td className="py-3">
-                                                    <div className="cell-id !mb-0.5">{wo?.id.toUpperCase()}</div>
-                                                    <div className="text-text-primary text-xs font-semibold">{wo?.description}</div>
-                                                </td>
-                                                <td className="py-3"><div className="text-[10px] text-text-muted uppercase tracking-widest">{wo?.clientName}</div></td>
-                                                <td className="text-right py-3">
-                                                    {isSubmitted ? (
-                                                        <Badge variant={item.outcomeCode === 'worked_completed' ? 'active' : 'onhold'} className="text-[9px] uppercase tracking-widest">
-                                                            {item.outcomeCode.replace(/_/g, ' ')}
-                                                        </Badge>
-                                                    ) : (
-                                                        <Select value={item.outcomeCode} onValueChange={(val) => handleOutcomeChange(item.id, val as any)}>
-                                                            <SelectTrigger className="h-9 text-xs bg-bg-primary border-border-sub">
-                                                                <SelectValue/>
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="worked_completed">Work Completed</SelectItem>
-                                                                <SelectItem value="worked_revisit">Revisit Required</SelectItem>
-                                                                <SelectItem value="other">Other / No Access</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                    {editingLog.items.length === 0 && (
-                                        <tr>
-                                            <td colSpan={3} className="text-center py-10 text-text-muted italic text-xs">No field jobs logged for this period.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    )}
+                </div>
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
-                                <Coins size={14} className="text-accent-gold"/>
-                                Material Reimbursements & Site Expenses
-                            </h3>
-                            {!isSubmitted && (
-                                <Button variant="secondary" size="sm" className="h-8 !text-[10px]" onClick={handleAddReimbursement}>
-                                    <Plus size={14} className="mr-1.5"/> Add Line Item
-                                </Button>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            {editingLog.reimbursements.map((item, index) => (
-                                <div key={item.id} className="flex gap-2 items-center p-3 rounded bg-bg-primary border border-border-sub transition-all hover:border-text-muted">
-                                    <div className="flex-1 space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Description</p>
-                                        <Input 
-                                            placeholder="e.g., Cable, Connector Materials" 
-                                            value={item.description}
-                                            disabled={isSubmitted}
-                                            className="h-9 text-xs bg-bg-secondary border-border-sub focus:border-brand-red"
-                                            onChange={(e) => handleReimbursementChange(index, 'description', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="w-32 space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">Amount ($)</p>
-                                        <Input 
-                                            type="number" 
-                                            placeholder="0.00" 
-                                            value={item.amount || ''}
-                                            disabled={isSubmitted}
-                                            className="h-9 text-xs bg-bg-secondary border-border-sub font-mono focus:border-brand-red"
-                                            onChange={(e) => handleReimbursementChange(index, 'amount', e.target.value)}
-                                        />
-                                    </div>
-                                     {!isSubmitted && (
-                                        <div className="pt-5">
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-red hover:bg-brand-red/10" onClick={() => handleRemoveReimbursement(index)}>
-                                                <Trash2 size={16}/>
-                                            </Button>
+                {/* DISPUTE TERMINAL (INLINE) */}
+                {(isDisputing || (isLocked && isDisputed)) && (
+                    <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300">
+                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4">
+                            <div className="space-y-3">
+                                <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Audit Parameters</p>
+                                <RadioGroup 
+                                    value={reason} 
+                                    onValueChange={(val) => { setReason(val); onDispute(item.id, val, notes); }}
+                                    className="grid grid-cols-1 md:grid-cols-2 gap-2"
+                                    disabled={isLocked}
+                                >
+                                    {DISPUTE_REASONS.map((r, idx) => (
+                                        <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
+                                            <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} className="border-border-sub" />
+                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1">{r}</Label>
                                         </div>
-                                     )}
-                                </div>
-                            ))}
-                            {editingLog.reimbursements.length === 0 && (
-                                <div className="p-8 text-center border border-dashed border-border-sub rounded text-[10px] uppercase font-bold text-text-muted tracking-widest">
-                                    No reimbursements filed for this log
+                                    ))}
+                                </RadioGroup>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] ml-1">Optional Field Intelligence</p>
+                                <Textarea 
+                                    placeholder="Provide high-fidelity context for administrative review..."
+                                    value={notes}
+                                    onChange={(e) => { setNotes(e.target.value); onDispute(item.id, reason, e.target.value); }}
+                                    className="bg-bg-secondary h-20 text-[11px] leading-relaxed resize-none border-border-sub focus:border-brand-red"
+                                    disabled={isLocked}
+                                />
+                            </div>
+
+                            {!isLocked && (
+                                <div className="pt-2 flex justify-end">
+                                    <p className={cn(
+                                        "text-[9px] font-bold uppercase tracking-widest",
+                                        reason ? "text-text-green" : "text-accent-gold"
+                                    )}>
+                                        {reason ? "Dispute Logic Validated" : "Reason Selection Required"}
+                                    </p>
                                 </div>
                             )}
                         </div>
                     </div>
-
-                    <div className="pt-6 border-t border-border-sub">
-                         <div className="max-w-xs ml-auto p-4 rounded-lg bg-bg-tertiary border border-border-sub text-center">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Total field log Value</h3>
-                            <p className={`text-3xl font-mono font-bold ${editingLog.status === 'Approved' ? 'text-text-green' : 'text-text-primary'}`}>
-                                ${(editingLog.totalPayout || 0).toFixed(2)}
-                            </p>
-                            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] mt-1">Pending Audit Confirmation</p>
-                        </div>
-                    </div>
-                </CardContent>
-                {!isSubmitted && (
-                    <CardFooter className="bg-bg-tertiary/50 py-4 flex justify-end gap-3 rounded-b-lg">
-                        <Button variant="outline" onClick={() => setEditingLogId(null)}>Save as Draft</Button>
-                        <Button onClick={handleSubmitLog} className="px-10">Submit for Audit</Button>
-                    </CardFooter>
                 )}
-            </Card>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

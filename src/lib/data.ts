@@ -629,7 +629,9 @@ export const weeklyLogs: WeeklyLog[] = [
     technicianId: 'tech-001',
     weekOf: '07-29-2024',
     status: 'Draft',
-    items: [],
+    items: [
+      { id: 'wli-mock-1', workOrderId: 'wo-mock-88', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+    ],
     reimbursements: [],
     totalPayout: 450.00
   },
@@ -638,7 +640,9 @@ export const weeklyLogs: WeeklyLog[] = [
     technicianId: 'staff-002',
     weekOf: '07-29-2024',
     status: 'Draft',
-    items: [],
+    items: [
+      { id: 'wli-c-1', workOrderId: 'wo-corey-1', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+    ],
     reimbursements: [],
     totalPayout: 0,
   }

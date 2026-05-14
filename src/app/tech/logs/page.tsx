@@ -364,17 +364,6 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
                                 </RadioGroup>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] ml-1">Optional Field Intelligence</p>
-                                <Textarea 
-                                    placeholder="Provide high-fidelity context for administrative review..."
-                                    value={notes}
-                                    onChange={(e) => { setNotes(e.target.value); onDispute(item.id, reason, e.target.value); }}
-                                    className="bg-bg-secondary h-20 text-[11px] leading-relaxed resize-none border-border-sub focus:border-brand-red"
-                                    disabled={isLocked}
-                                />
-                            </div>
-
                             {!isLocked && (
                                 <div className="pt-2 flex justify-end">
                                     <p className={cn(

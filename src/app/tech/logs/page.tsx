@@ -19,7 +19,9 @@ import {
     ChevronDown,
     ShieldAlert,
     Info,
-    LayoutList
+    LayoutList,
+    ChevronRight,
+    ArrowLeft
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,14 +48,16 @@ export default function TechWeeklyLogPage() {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
-        if (userId) {
-            // Find the most relevant log (Submitted or Draft for current period)
-            const log = weeklyLogs.find(wl => wl.technicianId === userId && (wl.status === 'Draft' || wl.status === 'Submitted'));
-            if (log) {
-                setActiveLog(JSON.parse(JSON.stringify(log))); // Clone for local state
-            }
-        }
     }, []);
+
+    const availableLogs = useMemo(() => {
+        if (!currentTechId) return [];
+        return weeklyLogs.filter(wl => wl.technicianId === currentTechId);
+    }, [currentTechId]);
+
+    const handleLogSelection = (log: WeeklyLog) => {
+        setActiveLog(JSON.parse(JSON.stringify(log))); // Clone for local state
+    };
 
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
 
@@ -112,25 +116,76 @@ export default function TechWeeklyLogPage() {
         return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Initializing Terminal...</div>;
     }
 
+    // --- INDEX VIEW: LIST OF AVAILABLE LOGS ---
     if (!activeLog) {
         return (
             <div className="space-y-6">
                 <header className="page-header">
                     <div>
                         <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Payroll Audit</p>
-                        <h1 className="page-title">Weekly Log Finalization</h1>
+                        <h1 className="page-title">Weekly Log Registry</h1>
+                        <p className="page-subtitle text-[11px] uppercase font-bold tracking-widest mt-1">Audit terminal for assignment verification and payouts.</p>
                     </div>
                 </header>
-                <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
-                    <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">Log terminal clear: No active assignments found for this period</p>
+
+                <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
+                    {availableLogs.length > 0 ? (
+                        availableLogs.map(log => (
+                            <Card 
+                                key={log.id} 
+                                className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
+                                onClick={() => handleLogSelection(log)}
+                            >
+                                <CardContent className="p-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-6">
+                                        <div className={cn(
+                                            "p-3 rounded-xl border",
+                                            log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : 
+                                            log.status === 'Approved' ? "bg-green-dim border-green-border/30 text-text-green" : 
+                                            "bg-bg-tertiary border-border-sub text-text-muted"
+                                        )}>
+                                            <Calendar size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
+                                            <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                <span>{log.items.length} Assignments</span>
+                                                <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                                <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <Badge variant={log.status === 'Draft' ? 'onhold' : log.status === 'Approved' ? 'active' : 'pending'}>
+                                            {log.status.toUpperCase()}
+                                        </Badge>
+                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : (
+                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
+                            <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                            <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">Log terminal clear: No assignments registered for audit.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         );
     }
 
+    // --- AUDIT VIEW: SPECIFIC LOG VERIFICATION ---
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
+            <header className="flex items-center gap-4 mb-4">
+                <Button variant="ghost" size="sm" onClick={() => setActiveLog(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary">
+                    <ArrowLeft size={14} className="mr-2"/> Back to Registry
+                </Button>
+                <div className="h-4 w-px bg-border-sub" />
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Auditing week of {activeLog.weekOf}</p>
+            </header>
+
             {/* SUMMARY COMMAND BAR */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl">
                 <div className="flex items-center gap-6">
@@ -142,7 +197,7 @@ export default function TechWeeklyLogPage() {
                     </div>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary">Week of {activeLog.weekOf}</h2>
+                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary">Operational Audit</h2>
                             <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[9px] tracking-widest">
                                 {activeLog.status}
                             </Badge>
@@ -192,6 +247,11 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                         />
                     ))}
+                    {activeLog.items.length === 0 && (
+                        <div className="p-12 text-center text-[10px] font-bold text-text-muted uppercase tracking-widest italic border border-dashed border-border-sub rounded-xl">
+                            No assignments registered for this period.
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -219,7 +279,6 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
 
     if (!job) return null;
 
-    const hasDecision = !!item.confirmationStatus;
     const isDisputed = item.confirmationStatus === 'disputed';
 
     return (

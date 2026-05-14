@@ -607,6 +607,26 @@ export const weeklyLogs: WeeklyLog[] = [
     totalPayout: 2150.50,
   },
   {
+    id: 'wl-alex-prev',
+    technicianId: 'tech-001',
+    weekOf: '07-15-2024',
+    status: 'Draft',
+    items: [
+        { id: 'wli-a-p1', workOrderId: 'wo-101', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+    ],
+    reimbursements: [],
+    totalPayout: 450.00
+  },
+  {
+    id: 'wl-alex-hist',
+    technicianId: 'tech-001',
+    weekOf: '07-08-2024',
+    status: 'Approved',
+    items: [],
+    reimbursements: [],
+    totalPayout: 1850.00
+  },
+  {
     id: 'wl-2',
     technicianId: 'tech-002',
     weekOf: '07-22-2024',

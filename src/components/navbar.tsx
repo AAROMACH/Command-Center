@@ -100,7 +100,7 @@ export function Navbar() {
             />
           )}
           <div className="flex flex-col">
-            <span className="font-mono text-base font-bold uppercase tracking-tight text-text-primary leading-none">Aaromach</span>
+            <span className="font-mono text-base font-bold uppercase tracking-tight text-white leading-none">Aaromach</span>
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-red">
                 {portalLabel}
             </span>

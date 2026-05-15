@@ -1,21 +1,31 @@
+
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { projects, technicians } from '@/lib/data';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Search } from 'lucide-react';
 import { ProjectsClient } from './components/projects-client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function TechProjectsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
 
-    const techProjects = projects.filter(p => 
-        currentTechId && p.team.some(member => member.technicianId === currentTechId)
-    );
+    const techProjects = useMemo(() => {
+        if (!currentTechId) return [];
+        return projects
+            .filter(p => p.team.some(member => member.technicianId === currentTechId))
+            .filter(p => 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                p.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                p.location.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+    }, [currentTechId, searchQuery]);
 
     const activeProjects = techProjects.filter(p => p.status === 'active');
     const projectHistory = techProjects.filter(p => p.status === 'completed' || p.status === 'on-hold');
@@ -25,7 +35,7 @@ export default function TechProjectsPage() {
     }
 
     return (
-        <div>
+        <div className="space-y-6">
             <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -34,6 +44,17 @@ export default function TechProjectsPage() {
                     </p>
                     <h1 className="page-title">My Projects</h1>
                     <p className="page-subtitle">Manage your large-scale, multi-day deployments.</p>
+                </div>
+                <div className="page-header-right">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Search projects..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
             </header>
 

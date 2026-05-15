@@ -15,7 +15,8 @@ import {
   Wrench, 
   ClipboardCheck,
   FileCheck,
-  ArrowUpDown
+  ArrowUpDown,
+  Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -33,6 +34,7 @@ export default function TechAssignmentsPage() {
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
     const [mounted, setMounted] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('date');
+    const [searchQuery, setSearchQuery] = useState("");
     const { toast } = useToast();
 
     useEffect(() => {
@@ -43,8 +45,15 @@ export default function TechAssignmentsPage() {
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
-        return allWorkOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
-    }, [allWorkOrders, currentTechId]);
+        return allWorkOrders
+            .filter(wo => wo.assignedTechnicianId === currentTechId)
+            .filter(wo => 
+                wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                wo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                wo.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                wo.location.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+    }, [allWorkOrders, currentTechId, searchQuery]);
 
     const activeAssignments = useMemo(() => 
         techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
@@ -101,6 +110,17 @@ export default function TechAssignmentsPage() {
                     </p>
                     <h1 className="page-title">Assignments</h1>
                     <p className="page-subtitle">Manage tactical assignments and historical performance audit.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Search assignments..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
             </header>
 

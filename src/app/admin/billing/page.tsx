@@ -1,13 +1,14 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { technicians } from "@/lib/data";
 import { isClient, isTech } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, CreditCard, Download, Plus, Landmark, ArrowRightLeft, ShieldCheck } from "lucide-react";
+import { Banknote, CreditCard, Download, Plus, Landmark, ArrowRightLeft, ShieldCheck, Search } from "lucide-react";
 
 const billingHistory = [
     { invoice: 'INV-2024-001', date: 'July 1, 2024', amount: '$5,000.00', status: 'Paid', type: 'Subscription' },
@@ -18,6 +19,7 @@ const billingHistory = [
 
 export default function BillingPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
@@ -25,6 +27,15 @@ export default function BillingPage() {
             setCurrentUser(technicians.find(t => t.id === userId));
         }
     }, []);
+
+    const filteredLedger = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return billingHistory.filter(item => 
+            item.invoice.toLowerCase().includes(q) ||
+            item.type.toLowerCase().includes(q) ||
+            item.status.toLowerCase().includes(q)
+        );
+    }, [searchQuery]);
 
     const userIsClient = isClient(currentUser);
     const userIsTech = isTech(currentUser);
@@ -43,11 +54,20 @@ export default function BillingPage() {
                         Manage ACH transfers, subscription parameters, and 1099 financial disbursements.
                     </p>
                 </div>
-                {userIsClient && (
-                    <div className="page-header-right">
-                        <Button variant="outline">Upgrade Plan</Button>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Search ledger..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
-                )}
+                    {userIsClient && (
+                        <Button variant="outline">Upgrade Plan</Button>
+                    )}
+                </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -70,7 +90,7 @@ export default function BillingPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {billingHistory.map((item) => (
+                                    {filteredLedger.map((item) => (
                                         <TableRow key={item.invoice} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                             <TableCell className="font-mono text-xs text-text-primary pl-6">{item.invoice}</TableCell>
                                             <TableCell>
@@ -88,6 +108,13 @@ export default function BillingPage() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
+                                    {filteredLedger.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-32 text-center text-text-muted italic uppercase text-[10px] tracking-widest">
+                                                No ledger records match your search.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>

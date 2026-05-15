@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,7 +24,8 @@ import {
   X,
   FileJson,
   FileClock,
-  MessageSquare
+  MessageSquare,
+  Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,6 +45,7 @@ export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const [exportConfig, setExportConfig] = useState({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         to: new Date().toISOString().split('T')[0],
@@ -112,6 +115,17 @@ export default function TechSettingsPage() {
                     </p>
                     <h1 className="page-title">System Settings</h1>
                     <p className="page-subtitle">Manage comms settings, security layers, and UI preferences.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Find configuration..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
              </header>
 

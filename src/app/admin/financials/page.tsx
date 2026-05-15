@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search } from "lucide-react";
 import { expenses as initialExpenses, reports, weeklyLogs as initialWeeklyLogs, technicians, invoices as initialInvoices, projects, workOrders } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,9 @@ export default function FinancialsPage() {
     const [expenses, setExpenses] = useState(initialExpenses);
     const [invoices, setInvoices] = useState(initialInvoices);
     const [weeklyLogs, setWeeklyLogs] = useState(initialWeeklyLogs);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [activeTab, setActiveTab] = useState("summary");
+
     const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
@@ -144,6 +148,31 @@ export default function FinancialsPage() {
         setIsExportDialogOpen(false);
     };
 
+    const filteredWeeklyLogs = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return weeklyLogs.filter(log => 
+            log.weekOf.includes(q) || 
+            getTechnicianName(log.technicianId).toLowerCase().includes(q)
+        );
+    }, [weeklyLogs, searchQuery]);
+
+    const filteredInvoices = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return invoices.filter(inv => 
+            inv.invoiceNumber.toLowerCase().includes(q) || 
+            inv.clientName.toLowerCase().includes(q)
+        );
+    }, [invoices, searchQuery]);
+
+    const filteredExpenses = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return expenses.filter(exp => 
+            exp.description.toLowerCase().includes(q) || 
+            exp.submittedBy.toLowerCase().includes(q) ||
+            exp.category.toLowerCase().includes(q)
+        );
+    }, [expenses, searchQuery]);
+
 
     return (
         <div>
@@ -156,7 +185,16 @@ export default function FinancialsPage() {
                     <h1 className="page-title">ACCOUNTING</h1>
                     <p className="page-subtitle">Consolidated management of client revenue, technician payroll, and project overhead.</p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Filter ledger data..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                     <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>⇩ EXPORT GENERAL LEDGER</Button>
 
                     <AlertDialog>
@@ -181,7 +219,7 @@ export default function FinancialsPage() {
                 </div>
             </header>
 
-            <Tabs defaultValue="summary" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="tabs !p-0 !bg-bg-tertiary">
                     <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
                     <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
@@ -242,7 +280,7 @@ export default function FinancialsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {weeklyLogs.map(log => (
+                                    {filteredWeeklyLogs.map(log => (
                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                             <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
                                             <TableCell className="text-sm font-semibold">{getTechnicianName(log.technicianId)}</TableCell>
@@ -283,7 +321,7 @@ export default function FinancialsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {invoices.map((invoice) => (
+                                    {filteredInvoices.map((invoice) => (
                                         <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors">
                                             <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
                                             <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
@@ -318,7 +356,7 @@ export default function FinancialsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {expenses.map((expense) => (
+                                    {filteredExpenses.map((expense) => (
                                         <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                             <TableCell className="text-xs text-text-muted pl-6">{expense.date}</TableCell>
                                             <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>

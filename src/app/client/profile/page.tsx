@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -15,7 +16,8 @@ import {
     ShieldCheck,
     Briefcase,
     FileText,
-    Pencil
+    Pencil,
+    Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +25,7 @@ import { Label } from '@/components/ui/label';
 export default function ClientProfilePage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         setMounted(true);
@@ -46,7 +49,16 @@ export default function ClientProfilePage() {
                     <h1 className="page-title">Personal Profile</h1>
                     <p className="page-subtitle">Official portal credentials and organizational context.</p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[200px]" 
+                            placeholder="Find detail..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                     <Button variant="outline">
                         <Pencil size={14} className="mr-2"/>
                         Request Profile Update

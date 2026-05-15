@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,8 @@ import {
   ShieldCheck,
   ChevronRight,
   Database,
-  History
+  History,
+  Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -26,6 +28,7 @@ import { useRouter } from 'next/navigation';
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [searchQuery, setSearchQuery] = useState("");
     const { toast } = useToast();
     const router = useRouter();
 
@@ -56,6 +59,17 @@ export default function ClientSettingsPage() {
                     </p>
                     <h1 className="page-title">Settings</h1>
                     <p className="page-subtitle">Manage communication protocols, organizational details, and account security.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Find setting..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
             </header>
 

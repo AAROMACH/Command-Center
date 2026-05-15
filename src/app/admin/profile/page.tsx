@@ -1,3 +1,7 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -5,14 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { User } from "lucide-react";
+import { User, Search } from "lucide-react";
 import Image from "next/image";
 
 export default function ProfilePage() {
     const userAvatar = PlaceHolderImages.find(image => image.id === 'user-avatar-1');
+    const [searchQuery, setSearchQuery] = useState("");
 
     return (
-        <div>
+        <div className="space-y-6">
             <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -21,6 +26,17 @@ export default function ProfilePage() {
                     </p>
                     <h1 className="page-title">Profile & Settings</h1>
                     <p className="page-subtitle">Manage your personal information, notification preferences, and security settings.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Find setting..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
             </header>
 

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { Technician, TimeOffRequest } from '@/lib/types';
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +25,7 @@ export default function TechProfilePage() {
     const [tech, setTech] = useState<Technician | undefined>(undefined);
     const [myTimeOff, setMyTimeOff] = useState<TimeOffRequest[]>([]);
     const [mounted, setMounted] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const { toast } = useToast();
     
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
@@ -113,7 +115,16 @@ export default function TechProfilePage() {
                     <h1 className="page-title">Technician Profile</h1>
                     <p className="page-subtitle">Master field record for {tech.name}. Restricted terminal access.</p>
                 </div>
-                 <div className="page-header-right">
+                 <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[200px]" 
+                            placeholder="Find detail..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                     <Button onClick={() => toast({ title: "Profile Updated", description: "Changes have been committed to your technician record."})}>
                         Commit Changes
                     </Button>
@@ -374,7 +385,6 @@ export default function TechProfilePage() {
                                         </div>
                                     </div>
                                 </CardContent>
-                            </Card>
 
                             <Card className="lg:col-span-2">
                                 <CardHeader className="pb-4">

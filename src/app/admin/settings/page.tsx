@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,8 @@ import {
   ExternalLink, 
   Lock,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -88,6 +90,7 @@ const integrations: Integration[] = [
 export default function SettingsPage() {
     const { toast } = useToast();
     const [isTesting, setIsTesting] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const handleTest = (id: string) => {
         setIsTesting(id);
@@ -119,6 +122,17 @@ export default function SettingsPage() {
                     </p>
                     <h1 className="page-title">System Settings</h1>
                     <p className="page-subtitle">Configure global parameters and monitor system-level integrations.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Find setting..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
             </header>
 

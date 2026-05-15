@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, CreditCard, Download, Plus, Landmark, ShieldCheck, Check, Settings2, Sparkles } from "lucide-react";
+import { Banknote, CreditCard, Download, Plus, Landmark, ShieldCheck, Check, Settings2, Sparkles, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,7 @@ export default function ClientBillingPage() {
     const [mounted, setMounted] = useState(false);
     const [isModifyOpen, setIsModifyOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<PlanTier>('Enterprise');
+    const [searchQuery, setSearchQuery] = useState("");
     const { toast } = useToast();
 
     useEffect(() => {
@@ -59,8 +61,13 @@ export default function ClientBillingPage() {
 
     const myInvoices = useMemo(() => {
         if (!currentUser?.clientCompany) return [];
-        return invoices.filter(inv => inv.clientName === currentUser.clientCompany);
-    }, [currentUser]);
+        return invoices
+            .filter(inv => inv.clientName === currentUser.clientCompany)
+            .filter(inv => 
+                inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                inv.status.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+    }, [currentUser, searchQuery]);
 
     const handleUpdatePlan = () => {
         toast({
@@ -85,7 +92,16 @@ export default function ClientBillingPage() {
                         Manage payment methods, subscription parameters, and review your global settlement history.
                     </p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input 
+                            className="search-input !w-full md:!w-[250px]" 
+                            placeholder="Find transaction..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                     <Button variant="outline" onClick={() => setIsModifyOpen(true)}>Upgrade Enterprise Plan</Button>
                 </div>
             </header>

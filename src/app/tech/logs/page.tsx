@@ -24,7 +24,9 @@ import {
     ArrowLeft,
     Search,
     ArrowUpDown,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Hash,
+    Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -394,8 +396,8 @@ function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default flex flex-col p-0">
+                <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                     <div className="flex items-center gap-2 mb-1">
                         <AlertTriangle className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Report Missing Assignment</DialogTitle>
@@ -403,34 +405,53 @@ function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
                     <DialogDescription className="text-xs">Provide intelligence for the assignment missing from your registry.</DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSave} className="py-4 space-y-5">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
-                        <Input type="date" required className="bg-bg-primary h-10 text-xs" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Site Coordinates / Address</Label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                            <Input placeholder="Full address or site name..." required className="bg-bg-primary pl-10 h-10 text-xs" />
+                <form onSubmit={handleSave} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Hash size={12}/> ID Number</Label>
+                            <Input placeholder="e.g. WO-18937" className="bg-bg-primary h-10 text-xs font-mono uppercase" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Building2 size={12}/> Client Entity</Label>
+                            <Input placeholder="Client name..." className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Calendar size={12}/> Work Date</Label>
+                            <Input type="date" required className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Clock size={12}/> Start Time</Label>
+                            <Input placeholder="e.g. 09:00 AM" className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><MapPin size={12}/> Site Coordinates / Location</Label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                            <Input placeholder="Full address or site identifier..." required className="bg-bg-primary pl-10 h-10 text-xs" />
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Mission Summary</Label>
                         <Textarea 
-                            placeholder="Briefly describe the work performed and why it's missing..." 
+                            placeholder="Briefly describe the work performed and why it's missing from your log..." 
                             required
-                            className="bg-bg-primary min-h-[100px] text-xs leading-relaxed"
+                            className="bg-bg-primary min-h-[100px] text-xs leading-relaxed uppercase font-medium"
                         />
                     </div>
-
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
-                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10 font-bold uppercase text-[10px] tracking-widest">
-                            <Send size={16} className="mr-2"/> Submit Inquiry
-                        </Button>
-                    </DialogFooter>
                 </form>
+
+                <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
+                    <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="px-8 font-bold uppercase text-[10px] tracking-widest">Cancel</Button>
+                    <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-12 font-bold uppercase text-[10px] tracking-widest">
+                        <Send size={16} className="mr-2"/> Submit Inquiry
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -165,10 +165,9 @@ export default function TechSettingsPage() {
                                         <p className="text-xs font-bold uppercase tracking-wider">Change Password</p>
                                         <p className="text-[10px] text-text-muted">Update your Command Center access key.</p>
                                     </div>
-                                    <Button variant="outline" size="sm"><Key size={14} className="mr-2"/> Reset Key</Button>
+                                    <Button variant="outline" size="sm"><Key size={14} className="mr-2"/> Reset Password</Button>
                                 </div>
                             </CardContent>
-                        </Card>
 
                         <Card>
                             <CardHeader>

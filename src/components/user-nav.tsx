@@ -73,7 +73,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative flex h-auto items-center gap-3 px-2 py-1 hover:bg-bg-tertiary rounded-md group">
           <div className="flex flex-col items-end text-right hidden sm:flex">
-             <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary leading-tight">
+             <span className="text-[11px] font-bold uppercase tracking-wider text-white leading-tight">
                 {currentUser?.name || 'Authorized User'}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">

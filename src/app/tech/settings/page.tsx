@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,21 +17,42 @@ import {
   History,
   Download,
   Moon,
-  Sun
+  Sun,
+  Calendar as CalendarIcon,
+  Check,
+  X,
+  FileJson,
+  FileClock,
+  MessageSquare
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [exportConfig, setExportConfig] = useState({
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0],
+        types: ['assignments', 'earnings']
+    });
+    
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
-        // Sync initial state with current DOM class
         const isLight = document.documentElement.classList.contains('light');
         setTheme(isLight ? 'light' : 'dark');
     }, []);
@@ -56,6 +77,27 @@ export default function TechSettingsPage() {
             title: "Theme Logic Synchronized", 
             description: `Aaromach terminal transitioned to ${newTheme} visual protocol.` 
         });
+    };
+
+    const toggleExportType = (type: string) => {
+        setExportConfig(prev => ({
+            ...prev,
+            types: prev.types.includes(type) 
+                ? prev.types.filter(t => t !== type) 
+                : [...prev.types, type]
+        }));
+    };
+
+    const handleExecuteExport = () => {
+        if (exportConfig.types.length === 0) {
+            toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category to export.' });
+            return;
+        }
+        toast({ 
+            title: 'Audit Archive Requested', 
+            description: `Generating high-fidelity ZIP archive containing ${exportConfig.types.join(', ')} registry data.`,
+        });
+        setIsExportDialogOpen(false);
     };
 
     if (!mounted) return null;
@@ -263,18 +305,108 @@ export default function TechSettingsPage() {
                                 <CardDescription>Manage your technician data records and local terminal storage.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider">Export My Data</p>
-                                        <p className="text-[10px] text-text-muted">Download a full archive of your jobs and payout history.</p>
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-text-primary">Operational Data Export</p>
+                                        <p className="text-[10px] text-text-muted">Generate a high-fidelity archive of your field activity and financial records.</p>
                                     </div>
-                                    <Button variant="outline" size="sm" onClick={() => handleToggle("Data Export")}><Download size={14} className="mr-2"/> Request ZIP</Button>
+                                    <Button variant="outline" size="sm" className="h-9 px-4 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsExportDialogOpen(true)}>
+                                        <Download size={14} className="mr-2"/> Initialize Export
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
                     </TabsContent>
                 </div>
             </Tabs>
+
+            {/* AUDIT DATA EXPORT DIALOG */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Download className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Archive Configuration</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted tracking-tight">Configure parameters for tactical data extraction.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-8">
+                        {/* Temporal Window */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Temporal Window</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
+                                        <CalendarIcon size={12} /> From
+                                    </Label>
+                                    <Input 
+                                        type="date" 
+                                        value={exportConfig.from}
+                                        onChange={e => setExportConfig({...exportConfig, from: e.target.value})}
+                                        className="h-10 bg-bg-primary border-border-sub text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
+                                        <CalendarIcon size={12} /> To
+                                    </Label>
+                                    <Input 
+                                        type="date" 
+                                        value={exportConfig.to}
+                                        onChange={e => setExportConfig({...exportConfig, to: e.target.value})}
+                                        className="h-10 bg-bg-primary border-border-sub text-xs"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Data Categories */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Tactical Categories</h3>
+                            <div className="grid grid-cols-1 gap-2">
+                                {[
+                                    { id: 'assignments', label: 'Work History', desc: 'Assignment records, site locations, and completion status.', icon: FileJson },
+                                    { id: 'earnings', label: 'Earnings Ledger', desc: 'Payroll manifests, reimbursements, and authorized payouts.', icon: FileClock },
+                                    { id: 'comms', label: 'Communication Logs', desc: 'Directives received and system broadcast records.', icon: MessageSquare }
+                                ].map(cat => (
+                                    <div 
+                                        key={cat.id} 
+                                        onClick={() => toggleExportType(cat.id)}
+                                        className={cn(
+                                            "flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer",
+                                            exportConfig.types.includes(cat.id) ? "bg-brand-red-dim/10 border-brand-red" : "bg-bg-primary border-border-sub hover:border-text-muted"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "p-2 rounded border transition-colors",
+                                                exportConfig.types.includes(cat.id) ? "bg-brand-red text-white border-brand-red" : "bg-bg-tertiary border-border-sub text-text-muted"
+                                            )}>
+                                                <cat.icon size={14} />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <p className={cn("text-xs font-bold uppercase", exportConfig.types.includes(cat.id) ? "text-text-primary" : "text-text-muted")}>{cat.label}</p>
+                                                <p className="text-[9px] text-text-muted tracking-tight leading-tight">{cat.desc}</p>
+                                            </div>
+                                        </div>
+                                        <Checkbox checked={exportConfig.types.includes(cat.id)} className="h-4 w-4" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
+                            <Download size={16} className="mr-2" /> Request ZIP Archive
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

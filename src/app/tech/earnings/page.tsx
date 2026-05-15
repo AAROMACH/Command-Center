@@ -110,7 +110,7 @@ export default function TechEarningsPage() {
                 </div>
                 <div className="page-header-right">
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
-                        <Plus size={14} className="mr-2"/>
+                        <Receipt size={14} className="mr-2"/>
                         Submit Receipt
                     </Button>
                 </div>
@@ -232,7 +232,7 @@ export default function TechEarningsPage() {
                                                 <TableCell className="text-xs font-mono text-text-muted">{formatDateStr(expense.date)}</TableCell>
                                                 <TableCell>
                                                     <div className="font-bold text-text-primary text-xs uppercase tracking-wide">{expense.description}</div>
-                                                    <div className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{expense.category}</div>
+                                                    <div className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{expense.category}</div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={getStatusVariant(expense.status)}>

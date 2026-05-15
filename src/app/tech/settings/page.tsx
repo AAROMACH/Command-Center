@@ -22,19 +22,39 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
+    const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
+        // Sync initial state with current DOM class
+        const isLight = document.documentElement.classList.contains('light');
+        setTheme(isLight ? 'light' : 'dark');
     }, []);
 
     const handleToggle = (setting: string) => {
         toast({
             title: "Configuration Synced",
             description: `${setting} has been updated in your master profile.`,
+        });
+    };
+
+    const toggleTheme = (newTheme: 'dark' | 'light') => {
+        setTheme(newTheme);
+        if (newTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+        } else {
+            document.documentElement.classList.remove('light');
+            document.documentElement.classList.add('dark');
+        }
+        toast({ 
+            title: "Theme Logic Synchronized", 
+            description: `Aaromach terminal transitioned to ${newTheme} visual protocol.` 
         });
     };
 
@@ -210,10 +230,22 @@ export default function TechSettingsPage() {
                                     <div className="space-y-2">
                                         <Label className="text-[10px] uppercase tracking-widest text-text-muted">Display Theme</Label>
                                         <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub">
-                                            <button className="flex-1 flex flex-col items-center gap-1 p-2 rounded bg-brand-red text-white text-[10px] font-bold uppercase">
+                                            <button 
+                                                onClick={() => toggleTheme('dark')}
+                                                className={cn(
+                                                    "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
+                                                    theme === 'dark' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
+                                                )}
+                                            >
                                                 <Moon size={14}/> Dark
                                             </button>
-                                            <button className="flex-1 flex flex-col items-center gap-1 p-2 rounded hover:bg-bg-secondary text-text-muted text-[10px] font-bold uppercase transition-colors">
+                                            <button 
+                                                onClick={() => toggleTheme('light')}
+                                                className={cn(
+                                                    "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
+                                                    theme === 'light' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
+                                                )}
+                                            >
                                                 <Sun size={14}/> Light
                                             </button>
                                         </div>

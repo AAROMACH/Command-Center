@@ -366,10 +366,10 @@ export default function TechWeeklyLogPage() {
             </div>
 
             {!isLocked && (
-                <div className="p-6 rounded-xl bg-bg-tertiary/30 border border-border-sub flex items-start gap-4 max-w-4xl mx-auto">
-                    <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
+                <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border-sub flex items-start gap-3 max-w-4xl mx-auto">
+                    <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Audit Directive</p>
+                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Audit Directive</p>
                         <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
                             Every assignment listed in this manifest must be verified for operational accuracy. 
                             Disputed jobs will trigger a manual audit by the Command Center to ensure financial integrity.

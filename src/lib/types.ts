@@ -209,6 +209,16 @@ export type WeeklyLogItem = {
   isAdminReviewed: boolean;
 };
 
+export type MissingAssignmentReport = {
+  id: string;
+  assignmentId?: string;
+  clientName?: string;
+  date: string;
+  time?: string;
+  location: string;
+  summary: string;
+};
+
 export type FinancialRecord = {
   id: string;
   technicianId: string;
@@ -225,6 +235,7 @@ export type WeeklyLog = {
   status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected';
   items: WeeklyLogItem[];
   reimbursements: FinancialRecord[];
+  missingAssignmentReports?: MissingAssignmentReport[];
   totalPayout?: number;
   submittedAt?: string;
 };

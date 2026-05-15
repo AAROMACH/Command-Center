@@ -501,9 +501,9 @@ export const projects: Project[] = [
 ];
 
 export const projectDocuments: ProjectDocument[] = [
-  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB' },
-  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1') },
-  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB' },
+  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB', label: 'Technical Layout' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1'), label: 'Site Photo' },
+  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB', label: 'Hardware Registry' },
   { 
     id: 'doc-4', 
     name: 'Deinstallation_Signoff.pdf', 
@@ -512,6 +512,7 @@ export const projectDocuments: ProjectDocument[] = [
     uploadDate: '04-19-2026', 
     size: '800 KB',
     phaseId: 'phase-1',
+    label: 'Mission Signoff'
   },
   {
     id: 'doc-5',
@@ -523,6 +524,7 @@ export const projectDocuments: ProjectDocument[] = [
     phaseId: 'phase-1',
     taskId: 't1-1',
     url: getImageUrl('site-photo-2'),
+    label: 'Completion Evidence'
   }
 ];
 
@@ -596,13 +598,16 @@ export const weeklyLogs: WeeklyLog[] = [
     id: 'wl-1',
     technicianId: 'tech-001',
     weekOf: '07-22-2024',
-    status: 'Draft',
+    status: 'Submitted',
     items: [
-      { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
-      { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false },
+      { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, confirmationStatus: 'confirmed' },
+      { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false, confirmationStatus: 'disputed', disputeReason: 'Revisit needed, not complete', disputeNotes: 'Building manager was not present to sign off on final testing.' },
     ],
     reimbursements: [
       { id: 'fr-1', technicianId: 'tech-001', date: '07-24-2024', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
+    ],
+    missingAssignmentReports: [
+      { id: 'mar-1', date: '2024-07-23', location: '100 Broadway, NY', summary: 'Emergency network repair after storm. 4 hours on site.' }
     ],
     totalPayout: 2150.50,
   },

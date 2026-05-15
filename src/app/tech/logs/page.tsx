@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport } from '@/lib/types';
 import { weeklyLogs, workOrders, technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -138,6 +138,14 @@ export default function TechWeeklyLogPage() {
                 )
             };
         });
+    };
+
+    const handleReportMissing = (report: MissingAssignmentReport) => {
+        if (!activeLog) return;
+        setActiveLog(prev => prev ? ({
+            ...prev,
+            missingAssignmentReports: [...(prev.missingAssignmentReports || []), report]
+        }) : null);
     };
 
     const handleSubmit = () => {
@@ -378,15 +386,33 @@ export default function TechWeeklyLogPage() {
                 </div>
             )}
 
-            <ReportMissingJobDialog isOpen={isReportMissingOpen} setIsOpen={setIsReportMissingOpen} />
+            <ReportMissingJobDialog 
+                isOpen={isReportMissingOpen} 
+                setIsOpen={setIsReportMissingOpen} 
+                onSave={handleReportMissing}
+            />
         </div>
     );
 }
 
-function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
+function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (report: MissingAssignmentReport) => void }) {
     const { toast } = useToast();
-    const handleSave = (e: React.FormEvent) => {
+    
+    const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        
+        const report: MissingAssignmentReport = {
+            id: `mar-${Date.now()}`,
+            assignmentId: formData.get('assignmentId') as string,
+            clientName: formData.get('clientName') as string,
+            date: formData.get('date') as string,
+            time: formData.get('time') as string,
+            location: formData.get('location') as string,
+            summary: formData.get('summary') as string,
+        };
+
+        onSave(report);
         toast({
             title: "Discrepancy Transmitted",
             description: "Missing assignment details have been sent to the Command Center for manual audit.",
@@ -409,22 +435,22 @@ function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Hash size={12}/> ID Number</Label>
-                            <Input placeholder="e.g. WO-18937" className="bg-bg-primary h-10 text-xs font-mono uppercase" />
+                            <Input name="assignmentId" placeholder="e.g. WO-18937" className="bg-bg-primary h-10 text-xs font-mono uppercase" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Building2 size={12}/> Client Entity</Label>
-                            <Input placeholder="Client name..." className="bg-bg-primary h-10 text-xs" />
+                            <Input name="clientName" placeholder="Client name..." className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Calendar size={12}/> Work Date</Label>
-                            <Input type="date" required className="bg-bg-primary h-10 text-xs" />
+                            <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Clock size={12}/> Start Time</Label>
-                            <Input placeholder="e.g. 09:00 AM" className="bg-bg-primary h-10 text-xs" />
+                            <Input name="time" placeholder="e.g. 09:00 AM" className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
 
@@ -432,13 +458,14 @@ function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
                         <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><MapPin size={12}/> Site Coordinates / Location</Label>
                         <div className="relative">
                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                            <Input placeholder="Full address or site identifier..." required className="bg-bg-primary pl-10 h-10 text-xs" />
+                            <Input name="location" placeholder="Full address or site identifier..." required className="bg-bg-primary pl-10 h-10 text-xs" />
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Mission Summary</Label>
                         <Textarea 
+                            name="summary"
                             placeholder="Briefly describe the work performed and why it's missing from your log..." 
                             required
                             className="bg-bg-primary min-h-[100px] text-xs leading-relaxed uppercase font-medium"

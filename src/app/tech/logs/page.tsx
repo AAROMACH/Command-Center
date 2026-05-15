@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -59,7 +60,7 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
-type SortOption = 'newest' | 'oldest' | 'status';
+type SortOption = 'newest' | 'oldest' | 'status' | 'payout' | 'items';
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -100,6 +101,8 @@ export default function TechWeeklyLogPage() {
             if (sortBy === 'newest') return b.weekOf.localeCompare(a.weekOf);
             if (sortBy === 'oldest') return a.weekOf.localeCompare(b.weekOf);
             if (sortBy === 'status') return a.status.localeCompare(b.status);
+            if (sortBy === 'payout') return (b.totalPayout || 0) - (a.totalPayout || 0);
+            if (sortBy === 'items') return b.items.length - a.items.length;
             return 0;
         });
     }, [currentTechId, searchQuery, sortBy, statusFilter]);
@@ -224,6 +227,8 @@ export default function TechWeeklyLogPage() {
                                 <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
                                 <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
                                 <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
+                                <SelectItem value="payout" className="text-[10px] uppercase font-bold">By Payout</SelectItem>
+                                <SelectItem value="items" className="text-[10px] uppercase font-bold">By Count</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

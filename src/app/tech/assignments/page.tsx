@@ -14,14 +14,25 @@ import {
   CircleCheck, 
   Wrench, 
   ClipboardCheck,
-  FileCheck
+  FileCheck,
+  ArrowUpDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type SortOption = 'date' | 'priority' | 'pay';
 
 export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
     const [mounted, setMounted] = useState(false);
+    const [sortBy, setSortBy] = useState<SortOption>('date');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -39,8 +50,20 @@ export default function TechAssignmentsPage() {
         techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
     [techWorkOrders]);
 
+    const sortedActive = useMemo(() => {
+        return [...activeAssignments].sort((a, b) => {
+            if (sortBy === 'priority') {
+                const prio = { critical: 0, high: 1, medium: 2, low: 3 };
+                return prio[a.priority] - prio[b.priority];
+            }
+            if (sortBy === 'pay') return b.pay - a.pay;
+            return a.scheduleDate.localeCompare(b.scheduleDate);
+        });
+    }, [activeAssignments, sortBy]);
+
     const completedAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.status === 'completed'),
+        techWorkOrders.filter(wo => wo.status === 'completed')
+            .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate)),
     [techWorkOrders]);
 
     const handleConfirmSchedule = (woId: string) => {
@@ -69,7 +92,7 @@ export default function TechAssignmentsPage() {
     }
 
     return (
-        <div>
+        <div className="space-y-6">
             <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -82,14 +105,30 @@ export default function TechAssignmentsPage() {
             </header>
 
             <Tabs defaultValue="active" className="w-full">
-                <TabsList className="tabs !mb-6">
-                    <TabsTrigger value="active" className="tab">
-                        Active Assignments <span className="tab-count">({activeAssignments.length})</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="history" className="tab">
-                        Assignment History <span className="tab-count">({completedAssignments.length})</span>
-                    </TabsTrigger>
-                </TabsList>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
+                    <TabsList className="tabs !mb-0">
+                        <TabsTrigger value="active" className="tab">
+                            Active Assignments <span className="tab-count">({activeAssignments.length})</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="tab">
+                            Assignment History <span className="tab-count">({completedAssignments.length})</span>
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                        <SelectTrigger className="w-[160px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                            <div className="flex items-center gap-2">
+                                <ArrowUpDown size={14} className="text-text-muted" />
+                                <SelectValue placeholder="Sort Registry" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="date" className="text-[10px] uppercase font-bold">By Window</SelectItem>
+                            <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
+                            <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
                 
                 <TabsContent value="active" className="mt-0">
                     <div className="table-wrap">
@@ -104,7 +143,7 @@ export default function TechAssignmentsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {activeAssignments.map((wo) => (
+                                {sortedActive.map((wo) => (
                                     <tr key={wo.id}>
                                         <td>
                                             <div className="flex flex-col items-center justify-center">

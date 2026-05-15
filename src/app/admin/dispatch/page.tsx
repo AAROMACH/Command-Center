@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
@@ -17,6 +18,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -33,6 +41,8 @@ const ASSIGNMENT_SOURCES = [
   'Client'
 ];
 
+type SortOption = 'date' | 'client' | 'priority' | 'type';
+
 export default function DispatchPage() {
   // Master Tab State
   const [activeMasterTab, setActiveMasterTab] = useState('dispatch');
@@ -45,6 +55,7 @@ export default function DispatchPage() {
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [dispatchSearchQuery, setDispatchSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>('date');
 
   // Service Request State
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>(initialServiceRequests);
@@ -115,8 +126,8 @@ export default function DispatchPage() {
   };
 
   // Filtered Data
-  const filteredOrders = useMemo(() => 
-    allWorkOrders.filter(order => {
+  const filteredOrders = useMemo(() => {
+    let results = allWorkOrders.filter(order => {
       const matchesSearch = order.id.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
         order.description.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
         order.clientName.toLowerCase().includes(dispatchSearchQuery.toLowerCase());
@@ -126,8 +137,18 @@ export default function DispatchPage() {
       const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
       
       return matchesSearch && matchesPriority && matchesType && matchesSource;
-    })
-  , [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources]);
+    });
+
+    return results.sort((a, b) => {
+        if (sortBy === 'priority') {
+            const prio = { critical: 0, high: 1, medium: 2, low: 3 };
+            return prio[a.priority] - prio[b.priority];
+        }
+        if (sortBy === 'client') return a.clientName.localeCompare(b.clientName);
+        if (sortBy === 'type') return a.projectType.localeCompare(b.projectType);
+        return a.scheduleDate.localeCompare(b.scheduleDate);
+    });
+  }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, sortBy]);
 
   const filteredRequests = useMemo(() => 
     allRequests.filter(req => {
@@ -205,7 +226,7 @@ export default function DispatchPage() {
             </TabsList>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="search-wrap flex-1 md:w-[350px]">
+              <div className="search-wrap flex-1 md:w-[300px]">
                 <Search />
                 <input 
                   className="search-input !w-full" 
@@ -214,6 +235,23 @@ export default function DispatchPage() {
                   onChange={(e) => activeMasterTab === 'dispatch' ? setDispatchSearchQuery(e.target.value) : setRequestSearchQuery(e.target.value)}
                 />
               </div>
+
+              {activeMasterTab === 'dispatch' && (
+                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                    <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
+                        <div className="flex items-center gap-2">
+                            <ArrowUpDown size={14} className="text-text-muted" />
+                            <SelectValue placeholder="Sort" />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="date" className="text-[10px] uppercase font-bold">By Date</SelectItem>
+                        <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
+                        <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
+                        <SelectItem value="type" className="text-[10px] uppercase font-bold">By Category</SelectItem>
+                    </SelectContent>
+                </Select>
+              )}
               
               <Popover>
                 <PopoverTrigger asChild>

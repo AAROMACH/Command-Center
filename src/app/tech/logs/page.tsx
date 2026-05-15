@@ -137,6 +137,13 @@ export default function TechWeeklyLogPage() {
         });
     };
 
+    const handleMissingJobRequest = () => {
+        toast({
+            title: "Missing Job Reported",
+            description: "Command Center notified. Admin will audit your assignment history for this period.",
+        });
+    };
+
     const counts = useMemo(() => {
         if (!activeLog) return { total: 0, confirmed: 0, disputed: 0, pending: 0 };
         return {
@@ -327,7 +334,14 @@ export default function TechWeeklyLogPage() {
 
             {/* ASSIGNMENT FEED */}
             <div className="space-y-4 max-w-4xl mx-auto">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Tactical Assignment Registry</h3>
+                <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Tactical Assignment Registry</h3>
+                    {!isLocked && (
+                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={handleMissingJobRequest}>
+                            <Search size={12} className="mr-1.5"/> I don't see my job
+                        </Button>
+                    )}
+                </div>
                 <div className="space-y-3">
                     {activeLog.items.map(item => (
                         <JobAuditCard 

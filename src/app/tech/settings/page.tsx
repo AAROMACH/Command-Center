@@ -11,17 +11,13 @@ import {
   Shield, 
   Key, 
   Settings as SettingsIcon, 
-  Eye, 
   Monitor, 
   Database,
   ShieldCheck,
   History,
   Download,
   Moon,
-  Sun,
-  LocateFixed,
-  UserCheck,
-  MapPin
+  Sun
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,15 +54,12 @@ export default function TechSettingsPage() {
              </header>
 
             <Tabs defaultValue="notifications" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-8">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
                     <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
                         <Bell size={14}/> Notifications
                     </TabsTrigger>
                     <TabsTrigger value="security" className="flex items-center gap-2 py-3">
                         <Shield size={14}/> Security
-                    </TabsTrigger>
-                    <TabsTrigger value="privacy" className="flex items-center gap-2 py-3">
-                        <Eye size={14}/> Privacy
                     </TabsTrigger>
                     <TabsTrigger value="experience" className="flex items-center gap-2 py-3">
                         <Monitor size={14}/> Experience
@@ -201,82 +194,6 @@ export default function TechSettingsPage() {
                                 <Button variant="destructive-outline" className="w-full mt-2" onClick={() => handleToggle("Logout All")}>
                                     Log Out All Other Devices
                                 </Button>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* PRIVACY */}
-                    <TabsContent value="privacy" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Telemetry & Location Protocol</CardTitle>
-                                <CardDescription>Control how your operational position is transmitted to the registry.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-bg-secondary rounded border border-border-sub text-brand-red">
-                                            <LocateFixed size={20} />
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <p className="text-sm font-bold uppercase tracking-wider">Live Mission Telemetry</p>
-                                            <p className="text-[10px] text-text-muted">Transmit active background GPS data during operational windows.</p>
-                                        </div>
-                                    </div>
-                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Live Telemetry")} />
-                                </div>
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-muted">
-                                            <MapPin size={20} />
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <p className="text-sm font-bold uppercase tracking-wider">Restricted Verification</p>
-                                            <p className="text-[10px] text-text-muted">Only access GPS sensor during manual check-in/out events.</p>
-                                        </div>
-                                    </div>
-                                    <Switch onCheckedChange={() => handleToggle("Restricted Verification")} />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Registry Visibility</CardTitle>
-                                <CardDescription>Manage your presence in the organizational directory.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold uppercase tracking-wider">Directory Exposure</p>
-                                        <p className="text-[10px] text-text-muted">Make your mobile line visible to other field operatives.</p>
-                                    </div>
-                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Directory Exposure")} />
-                                </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold uppercase tracking-wider">Anonymized Archive</p>
-                                        <p className="text-[10px] text-text-muted">Replace name with ID in project logs after 30 days.</p>
-                                    </div>
-                                    <Switch onCheckedChange={() => handleToggle("Log Anonymization")} />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="border-accent-gold/20 bg-accent-gold-dim/5">
-                            <CardHeader>
-                                <CardTitle className="text-accent-gold flex items-center gap-2">
-                                    <UserCheck size={14}/> Evidence Protection
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-accent-gold/20">
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-bold uppercase text-text-primary">Auto-Strip Meta-Data</p>
-                                        <p className="text-[10px] text-text-muted leading-tight">Remove personal device signatures and GPS EXIF data from site photos before upload.</p>
-                                    </div>
-                                    <Switch defaultChecked onCheckedChange={() => handleToggle("EXIF Stripping")} />
-                                </div>
                             </CardContent>
                         </Card>
                     </TabsContent>

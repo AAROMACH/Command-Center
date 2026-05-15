@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { Technician, TimeOffRequest } from '@/lib/types';
@@ -104,6 +103,16 @@ export default function TechProfilePage() {
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const jobTypes = ['Low Voltage Cabling', 'Network Infrastructure', 'Security Systems', 'Electrical Repair', 'Fiber Optics', 'AV Fit-out', 'Smart Home Integration'];
 
+    const filteredProfileDetails = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        if (!q) return true;
+        // Simple presence check for generic search matching
+        return tech.name.toLowerCase().includes(q) || 
+               tech.email.toLowerCase().includes(q) || 
+               tech.phone.toLowerCase().includes(q) ||
+               (tech.address || '').toLowerCase().includes(q);
+    }, [tech, searchQuery]);
+
     return (
         <div>
              <header className="page-header">
@@ -119,7 +128,7 @@ export default function TechProfilePage() {
                     <div className="search-wrap">
                         <Search />
                         <input 
-                            className="search-input !w-full md:!w-[200px]" 
+                            className="search-input !w-full md:!w-[250px]" 
                             placeholder="Find detail..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -385,6 +394,7 @@ export default function TechProfilePage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                            </Card>
 
                             <Card className="lg:col-span-2">
                                 <CardHeader className="pb-4">

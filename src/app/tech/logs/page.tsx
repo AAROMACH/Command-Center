@@ -39,6 +39,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -59,6 +68,7 @@ export default function TechWeeklyLogPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
 
     const { toast } = useToast();
 
@@ -134,13 +144,6 @@ export default function TechWeeklyLogPage() {
         toast({
             title: "Log Submitted",
             description: "Weekly assignments manifest has been transmitted for audit.",
-        });
-    };
-
-    const handleMissingJobRequest = () => {
-        toast({
-            title: "Missing Job Reported",
-            description: "Command Center notified. Admin will audit your assignment history for this period.",
         });
     };
 
@@ -337,8 +340,8 @@ export default function TechWeeklyLogPage() {
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Tactical Assignment Registry</h3>
                     {!isLocked && (
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={handleMissingJobRequest}>
-                            <Search size={12} className="mr-1.5"/> I don't see my job
+                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
+                            <Search size={12} className="mr-1.5"/> Report Missing Assignment
                         </Button>
                     )}
                 </div>
@@ -372,7 +375,64 @@ export default function TechWeeklyLogPage() {
                     </div>
                 </div>
             )}
+
+            <ReportMissingJobDialog isOpen={isReportMissingOpen} setIsOpen={setIsReportMissingOpen} />
         </div>
+    );
+}
+
+function ReportMissingJobDialog({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
+    const { toast } = useToast();
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        toast({
+            title: "Discrepancy Transmitted",
+            description: "Missing assignment details have been sent to the Command Center for manual audit.",
+        });
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
+                <DialogHeader>
+                    <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="text-brand-red h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Report Missing Assignment</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs">Provide intelligence for the assignment missing from your registry.</DialogDescription>
+                </DialogHeader>
+
+                <form onSubmit={handleSave} className="py-4 space-y-5">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
+                        <Input type="date" required className="bg-bg-primary h-10 text-xs" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Site Coordinates / Address</Label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                            <Input placeholder="Full address or site name..." required className="bg-bg-primary pl-10 h-10 text-xs" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Mission Summary</Label>
+                        <Textarea 
+                            placeholder="Briefly describe the work performed and why it's missing..." 
+                            required
+                            className="bg-bg-primary min-h-[100px] text-xs leading-relaxed"
+                        />
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
+                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)}>Cancel</Button>
+                        <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10 font-bold uppercase text-[10px] tracking-widest">
+                            <Send size={16} className="mr-2"/> Submit Inquiry
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 

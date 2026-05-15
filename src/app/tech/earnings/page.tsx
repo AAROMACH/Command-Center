@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -22,7 +21,7 @@ export default function TechEarningsPage() {
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [exportDates, setExportDates] = useState({
-        from: new Date(new Date().getFullYear(), new Date().month(), 1).toISOString().split('T')[0],
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         to: new Date().toISOString().split('T')[0]
     });
     

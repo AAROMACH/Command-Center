@@ -69,6 +69,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [sortBy, setSortBy] = useState<SortOption>('name');
     const [activeTab, setActiveTab] = useState('technicians');
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
+    const [mapSearch, setMapSearch] = useState("");
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -256,8 +257,14 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 });
             });
         }
-        return sites;
-    }, [techniciansList, personnel, mapViewMode]);
+
+        if (!mapSearch) return sites;
+        const q = mapSearch.toLowerCase();
+        return sites.filter(s => 
+            s.name.toLowerCase().includes(q) || 
+            s.location.toLowerCase().includes(q)
+        );
+    }, [techniciansList, personnel, mapViewMode, mapSearch]);
 
     return (
         <>
@@ -474,7 +481,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             
                             <TabsContent value="personnel" className="mt-0">
                                 <div className="max-w-3xl space-y-4">
-                                    <div className="flex items-center justify-between border-b border-border-sub pb-2">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
                                         <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <CalendarIcon size={14} className="text-brand-red"/>
                                             Personnel Absence Log
@@ -526,7 +533,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
                             <TabsContent value="client" className="mt-0">
                                 <div className="max-w-3xl space-y-4">
-                                    <div className="flex items-center justify-between border-b border-border-sub pb-2">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
                                         <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <Building2 size={14} className="text-accent-gold"/>
                                             Client Coordinate Verification
@@ -604,11 +611,20 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </Card>
                             
                             <Card className="bg-bg-secondary border-border-main flex flex-col overflow-hidden">
-                                <div className="p-4 border-b border-border-sub bg-bg-tertiary/50">
+                                <div className="p-4 border-b border-border-sub bg-bg-tertiary/50 space-y-3">
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                                         {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}
                                         {mapViewMode === 'techs' ? 'Operative Base Registry' : 'Mission Target Registry'}
                                     </h3>
+                                    <div className="search-wrap !mb-0 h-8">
+                                        <Search className="h-3 w-3" />
+                                        <input 
+                                            className="search-input !w-full !h-8 !text-[10px]" 
+                                            placeholder="Search registry..." 
+                                            value={mapSearch}
+                                            onChange={(e) => setMapSearch(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                                 <ScrollArea className="flex-1">
                                     <div className="divide-y divide-border-sub">
@@ -630,6 +646,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                 </div>
                                             </div>
                                         ))}
+                                        {mapLocations.length === 0 && (
+                                            <div className="p-12 text-center">
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No matching coordinates found</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
                             </Card>

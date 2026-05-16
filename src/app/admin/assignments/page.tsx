@@ -139,12 +139,8 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
-    workOrders.filter(wo => wo.status === 'completed')
-      .filter(wo => {
-        const query = searchQuery.toLowerCase();
-        return wo.id.toLowerCase().includes(query) || wo.description.toLowerCase().includes(query) || wo.clientName.toLowerCase().includes(query);
-      }),
-  [workOrders, searchQuery]);
+    filteredWorkOrders.filter(wo => wo.status === 'completed'),
+  [filteredWorkOrders]);
 
   const groupedByClient = useMemo(() => {
     if (sortBy !== 'client') return null;
@@ -215,7 +211,7 @@ export default function AssignmentsHubPage() {
       <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="page-eyebrow flex items-center gap-2">
-            <CalendarIcon size={12} />
+            <CalendarIcon size(12} />
             Assignment Registry Audit
           </p>
           <h1 className="page-title">Assignments</h1>
@@ -524,7 +520,7 @@ export default function AssignmentsHubPage() {
                                 )
                             })}
                             {archivedWorkOrders.length === 0 && (
-                                <tr><td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found.</td></tr>
+                                <tr><td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching current filters.</td></tr>
                             )}
                         </tbody>
                     </table>

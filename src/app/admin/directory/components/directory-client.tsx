@@ -70,6 +70,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [activeTab, setActiveTab] = useState('technicians');
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
     const [mapSearch, setMapSearch] = useState("");
+    const [selectedMapAddress, setSelectedMapAddress] = useState<string | null>(null);
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -586,7 +587,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
                                      <iframe 
-                                        src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3624053.354181654!2d-84.06883681645265!3d43.5584848511088!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus" 
+                                        src={selectedMapAddress 
+                                            ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3624053.354181654!2d-84.06883681645265!3d43.5584848511088!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
+                                        } 
                                         width="100%" 
                                         height="100%" 
                                         style={{ border: 0 }} 
@@ -601,7 +605,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                 id="map-toggle" 
                                                 className="scale-[0.6] data-[state=unchecked]:bg-brand-red data-[state=checked]:bg-brand-red"
                                                 checked={mapViewMode === 'sites'} 
-                                                onCheckedChange={(val) => setMapViewMode(val ? 'sites' : 'techs')} 
+                                                onCheckedChange={(val) => {
+                                                    setMapViewMode(val ? 'sites' : 'techs');
+                                                    setSelectedMapAddress(null);
+                                                }} 
                                             />
                                             <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
                                         </div>
@@ -628,7 +635,14 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 <ScrollArea className="flex-1">
                                     <div className="divide-y divide-border-sub">
                                         {mapLocations.map(site => (
-                                            <div key={site.id} className="p-4 hover:bg-bg-tertiary transition-colors cursor-pointer group">
+                                            <div 
+                                                key={site.id} 
+                                                onClick={() => setSelectedMapAddress(site.location)}
+                                                className={cn(
+                                                    "p-4 hover:bg-bg-tertiary transition-colors cursor-pointer group",
+                                                    selectedMapAddress === site.location && "bg-bg-tertiary border-l-2 border-brand-red"
+                                                )}
+                                            >
                                                 <div className="flex items-start gap-3">
                                                     <div className={cn(
                                                         "p-2 rounded border border-border-sub shrink-0 transition-colors",

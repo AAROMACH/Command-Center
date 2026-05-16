@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { projects, technicians } from '@/lib/data';
@@ -28,7 +27,8 @@ export default function TechProjectsPage() {
     }, [currentTechId, searchQuery]);
 
     const activeProjects = techProjects.filter(p => p.status === 'active');
-    const projectHistory = techProjects.filter(p => p.status === 'completed' || p.status === 'on-hold');
+    const onHoldProjects = techProjects.filter(p => p.status === 'on-hold');
+    const completedProjects = techProjects.filter(p => p.status === 'completed');
 
     if (!currentTechId) {
         return <div>Loading...</div>;
@@ -63,16 +63,22 @@ export default function TechProjectsPage() {
                     <TabsTrigger value="active" className="tab">
                         Active Projects <span className="tab-count">({activeProjects.length})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="tab">
-                        Project History <span className="tab-count">({projectHistory.length})</span>
+                    <TabsTrigger value="on-hold" className="tab">
+                        On Hold <span className="tab-count">({onHoldProjects.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="completed" className="tab">
+                        Completed <span className="tab-count">({completedProjects.length})</span>
                     </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="active" className="mt-0">
                     <ProjectsClient projects={activeProjects} technicians={technicians} />
                 </TabsContent>
-                <TabsContent value="history" className="mt-0">
-                    <ProjectsClient projects={projectHistory} technicians={technicians} />
+                <TabsContent value="on-hold" className="mt-0">
+                    <ProjectsClient projects={onHoldProjects} technicians={technicians} />
+                </TabsContent>
+                <TabsContent value="completed" className="mt-0">
+                    <ProjectsClient projects={completedProjects} technicians={technicians} />
                 </TabsContent>
             </Tabs>
         </div>

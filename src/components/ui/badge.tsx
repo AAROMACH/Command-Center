@@ -15,6 +15,7 @@ const badgeVariants = cva(
         // Project Status
         active: "border-green-border bg-green-dim text-text-green",
         onhold: "border-gold-border bg-accent-gold-dim text-accent-gold",
+        "on-hold": "border-gold-border bg-accent-gold-dim text-accent-gold",
         completed: "border-[#2a3a5a] bg-[#1a1a2a] text-[#6688CC]",
         // Assignment Status
         high: "bg-brand-red-dim text-text-red",

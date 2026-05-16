@@ -33,7 +33,10 @@ import {
     AlertTriangle,
     ShieldAlert,
     X,
-    ClipboardCheck
+    ClipboardCheck,
+    Eye,
+    ShieldCheck,
+    ExternalLink
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -265,6 +268,24 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             s.location.toLowerCase().includes(q)
         );
     }, [techniciansList, personnel, mapViewMode, mapSearch]);
+
+    // DERIVED STATE FOR MAP INFO CARD
+    const selectedMapEntity = useMemo(() => {
+        if (!selectedMapAddress) return null;
+        const meta = mapLocations.find(l => l.location === selectedMapAddress);
+        if (!meta) return null;
+
+        if (meta.type === 'tech') {
+            const data = techniciansList.find(t => t.id === meta.id);
+            return data ? { ...data, metaType: 'tech' as const } : null;
+        } else {
+            for (const client of personnel.filter(p => p.roles?.includes('client'))) {
+                const site = client.managedSites?.find(s => s.id === meta.id);
+                if (site) return { ...site, clientCompany: client.clientCompany, metaType: 'site' as const };
+            }
+        }
+        return null;
+    }, [selectedMapAddress, mapLocations, techniciansList, personnel]);
 
     return (
         <>
@@ -598,6 +619,78 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
+
+                                    {/* INFO CARD OVERLAY */}
+                                    {selectedMapEntity && (
+                                        <div className="absolute top-4 left-4 z-20 w-full max-w-[280px] animate-in fade-in slide-in-from-left-4 duration-500">
+                                            <Card className="bg-bg-elevated border-border-default shadow-2xl overflow-hidden">
+                                                <CardHeader className="p-3 bg-bg-tertiary/50 border-b border-border-sub relative">
+                                                    <button 
+                                                        onClick={() => setSelectedMapAddress(null)}
+                                                        className="absolute top-2 right-2 text-text-muted hover:text-text-primary"
+                                                    >
+                                                        <X size={14}/>
+                                                    </button>
+                                                    <div className="flex items-center gap-3">
+                                                        {selectedMapEntity.metaType === 'tech' ? (
+                                                            <Avatar className="h-8 w-8 border border-border-sub">
+                                                                <AvatarImage src={(selectedMapEntity as Technician).avatarUrl} />
+                                                                <AvatarFallback>{(selectedMapEntity as Technician).name.charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                        ) : (
+                                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-accent-gold">
+                                                                <Building2 size={16} />
+                                                            </div>
+                                                        )}
+                                                        <div className="min-w-0">
+                                                            <CardTitle className="text-xs uppercase truncate">{(selectedMapEntity as any).name}</CardTitle>
+                                                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                                                {selectedMapEntity.metaType === 'tech' ? (selectedMapEntity as Technician).role : (selectedMapEntity as any).clientCompany}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-3 space-y-3">
+                                                    <div className="flex items-start gap-2">
+                                                        <MapPin size={12} className="text-brand-red shrink-0 mt-0.5" />
+                                                        <p className="text-[10px] text-text-secondary leading-tight uppercase font-medium">{(selectedMapEntity as any).location}</p>
+                                                    </div>
+                                                    {selectedMapEntity.metaType === 'tech' ? (
+                                                        <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Reliability</p>
+                                                                <p className="text-xs font-mono font-bold text-text-green">{(selectedMapEntity as Technician).reliabilityScore}%</p>
+                                                            </div>
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline" 
+                                                                className="h-6 text-[8px] font-bold uppercase"
+                                                                onClick={() => handleRowClick(selectedMapEntity as Technician)}
+                                                            >
+                                                                <Eye size={10} className="mr-1"/> Profile
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Access Tier</p>
+                                                                <p className="text-[10px] font-bold text-text-primary uppercase">Standard Site</p>
+                                                            </div>
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline" 
+                                                                className="h-6 text-[8px] font-bold uppercase"
+                                                                onClick={() => handleCompanyClick((selectedMapEntity as any).clientCompany)}
+                                                            >
+                                                                <ShieldCheck size={10} className="mr-1"/> Audit Site
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    )}
+
                                     <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1 rounded border border-white/10 shadow-2xl">
                                         <div className="flex items-center gap-1.5 px-1.5 py-0.5">
                                             <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>

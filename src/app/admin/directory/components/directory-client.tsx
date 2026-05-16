@@ -265,9 +265,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     }, [mapViewMode, techniciansList, personnel]);
 
     const filteredMapLocations = useMemo(() => {
-        if (!mapSearch) return mapLocations;
+        const locations = mapLocations;
+        if (!mapSearch) return locations;
         const q = mapSearch.toLowerCase();
-        return mapLocations.filter(loc => 
+        return locations.filter(loc => 
             loc.name.toLowerCase().includes(q) || 
             loc.location.toLowerCase().includes(q)
         );
@@ -613,7 +614,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                      <iframe 
                                         src={selectedMapAddress 
                                             ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
-                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d11792.836480838186!2d-83.0457531!3d42.331427!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
+                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1500000!2d-84.5!3d44.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
                                         } 
                                         width="100%" 
                                         height="100%" 

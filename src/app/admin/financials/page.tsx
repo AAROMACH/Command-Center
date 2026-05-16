@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,24 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Expense, Invoice, WeeklyLog } from '@/lib/types';
+import type { Expense, Invoice, WeeklyLog, Technician } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { isSuperAdmin } from '@/lib/permissions';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -38,6 +28,7 @@ const financialMetrics = [
 ];
 
 export default function FinancialsPage() {
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [expenses, setExpenses] = useState(initialExpenses);
     const [invoices, setInvoices] = useState(initialInvoices);
     const [weeklyLogs, setWeeklyLogs] = useState(initialWeeklyLogs);
@@ -49,6 +40,10 @@ export default function FinancialsPage() {
     const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
     
+    // Period Closure State
+    const [isClosePeriodOpen, setIsClosePeriodOpen] = useState(false);
+    const [confirmationText, setConfirmationText] = useState("");
+    
     // Export State
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [exportConfig, setExportConfig] = useState({
@@ -58,6 +53,15 @@ export default function FinancialsPage() {
     });
 
     const { toast } = useToast();
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId) || null);
+        }
+    }, []);
+
+    const userIsSuperAdmin = isSuperAdmin(currentUser);
 
     const handleExpenseStatusChange = (id: string, status: 'Approved' | 'Rejected') => {
         setExpenses(currentExpenses =>
@@ -125,6 +129,22 @@ export default function FinancialsPage() {
             description: `The weekly log has been ${status.toLowerCase()}.`,
         });
         setIsReviewDialogOpen(false);
+    };
+
+    const handleExecuteClosePeriod = () => {
+        if (!userIsSuperAdmin) {
+            toast({
+                title: "Closure Request Transmitted",
+                description: "Request to lock fiscal period sent to Super Admin registry for final sign-off.",
+            });
+        } else {
+            toast({
+                title: "Fiscal Period Finalized",
+                description: "General ledger successfully locked. All financial records transitioned to read-only archival state.",
+            });
+        }
+        setIsClosePeriodOpen(false);
+        setConfirmationText("");
     };
 
     const toggleExportType = (type: string) => {
@@ -196,26 +216,9 @@ export default function FinancialsPage() {
                         />
                     </div>
                     <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>⇩ EXPORT GENERAL LEDGER</Button>
-
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                             <Button variant="secondary">CLOSE FISCAL PERIOD</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-bg-elevated border-border-default">
-                            <AlertDialogHeader>
-                                <AlertDialogTitle className="uppercase tracking-widest font-bold">Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription className="text-xs">
-                                    This action cannot be undone. Closing the fiscal period will lock all financial records, and they will become read-only.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => toast({ title: "Closing Period...", description: "This will lock all records for the current fiscal period." })} className="bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold">
-                                    Yes, Close Period
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)}>
+                        {userIsSuperAdmin ? "CLOSE FISCAL PERIOD" : "REQUEST PERIOD CLOSURE"}
+                    </Button>
                 </div>
             </header>
 
@@ -424,6 +427,66 @@ export default function FinancialsPage() {
                 </TabsContent>
             </Tabs>
 
+            {/* FISCAL PERIOD CLOSURE TERMINAL */}
+            <Dialog open={isClosePeriodOpen} onOpenChange={setIsClosePeriodOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                        <div className="flex items-center gap-2 mb-1">
+                            <ShieldAlert className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">
+                                {userIsSuperAdmin ? "Authorize Fiscal Closure" : "Request Period Closure"}
+                            </DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs">
+                            {userIsSuperAdmin 
+                                ? "This action permanently locks the general ledger for the current period. Irreversible operation."
+                                : "You are submitting a closure request to the command hierarchy for Super Admin authorization."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-6">
+                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2">
+                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Tactical Warning</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase">
+                                Closing the period transitions all financial records (Invoices, Expenses, Payroll) to a read-only archival state.
+                            </p>
+                        </div>
+
+                        {userIsSuperAdmin ? (
+                            <div className="space-y-3 pt-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
+                                <Input 
+                                    placeholder="Type 'CLOSE'..." 
+                                    value={confirmationText}
+                                    onChange={(e) => setConfirmationText(e.target.value)}
+                                    className="h-11 bg-bg-primary border-border-sub text-center font-mono text-sm tracking-widest uppercase font-bold"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
+                                <Info size={16} className="text-text-muted" />
+                                <p className="text-[10px] text-text-muted uppercase font-bold leading-tight">
+                                    Your account level requires external sign-off from a Super Admin to finalize closure.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleExecuteClosePeriod} 
+                            disabled={userIsSuperAdmin && confirmationText !== "CLOSE"}
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
+                        >
+                            {userIsSuperAdmin ? "Execute Global Lock" : "Submit Request"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* EXPORT CONFIGURATION TERMINAL */}
             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
@@ -436,7 +499,6 @@ export default function FinancialsPage() {
                     </DialogHeader>
 
                     <div className="p-6 space-y-8">
-                        {/* Temporal Constraint */}
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Temporal Audit Window</h3>
                             <div className="grid grid-cols-2 gap-4">
@@ -465,7 +527,6 @@ export default function FinancialsPage() {
                             </div>
                         </div>
 
-                        {/* Category Constraint */}
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Tactical Categories</h3>
                             <div className="grid grid-cols-1 gap-2">
@@ -490,13 +551,6 @@ export default function FinancialsPage() {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-start gap-4">
-                            <ShieldAlert size={20} className="text-accent-gold mt-0.5 shrink-0" />
-                            <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium">
-                                Final export will be encrypted and transmitted as a high-fidelity CSV manifest for operational auditing.
-                            </p>
                         </div>
                     </div>
 

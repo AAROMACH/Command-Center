@@ -244,32 +244,35 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount;
 
+    // --- MAP LOGIC ---
     const mapLocations = useMemo(() => {
-        const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
+        const locations: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
         if (mapViewMode === 'techs') {
             techniciansList.forEach(t => {
                 const loc = t.address || t.currentLocation;
                 if (loc) {
-                    sites.push({ id: t.id, name: t.name, location: loc, type: 'tech' });
+                    locations.push({ id: t.id, name: t.name, location: loc, type: 'tech' });
                 }
             });
         } else {
             personnel.filter(p => p.roles?.includes('client')).forEach(c => {
                 c.managedSites?.forEach(s => {
-                    sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
+                    locations.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
                 });
             });
         }
+        return locations;
+    }, [mapViewMode, techniciansList, personnel]);
 
-        if (!mapSearch) return sites;
+    const filteredMapLocations = useMemo(() => {
+        if (!mapSearch) return mapLocations;
         const q = mapSearch.toLowerCase();
-        return sites.filter(s => 
-            s.name.toLowerCase().includes(q) || 
-            s.location.toLowerCase().includes(q)
+        return mapLocations.filter(loc => 
+            loc.name.toLowerCase().includes(q) || 
+            loc.location.toLowerCase().includes(q)
         );
-    }, [techniciansList, personnel, mapViewMode, mapSearch]);
+    }, [mapLocations, mapSearch]);
 
-    // DERIVED STATE FOR MAP INFO CARD
     const selectedMapEntity = useMemo(() => {
         if (!selectedMapAddress) return null;
         const meta = mapLocations.find(l => l.location === selectedMapAddress);
@@ -563,7 +566,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {siteRequests.filter(r => r.status === 'pending').map(req => (
-                                            <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
+                                            <Card key={req.id} className="bg-bg-secondary border border-border-sub shadow-sm">
                                                 <CardContent className="p-4 space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -727,32 +730,32 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 </div>
                                 <ScrollArea className="flex-1">
                                     <div className="divide-y divide-border-sub">
-                                        {mapLocations.map(site => (
+                                        {filteredMapLocations.map(loc => (
                                             <div 
-                                                key={site.id} 
-                                                onClick={() => setSelectedMapAddress(site.location)}
+                                                key={loc.id} 
+                                                onClick={() => setSelectedMapAddress(loc.location)}
                                                 className={cn(
                                                     "p-4 hover:bg-bg-tertiary transition-colors cursor-pointer group",
-                                                    selectedMapAddress === site.location && "bg-bg-tertiary border-l-2 border-brand-red"
+                                                    selectedMapAddress === loc.location && "bg-bg-tertiary border-l-2 border-brand-red"
                                                 )}
                                             >
                                                 <div className="flex items-start gap-3">
                                                     <div className={cn(
                                                         "p-2 rounded border border-border-sub shrink-0 transition-colors",
-                                                        site.type === 'tech' ? "bg-brand-red-dim/20 text-brand-red group-hover:bg-brand-red group-hover:text-white" : "bg-accent-gold-dim/20 text-accent-gold group-hover:bg-accent-gold group-hover:text-white"
+                                                        loc.type === 'tech' ? "bg-brand-red-dim/20 text-brand-red group-hover:bg-brand-red group-hover:text-white" : "bg-accent-gold-dim/20 text-accent-gold group-hover:bg-accent-gold group-hover:text-white"
                                                     )}>
-                                                        {site.type === 'tech' ? <User size={14}/> : <Building2 size={14}/>}
+                                                        {loc.type === 'tech' ? <User size={14}/> : <Building2 size={14}/>}
                                                     </div>
                                                     <div className="space-y-0.5 overflow-hidden">
-                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{site.name}</p>
+                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{loc.name}</p>
                                                         <p className="text-[9px] text-text-muted uppercase tracking-tight flex items-center gap-1">
-                                                            <Navigation size={8}/> {site.location}
+                                                            <Navigation size={8}/> {loc.location}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
-                                        {mapLocations.length === 0 && (
+                                        {filteredMapLocations.length === 0 && (
                                             <div className="p-12 text-center">
                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No matching coordinates found</p>
                                             </div>

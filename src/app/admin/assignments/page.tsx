@@ -211,7 +211,7 @@ export default function AssignmentsHubPage() {
       <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="page-eyebrow flex items-center gap-2">
-            <CalendarIcon size(12} />
+            <CalendarIcon size={12} />
             Assignment Registry Audit
           </p>
           <h1 className="page-title">Assignments</h1>

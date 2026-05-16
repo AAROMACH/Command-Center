@@ -244,16 +244,15 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
         if (mapViewMode === 'techs') {
             techniciansList.forEach(t => {
-                if (t.address?.includes('MI') || t.currentLocation?.includes('MI')) {
-                    sites.push({ id: t.id, name: t.name, location: t.address || t.currentLocation, type: 'tech' });
+                const loc = t.address || t.currentLocation;
+                if (loc) {
+                    sites.push({ id: t.id, name: t.name, location: loc, type: 'tech' });
                 }
             });
         } else {
             personnel.filter(p => p.roles?.includes('client')).forEach(c => {
                 c.managedSites?.forEach(s => {
-                    if (s.location.includes('MI')) {
-                        sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
-                    }
+                    sites.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
                 });
             });
         }
@@ -510,8 +509,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                                 <p className="text-[8px] text-text-muted uppercase font-bold">to {req.endDate}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub">
-                                                            <p className="text-[10px] text-text-secondary italic">&quot;{req.reason}&quot;</p>
+                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub italic text-[11px] text-text-secondary leading-relaxed">
+                                                            &quot;{req.reason}&quot;
                                                         </div>
                                                         <div className="flex gap-2">
                                                             <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ title: "Request Denied", description: "Technician schedule manifest remains locked." })}>Deny</Button>

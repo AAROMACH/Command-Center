@@ -229,10 +229,15 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         return person.role.toUpperCase();
     };
 
-    const pendingRequestsCount = useMemo(() => {
-        return timeOffRequests.filter(r => r.status === 'pending').length + 
-               siteRequests.filter(r => r.status === 'pending').length;
-    }, [timeOffRequests, siteRequests]);
+    const personnelRequestsCount = useMemo(() => 
+        timeOffRequests.filter(r => r.status === 'pending').length, 
+    [timeOffRequests]);
+
+    const clientRequestsCount = useMemo(() => 
+        siteRequests.filter(r => r.status === 'pending').length, 
+    [siteRequests]);
+
+    const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount;
 
     const mapLocations = useMemo(() => {
         const sites: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
@@ -265,9 +270,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             <TabsTrigger value="clients" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">CLIENTS</TabsTrigger>
                             <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center justify-center gap-2 h-full">
                                 REQUESTS
-                                {pendingRequestsCount > 0 && (
+                                {pendingRequestsTotalCount > 0 && (
                                     <Badge variant="destructive" className="h-3.5 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
-                                        {pendingRequestsCount}
+                                        {pendingRequestsTotalCount}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -331,7 +336,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </div>
 
                             <div className="search-wrap flex-1 md:flex-none">
-                                <Search className="h-3 w-3" />
+                                <Search className="h-3.5 w-3.5" />
                                 <input 
                                     className="search-input w-full md:w-[240px] h-7 !text-[11px]" 
                                     placeholder="Filter registry..." 
@@ -450,50 +455,66 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="requests" className="m-0 space-y-8 animate-in fade-in duration-300">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* TIME OFF REQUESTS SECTION */}
-                            <section className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-border-sub pb-2">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <CalendarIcon size={14} className="text-brand-red"/>
-                                        Personnel Absence Log
-                                    </h3>
-                                    <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{timeOffRequests.filter(r => r.status === 'pending').length} Pending</Badge>
-                                </div>
-                                <div className="space-y-3">
-                                    {timeOffRequests.filter(r => r.status === 'pending').map(req => {
-                                        const tech = personnel.find(p => p.id === req.technicianId);
-                                        return (
-                                            <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
-                                                <CardContent className="p-4 space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar className="h-8 w-8 border border-border-sub">
-                                                                <AvatarImage src={tech?.avatarUrl} />
-                                                                <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
-                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.type} Request</p>
+                    <TabsContent value="requests" className="m-0 animate-in fade-in duration-300">
+                        <Tabs defaultValue="personnel" className="w-full">
+                            <TabsList className="tabs !bg-bg-secondary/50 border border-border-sub mb-6 h-9">
+                                <TabsTrigger value="personnel" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                                    PERSONNEL REQUESTS
+                                    {personnelRequestsCount > 0 && (
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{personnelRequestsCount}</Badge>
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="client" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                                    CLIENT REQUESTS
+                                    {clientRequestsCount > 0 && (
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{clientRequestsCount}</Badge>
+                                    )}
+                                </TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="personnel" className="mt-0">
+                                <div className="max-w-3xl space-y-4">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2">
+                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <CalendarIcon size={14} className="text-brand-red"/>
+                                            Personnel Absence Log
+                                        </h3>
+                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{personnelRequestsCount} Pending</Badge>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {timeOffRequests.filter(r => r.status === 'pending').map(req => {
+                                            const tech = personnel.find(p => p.id === req.technicianId);
+                                            return (
+                                                <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar className="h-8 w-8 border border-border-sub">
+                                                                    <AvatarImage src={tech?.avatarUrl} />
+                                                                    <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                                </Avatar>
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
+                                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.type} Request</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[10px] font-mono font-bold text-text-primary uppercase">{req.startDate}</p>
+                                                                <p className="text-[8px] text-text-muted uppercase font-bold">to {req.endDate}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="text-[10px] font-mono font-bold text-text-primary uppercase">{req.startDate}</p>
-                                                            <p className="text-[8px] text-text-muted uppercase font-bold">to {req.endDate}</p>
+                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub">
+                                                            <p className="text-[10px] text-text-secondary italic">&quot;{req.reason}&quot;</p>
                                                         </div>
-                                                    </div>
-                                                    <div className="p-2.5 rounded bg-bg-primary border border-border-sub">
-                                                        <p className="text-[10px] text-text-secondary italic">&quot;{req.reason}&quot;</p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ title: "Request Denied", description: "Technician schedule manifest remains locked." })}>Deny</Button>
-                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => toast({ title: "Absence Authorized", description: "Temporal registry updated for field staff." })}>Approve</Button>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        );
-                                    })}
+                                                        <div className="flex gap-2">
+                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ title: "Request Denied", description: "Technician schedule manifest remains locked." })}>Deny</Button>
+                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => toast({ title: "Absence Authorized", description: "Temporal registry updated for field staff." })}>Approve</Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
                                     {timeOffRequests.filter(r => r.status === 'pending').length === 0 && (
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <ShieldAlert size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
@@ -501,47 +522,48 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         </div>
                                     )}
                                 </div>
-                            </section>
+                            </TabsContent>
 
-                            {/* SITE REQUESTS SECTION */}
-                            <section className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-border-sub pb-2">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Building2 size={14} className="text-accent-gold"/>
-                                        Client Coordinate Verification
-                                    </h3>
-                                    <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{siteRequests.filter(r => r.status === 'pending').length} Pending</Badge>
-                                </div>
-                                <div className="space-y-3">
-                                    {siteRequests.filter(r => r.status === 'pending').map(req => (
-                                        <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
-                                            <CardContent className="p-4 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-accent-gold">
-                                                            <MapPin size={16} />
+                            <TabsContent value="client" className="mt-0">
+                                <div className="max-w-3xl space-y-4">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2">
+                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <Building2 size={14} className="text-accent-gold"/>
+                                            Client Coordinate Verification
+                                        </h3>
+                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{clientRequestsCount} Pending</Badge>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {siteRequests.filter(r => r.status === 'pending').map(req => (
+                                            <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
+                                                <CardContent className="p-4 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-accent-gold">
+                                                                <MapPin size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
+                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.clientName}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.clientName}</p>
+                                                        <div className="text-right">
+                                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Submitted</p>
+                                                            <p className="text-[10px] font-mono font-bold text-text-primary">{req.submittedDate}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Submitted</p>
-                                                        <p className="text-[10px] font-mono font-bold text-text-primary">{req.submittedDate}</p>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary bg-bg-primary p-2 rounded border border-border-sub">
+                                                        <Navigation size={12} className="text-brand-red shrink-0"/>
+                                                        <span className="truncate">{req.location}</span>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary bg-bg-primary p-2 rounded border border-border-sub">
-                                                    <Navigation size={12} className="text-brand-red shrink-0"/>
-                                                    <span className="truncate">{req.location}</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ variant: "destructive", title: "Coordinates Rejected", description: "Client notified of registry failure." })}>Reject Coordinates</Button>
-                                                    <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={() => toast({ title: "Registry Authorized", description: "Site coordinates committed to managed asset database." })}>Authorize Site</Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                    <div className="flex gap-2">
+                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ variant: "destructive", title: "Coordinates Rejected", description: "Client notified of registry failure." })}>Reject Coordinates</Button>
+                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={() => toast({ title: "Registry Authorized", description: "Site coordinates committed to managed asset database." })}>Authorize Site</Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
                                     {siteRequests.filter(r => r.status === 'pending').length === 0 && (
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <MapPin size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
@@ -549,8 +571,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         </div>
                                     )}
                                 </div>
-                            </section>
-                        </div>
+                            </TabsContent>
+                        </Tabs>
                     </TabsContent>
 
                     <TabsContent value="map" className="m-0">

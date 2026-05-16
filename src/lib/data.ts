@@ -278,7 +278,7 @@ export const workOrders: WorkOrder[] = [
     status: 'completed',
     assignedTechnicianId: 'tech-002',
     clientName: 'Restaurant Supply Co.',
-    projectType: 'Emergency Repair',
+    projectType: 'Repair',
     scheduleDate: '07-25-2024',
     scheduleTime: '4:00 PM EST',
     pay: 475.00,

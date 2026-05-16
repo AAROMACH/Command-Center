@@ -329,6 +329,27 @@ export const workOrders: WorkOrder[] = [
     ]
   },
   {
+    id: 'wo-107',
+    description: 'Terminal Rack Audit & Labeling',
+    location: '100 LaSalle St, Chicago, IL',
+    requiredSkills: ['Networking', 'Cabling'],
+    priority: 'medium',
+    status: 'completed',
+    assignedTechnicianId: 'tech-001',
+    clientName: 'Test Organization',
+    projectType: 'Audit',
+    scheduleDate: '07-15-2024',
+    scheduleTime: '09:00 AM EST',
+    pay: 320.00,
+    payType: 'fixed',
+    isAcknowledged: true,
+    finalPay: 320.00,
+    source: 'Manual',
+    history: [
+      { type: 'status_change', date: '07-15-2024', details: 'Finalized audit manifest uploaded. All racks verified.', user: 'Alex Johnson' }
+    ]
+  },
+  {
     id: 'wo-mock-88',
     description: 'Audit Server Rack Terminations',
     location: '999 Tech Plaza, Boston, MA',
@@ -455,6 +476,40 @@ export const projects: Project[] = [
           { id: 't4-2', name: 'Install ceiling speakers', isCompleted: false, requiresPhoto: true, estimatedHours: 16 },
         ],
       },
+    ],
+  },
+  {
+    id: 'proj-003',
+    name: 'Enterprise Data Center Migration',
+    client: 'Target Solutions',
+    location: 'Las Vegas, NV',
+    status: 'completed',
+    startDate: '06-01-2024',
+    startTime: '08:00 AM PDT',
+    estimatedDuration: '4 weeks',
+    assignedTechnicianIds: ['tech-001'],
+    team: [{ technicianId: 'tech-001', role: 'Project Lead' }],
+    scope: 'Complete migration of 500+ physical servers and corresponding infrastructure to new Tier 4 facility.',
+    onsiteContact: 'Robert House - 555-702-0001',
+    siteAccessInstructions: 'Biometric scanning required for floor entry. All equipment must be logged via manifest barcode.',
+    siteHazardNotes: [
+      { id: 'h-final-1', text: 'High Voltage Environment', type: 'danger'},
+    ],
+    projectBudget: 150000,
+    estimatedHours: 450,
+    actualBudget: 148500,
+    actualHours: 442,
+    phases: [
+      {
+        id: 'phase-final-1',
+        phaseNumber: 1,
+        name: 'Pre-Audit & Mapping',
+        notes: 'Finalized mapping schema for all racks.',
+        tasks: [
+          { id: 't-final-1', name: 'Log all existing asset tags', isCompleted: true, requiresPhoto: false, estimatedHours: 40 },
+          { id: 't-final-2', name: 'Verify fiber connectivity paths', isCompleted: true, requiresPhoto: true, estimatedHours: 80 },
+        ],
+      }
     ],
   },
   {

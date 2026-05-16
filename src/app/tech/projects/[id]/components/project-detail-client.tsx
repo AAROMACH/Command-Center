@@ -35,7 +35,8 @@ import {
   CheckCircle2,
   ExternalLink,
   X,
-  Check
+  Check,
+  Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -170,7 +171,7 @@ const MilestonesTab = ({ project, onTaskToggle, documents }: { project: Project,
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
             {project.phases.map(phase => (
-                <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} />
+                <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} isReadOnly={project.status === 'completed'} />
             ))}
             {project.phases.length === 0 && (
                 <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
@@ -238,7 +239,23 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     );
 };
 
-const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSession, onManualAdd }: { dailyLogs: ProjectDailyLog[], technicians: Technician[], onCheckIn: () => void, onCheckOut: () => void, activeSession: any, onManualAdd: (log: ProjectDailyLog) => void }) => {
+const TimesheetsTab = ({ 
+    dailyLogs, 
+    technicians, 
+    onCheckIn, 
+    onCheckOut, 
+    activeSession, 
+    onManualAdd,
+    isReadOnly
+}: { 
+    dailyLogs: ProjectDailyLog[], 
+    technicians: Technician[], 
+    onCheckIn: () => void, 
+    onCheckOut: () => void, 
+    activeSession: any, 
+    onManualAdd: (log: ProjectDailyLog) => void,
+    isReadOnly: boolean
+}) => {
     const [isManualOpen, setIsManualOpen] = useState(false);
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
     const { toast } = useToast();
@@ -266,15 +283,19 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 gap-6">
                 {/* Check-In / Check-Out Shared Console */}
-                <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
+                <section className={cn("field-group border-2", isReadOnly ? "border-border-sub bg-bg-secondary/50 grayscale" : "border-brand-red/30 bg-brand-red-dim/5")}>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => setIsManualOpen(true)}>
-                                <History size={12} className="mr-1.5"/> Manual Entry
-                            </Button>
+                            {!isReadOnly && (
+                                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => setIsManualOpen(true)}>
+                                    <History size={12} className="mr-1.5"/> Manual Entry
+                                </Button>
+                            )}
                             {activeSession ? (
                                 <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
+                            ) : isReadOnly ? (
+                                <Badge variant="active" className="bg-green-dim border-green-border text-text-green">PROJECT FINALIZED</Badge>
                             ) : (
                                 <Badge variant="outline" className="text-text-muted">IDLE</Badge>
                             )}
@@ -282,7 +303,17 @@ const TimesheetsTab = ({ dailyLogs, technicians, onCheckIn, onCheckOut, activeSe
                     </div>
                     
                     <div className="p-6 rounded-xl bg-bg-primary border border-border-sub flex flex-col items-center text-center space-y-6">
-                        {!activeSession ? (
+                        {isReadOnly ? (
+                            <>
+                                <div className="p-4 bg-bg-tertiary rounded-full border border-border-sub text-text-green">
+                                    <FileCheck size={32} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Registry Locked</p>
+                                    <p className="text-xs text-text-muted max-w-xs uppercase">This project has been marked as complete. Check-in protocol is disabled for finalized registries.</p>
+                                </div>
+                            </>
+                        ) : !activeSession ? (
                             <>
                                 <div className="p-4 bg-bg-tertiary rounded-full border border-border-sub text-text-muted">
                                     <MapPin size={32} />
@@ -434,7 +465,7 @@ const ManualSessionDialog = ({ isOpen, setIsOpen, onSave }: { isOpen: boolean, s
                             placeholder="Detailed account of tasks performed..." 
                             value={formData.summary}
                             onChange={e => setFormData({...formData, summary: e.target.value})}
-                            className="bg-bg-primary min-h-[120px] text-xs leading-relaxed"
+                            className="bg-bg-primary min-h-[100px] text-xs leading-relaxed"
                         />
                     </div>
                 </div>
@@ -454,10 +485,12 @@ const PhaseBlock = ({
   phase,
   onTaskToggle,
   documents,
+  isReadOnly
 }: {
   phase: Project['phases'][0];
   onTaskToggle: (phaseId: string, taskId: string) => void;
   documents: ProjectDocument[];
+  isReadOnly: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const { toast } = useToast();
@@ -504,8 +537,9 @@ const PhaseBlock = ({
                     <Checkbox
                       id={`task-${task.id}`}
                       checked={task.isCompleted}
-                      onCheckedChange={() => onTaskToggle(phase.id, task.id)}
+                      onCheckedChange={() => !isReadOnly && onTaskToggle(phase.id, task.id)}
                       className="mt-1"
+                      disabled={isReadOnly}
                     />
                     <div className="flex-1 min-w-0">
                         <label
@@ -540,7 +574,7 @@ const PhaseBlock = ({
                         )}
                     </div>
                     
-                    {task.requiresPhoto && (
+                    {task.requiresPhoto && !isReadOnly && (
                       <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Terminal Initialized", description: "Select site photo for task verification."})}>
                         <Camera size={13} className="mr-1.5"/> Add Photo
                       </Button>
@@ -565,6 +599,8 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
     const [activeSession, setActiveSession] = useState<any>(null);
     const { toast } = useToast();
 
+    const isReadOnly = project.status === 'completed';
+
     useEffect(() => {
         setProject(initialProject);
     }, [initialProject]);
@@ -579,6 +615,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
     const handleTaskToggle = (phaseId: string, taskId: string) => {
+        if (isReadOnly) return;
         setProject(currentProject => ({
             ...currentProject,
             phases: currentProject.phases.map(phase => {
@@ -600,6 +637,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
     };
 
     const handleCheckIn = () => {
+        if (isReadOnly) return;
         setActiveSession({
             startTime: new Date(),
             location: project.location
@@ -678,6 +716,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
                             onCheckOut={handleCheckOut} 
                             activeSession={activeSession}
                             onManualAdd={handleManualAdd}
+                            isReadOnly={isReadOnly}
                         />
                     </TabsContent>
                 </div>

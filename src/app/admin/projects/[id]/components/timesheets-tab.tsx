@@ -120,15 +120,18 @@ type TimesheetsTabProps = {
     setTimesheets: React.Dispatch<React.SetStateAction<TimesheetLog[]>>;
     technicians: Technician[];
     projectId: string;
+    projectStatus?: string;
 };
 
 
-export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectId }: TimesheetsTabProps) {
+export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectId, projectStatus }: TimesheetsTabProps) {
     const [viewBy, setViewBy] = useState<'tech' | 'date'>('date');
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const { toast } = useToast();
+
+    const isReadOnly = projectStatus === 'completed';
 
     const getTechnician = useCallback((id: string) => technicians.find(t => t.id === id), [technicians]);
 
@@ -254,8 +257,14 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                         <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>
                             <Download size={14} className="mr-1.5"/> CSV
                         </Button>
-                        <Button variant="default" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={() => setIsLogDialogOpen(true)}>
-                            <Plus size={14} className="mr-1.5"/> Log Session
+                        <Button 
+                            variant="default" 
+                            size="sm" 
+                            className={cn("h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover", isReadOnly && "opacity-50 cursor-not-allowed")}
+                            onClick={() => !isReadOnly && setIsLogDialogOpen(true)}
+                            disabled={isReadOnly}
+                        >
+                            <Plus size={14} className="mr-1.5"/> {isReadOnly ? 'Registry Locked' : 'Log Session'}
                         </Button>
                     </div>
                 </div>

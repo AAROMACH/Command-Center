@@ -33,7 +33,8 @@ const PhaseBlock = ({
     onDeleteTask, 
     onEditTask,
     onDeletePhase,
-    onEditPhaseName
+    onEditPhaseName,
+    isReadOnly
 }: { 
     phase: Phase, 
     onTaskToggle: (phaseId: string, taskId: string) => void, 
@@ -42,7 +43,8 @@ const PhaseBlock = ({
     onDeleteTask: (phaseId: string, taskId: string) => void,
     onEditTask: (phaseId: string, task: Task) => void,
     onDeletePhase: (phaseId: string) => void,
-    onEditPhaseName: (phaseId: string, name: string) => void
+    onEditPhaseName: (phaseId: string, name: string) => void,
+    isReadOnly: boolean
 }) => {
     const [isOpen, setIsOpen] = useState(true);
     const [newTaskName, setNewTaskName] = useState("");
@@ -101,11 +103,16 @@ const PhaseBlock = ({
                 <div className="tasks-list">
                     {phase.tasks.map(task => (
                         <div key={task.id} className="task-row group/task">
-                            <Checkbox id={`task-${task.id}`} checked={task.isCompleted} onCheckedChange={() => onTaskToggle(phase.id, task.id)} className="task-check" disabled={!isEditing} />
+                            <Checkbox 
+                                id={`task-${task.id}`} 
+                                checked={task.isCompleted} 
+                                onCheckedChange={() => !isReadOnly && onTaskToggle(phase.id, task.id)} 
+                                className="task-check" 
+                                disabled={!isEditing || isReadOnly} 
+                            />
                             <div className="flex-1 min-w-0">
-                                <label htmlFor={`task-${task.id}`} className={`task-name ${task.isCompleted ? 'done' : ''}`}>{task.name}</label>
+                                <label htmlFor={`task-${task.id}`} className={cn("task-name", task.isCompleted && 'done')}>{task.name}</label>
                                 
-                                {/* Requirements Badges */}
                                 <div className="flex flex-wrap gap-1 mt-1">
                                     {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
                                     {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
@@ -116,7 +123,7 @@ const PhaseBlock = ({
                                     {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
                             </div>
-                            {isEditing && (
+                            {isEditing && !isReadOnly && (
                                 <div className="task-actions opacity-0 group-hover/task:opacity-100 transition-opacity">
                                     <button className="task-action-btn" onClick={() => onEditTask(phase.id, task)}><Pencil size={14}/></button>
                                     <button className="task-action-btn hover:text-text-red" onClick={() => onDeleteTask(phase.id, task.id)}><Trash2 size={14}/></button>
@@ -124,7 +131,7 @@ const PhaseBlock = ({
                             )}
                         </div>
                     ))}
-                    {isEditing && (
+                    {isEditing && !isReadOnly && (
                         <div className="add-task-row">
                             <Plus size={14} className="text-text-muted"/>
                             <Input 
@@ -150,11 +157,14 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     const [editingTaskData, setEditingTaskData] = useState<{ phaseId: string, task: Task } | null>(null);
     const { toast } = useToast();
 
+    const isReadOnly = project.status === 'completed';
+
     useEffect(() => {
         setEditablePhases(project.phases);
     }, [project.phases]);
 
     const handleTaskToggle = (phaseId: string, taskId: string) => {
+        if (isReadOnly) return;
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
                 return {
@@ -170,6 +180,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleAddTask = (phaseId: string, name: string) => {
+        if (isReadOnly) return;
         const i = editablePhases.findIndex(p => p.id === phaseId);
         if (i === -1) return;
 
@@ -186,6 +197,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleDeleteTask = (phaseId: string, taskId: string) => {
+        if (isReadOnly) return;
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
                 return { ...phase, tasks: phase.tasks.filter(t => t.id !== taskId) };
@@ -196,12 +208,13 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleOpenEditTask = (phaseId: string, task: Task) => {
+        if (isReadOnly) return;
         setEditingTaskData({ phaseId, task: { ...task } });
         setTaskDialogOpen(true);
     };
 
     const handleSaveTaskDetails = () => {
-        if (!editingTaskData) return;
+        if (!editingTaskData || isReadOnly) return;
         const { phaseId, task: updatedTask } = editingTaskData;
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
@@ -218,6 +231,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleAddPhase = () => {
+        if (isReadOnly) return;
         const nextNum = editablePhases.length + 1;
         const newPhase: Phase = {
             id: `phase-${Date.now()}`,
@@ -229,14 +243,17 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     };
 
     const handleDeletePhase = (phaseId: string) => {
+        if (isReadOnly) return;
         setEditablePhases(editablePhases.filter(p => p.id !== phaseId).map((p, i) => ({ ...p, phaseNumber: i + 1 })));
     };
 
     const handleEditPhaseName = (phaseId: string, name: string) => {
+        if (isReadOnly) return;
         setEditablePhases(editablePhases.map(p => p.id === phaseId ? { ...p, name } : p));
     };
 
     const handleSaveChanges = () => {
+        if (isReadOnly) return;
         setProject(currentProject => ({ ...currentProject, phases: editablePhases }));
         setIsEditing(false);
         toast({ title: "Milestones Updated", description: "Project phases and tasks committed to registry." });
@@ -255,7 +272,14 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
             <div className="flex justify-between items-center mb-4">
                 <div className="text-sm text-text-secondary">{editablePhases.length} phases · {totalTasks} tasks · <span className="text-text-green">{completedTasks} completed</span></div>
                 {!isEditing ? (
-                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="h-8 !text-[10px]">Edit Milestones</Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => !isReadOnly && setIsEditing(true)} 
+                        className={cn("h-8 !text-[10px]", isReadOnly && "opacity-50 cursor-not-allowed")}
+                    >
+                        {isReadOnly ? 'Registry Locked' : 'Edit Milestones'}
+                    </Button>
                 ) : (
                     <div className='flex items-center gap-2'>
                         <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 !text-[10px]">Cancel</Button>
@@ -275,10 +299,11 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                         onEditTask={handleOpenEditTask}
                         onDeletePhase={handleDeletePhase}
                         onEditPhaseName={handleEditPhaseName}
+                        isReadOnly={isReadOnly}
                     />
                 ))}
             </div>
-            {isEditing && (
+            {isEditing && !isReadOnly && (
                  <Button variant="dashed" className="mt-4 h-12" onClick={handleAddPhase}>
                     <Plus size={16} className="mr-2"/> Add New Phase
                 </Button>

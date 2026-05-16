@@ -42,6 +42,8 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
 
+    const isReadOnly = project.status === 'completed';
+
     useEffect(() => {
         setLocalProjectData({
             scope: project.scope,
@@ -131,7 +133,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     }
 
     const handleSaveNote = () => {
-        if (newNoteText.trim()) {
+        if (newNoteText.trim() && !isReadOnly) {
             const newNote = {
                 id: `note-${Date.now()}`,
                 text: newNoteText.trim(),
@@ -148,6 +150,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     };
 
     const handleDeleteNote = (id: string) => {
+        if (isReadOnly) return;
         setProject(prev => ({
             ...prev,
             siteHazardNotes: prev.siteHazardNotes.filter(n => n.id !== id)
@@ -156,6 +159,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     };
 
     const handleSaveChanges = () => {
+        if (isReadOnly) return;
         setProject(prev => ({
             ...prev,
             ...localProjectData
@@ -186,6 +190,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
                             <Textarea 
+                                disabled={isReadOnly}
                                 className="field-textarea" 
                                 value={localProjectData.scope || ''}
                                 onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
@@ -195,6 +200,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                         <div className="field-row">
                             <label className="field-label">Onsite Contact</label>
                             <Input 
+                                disabled={isReadOnly}
                                 className="field-input" 
                                 placeholder="Name + phone number..." 
                                 value={localProjectData.onsiteContact || ''}
@@ -209,16 +215,18 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                     <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'} group/note`}>
                                         {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
                                         <span>{note.text}</span>
-                                        <button 
-                                            onClick={() => handleDeleteNote(note.id)}
-                                            className="ml-1 opacity-60 hover:opacity-100 hover:text-text-primary transition-opacity"
-                                        >
-                                            <X size={12} />
-                                        </button>
+                                        {!isReadOnly && (
+                                            <button 
+                                                onClick={() => handleDeleteNote(note.id)}
+                                                className="ml-1 opacity-60 hover:opacity-100 hover:text-text-primary transition-opacity"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                                 
-                                {isAddingNote ? (
+                                {isAddingNote && !isReadOnly && (
                                     <div className="flex items-center gap-1.5 bg-bg-tertiary p-1 rounded-md border border-border-sub animate-in fade-in zoom-in-95 duration-200">
                                         <Input 
                                             className="h-6 text-[10px] w-32 bg-bg-primary border-none focus:ring-0 px-2" 
@@ -234,11 +242,13 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                         <button onClick={handleSaveNote} className="text-text-green hover:opacity-80 p-0.5"><Check size={14}/></button>
                                         <button onClick={() => setIsAddingNote(false)} className="text-text-muted hover:text-text-red p-0.5"><X size={14}/></button>
                                     </div>
-                                ) : (
+                                )}
+                                {!isAddingNote && !isReadOnly && (
                                     <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add Note</button>
                                 )}
                             </div>
                             <Textarea 
+                                disabled={isReadOnly}
                                 className="field-textarea mt-2" 
                                 placeholder="Parking, entry codes, badge requirements..." 
                                 value={localProjectData.siteAccessInstructions || ''}
@@ -372,7 +382,14 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
                             <h3 className="field-group-title !mb-0"><Users/> Project Team</h3>
-                            <Button variant="outline" size="sm" onClick={() => setIsTeamDialogOpen(true)}>Manage Team</Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => !isReadOnly && setIsTeamDialogOpen(true)}
+                                disabled={isReadOnly}
+                            >
+                                Manage Team
+                            </Button>
                         </div>
                         <div className="space-y-3">
                             {project.team.map(member => {
@@ -399,10 +416,12 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" size="sm" onClick={handleCancelChanges}>Cancel</Button>
-                <Button variant="default" size="sm" onClick={handleSaveChanges}>Save Changes</Button>
-            </div>
+            {!isReadOnly && (
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" size="sm" onClick={handleCancelChanges}>Cancel</Button>
+                    <Button variant="default" size="sm" onClick={handleSaveChanges}>Save Changes</Button>
+                </div>
+            )}
             
             <ManageTeamDialog 
               isOpen={isTeamDialogOpen}

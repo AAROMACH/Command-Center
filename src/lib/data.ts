@@ -11,14 +11,14 @@ export const technicians: Technician[] = [
     roles: ['project_lead', 'field_technician'],
     email: 'alex.j@aaromach.com',
     phone: '555-111-2222',
-    address: '123 Beacon St, Boston, MA 02108',
+    address: '123 Woodward Ave, Detroit, MI 48201',
     hourlyRate: 65,
     emergencyContact: {
       name: 'Sarah Johnson',
       relation: 'Spouse',
       phone: '555-111-9999'
     },
-    currentLocation: 'Newark, NJ',
+    currentLocation: 'Detroit, MI',
     reliabilityScore: 95,
     currentWorkload: 3,
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
@@ -46,14 +46,14 @@ export const technicians: Technician[] = [
     roles: ['field_technician'],
     email: 'maria.g@aaromach.com',
     phone: '555-222-3333',
-    address: '456 Oak Ave, Brooklyn, NY 11201',
+    address: '456 W Lafayette Blvd, Detroit, MI 48226',
     hourlyRate: 55,
     emergencyContact: {
       name: 'Luis Garcia',
       relation: 'Brother',
       phone: '555-222-8888'
     },
-    currentLocation: 'Brooklyn, NY',
+    currentLocation: 'Detroit, MI',
     reliabilityScore: 98,
     currentWorkload: 2,
     skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
@@ -81,7 +81,7 @@ export const technicians: Technician[] = [
     roles: ['super_admin'],
     email: 'admin@aaromach.com',
     phone: '555-000-0000',
-    currentLocation: 'Boston, MA',
+    currentLocation: 'Detroit, MI',
     reliabilityScore: 100,
     currentWorkload: 0,
     skills: ['Management', 'Operations'],
@@ -101,14 +101,14 @@ export const technicians: Technician[] = [
     roles: ['dispatch_admin', 'field_technician'],
     email: 'cwilliams@aaromach.com',
     phone: '555-666-7777',
-    address: '303 Birch Rd, Newark, NJ 07102',
+    address: '303 E Milwaukee Ave, Detroit, MI 48202',
     hourlyRate: 60,
     emergencyContact: {
       name: 'Michael Williams',
       relation: 'Father',
       phone: '555-666-8888',
     },
-    currentLocation: 'Newark, NJ',
+    currentLocation: 'Detroit, MI',
     reliabilityScore: 91,
     currentWorkload: 2,
     skills: ['Strategic Planning', 'Procurement', 'Network Infrastructure'],
@@ -136,14 +136,14 @@ export const technicians: Technician[] = [
     roles: ['field_technician'],
     email: 'david.s@aaromach.com',
     phone: '555-333-4444',
-    address: '789 Maple Dr, Queens, NY 11101',
+    address: '789 N Old Woodward Ave, Birmingham, MI 48009',
     hourlyRate: 75,
     emergencyContact: {
       name: 'Emily Smith',
       relation: 'Spouse',
       phone: '555-333-7777',
     },
-    currentLocation: 'Queens, NY',
+    currentLocation: 'Birmingham, MI',
     reliabilityScore: 88,
     currentWorkload: 5,
     skills: ['Plumbing', 'Carpentry', 'Welding'],
@@ -173,7 +173,7 @@ export const technicians: Technician[] = [
     phone: '555-999-8888',
     clientCompany: 'Global Corp',
     businessType: 'Enterprise Technology',
-    currentLocation: 'New York, NY',
+    currentLocation: 'Southfield, MI',
     reliabilityScore: 94,
     currentWorkload: 0,
     skills: [],
@@ -195,14 +195,14 @@ export const technicians: Technician[] = [
     phone: '555-123-9999',
     clientCompany: 'Test Organization',
     businessType: 'Consulting',
-    currentLocation: 'Chicago, IL',
+    currentLocation: 'Troy, MI',
     reliabilityScore: 100,
     currentWorkload: 0,
     skills: [],
     avatarUrl: getImageUrl('technician-4'),
     availability: {},
     managedSites: [
-      { id: 'site-chi-01', name: 'Chicago North Data Center', location: '100 N LaSalle St, Chicago, IL 60602' }
+      { id: 'site-det-01', name: 'Detroit Renaissance Data Center', location: '100 Renaissance Center, Detroit, MI 48243' }
     ],
     workPreferences: {
       preferredRadius: 0,
@@ -217,7 +217,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-101',
     description: 'Fix leaking faucet in main bathroom',
-    location: '123 Main St, New York, NY',
+    location: '123 Main St, Royal Oak, MI 48067',
     requiredSkills: ['Plumbing'],
     priority: 'medium',
     status: 'assigned',
@@ -237,7 +237,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-102',
     description: 'Repair central AC unit not cooling',
-    location: '456 Oak Ave, Brooklyn, NY',
+    location: '456 Oak St, Ferndale, MI 48220',
     requiredSkills: ['HVAC', 'Electrical'],
     priority: 'high',
     status: 'assigned',
@@ -257,7 +257,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-103',
     description: 'Install new smart thermostat',
-    location: '789 Pine Ln, New York, NY',
+    location: '789 Pine Ave, Dearborn, MI 48124',
     requiredSkills: ['Electrical', 'Smart Home'],
     priority: 'low',
     status: 'unassigned',
@@ -272,7 +272,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-104',
     description: 'Broken refrigerator compressor',
-    location: '321 Elm St, Queens, NY',
+    location: '321 Elm St, Pontiac, MI 48341',
     requiredSkills: ['Appliance Repair'],
     priority: 'critical',
     status: 'completed',
@@ -296,7 +296,7 @@ export const workOrders: WorkOrder[] = [
    {
     id: 'wo-105',
     description: 'Full electrical wiring inspection',
-    location: '555 Market St, New York, NY',
+    location: '555 Market St, Detroit, MI 48226',
     requiredSkills: ['Electrical'],
     priority: 'high',
     status: 'unassigned',
@@ -311,7 +311,7 @@ export const workOrders: WorkOrder[] = [
    {
     id: 'wo-106',
     description: 'Water heater replacement',
-    location: '888 Broadway, Brooklyn, NY',
+    location: '888 Woodward Ave, Detroit, MI 48226',
     requiredSkills: ['Plumbing', 'HVAC'],
     priority: 'medium',
     status: 'in-progress',
@@ -331,7 +331,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-107',
     description: 'Terminal Rack Audit & Labeling',
-    location: '100 LaSalle St, Chicago, IL',
+    location: '100 Renaissance Center, Detroit, MI 48243',
     requiredSkills: ['Networking', 'Cabling'],
     priority: 'medium',
     status: 'completed',
@@ -352,7 +352,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-mock-88',
     description: 'Audit Server Rack Terminations',
-    location: '999 Tech Plaza, Boston, MA',
+    location: '999 Tech Plaza, Detroit, MI 48201',
     requiredSkills: ['Networking', 'Cabling'],
     priority: 'high',
     status: 'assigned',
@@ -369,7 +369,7 @@ export const workOrders: WorkOrder[] = [
   {
     id: 'wo-corey-1',
     description: 'Emergency Fiber Splicing - Rack 4',
-    location: 'Jersey City Data Center, NJ',
+    location: 'Detroit Data Center, Detroit, MI 48201',
     requiredSkills: ['Fiber Optics', 'Networking'],
     priority: 'high',
     status: 'assigned',
@@ -437,7 +437,7 @@ export const projects: Project[] = [
     id: 'proj-002',
     name: 'Global Corp HQ AV Fit-out',
     client: 'Global Corp',
-    location: 'New York, NY',
+    location: 'Detroit, MI',
     status: 'active',
     startDate: '05-01-2026',
     startTime: '8:00 AM EDT',
@@ -482,10 +482,10 @@ export const projects: Project[] = [
     id: 'proj-003',
     name: 'Enterprise Data Center Migration',
     client: 'Target Solutions',
-    location: 'Las Vegas, NV',
+    location: 'Detroit, MI',
     status: 'completed',
     startDate: '2024-06-01',
-    startTime: '08:00 AM PDT',
+    startTime: '08:00 AM EDT',
     estimatedDuration: '4 weeks',
     assignedTechnicianIds: ['tech-001'],
     team: [{ technicianId: 'tech-001', role: 'Project Lead' }],
@@ -516,7 +516,7 @@ export const projects: Project[] = [
     id: 'proj-004',
     name: 'Metropolis Hub Security Upgrade',
     client: 'Global Corp',
-    location: 'Newark, NJ',
+    location: 'Warren, MI',
     status: 'on-hold',
     startDate: '2024-06-15',
     estimatedDuration: '2 months',
@@ -532,7 +532,7 @@ export const projects: Project[] = [
     id: 'proj-999',
     name: 'Regional Fiber Backbone',
     client: 'Metro Comm',
-    location: 'Boston, MA',
+    location: 'Detroit, MI',
     status: 'active',
     startDate: '2024-07-10',
     startTime: '7:30 AM EST',
@@ -552,7 +552,7 @@ export const projects: Project[] = [
     id: 'proj-corey-hospital',
     name: 'Metro Hospital Wi-Fi Expansion',
     client: 'City Health Systems',
-    location: 'Newark, NJ',
+    location: 'Royal Oak, MI',
     status: 'active',
     startDate: '2024-07-15',
     startTime: '08:00 AM EST',
@@ -645,11 +645,11 @@ export const timesheetLogs: TimesheetLog[] = [
 ];
 
 export const serviceRequests: ServiceRequest[] = [
-    { id: 'req-001', clientName: 'Global Corp', location: 'New York, NY', requestType: 'Installation', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '07-22-2024', priority: 'high' },
-    { id: 'req-002', clientName: 'Jane Doe', location: 'Brooklyn, NY', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '07-21-2024', priority: 'critical' },
-    { id: 'req-003', clientName: 'Quantum Industries', location: 'Jersey City, NJ', requestType: 'Maintenance', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '07-20-2024', priority: 'medium' },
-    { id: 'req-004', clientName: 'Burger Palace', location: 'Queens, NY', requestType: 'Maintenance', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '07-22-2024', priority: 'medium' },
-    { id: 'req-005', clientName: 'Local Library', location: 'New York, NY', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '07-19-2024', priority: 'low' },
+    { id: 'req-001', clientName: 'Global Corp', location: 'Detroit, MI', requestType: 'Installation', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '07-22-2024', priority: 'high' },
+    { id: 'req-002', clientName: 'Jane Doe', location: 'Detroit, MI', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '07-21-2024', priority: 'critical' },
+    { id: 'req-003', clientName: 'Quantum Industries', location: 'Dearborn, MI', requestType: 'Maintenance', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '07-20-2024', priority: 'medium' },
+    { id: 'req-004', clientName: 'Burger Palace', location: 'Southfield, MI', requestType: 'Maintenance', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '07-22-2024', priority: 'medium' },
+    { id: 'req-005', clientName: 'Local Library', location: 'Detroit, MI', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '07-19-2024', priority: 'low' },
 ];
 
 export const profitabilityData = [
@@ -660,8 +660,8 @@ export const profitabilityData = [
 ];
 
 export const assignmentTimeLogs: AssignmentTimeLog[] = [
-  { id: 'atl-1', workOrderId: 'wo-102', technicianId: 'tech-001', checkInTime: '2024-07-28T14:05:00Z', location: '40.6501° N, 73.9496° W'},
-  { id: 'atl-2', workOrderId: 'wo-106', technicianId: 'tech-001', checkInTime: '2024-07-28T13:00:00Z', location: '40.6501° N, 73.9496° W'},
+  { id: 'atl-1', workOrderId: 'wo-102', technicianId: 'tech-001', checkInTime: '2024-07-28T14:05:00Z', location: '42.3314° N, 83.0458° W'},
+  { id: 'atl-2', workOrderId: 'wo-106', technicianId: 'tech-001', checkInTime: '2024-07-28T13:00:00Z', location: '42.3314° N, 83.0458° W'},
 ];
 
 export const weeklyLogs: WeeklyLog[] = [
@@ -678,7 +678,7 @@ export const weeklyLogs: WeeklyLog[] = [
       { id: 'fr-1', technicianId: 'tech-001', date: '07-24-2024', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }
     ],
     missingAssignmentReports: [
-      { id: 'mar-1', date: '2024-07-23', location: '100 Broadway, NY', summary: 'Emergency network repair after storm. 4 hours on site.' }
+      { id: 'mar-1', date: '2024-07-23', location: '100 Renaissance Center, Detroit, MI 48243', summary: 'Emergency network repair after storm. 4 hours on site.' }
     ],
     totalPayout: 2150.50,
   },
@@ -753,8 +753,8 @@ export const timeOffRequests: TimeOffRequest[] = [
 ];
 
 export const siteRequests: SiteRequest[] = [
-  { id: 'sr-1', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Gotham Data Center', location: '42 Gotham Way, Newark, NJ', managerName: 'Bruce Wayne', status: 'pending', submittedDate: '07-28-2024' },
-  { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 Daily Planet Ave, New York, NY', managerName: 'Clark Kent', status: 'pending', submittedDate: '07-29-2024' },
+  { id: 'sr-1', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Detroit Data Center', location: '42 Woodward Ave, Detroit, MI 48201', managerName: 'Bruce Wayne', status: 'pending', submittedDate: '07-28-2024' },
+  { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 W Fort St, Detroit, MI 48226', managerName: 'Clark Kent', status: 'pending', submittedDate: '07-29-2024' },
 ];
 
 export const penaltyEvents: PenaltyEvent[] = [

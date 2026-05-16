@@ -566,7 +566,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {siteRequests.filter(r => r.status === 'pending').map(req => (
-                                            <Card key={req.id} className="bg-bg-secondary border border-border-sub shadow-sm">
+                                            <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
                                                 <CardContent className="p-4 space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -613,7 +613,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                      <iframe 
                                         src={selectedMapAddress 
                                             ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
-                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3624053.354181654!2d-84.06883681645265!3d43.5584848511088!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
+                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d11792.836480838186!2d-83.0457531!3d42.331427!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
                                         } 
                                         width="100%" 
                                         height="100%" 

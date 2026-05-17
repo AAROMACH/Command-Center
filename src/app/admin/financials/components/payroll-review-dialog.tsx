@@ -95,7 +95,7 @@ function ImportedJobAudit({
 
     return (
         <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg">
-             <div className="grid grid-cols-3 gap-2">
+             <div className="grid grid-cols-3 gap-2 text-left">
                 <div className="space-y-0.5">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Pay (Gross)</Label>
                     <div className="relative">
@@ -134,7 +134,7 @@ function ImportedJobAudit({
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30">
+             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30 text-left">
                 <div className="space-y-0">
                     <p className="text-[7px] font-black text-text-muted uppercase">Additional Net</p>
                     <p className="text-[9px] font-mono font-bold text-text-primary leading-none">${additionalNet.toFixed(2)}</p>

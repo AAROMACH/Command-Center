@@ -118,7 +118,7 @@ export default function ClientProjectsPage() {
                     <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="space-y-6 mt-0">
-                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />
+                    <ProjectsList onHoldProjects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} projects={onHoldProjects} />
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-6 mt-0">
                     <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />
@@ -254,10 +254,11 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr }: { project
                                     <span className="flex items-center gap-1.5"><Clock size={12}/> Est: {project.estimatedDuration}</span>
                                     <span className="flex items-center gap-1.5"><Calendar size={12}/> Target: {formatDateStr(project.startDate)}</span>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })}
         </div>
     );
 }

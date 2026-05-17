@@ -16,10 +16,12 @@ import {
   Info,
   ExternalLink,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Users,
+  MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { workOrders, penaltyEvents, weeklyLogs, technicians, projects, serviceRequests } from '@/lib/data';
+import { workOrders, penaltyEvents, weeklyLogs, technicians, projects, serviceRequests, timeOffRequests, siteRequests } from '@/lib/data';
 import { addDays } from 'date-fns';
 import {
   Dialog,
@@ -154,6 +156,8 @@ export function AlertBand() {
     } else { 
       const unassignedJobsCount = workOrders.filter(wo => wo.status === 'unassigned').length;
       const logsToAuditCount = weeklyLogs.filter(log => log.status === 'Submitted').length;
+      const pendingPersonnelCount = timeOffRequests.filter(r => r.status === 'pending').length;
+      const pendingSiteCount = siteRequests.filter(r => r.status === 'pending').length;
 
       if (unassignedJobsCount > 0) {
         currentAlerts.push({
@@ -186,6 +190,30 @@ export function AlertBand() {
           icon: FileCheck,
           actionPath: '/admin/financials',
           actionLabel: 'Payroll Terminal'
+        });
+      }
+
+      if (pendingPersonnelCount > 0) {
+        currentAlerts.push({
+          id: 'admin-personnel-requests',
+          type: 'info',
+          text: `${pendingPersonnelCount} pending personnel request${pendingPersonnelCount > 1 ? 's' : ''}`,
+          description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
+          icon: Users,
+          actionPath: '/admin/directory',
+          actionLabel: 'Review Requests'
+        });
+      }
+
+      if (pendingSiteCount > 0) {
+        currentAlerts.push({
+          id: 'admin-site-requests',
+          type: 'warning',
+          text: `${pendingSiteCount} pending site request${pendingSiteCount > 1 ? 's' : ''}`,
+          description: `Clients have submitted new site coordinates that require verification and authorization before they can be used for assignments.`,
+          icon: MapPin,
+          actionPath: '/admin/directory',
+          actionLabel: 'Verify Coordinates'
         });
       }
     }

@@ -49,6 +49,105 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
+/**
+ * @fileOverview Specialized audit sub-component for imported platform jobs.
+ * Implements Aaromach's split-profit logic and automated FN fee deduction.
+ */
+function ImportedJobAudit({ 
+    wo, 
+    onUpdatePay 
+}: { 
+    wo: WorkOrder; 
+    onUpdatePay: (id: string, pay: number) => void 
+}) {
+    const [reimbursement, setReimbursement] = useState(0);
+    const [overhead, setOverhead] = useState(0);
+    
+    // Formula Logic:
+    // laborBase   = grossAmount - reimbursements - overhead
+    // fnFee       = grossAmount * 0.154
+    // netAfterFN  = laborBase - fnFee
+    // techPay     = (netAfterFN * 0.50) + reimbursements
+    // aaromachNet = (netAfterFN * 0.50) + overhead
+
+    const grossAmount = wo.pay;
+    const laborBase = grossAmount - reimbursement - overhead;
+    const fnFee = grossAmount * 0.154;
+    const netAfterFN = laborBase - fnFee;
+    const techPay = (netAfterFN * 0.50) + reimbursement;
+    const aaromachNet = (netAfterFN * 0.50) + overhead;
+
+    // Side effect to keep the parent state synced with the actual tech payout
+    useEffect(() => {
+        const finalTechPayout = Math.max(0, techPay);
+        if (wo.finalPay !== finalTechPayout) {
+            onUpdatePay(wo.id, finalTechPayout);
+        }
+    }, [techPay, wo.id, onUpdatePay, wo.finalPay]);
+
+    return (
+        <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg">
+             <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-0.5">
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Gross Amount (FN)</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={grossAmount}
+                            onChange={(e) => onUpdatePay(wo.id, parseFloat(e.target.value) || 0)}
+                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0.5">
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimbursement</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={reimbursement}
+                            onChange={(e) => setReimbursement(parseFloat(e.target.value) || 0)}
+                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0.5">
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Overhead</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={overhead}
+                            onChange={(e) => setOverhead(parseFloat(e.target.value) || 0)}
+                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                        />
+                    </div>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30">
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black text-text-muted uppercase">FN Fee (15.4%)</p>
+                    <p className="text-[10px] font-mono font-bold text-text-red leading-none">-${fnFee.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black text-text-muted uppercase">Net After FN</p>
+                    <p className="text-[10px] font-mono font-bold text-text-primary leading-none">${netAfterFN.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black text-text-green uppercase">Tech Payout</p>
+                    <p className="text-[10px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black text-brand-red uppercase">Aaromach Net</p>
+                    <p className="text-[10px] font-mono font-bold text-brand-red leading-none">${aaromachNet.toFixed(2)}</p>
+                </div>
+             </div>
+        </div>
+    );
+}
+
 export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [localWorkOrders, setLocalWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -89,7 +188,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
     const handleUpdatePay = (woId: string, newPay: number) => {
         setLocalWorkOrders(prev => prev.map(wo => 
-            wo.id === woId ? { ...wo, pay: newPay } : wo
+            wo.id === woId ? { ...wo, pay: newPay, finalPay: newPay } : wo
         ));
     };
 
@@ -116,7 +215,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!localLog) return 0;
         const assignmentPay = localLog.items
             .filter(i => i.confirmationStatus === 'confirmed' || i.confirmationStatus === 'disputed')
-            .reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0);
+            .reduce((acc, i) => {
+                const wo = findWorkOrder(i.workOrderId);
+                // For imported jobs, we use the finalPay (techPay derived from calculations)
+                // For others, we use the standard pay
+                return acc + (wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0);
+            }, 0);
         
         const reimbursementPay = localLog.reimbursements.reduce((acc, r) => acc + r.amount, 0);
         
@@ -172,7 +276,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </TabsList>
                         <div className="flex items-center gap-4 text-right">
                              <div>
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Net Settlement</p>
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Net Tech Settlement</p>
                                 <p className="text-lg font-mono font-bold text-text-green leading-none">${calculatedTotalPayout.toFixed(2)}</p>
                             </div>
                         </div>
@@ -180,15 +284,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <div className="flex-1 overflow-hidden relative">
                         <TabsContent value="verified" className="m-0 h-full">
-                            <ScrollArea className="h-full p-6">
-                                <div className="space-y-3">
+                            <ScrollArea className="h-full p-4">
+                                <div className="space-y-2">
                                     {confirmedItems.length > 0 ? confirmedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isImported = wo?.source === 'Imported';
                                         const isAudited = auditedIds.has(item.id);
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-4 rounded-xl border transition-all flex items-center justify-between group",
+                                                "p-3 rounded-xl border transition-all flex items-center justify-between group",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
                                                 <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
@@ -198,15 +302,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             size="sm" 
                                                             className={cn(
                                                                 "h-8 px-4 uppercase text-[9px] font-bold tracking-widest transition-all",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green hover:text-text-green"
+                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
                                                             )}
                                                             onClick={() => toggleAuditItem(item.id)}
                                                         >
                                                             {isAudited ? <Check size={14} className="mr-1.5"/> : <ClipboardCheck size={14} className="mr-1.5"/>}
-                                                            {isAudited ? 'Audit Pass' : 'Audit & Approve'}
+                                                            {isAudited ? 'Audit Pass' : 'Approve'}
                                                         </Button>
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2">
                                                             <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{wo?.description}</p>
                                                             {isImported && (
@@ -228,32 +332,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="flex items-center gap-6 ml-4 shrink-0">
-                                                    {isImported ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimbursement</Label>
-                                                                <Input type="number" className="h-7 w-16 text-[10px] p-1 bg-bg-primary font-mono" placeholder="0.00" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">Overhead</Label>
-                                                                <Input type="number" className="h-7 w-16 text-[10px] p-1 bg-bg-primary font-mono" placeholder="0.00" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Settlement</Label>
-                                                                <div className="relative">
-                                                                    <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-green" />
-                                                                    <Input 
-                                                                        type="number"
-                                                                        value={wo?.pay || 0}
-                                                                        onChange={(e) => handleUpdatePay(wo!.id, parseFloat(e.target.value) || 0)}
-                                                                        className="h-7 w-24 text-[10px] pl-4 p-1 bg-bg-primary font-mono font-bold text-text-green focus:border-brand-red"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                <div className="ml-4 shrink-0 min-w-[280px]">
+                                                    {isImported && wo ? (
+                                                        <ImportedJobAudit wo={wo} onUpdatePay={handleUpdatePay} />
                                                     ) : (
-                                                        <div className="flex items-center gap-8">
+                                                        <div className="flex items-center justify-end gap-8">
                                                             <div className="text-right">
                                                                 <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
                                                                 <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">{getHoursOnsite(wo!.id)}</p>
@@ -278,8 +361,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </TabsContent>
 
                         <TabsContent value="discrepancy" className="m-0 h-full">
-                            <ScrollArea className="h-full p-6">
-                                <div className="space-y-4">
+                            <ScrollArea className="h-full p-4">
+                                <div className="space-y-2">
                                     {localLog.items.filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = auditedIds.has(item.id);
@@ -288,7 +371,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 "bg-bg-secondary border transition-all",
                                                 isAudited ? "border-green-border/30" : "border-brand-red/30 shadow-sm"
                                             )}>
-                                                <CardContent className="p-4 space-y-4">
+                                                <CardContent className="p-3 space-y-3">
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-4 text-left">
                                                             <Button 
@@ -301,7 +384,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 onClick={() => toggleAuditItem(item.id)}
                                                             >
                                                                 {isAudited ? <Check size={14} className="mr-1.5"/> : <AlertTriangle size={14} className="mr-1.5"/>}
-                                                                {isAudited ? 'Audit Resolved' : 'Audit & Resolve'}
+                                                                {isAudited ? 'Resolved' : 'Resolve'}
                                                             </Button>
                                                             <div className="space-y-0.5">
                                                                 <div className="flex items-center gap-2">
@@ -316,8 +399,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <p className="text-sm font-mono font-bold text-text-red">${wo?.pay.toFixed(2)}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1.5 flex items-center gap-1.5">
+                                                    <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
+                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5">
                                                             <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
                                                         </p>
                                                         <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium">
@@ -336,7 +419,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 "bg-bg-secondary border transition-all",
                                                 isAudited ? "border-green-border/30" : "border-accent-gold/30 shadow-sm"
                                             )}>
-                                                <CardContent className="p-4 space-y-4">
+                                                <CardContent className="p-3 space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-4 text-left">
                                                             <Button 
@@ -349,7 +432,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 onClick={() => toggleAuditItem(report.id)}
                                                             >
                                                                 {isAudited ? <Check size={14} className="mr-1.5"/> : <Wrench size={14} className="mr-1.5"/>}
-                                                                {isAudited ? 'Report Cleared' : 'Audit & Authorize'}
+                                                                {isAudited ? 'Cleared' : 'Authorize'}
                                                             </Button>
                                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-accent-gold">
                                                                 <Wrench size={16}/>
@@ -357,17 +440,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <div className="text-left">
                                                                 <div className="flex items-center gap-2">
                                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Missing Assignment Report</p>
-                                                                    <Badge variant="onhold" className="text-[7px] h-3.5 px-1.5 uppercase">Awaiting Manual Pay</Badge>
+                                                                    <Badge variant="onhold" className="text-[7px] h-3.5 px-1.5 uppercase">Manual Pay Required</Badge>
                                                                 </div>
                                                                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{report.date} · {report.location.split(',')[0]}</p>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="p-3 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
+                                                    <div className="p-2 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
                                                         <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic">&quot;{report.summary}&quot;</p>
                                                     </div>
                                                     {!isAudited && (
-                                                        <div className="space-y-3 text-left animate-in fade-in duration-300">
+                                                        <div className="space-y-2 text-left animate-in fade-in duration-300">
                                                             <Label className="text-[8px] font-black uppercase text-text-muted ml-1 flex">Manual Pay Authorization</Label>
                                                             <div className="flex gap-2">
                                                                 <div className="relative flex-1">
@@ -377,7 +460,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                         className="h-8 pl-8 bg-bg-primary border-border-sub text-xs font-mono"
                                                                     />
                                                                 </div>
-                                                                <Button variant="default" size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green px-4">Apply & Authorize</Button>
+                                                                <Button variant="default" size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green px-4">Authorize</Button>
                                                             </div>
                                                         </div>
                                                     )}
@@ -399,62 +482,32 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Separator className="bg-border-sub shrink-0" />
 
-                    <div className="p-2 bg-bg-tertiary/10 space-y-2 shrink-0">
+                    <div className="p-2 bg-bg-tertiary/10 space-y-1.5 shrink-0">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <section className="space-y-1.5 text-left">
-                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 px-1">
-                                    <Coins size={10} className="text-accent-gold" />
-                                    Authorized Expenses
+                            <section className="space-y-1 text-left px-4">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
+                                    <Coins size={10} className="text-accent-gold" /> Authorized Expenses
                                 </h3>
-                                <div className="space-y-1">
+                                <div className="space-y-0.5">
                                     {localLog.reimbursements.map(item => (
-                                        <div key={item.id} className="px-2 py-1 rounded border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
-                                            <div className="min-w-0">
-                                                <p className="text-[9px] font-bold text-text-primary uppercase truncate">{item.description}</p>
-                                                <p className="text-[7px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
-                                            </div>
+                                        <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center group">
+                                            <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1">{item.description}</p>
                                             <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>
                                         </div>
                                     ))}
-                                    {localLog.reimbursements.length === 0 && (
-                                        <div className="p-2 text-center border border-dashed border-border-sub rounded opacity-40">
-                                            <p className="text-[8px] font-bold uppercase tracking-widest">No expenses logged</p>
-                                        </div>
-                                    )}
                                 </div>
                             </section>
 
-                            <section className="space-y-1.5 text-left">
-                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 px-1">
-                                    <FileText size={10} className="text-brand-red" />
-                                    Settlement Verification
+                            <section className="space-y-1 text-left px-4">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
+                                    <FileText size={10} className="text-brand-red" /> Settlement Verification
                                 </h3>
-                                <div className="p-2 rounded-lg bg-bg-secondary border-2 border-green-border/20 space-y-1.5 shadow-inner relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-1 opacity-5">
-                                        <Coins size={30} />
-                                    </div>
-                                    <div className="space-y-1 relative z-10">
-                                        <div className="flex justify-between text-[8px] uppercase font-bold text-text-muted">
-                                            <span>Assignment Net Pay</span>
-                                            <span className="font-mono text-text-primary font-bold">
-                                                ${(localLog.items.reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0)).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-[8px] uppercase font-bold text-text-muted">
-                                            <span>Total Reimbursements</span>
-                                            <span className="font-mono text-text-primary font-bold">
-                                                +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <Separator className="bg-border-sub/30" />
-                                        <div className="flex justify-between items-center pt-0.5">
-                                            <div className="space-y-0">
-                                                <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
-                                            </div>
-                                            <p className="text-xl font-mono font-bold text-text-green">
-                                                ${calculatedTotalPayout.toFixed(2)}
-                                            </p>
-                                        </div>
+                                <div className="p-2 rounded-lg bg-bg-secondary border border-green-border/20 space-y-1 shadow-inner">
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
+                                        <p className="text-lg font-mono font-bold text-text-green leading-none">
+                                            ${calculatedTotalPayout.toFixed(2)}
+                                        </p>
                                     </div>
                                 </div>
                             </section>

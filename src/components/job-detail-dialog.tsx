@@ -90,7 +90,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh] shadow-2xl">
-        <DialogHeader className="p-6 pb-2">
+        <DialogHeader className="p-6 pb-2 text-left">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5">
@@ -136,12 +136,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                       <AlertTriangle className="text-brand-red h-5 w-5 shrink-0" />
                       <div className="flex-1">
                           <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Pay Change Pending Approval</p>
-                          <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">
+                          <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5 text-left">
                               A financial modification has been requested and is currently under audit by the Command Center.
                           </p>
                       </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 bg-bg-primary/50 p-3 rounded border border-border-sub">
+                  <div className="grid grid-cols-2 gap-4 bg-bg-primary/50 p-3 rounded border border-border-sub text-left">
                       <div>
                           <p className="text-[8px] font-black uppercase text-text-muted">Proposed Rate</p>
                           <p className="text-sm font-mono font-bold text-text-primary">{formatCurrency(mission.payChangeRequest.pay)}</p>
@@ -172,7 +172,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                         <AvatarImage src={tech.avatarUrl} />
                         <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="text-left">
                         <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</p>
                         <p className="text-[10px] text-text-muted uppercase tracking-widest">{tech.role}</p>
                     </div>
@@ -192,7 +192,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </div>
 
           {/* SECTION: TACTICAL LEDGER */}
-          <div className="space-y-4">
+          <div className="space-y-4 text-left">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <History size={14} className="text-accent-gold shrink-0"/> 
                 <span>{TERMINOLOGY.ENTITIES.LEDGER}</span>
@@ -223,7 +223,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </div>
 
           {/* SECTION: FINANCIAL AUDIT */}
-          <div className="space-y-4">
+          <div className="space-y-4 text-left">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <Coins size={14} className="text-text-green shrink-0"/> 
                 <span>{TERMINOLOGY.ACTIONS.SETTLE} Audit</span>
@@ -262,19 +262,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           </div>
 
           {/* SECTION: FIELD BRIEFING */}
-          <div className="space-y-4">
+          <div className="space-y-4 text-left">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <StickyNote size={14} className="text-accent-gold shrink-0"/> 
                 <span>Internal Briefing Notes</span>
              </h3>
              <div className="space-y-2">
                 {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (
-                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed">
+                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
                         &quot;{note}&quot;
                     </div>
                 )) : (
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub">
-                        <p className="text-xs text-text-muted italic">No internal intelligence notes appended to this registry.</p>
+                        <p className="text-xs text-text-muted italic uppercase font-bold tracking-widest text-center">No intelligence notes recorded.</p>
                     </div>
                 )}
              </div>
@@ -285,7 +285,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
             <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 text-[10px] uppercase font-bold tracking-widest">Close Intelligence Feed</Button>
             {isCompleted ? (
               <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">
-                <FileCheck size={16} className="mr-2"/> mission Archived
+                <FileCheck size={16} className="mr-2"/> assignment Archived
               </Button>
             ) : (
               <Button 

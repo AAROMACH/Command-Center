@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,7 +15,8 @@ import {
   ClipboardCheck,
   FileCheck,
   ArrowUpDown,
-  Search
+  Search,
+  ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -28,6 +28,11 @@ import {
 } from "@/components/ui/select";
 
 type SortOption = 'date' | 'priority' | 'pay';
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
 
 export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -167,7 +172,14 @@ export default function TechAssignmentsPage() {
                                     <tr key={wo.id}>
                                         <td>
                                             <div className="flex flex-col items-center justify-center">
-                                              <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                              <div className="flex items-center gap-1.5">
+                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                {wo.source === 'Imported' && (
+                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                    <ExternalLink size={10} />
+                                                  </a>
+                                                )}
+                                              </div>
                                               <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5">{wo.status}</Badge>
                                             </div>
                                         </td>
@@ -240,7 +252,14 @@ export default function TechAssignmentsPage() {
                                     <tr key={wo.id}>
                                         <td>
                                             <div className="flex flex-col items-center justify-center">
-                                              <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                              <div className="flex items-center gap-1.5">
+                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                {wo.source === 'Imported' && (
+                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                    <ExternalLink size={10} />
+                                                  </a>
+                                                )}
+                                              </div>
                                               <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
                                             </div>
                                         </td>

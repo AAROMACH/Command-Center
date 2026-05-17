@@ -41,6 +41,11 @@ type PayrollReviewDialogProps = {
     onStatusChange: (logId: string, status: WeeklyLog['status']) => void;
 };
 
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
+
 export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [localWorkOrders, setLocalWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -88,7 +93,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden max-h-[90vh]">
-                <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30">
+                <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
                             <Avatar className="h-10 w-10 border border-border-sub">
@@ -129,7 +134,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 <div className="flex-1 overflow-hidden p-6 space-y-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 h-full max-h-[500px]">
                         {/* LEFT: VERIFIED JOBS */}
-                        <section className="space-y-4 flex flex-col overflow-hidden">
+                        <section className="space-y-4 flex flex-col overflow-hidden text-left">
                             <div className="flex items-center justify-between px-1">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                                     <CheckCircle2 size={14} className="text-text-green" />
@@ -152,7 +157,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                                                        <span className="text-brand-red font-mono">{wo?.id.toUpperCase()}</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className="text-brand-red font-mono">{wo?.id.toUpperCase()}</span>
+                                                          {isImported && wo && (
+                                                            <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" title="View Source" className="text-text-muted hover:text-brand-red transition-colors">
+                                                              <ExternalLink size={10} />
+                                                            </a>
+                                                          )}
+                                                        </div>
                                                         <span>•</span>
                                                         <span>{wo?.location.split(',')[0]}</span>
                                                     </div>
@@ -186,7 +198,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </section>
 
                         {/* RIGHT: DISCREPANCIES (CARDS) */}
-                        <section className="space-y-4 flex flex-col overflow-hidden">
+                        <section className="space-y-4 flex flex-col overflow-hidden text-left">
                             <div className="flex items-center gap-2 text-text-red px-1">
                                 <ShieldAlert size={14} />
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Discrepancy Registry</h3>
@@ -195,13 +207,21 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <div className="space-y-3 pb-4">
                                     {disputedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
+                                        const isImported = wo?.source === 'Imported';
                                         return (
                                             <Card key={item.id} className="bg-bg-secondary border-brand-red/30 shadow-sm">
                                                 <CardContent className="p-4 space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div className="space-y-0.5">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                  <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
+                                                                  {isImported && wo && (
+                                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                                      <ExternalLink size={10} />
+                                                                    </a>
+                                                                  )}
+                                                                </div>
                                                                 <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
                                                             </div>
                                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo?.description}</p>
@@ -245,11 +265,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="p-3 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10">
+                                                <div className="p-3 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
                                                     <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic">&quot;{report.summary}&quot;</p>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <Label className="text-[8px] font-black uppercase text-text-muted ml-1">Manual Pay Authorization</Label>
+                                                <div className="space-y-3 text-left">
+                                                    <Label className="text-[8px] font-black uppercase text-text-muted ml-1 flex">Manual Pay Authorization</Label>
                                                     <div className="flex gap-2">
                                                         <div className="relative flex-1">
                                                             <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
@@ -281,7 +301,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     {/* BOTTOM SECTION: FINANCIALS */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                         {/* LEFT: REIMBURSEMENTS */}
-                        <section className="space-y-4">
+                        <section className="space-y-4 text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
                                 <Coins size={14} className="text-accent-gold" />
                                 Expense Manifest
@@ -305,7 +325,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </section>
 
                         {/* RIGHT: SETTLEMENT SUMMARY */}
-                        <section className="space-y-4">
+                        <section className="space-y-4 text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
                                 <FileText size={14} className="text-brand-red" />
                                 Settlement Verification

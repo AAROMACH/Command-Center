@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -53,6 +52,11 @@ type RoutesViewProps = {
     technicians: Technician[];
 };
 
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
+
 // --- DRAGGABLE JOB ITEM ---
 function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: string, onRemove: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -68,11 +72,6 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
     zIndex: 100,
   } : undefined;
 
-  const getFieldNationLink = (id: string) => {
-    const cleanId = id.replace(/^wo-/, '');
-    return `https://app.fieldnation.com/workorders/${cleanId}`;
-  };
-
   return (
     <div
       ref={setNodeRef}
@@ -86,7 +85,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary p-1 -ml-1">
           <GripVertical size={14} />
         </div>
-        <div className="space-y-0 overflow-hidden">
+        <div className="space-y-0 overflow-hidden text-left">
           <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.description}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
@@ -151,11 +150,11 @@ function DroppableRoute({
                 <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">ROUTE ID: {route.id.split('-')[1]}</Badge>
                 <button onClick={() => onDelete(route.id)} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
             </div>
-            <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none">{route.name}</CardTitle>
+            <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none text-left">{route.name}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 flex-1 space-y-3">
             <div className="space-y-1">
-                <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted ml-1">Assigned Technician</label>
+                <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted ml-1 flex">Assigned Technician</label>
                 <Select value={route.technicianName || ""} onValueChange={(val) => onTechChange(route.id, val)}>
                     <SelectTrigger className="h-8 bg-bg-primary border-border-sub text-[10px] font-bold uppercase tracking-wider focus:ring-brand-red">
                         <div className="flex items-center gap-2">
@@ -198,7 +197,7 @@ function DroppableRoute({
         </CardContent>
         <CardFooter className="bg-bg-tertiary/30 border-t border-border-sub p-3">
             <div className="flex justify-between items-center w-full">
-                <div className="space-y-0">
+                <div className="space-y-0 text-left">
                     <p className="text-[7px] font-black uppercase text-text-muted tracking-widest">Est. Settlement Total</p>
                     <p className="text-lg font-mono font-bold text-text-green leading-none">${totalPay.toFixed(2)}</p>
                 </div>
@@ -437,10 +436,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
                     <DialogHeader>
                         <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Establish New Route</DialogTitle>
-                        <DialogDescription>Define a named operational grouping for field assignments.</DialogDescription>
+                        <DialogDescription className="text-xs">Define a named operational grouping for field assignments.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block">Route Identifier / Name</Label>
+                        <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block text-left">Route Identifier / Name</Label>
                         <Input 
                             placeholder="e.g. Detroit North AM" 
                             value={newRouteName}
@@ -463,7 +462,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                             <Wrench className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Allocation Terminal</DialogTitle>
                         </div>
-                        <DialogDescription>Select jobs from the unassigned pool to allocate to <span className="text-text-primary font-bold">{routes.find(r => r.id === activeRouteId)?.name}</span>.</DialogDescription>
+                        <DialogDescription className="text-xs text-left">Select jobs from the unassigned pool to allocate to <span className="text-text-primary font-bold">{routes.find(r => r.id === activeRouteId)?.name}</span>.</DialogDescription>
                     </DialogHeader>
                     <div className="px-6 py-2">
                         <div className="relative">
@@ -480,7 +479,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         <div className="space-y-2">
                             {filteredUnassigned.map(job => (
                                 <div key={job.id} className="p-4 rounded-lg bg-bg-primary border border-border-sub hover:bg-bg-tertiary transition-colors flex items-center justify-between group">
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 text-left">
                                         <div className="p-2 bg-bg-tertiary rounded text-text-muted border border-border-sub">
                                             <Wrench size={16} />
                                         </div>

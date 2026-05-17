@@ -21,7 +21,8 @@ import {
   ChevronRight,
   DollarSign,
   Pencil,
-  Eye
+  Eye,
+  ExternalLink
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -60,6 +61,11 @@ import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
 
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -209,7 +215,7 @@ export default function AssignmentsHubPage() {
   return (
     <div className="space-y-6">
       <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
+        <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2">
             <CalendarIcon size={12} />
             Assignment Registry Audit
@@ -420,7 +426,14 @@ export default function AssignmentsHubPage() {
                                         <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
                                             <td className="text-left pl-6 py-4">
                                                 <div className="flex flex-col items-start gap-1.5">
-                                                    <div className="cell-id font-mono text-brand-red font-bold">{wo.id.toUpperCase()}</div>
+                                                    <div className="flex items-center gap-1.5">
+                                                      <div className="cell-id font-mono text-brand-red font-bold">{wo.id.toUpperCase()}</div>
+                                                      {wo.source === 'Imported' && (
+                                                        <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                          <ExternalLink size={10} />
+                                                        </a>
+                                                      )}
+                                                    </div>
                                                     <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                                 </div>
                                             </td>
@@ -444,7 +457,7 @@ export default function AssignmentsHubPage() {
                                             </td>
                                             <td className="py-4 pl-0">
                                                 <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                                    <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal">{wo.location}</span>
+                                                    <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal text-left">{wo.location}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 pl-0">
@@ -467,7 +480,7 @@ export default function AssignmentsHubPage() {
                 {activeWorkOrders.length === 0 && (
                     <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                         <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No active jobs found matching search criteria</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic text-center">No active jobs found matching search criteria</p>
                     </div>
                 )}
             </TabsContent>
@@ -492,10 +505,17 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-center">
-                                                    <div className="cell-id font-mono text-brand-red">{wo.id.toUpperCase()}</div>
+                                                    <div className="flex items-center gap-1.5">
+                                                      <div className="cell-id font-mono text-brand-red">{wo.id.toUpperCase()}</div>
+                                                      {wo.source === 'Imported' && (
+                                                        <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                          <ExternalLink size={10} />
+                                                        </a>
+                                                      )}
+                                                    </div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.description}</p>
                                             </div>
                                         </td>
                                         <td className="py-4">
@@ -532,23 +552,23 @@ export default function AssignmentsHubPage() {
         
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-              <DialogHeader className="p-6 pb-2">
+              <DialogHeader className="p-6 pb-2 text-left">
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
                 <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
               </DialogHeader>
               {editedOrder && (
                   <div className="px-6 py-4 space-y-6">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Job Title / Description</Label>
                         <Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Client / Entity</Label>
                             <Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Site Location</Label>
                             <Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
                           </div>
                       </div>
@@ -612,11 +632,21 @@ function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo
     };
 
     return (
-        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group" onClick={() => onCardClick(job)}>
+        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group text-left" onClick={() => onCardClick(job)}>
             <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center"><span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span><Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">{job.status}</Badge></div>
+                        <div className="flex flex-col items-center">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
+                              {job.source === 'Imported' && (
+                                <a href={getFieldNationLink(job.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                  <ExternalLink size={10} />
+                                </a>
+                              )}
+                            </div>
+                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">{job.status}</Badge>
+                        </div>
                         <div className="flex flex-col min-w-0 text-left"><p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{job.description}</p><p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p></div>
                     </div>
                 </div>

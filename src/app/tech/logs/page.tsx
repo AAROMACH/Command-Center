@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -27,7 +26,8 @@ import {
     ArrowUpDown,
     SlidersHorizontal,
     Hash,
-    Building2
+    Building2,
+    ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +59,11 @@ const DISPUTE_REASONS = [
     "Wrong date on my log",
     "This appears to be a duplicate"
 ];
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
 
 type SortOption = 'newest' | 'oldest' | 'status' | 'payout' | 'items';
 
@@ -252,7 +257,7 @@ export default function TechWeeklyLogPage() {
                                         )}>
                                             <Calendar size={20} />
                                         </div>
-                                        <div>
+                                        <div className="text-left">
                                             <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
                                             <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                                 <span>{log.items.length} Assignments</span>
@@ -311,7 +316,7 @@ export default function TechWeeklyLogPage() {
                     )}>
                         <ShieldAlert size={24} />
                     </div>
-                    <div>
+                    <div className="text-left">
                         <div className="flex items-center gap-3">
                             <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary">Operational Audit</h2>
                             <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[9px] tracking-widest">
@@ -379,7 +384,7 @@ export default function TechWeeklyLogPage() {
             </div>
 
             {!isLocked && (
-                <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border-sub flex items-start gap-3 max-w-4xl mx-auto">
+                <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border-sub flex items-start gap-3 max-w-4xl mx-auto text-left">
                     <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1">
                         <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Audit Directive</p>
@@ -428,7 +433,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default flex flex-col p-0">
-                <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <AlertTriangle className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Report Missing Assignment</DialogTitle>
@@ -436,7 +441,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                     <DialogDescription className="text-xs">Provide intelligence for the assignment missing from your registry.</DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSave} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                <form onSubmit={handleSave} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 text-left">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Hash size={12}/> ID Number</Label>
@@ -507,7 +512,7 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
         )}>
             <CardContent className="p-0">
                 <div className="p-5 flex items-center justify-between gap-6">
-                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <div className="flex items-center gap-6 flex-1 min-w-0 text-left">
                         <div className={cn(
                             "h-12 w-12 rounded-xl border flex items-center justify-center shrink-0",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
@@ -523,7 +528,14 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
                                 <span className="flex items-center gap-1.5"><Calendar size={10}/> {job.scheduleDate}</span>
-                                <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
+                                  {job.source === 'Imported' && (
+                                    <a href={getFieldNationLink(job.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                      <ExternalLink size={10} />
+                                    </a>
+                                  )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -565,7 +577,7 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
                 {/* DISPUTE TERMINAL (INLINE) */}
                 {(isDisputing || (isLocked && isDisputed)) && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300">
-                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4">
+                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
                             <div className="space-y-3">
                                 <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Audit Parameters</p>
                                 <RadioGroup 

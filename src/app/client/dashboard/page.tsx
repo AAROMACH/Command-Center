@@ -78,7 +78,7 @@ export default function ClientDashboardPage() {
     if (!mounted || !currentUserId) return null;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -92,6 +92,31 @@ export default function ClientDashboardPage() {
                     <NotificationBell />
                 </div>
             </header>
+
+            {/* TOP COMMAND BAR: SUPPORT ACCESS */}
+            <div className="bg-bg-secondary border border-border-main p-2 px-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <Activity size={14} className="text-brand-red" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Support Access</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-brand-red">SC</div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-none">Sarah Connor</p>
+                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">Assigned Account Lead</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none text-[9px] uppercase font-bold tracking-widest px-4 border-border-sub">
+                        <Mail size={12} className="mr-1.5" /> Email
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none text-[9px] uppercase font-bold tracking-widest px-4 border-border-sub">
+                        <MessageSquare size={12} className="mr-1.5" /> SMS
+                    </Button>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-bg-secondary border-border-main">
@@ -205,28 +230,6 @@ export default function ClientDashboardPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="border-brand-red/20 bg-brand-red/5">
-                        <CardHeader className="p-4 pb-2">
-                            <CardTitle className="text-brand-red flex items-center gap-2 text-[10px] uppercase tracking-widest">
-                                <Activity size={12}/> Support Access
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-3">
-                            <div className="p-2.5 rounded bg-bg-primary border border-border-sub">
-                                <p className="text-[8px] uppercase font-black text-text-muted tracking-widest mb-1">Assigned lead</p>
-                                <p className="text-[11px] font-bold text-text-primary uppercase">Sarah Connor</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold tracking-tighter">
-                                    <Mail size={12} className="mr-1.5" /> Email
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold tracking-tighter">
-                                    <MessageSquare size={12} className="mr-1.5" /> SMS
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0">
                             <CardTitle>Recent Service Requests</CardTitle>
@@ -259,3 +262,4 @@ export default function ClientDashboardPage() {
         </div>
     );
 }
+

@@ -24,6 +24,11 @@ export const TERMINOLOGY = {
     DISPATCH: "Tech Assignment",
     SETTLE: "Payment Settlement",
   },
+  CONFIG: {
+    NOTIFICATIONS: "Alert Protocol",
+    SECURITY: "Access Registry",
+    INTEGRATIONS: "System Handshakes",
+  },
 } as const;
 
 export const PRIORITY_LABELS = {

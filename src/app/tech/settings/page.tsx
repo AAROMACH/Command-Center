@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TERMINOLOGY } from '@/lib/constants';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -132,10 +132,10 @@ export default function TechSettingsPage() {
             <Tabs defaultValue="notifications" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
                     <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
-                        <Bell size={14}/> Notifications
+                        <Bell size={14}/> {TERMINOLOGY.CONFIG.NOTIFICATIONS}
                     </TabsTrigger>
                     <TabsTrigger value="security" className="flex items-center gap-2 py-3">
-                        <Shield size={14}/> Security
+                        <Shield size={14}/> {TERMINOLOGY.CONFIG.SECURITY}
                     </TabsTrigger>
                     <TabsTrigger value="experience" className="flex items-center gap-2 py-3">
                         <Monitor size={14}/> Experience

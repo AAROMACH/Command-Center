@@ -1,3 +1,4 @@
+"use client";
 
 'use client';
 
@@ -24,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
+import { TERMINOLOGY } from '@/lib/constants';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -76,10 +78,10 @@ export default function ClientSettingsPage() {
             <Tabs defaultValue="notifications" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-8">
                     <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
-                        <Bell size={14}/> Notifications
+                        <Bell size={14}/> {TERMINOLOGY.CONFIG.NOTIFICATIONS}
                     </TabsTrigger>
                     <TabsTrigger value="security" className="flex items-center gap-2 py-3">
-                        <Shield size={14}/> Security
+                        <Shield size={14}/> {TERMINOLOGY.CONFIG.SECURITY}
                     </TabsTrigger>
                     <TabsTrigger value="organization" className="flex items-center gap-2 py-3">
                         <Building2 size={14}/> Organization

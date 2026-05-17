@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { TERMINOLOGY } from '@/lib/constants';
 
 type IntegrationStatus = 'Connected' | 'Not Connected' | 'Placeholder' | 'Error';
 
@@ -138,11 +139,11 @@ export default function SettingsPage() {
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="tabs !p-0 !bg-bg-tertiary">
                     <TabsTrigger value="general" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">General</TabsTrigger>
-                    <TabsTrigger value="security" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">Security</TabsTrigger>
-                    <TabsTrigger value="notifications" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">Notifications</TabsTrigger>
+                    <TabsTrigger value="security" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">{TERMINOLOGY.CONFIG.SECURITY}</TabsTrigger>
+                    <TabsTrigger value="notifications" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</TabsTrigger>
                     <TabsTrigger value="api" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2">
                         <Activity size={14}/>
-                        API & Integrations
+                        {TERMINOLOGY.CONFIG.INTEGRATIONS}
                     </TabsTrigger>
                 </TabsList>
                 

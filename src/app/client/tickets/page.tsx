@@ -83,12 +83,16 @@ export default function ClientTicketsPage() {
         });
     }, [currentUser, searchQuery, sortBy]);
 
-    const openRequests = useMemo(() => 
+    const requestedRequests = useMemo(() => 
         myRequests.filter(r => r.status === 'new'),
     [myRequests]);
 
     const activeRequests = useMemo(() => 
-        myRequests.filter(r => r.status === 'reviewed' || r.status === 'approved'),
+        myRequests.filter(r => r.status === 'approved'),
+    [myRequests]);
+
+    const pendingRequests = useMemo(() => 
+        myRequests.filter(r => r.status === 'reviewed'),
     [myRequests]);
 
     const resolvedRequests = useMemo(() => 
@@ -198,15 +202,19 @@ export default function ClientTicketsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="open" className="w-full">
+            <Tabs defaultValue="requested" className="w-full">
                 <TabsList className="tabs !bg-bg-tertiary p-0 h-10 mb-8 w-full md:w-auto">
-                    <TabsTrigger value="open" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                    <TabsTrigger value="requested" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <ClipboardList size={14} className="mr-2" />
-                        Open <span className="ml-1 opacity-60">({openRequests.length})</span>
+                        Requested <span className="ml-1 opacity-60">({requestedRequests.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="active" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <Activity size={14} className="mr-2" />
                         Active <span className="ml-1 opacity-60">({activeRequests.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        <History size={14} className="mr-2" />
+                        Pending <span className="ml-1 opacity-60">({pendingRequests.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="resolved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <CheckCircle2 size={14} className="mr-2" />
@@ -214,12 +222,16 @@ export default function ClientTicketsPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="open" className="space-y-4 mt-0">
-                    <TicketList requests={openRequests} formatDateStr={formatDateStr} />
+                <TabsContent value="requested" className="space-y-4 mt-0">
+                    <TicketList requests={requestedRequests} formatDateStr={formatDateStr} />
                 </TabsContent>
 
                 <TabsContent value="active" className="space-y-4 mt-0">
                     <TicketList requests={activeRequests} formatDateStr={formatDateStr} />
+                </TabsContent>
+
+                <TabsContent value="pending" className="space-y-4 mt-0">
+                    <TicketList requests={pendingRequests} formatDateStr={formatDateStr} />
                 </TabsContent>
                 
                 <TabsContent value="resolved" className="space-y-4 mt-0">

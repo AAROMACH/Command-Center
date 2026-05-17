@@ -287,7 +287,7 @@ export const workOrders: WorkOrder[] = [
     finalPay: 500.50,
     source: 'Manual',
     reimbursements: [
-        { id: 're-1', technicianId: 'tech-002', date: '07-25-2024', type: 'reimbursement', amount: 25.50, description: 'Emergency parts courier' }
+        { id: 'fr-1', technicianId: 'tech-002', date: '07-25-2024', type: 'reimbursement', amount: 25.50, description: 'Emergency parts courier' }
     ],
     history: [
         { type: 'status_change', date: '07-25-2024', details: 'Mission finalized. Site verified clean.', user: 'Maria Garcia' }
@@ -662,11 +662,16 @@ export const timesheetLogs: TimesheetLog[] = [
 ];
 
 export const serviceRequests: ServiceRequest[] = [
-    { id: 'req-001', clientName: 'Global Corp', location: 'Detroit, MI', requestType: 'Installation', description: 'Office-wide network cabling installation.', status: 'new', submittedDate: '07-22-2024', priority: 'high' },
-    { id: 'req-002', clientName: 'Jane Doe', location: 'Detroit, MI', requestType: 'Repair', description: 'Security camera system is offline.', status: 'new', submittedDate: '07-21-2024', priority: 'critical' },
-    { id: 'req-003', clientName: 'Quantum Industries', location: 'Dearborn, MI', requestType: 'Maintenance', description: 'Annual fire alarm system inspection.', status: 'approved', submittedDate: '07-20-2024', priority: 'medium' },
-    { id: 'req-004', clientName: 'Burger Palace', location: 'Southfield, MI', requestType: 'Maintenance', description: 'Quote for new POS system installation.', status: 'reviewed', submittedDate: '07-22-2024', priority: 'medium' },
-    { id: 'req-005', clientName: 'Local Library', location: 'Detroit, MI', requestType: 'Repair', description: 'Public Wi-Fi access points are malfunctioning.', status: 'closed', submittedDate: '07-19-2024', priority: 'low' },
+    { id: 'req-001', clientName: 'Global Corp', location: '42 Woodward Ave, Detroit, MI 48201', requestType: 'Installation', description: 'Office-wide network cabling installation for new engineering wing.', status: 'new', submittedDate: '07-22-2024', priority: 'high' },
+    { id: 'req-002', clientName: 'Global Corp', location: 'Detroit Data Center', requestType: 'Repair', description: 'MDF Cooling failure reported in Rack 4A. Environmental sensors offline.', status: 'new', submittedDate: '07-28-2024', priority: 'critical' },
+    { id: 'req-003', clientName: 'Global Corp', location: 'Metropolis Hub', requestType: 'Maintenance', description: 'Quarterly IDF cabling audit and labeling synchronization.', status: 'approved', submittedDate: '07-20-2024', priority: 'medium' },
+    { id: 'req-004', clientName: 'Test Organization', location: '100 Renaissance Center', requestType: 'Installation', description: 'Deployment of 12 additional WAPs for the 4th floor executive suite.', status: 'new', submittedDate: '07-29-2024', priority: 'high' },
+    { id: 'req-005', clientName: 'Test Organization', location: '100 Renaissance Center', requestType: 'Repair', description: 'Fiber patch lead damaged in server room. Secondary uplink unstable.', status: 'reviewed', submittedDate: '07-27-2024', priority: 'critical' },
+    { id: 'req-006', clientName: 'Global Corp', location: 'Southfield, MI', requestType: 'Survey', description: 'Site survey for proposed VoIP migration. Port audit required.', status: 'reviewed', submittedDate: '07-26-2024', priority: 'medium' },
+    { id: 'req-007', clientName: 'Test Organization', location: '100 Renaissance Center', requestType: 'Maintenance', description: 'UPS battery health check and load testing for MDF power system.', status: 'approved', submittedDate: '07-25-2024', priority: 'medium' },
+    { id: 'req-008', clientName: 'Global Corp', location: 'Metropolis Hub', requestType: 'Repair', description: 'CCTV Camera 12 (Loading Dock) intermittent feed issues.', status: 'closed', submittedDate: '07-15-2024', priority: 'medium' },
+    { id: 'req-009', clientName: 'Test Organization', location: '100 Renaissance Center', requestType: 'Installation', description: 'Conference Room 402 - AV Rack Fit-out and cable management.', status: 'closed', submittedDate: '07-10-2024', priority: 'low' },
+    { id: 'req-010', clientName: 'Global Corp', location: 'Detroit Data Center', requestType: 'Decommission', description: 'Decommissioning of legacy IBM Mainframe networking gear.', status: 'new', submittedDate: '07-29-2024', priority: 'low' },
 ];
 
 export const profitabilityData = [

@@ -36,7 +36,9 @@ import {
     ClipboardCheck,
     Eye,
     ShieldCheck,
-    ExternalLink
+    ExternalLink,
+    Activity,
+    Lock
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -54,6 +56,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
+import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -383,24 +386,31 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
                         <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                            <div className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                 <div className="text-left pl-0">TECHNICIAN</div>
                                 <div className="text-left">ROLE</div>
                                 <div className="text-left">CONTACT</div>
-                                <div className="text-center">RELIABILITY</div>
+                                <div className="text-center">OPERATIONAL TRUST</div>
                                 <div className="text-center">STATUS</div>
                             </div>
                             <ScrollArea className="h-full">
                                 {paginatedTechnicians.map(tech => {
-                                    const reliabilityColor = tech.reliabilityScore > 90 ? 'text-text-green' : tech.reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
+                                    const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore);
+                                    const tierColor = getTierColor(tier);
+                                    const badgeVariant = getTierBadgeVariant(tier);
+                                    const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
+
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
+                                    <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
                                         <div className="flex items-center justify-start gap-3 pl-0">
                                             <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                 <AvatarImage src={tech.avatarUrl} />
                                                 <AvatarFallback className="text-[10px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{tech.name}</span>
+                                            <div className="flex flex-col items-start min-w-0">
+                                                <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name}</span>
+                                                <span className="text-[9px] font-mono text-brand-red uppercase">{tech.id}</span>
+                                            </div>
                                         </div>
                                         <div className="text-left">
                                             <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
@@ -413,11 +423,23 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                 <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-center justify-center">
-                                            <span className={`font-mono font-bold text-sm ${reliabilityColor}`}>{tech.reliabilityScore}%</span>
+                                        <div className="flex flex-col items-center justify-center gap-1">
+                                            <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase tracking-[0.1em] px-2 font-black">
+                                                {tier}
+                                            </Badge>
+                                            <div className="flex items-center gap-1.5">
+                                                <Activity size={10} className={tierColor} />
+                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore} INDEX</span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center justify-center">
-                                            <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
+                                            {isRestricted ? (
+                                                <Badge variant="missed" className="text-[8px] h-4 uppercase tracking-widest gap-1">
+                                                    <Lock size={10}/> FLAG
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
+                                            )}
                                         </div>
                                     </div>
                                 )})}

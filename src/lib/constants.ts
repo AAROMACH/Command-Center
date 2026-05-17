@@ -71,6 +71,38 @@ export const STATUS_LABELS = {
   converted: "Converted to Work Order",
 } as const;
 
+export const RELIABILITY_TIERS = {
+  ELITE: { label: 'Elite', min: 95, max: 100, variant: 'active' },
+  RELIABLE: { label: 'Reliable', min: 85, max: 94, variant: 'active' },
+  MONITORED: { label: 'Monitored', min: 70, max: 84, variant: 'onhold' },
+  RESTRICTED: { label: 'Restricted', min: 50, max: 69, variant: 'high' },
+  SUSPENDED: { label: 'Suspended Review', min: 0, max: 49, variant: 'missed' },
+} as const;
+
+export const RELIABILITY_EVENT_TYPES = {
+  CRITICAL: {
+    NO_SHOW: { type: 'no_show', label: 'No Show', scoreChange: -25, category: 'critical_failure' },
+    SITE_ABANDONMENT: { type: 'site_abandonment', label: 'Site Abandonment', scoreChange: -35, category: 'critical_failure' },
+    FALSIFIED_LOG: { type: 'falsified_log', label: 'Falsified Log', scoreChange: -50, category: 'critical_failure' },
+    UNAUTHORIZED_CANCELLATION: { type: 'unauthorized_cancellation', label: 'Unauthorized Cancellation', scoreChange: -20, category: 'critical_failure' },
+    SAFETY_VIOLATION: { type: 'safety_violation', label: 'Safety Violation', scoreChange: -30, category: 'critical_failure' },
+  },
+  OPERATIONAL: {
+    MISSED_ACKNOWLEDGMENT: { type: 'missed_acknowledgment', label: 'Missed Acknowledgment', scoreChange: -2, category: 'operational_friction' },
+    LATE_WEEKLY_LOG: { type: 'late_weekly_log', label: 'Late Weekly Log', scoreChange: -5, category: 'operational_friction' },
+    MISSING_PHOTOS: { type: 'missing_required_photos', label: 'Missing Required Photos', scoreChange: -3, category: 'operational_friction' },
+    DELAYED_STATUS: { type: 'delayed_status_update', label: 'Delayed Status Update', scoreChange: -3, category: 'operational_friction' },
+    POOR_COMMUNICATION: { type: 'poor_communication', label: 'Poor Communication', scoreChange: -4, category: 'operational_friction' },
+  },
+  RECOVERY: {
+    COMPLETED_NO_ISSUE: { type: 'completed_assignment_no_issue', label: 'Completed No Issue', scoreChange: 1, category: 'positive_recovery' },
+    TEN_STREAK: { type: 'ten_assignment_streak_no_issue', label: '10 Job Streak', scoreChange: 3, category: 'positive_recovery' },
+    DIFFICULT_COMPLETED: { type: 'difficult_assignment_completed', label: 'Difficult Job Completed', scoreChange: 3, category: 'positive_recovery' },
+    POSITIVE_FEEDBACK: { type: 'positive_client_feedback', label: 'Positive Feedback', scoreChange: 2, category: 'positive_recovery' },
+    ACK_STREAK: { type: 'consistent_acknowledgment_streak', label: 'Ack Streak', scoreChange: 2, category: 'positive_recovery' },
+  }
+} as const;
+
 export const PAY_TYPE_LABELS = {
   fixed: "Fixed Rate",
   hourly: "Hourly",

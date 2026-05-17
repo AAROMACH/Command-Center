@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import type { Technician, TimeOffRequest } from '@/lib/types';
+import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { technicians, penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote, History, CheckCircle2, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { subDays, isAfter } from 'date-fns';
+import { subDays, isAfter, format, parseISO } from 'date-fns';
+import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
+import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function TechProfilePage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -39,17 +42,19 @@ export default function TechProfilePage() {
         }
     }, []);
 
-    const techPenaltyEvents = useMemo(() => {
+    const reliabilityEvents = useMemo(() => {
         if (!currentTechId) return [];
-        return penaltyEvents.filter(p => p.technicianId === currentTechId);
+        return penaltyEvents.filter(p => p.technicianId === currentTechId)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [currentTechId]);
 
-    const penaltyPoints30d = useMemo(() => {
-        const thirtyDaysAgo = subDays(new Date(), 30);
-        return techPenaltyEvents
-            .filter(e => isAfter(new Date(e.date), thirtyDaysAgo))
-            .reduce((acc, curr) => acc + Math.abs(curr.points), 0);
-    }, [techPenaltyEvents]);
+    const reliabilityTier = useMemo(() => {
+        if (!tech) return 'Elite';
+        return tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore);
+    }, [tech]);
+
+    const tierColor = getTierColor(reliabilityTier);
+    const badgeVariant = getTierBadgeVariant(reliabilityTier);
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Technician Profile...</div>;
@@ -107,15 +112,10 @@ export default function TechProfilePage() {
         toast({ title: "Request Submitted", description: "Your time off request is pending admin approval." });
     };
 
-    const reliabilityScore = tech.reliabilityScore;
-    const reliabilityColor = reliabilityScore > 90 ? 'text-text-green' : reliabilityScore > 80 ? 'text-accent-gold' : 'text-text-red';
-    const reliabilityStatus = reliabilityScore > 90 ? 'OPERATIONAL' : reliabilityScore > 80 ? 'MONITORED' : 'RESTRICTED';
-    
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const jobTypes = ['Low Voltage Cabling', 'Network Infrastructure', 'Security Systems', 'Electrical Repair', 'Fiber Optics', 'AV Fit-out', 'Smart Home Integration'];
 
     return (
-        <div>
+        <div className="animate-in fade-in duration-500">
              <header className="page-header">
                 <div>
                     <p className="page-eyebrow flex items-center gap-2">
@@ -162,7 +162,7 @@ export default function TechProfilePage() {
 
                 <div className="mt-6">
                     {/* IDENTITY */}
-                    <TabsContent value="identity">
+                    <TabsContent value="identity" className="m-0">
                         <Card className="max-w-4xl">
                             <CardHeader>
                                 <CardTitle>Technician Identity</CardTitle>
@@ -197,7 +197,7 @@ export default function TechProfilePage() {
                     </TabsContent>
 
                     {/* BILLING PREFERENCES */}
-                    <TabsContent value="billing">
+                    <TabsContent value="billing" className="m-0">
                         <Card className="max-w-4xl">
                             <CardHeader>
                                 <CardTitle>Billing Preferences</CardTitle>
@@ -242,7 +242,7 @@ export default function TechProfilePage() {
                     </TabsContent>
                     
                     {/* AVAILABILITY */}
-                    <TabsContent value="availability" className="space-y-6">
+                    <TabsContent value="availability" className="m-0 space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
@@ -306,7 +306,7 @@ export default function TechProfilePage() {
                     </TabsContent>
 
                     {/* WORK PREFERENCES */}
-                    <TabsContent value="preferences">
+                    <TabsContent value="preferences" className="m-0">
                         <Card className="max-w-4xl">
                             <CardHeader>
                                 <CardTitle>Job Constraints</CardTitle>
@@ -333,23 +333,77 @@ export default function TechProfilePage() {
                     </TabsContent>
 
                     {/* RELIABILITY */}
-                    <TabsContent value="reliability" className="space-y-6">
+                    <TabsContent value="reliability" className="m-0 space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card className="border-accent-gold/20 bg-accent-gold/5">
+                            <Card className="bg-bg-secondary border-border-main shadow-sm">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-accent-gold uppercase">
-                                        <Gauge size={14}/> operational Integrity
+                                    <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-text-muted uppercase">
+                                        <Gauge size={14} className="text-brand-red"/> Operational Integrity
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-center py-6">
-                                        <p className={`text-7xl font-bold ${reliabilityColor}`}>{reliabilityScore}%</p>
+                                        <p className={cn("text-7xl font-bold font-mono tracking-tighter", tierColor)}>
+                                            {tech.reliabilityScore}
+                                        </p>
                                         <div className="mt-4 flex flex-col items-center gap-1">
-                                            <Badge variant={reliabilityScore > 90 ? 'active' : 'onhold'} className="h-6 px-4 text-xs">
-                                                {reliabilityStatus}
+                                            <Badge variant={badgeVariant} className="h-6 px-4 text-xs font-black uppercase tracking-widest">
+                                                {reliabilityTier}
                                             </Badge>
                                         </div>
                                     </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <CardTitle className="flex items-center gap-2">
+                                                <History size={16} className="text-accent-gold" />
+                                                Operational History
+                                            </CardTitle>
+                                            <CardDescription>Registry of recent reliability and performance events.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <ScrollArea className="h-[300px]">
+                                        <div className="space-y-3 pr-4">
+                                            {reliabilityEvents.map(event => {
+                                                const isPositive = event.category === 'positive_recovery';
+                                                const isCritical = event.category === 'critical_failure';
+                                                return (
+                                                    <div key={event.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center justify-between">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={cn(
+                                                                "p-2 rounded border",
+                                                                isPositive ? "bg-green-dim border-green-border text-text-green" : 
+                                                                isCritical ? "bg-brand-red-dim border-brand-red text-text-red" : 
+                                                                "bg-bg-tertiary border-border-sub text-text-muted"
+                                                            )}>
+                                                                {isPositive ? <CheckCircle2 size={16}/> : isCritical ? <ShieldAlert size={16}/> : <Activity size={16}/>}
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{event.eventType.replace(/_/g, ' ')}</p>
+                                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
+                                                                    {format(parseISO(event.createdAt), 'MMM d, yyyy')} · {event.reason}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className={cn("font-mono font-bold text-sm", isPositive ? "text-text-green" : "text-text-red")}>
+                                                            {event.scoreChange > 0 ? `+${event.scoreChange}` : event.scoreChange}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {reliabilityEvents.length === 0 && (
+                                                <div className="p-12 text-center border border-dashed border-border-sub rounded-xl opacity-60">
+                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Registry clear: No recent events</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
                                 </CardContent>
                             </Card>
                         </div>
@@ -358,7 +412,7 @@ export default function TechProfilePage() {
             </Tabs>
 
             <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
-                <DialogContent className="bg-bg-elevated border-border-main">
+                <DialogContent className="bg-bg-elevated border-border-main shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request absence</DialogTitle>
                         <DialogDescription>Submit specific dates for vacation or maintenance leave.</DialogDescription>

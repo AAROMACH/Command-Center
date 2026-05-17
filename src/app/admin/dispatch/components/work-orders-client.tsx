@@ -53,13 +53,16 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Activity,
+  Gauge
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { cn } from "@/lib/utils";
 import { isPayAdmin } from "@/lib/permissions";
+import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -372,8 +375,12 @@ export function WorkOrdersClient({
                                         <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="text-left">
-                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{technician.name}</p>
-                                        <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{technician.role}</p>
+                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-none">{technician.name}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant={getTierBadgeVariant(technician.reliabilityTier || getReliabilityTier(technician.reliabilityScore))} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
+                                                {technician.reliabilityTier || getReliabilityTier(technician.reliabilityScore)}
+                                            </Badge>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -519,30 +526,39 @@ export function WorkOrdersClient({
             <Separator className="bg-border-sub" />
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
-                    {filteredTechniciansRegistry.map(tech => (
-                        <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
-                                    <div className="flex items-center gap-3 mt-1">
-                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
-                                            <MapPin size={10} className="text-brand-red" /> {tech.distance?.toFixed(1) || '0.0'} MI FROM SITE
-                                        </p>
-                                        <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                        <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% Reliability</p>
+                    {filteredTechniciansRegistry.map(tech => {
+                        const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore);
+                        return (
+                            <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
+                                            <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-3 mt-1">
+                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight flex items-center gap-1">
+                                                <MapPin size={10} className="text-brand-red" /> {tech.distance?.toFixed(1) || '0.0'} MI FROM SITE
+                                            </p>
+                                            <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                            <div className="flex items-center gap-1.5">
+                                                <Gauge size={10} className="text-text-green" />
+                                                <p className="text-[9px] text-text-green font-bold uppercase">{tech.reliabilityScore}% INDEX</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                                <Button 
+                                    size="sm" 
+                                    onClick={() => handleAssign(tech.id)} 
+                                    className="h-8 text-[10px] px-6 uppercase font-bold"
+                                >
+                                    Select
+                                </Button>
                             </div>
-                            <Button 
-                                size="sm" 
-                                onClick={() => handleAssign(tech.id)} 
-                                className="h-8 text-[10px] px-6 uppercase font-bold"
-                            >
-                                Select
-                            </Button>
-                        </div>
-                    ))}
+                        )
+                    })}
                     {filteredTechniciansRegistry.length === 0 && (
                         <div className="p-12 text-center">
                             <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest italic">No matching operatives in registry</p>

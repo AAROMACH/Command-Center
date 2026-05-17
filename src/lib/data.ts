@@ -1,4 +1,4 @@
-import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, PenaltyEvent, ProjectDailyLog, Expense, Report, Invoice, AdminMessage } from './types';
+import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, ReliabilityEvent, ProjectDailyLog, Expense, Report, Invoice, AdminMessage } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -19,7 +19,8 @@ export const technicians: Technician[] = [
       phone: '555-111-9999'
     },
     currentLocation: 'Detroit, MI',
-    reliabilityScore: 95,
+    reliabilityScore: 92,
+    reliabilityTier: 'Reliable',
     currentWorkload: 3,
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
     avatarUrl: getImageUrl('technician-1'),
@@ -55,6 +56,7 @@ export const technicians: Technician[] = [
     },
     currentLocation: 'Detroit, MI',
     reliabilityScore: 98,
+    reliabilityTier: 'Elite',
     currentWorkload: 2,
     skills: ['Electrical', 'Appliance Repair', 'Refrigeration'],
     avatarUrl: getImageUrl('technician-2'),
@@ -83,6 +85,7 @@ export const technicians: Technician[] = [
     phone: '555-000-0000',
     currentLocation: 'Detroit, MI',
     reliabilityScore: 100,
+    reliabilityTier: 'Elite',
     currentWorkload: 0,
     skills: ['Management', 'Operations'],
     avatarUrl: getImageUrl('user-avatar-1'),
@@ -110,6 +113,7 @@ export const technicians: Technician[] = [
     },
     currentLocation: 'Detroit, MI',
     reliabilityScore: 91,
+    reliabilityTier: 'Reliable',
     currentWorkload: 2,
     skills: ['Strategic Planning', 'Procurement', 'Network Infrastructure'],
     avatarUrl: getImageUrl('technician-6'),
@@ -144,7 +148,8 @@ export const technicians: Technician[] = [
       phone: '555-333-7777',
     },
     currentLocation: 'Birmingham, MI',
-    reliabilityScore: 88,
+    reliabilityScore: 68,
+    reliabilityTier: 'Restricted',
     currentWorkload: 5,
     skills: ['Plumbing', 'Carpentry', 'Welding'],
     avatarUrl: getImageUrl('technician-3'),
@@ -780,9 +785,10 @@ export const siteRequests: SiteRequest[] = [
   { id: 'sr-2', clientId: 'client-001', clientName: 'Global Corp', siteName: 'Metropolis Hub', location: '100 W Fort St, Detroit, MI 48226', managerName: 'Clark Kent', status: 'pending', submittedDate: '07-29-2024' },
 ];
 
-export const penaltyEvents: PenaltyEvent[] = [
-  { id: 'pe-1', technicianId: 'tech-001', date: '06-15-2024', reason: 'Late check-in to critical job', points: -2 },
-  { id: 'pe-2', technicianId: 'tech-001', date: '05-20-2024', reason: 'Missed required photo upload', points: -1 },
+export const penaltyEvents: ReliabilityEvent[] = [
+  { id: 're-1', technicianId: 'tech-001', eventType: 'late_check_in', scoreChange: -8, reason: 'Late check-in to critical job', createdAt: '2024-06-15T12:00:00Z', createdBy: 'Sarah Connor', category: 'operational_friction' },
+  { id: 're-2', technicianId: 'tech-003', eventType: 'no_show', scoreChange: -25, reason: 'Unnotified absence at Monroe site', createdAt: '2024-07-10T09:00:00Z', createdBy: 'Sarah Connor', category: 'critical_failure' },
+  { id: 're-3', technicianId: 'tech-003', eventType: 'poor_communication', scoreChange: -7, reason: 'Failed to respond to dispatch alerts', createdAt: '2024-07-20T14:00:00Z', createdBy: 'Corey Williams', category: 'operational_friction' },
 ];
 
 export const projectDailyLogs: ProjectDailyLog[] = [
@@ -806,7 +812,7 @@ export const expenses: Expense[] = [
     { id: 'exp-002', date: '07-26-2024', submittedBy: 'Maria Garcia', category: 'Travel', description: 'Mileage reimbursement for travel to Queens site', amount: 45.20, status: 'Approved' },
     { id: 'exp-003', date: '07-27-2024', submittedBy: 'David Smith', category: 'Meals', description: 'Team lunch during Ki9 Project', amount: 88.00, status: 'Pending', projectId: 'proj-001' },
     { id: 'exp-004', date: '07-28-2024', submittedBy: 'Alex Johnson', category: 'Other', description: 'Parking at downtown commercial property', amount: 35.00, status: 'Pending' },
-    { id: 'exp-005', date: '07-28-2024', submittedBy: 'Ben Carter', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
+    { id: 'exp-005', date: '07-28-2024', submittedBy: 'David Smith', category: 'Tools', description: 'Replacement drill bit set', amount: 49.99, status: 'Rejected' },
 ];
 
 export const reports: Report[] = [

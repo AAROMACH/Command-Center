@@ -20,6 +20,22 @@ export type AdminMessage = {
   targetPortal: 'admin' | 'tech' | 'client' | 'all';
 };
 
+export type ReliabilityTier = 'Elite' | 'Reliable' | 'Monitored' | 'Restricted' | 'Suspended Review';
+
+export type ReliabilityEventCategory = 'critical_failure' | 'operational_friction' | 'positive_recovery';
+
+export type ReliabilityEvent = {
+  id: string;
+  technicianId: string;
+  eventType: string;
+  scoreChange: number;
+  reason: string;
+  relatedAssignmentId?: string;
+  createdAt: string;
+  createdBy: string;
+  category: ReliabilityEventCategory;
+};
+
 export type WorkOrder = {
   id: string;
   description: string;
@@ -75,6 +91,7 @@ export type Technician = {
   };
   currentLocation: string;
   reliabilityScore: number;
+  reliabilityTier?: ReliabilityTier;
   currentWorkload: number;
   skills: string[];
   avatarUrl: string;
@@ -274,13 +291,7 @@ export type SiteRequest = {
   submittedDate: string;
 };
 
-export type PenaltyEvent = {
-  id: string;
-  technicianId: string;
-  date: string;
-  reason: string;
-  points: number;
-};
+export type PenaltyEvent = ReliabilityEvent; // Alias for backward compatibility
 
 export type ProjectDailyLog = {
   id: string;

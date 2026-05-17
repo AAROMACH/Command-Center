@@ -51,7 +51,10 @@ const getFieldNationLink = (id: string) => {
 
 /**
  * @fileOverview Specialized audit sub-component for imported platform jobs.
- * Implements Aaromach's split-profit logic and automated FN fee deduction.
+ * Implements high-fidelity labor split logic:
+ * laborNet = totalPay - additionalCharges
+ * techPay = (laborNet * 0.50) + additionalCharges
+ * aaromachPay = laborNet * 0.50
  */
 function ImportedJobAudit({ 
     wo, 
@@ -60,27 +63,22 @@ function ImportedJobAudit({
     wo: WorkOrder; 
     onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void 
 }) {
-    // Formula Logic derived from parent WorkOrder object
-    const grossAmount = wo.pay;
+    const totalPay = wo.pay;
     const reimbursement = wo.auditReimbursement || 0;
     const overhead = wo.auditOverhead || 0;
+    const additionalCharges = reimbursement + overhead;
     
-    const laborBase = grossAmount - reimbursement - overhead;
-    const fnFee = grossAmount * 0.154;
-    const netAfterFN = laborBase - fnFee;
-    const techPay = (netAfterFN * 0.50) + reimbursement;
-    const aaromachNet = (netAfterFN * 0.50) + overhead;
+    const laborNet = totalPay - additionalCharges;
+    const techPay = (laborNet * 0.50) + additionalCharges;
+    const aaromachPay = laborNet * 0.50;
 
     const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
-        // Pre-calculate the new techPay to keep the parent sum accurate
-        const nextGross = updates.pay ?? grossAmount;
+        const nextTotal = updates.pay ?? totalPay;
         const nextReimb = updates.auditReimbursement ?? reimbursement;
         const nextOver = updates.auditOverhead ?? overhead;
-        
-        const nextLaborBase = nextGross - nextReimb - nextOver;
-        const nextFNFee = nextGross * 0.154;
-        const nextNet = nextLaborBase - nextFNFee;
-        const nextTechPay = (nextNet * 0.50) + nextReimb;
+        const nextCharges = nextReimb + nextOver;
+        const nextLaborNet = nextTotal - nextCharges;
+        const nextTechPay = (nextLaborNet * 0.50) + nextCharges;
         
         onUpdateWorkOrder(wo.id, { 
             ...updates, 
@@ -92,12 +90,12 @@ function ImportedJobAudit({
         <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg">
              <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-0.5">
-                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Gross Amount (FN)</Label>
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Pay (Gross)</Label>
                     <div className="relative">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
-                            value={grossAmount}
+                            value={totalPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
                             className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
                         />
@@ -129,22 +127,18 @@ function ImportedJobAudit({
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30">
+             <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-border-sub/30">
                 <div className="space-y-0">
-                    <p className="text-[7px] font-black text-text-muted uppercase">FN Fee (15.4%)</p>
-                    <p className="text-[10px] font-mono font-bold text-text-red leading-none">-${fnFee.toFixed(2)}</p>
-                </div>
-                <div className="space-y-0">
-                    <p className="text-[7px] font-black text-text-muted uppercase">Net After FN</p>
-                    <p className="text-[10px] font-mono font-bold text-text-primary leading-none">${netAfterFN.toFixed(2)}</p>
+                    <p className="text-[7px] font-black text-text-muted uppercase">Labor Net</p>
+                    <p className="text-[10px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0">
                     <p className="text-[7px] font-black text-text-green uppercase">Tech Payout</p>
                     <p className="text-[10px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
                 </div>
-                <div className="space-y-0">
-                    <p className="text-[7px] font-black text-brand-red uppercase">Aaromach Net</p>
-                    <p className="text-[10px] font-mono font-bold text-brand-red leading-none">${aaromachNet.toFixed(2)}</p>
+                <div className="space-y-0 text-right">
+                    <p className="text-[7px] font-black text-brand-red uppercase">Aaromach Pay</p>
+                    <p className="text-[10px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -333,7 +327,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="ml-4 shrink-0 min-w-[280px]">
+                                                <div className="ml-4 shrink-0 min-w-[320px]">
                                                     {isImported && wo ? (
                                                         <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
                                                     ) : (

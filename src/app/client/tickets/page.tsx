@@ -23,7 +23,8 @@ import {
     ArrowUpDown,
     History,
     Activity,
-    CheckCircle2
+    CheckCircle2,
+    Building2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -197,15 +198,15 @@ export default function ClientTicketsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="active" className="w-full">
+            <Tabs defaultValue="open" className="w-full">
                 <TabsList className="tabs !bg-bg-tertiary p-0 h-10 mb-8 w-full md:w-auto">
-                    <TabsTrigger value="active" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                        <Activity size={14} className="mr-2" />
-                        Active <span className="ml-1 opacity-60">({activeRequests.length})</span>
-                    </TabsTrigger>
                     <TabsTrigger value="open" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <ClipboardList size={14} className="mr-2" />
                         Open <span className="ml-1 opacity-60">({openRequests.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="active" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        <Activity size={14} className="mr-2" />
+                        Active <span className="ml-1 opacity-60">({activeRequests.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="resolved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <CheckCircle2 size={14} className="mr-2" />
@@ -213,12 +214,12 @@ export default function ClientTicketsPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="active" className="space-y-4 mt-0">
-                    <TicketList requests={activeRequests} formatDateStr={formatDateStr} />
-                </TabsContent>
-
                 <TabsContent value="open" className="space-y-4 mt-0">
                     <TicketList requests={openRequests} formatDateStr={formatDateStr} />
+                </TabsContent>
+
+                <TabsContent value="active" className="space-y-4 mt-0">
+                    <TicketList requests={activeRequests} formatDateStr={formatDateStr} />
                 </TabsContent>
                 
                 <TabsContent value="resolved" className="space-y-4 mt-0">
@@ -342,7 +343,7 @@ export default function ClientTicketsPage() {
                                                 className="w-full py-3 rounded-lg border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
                                             >
                                                 <Plus size={14} />
-                                                <span className="text-[9px] font-bold uppercase">Attach SOW / Blueprint</span>
+                                                <span className="text-[8px] font-bold uppercase">Attach SOW / Blueprint</span>
                                             </button>
                                         )}
                                     </div>
@@ -399,13 +400,13 @@ function TicketList({ requests, formatDateStr }: { requests: ServiceRequest[], f
 
                             <div className="flex items-center gap-8 md:border-l md:border-border-sub md:pl-8">
                                 <div className="text-left md:text-right min-w-[140px] flex flex-col items-center gap-3">
-                                    <div className="flex items-center gap-2 text-[10px] text-white font-bold uppercase tracking-widest">
+                                    <div className="flex items-center gap-2 text-white font-bold uppercase tracking-widest text-[10px]">
                                         <Calendar size={10} className="text-white"/> 
                                         <span>Submitted: {formatDateStr(ticket.submittedDate)}</span>
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status</p>
-                                        <Badge variant={ticket.status === 'new' ? 'pending' : ticket.status === 'approved' ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
+                                        <Badge variant={ticket.status === 'new' ? 'pending' : (ticket.status === 'approved' || ticket.status === 'closed') ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
                                             {ticket.status}
                                         </Badge>
                                     </div>

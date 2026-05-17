@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +38,12 @@ import {
     X,
     Send,
     Lock,
-    Settings
+    Settings,
+    FileText,
+    Upload,
+    Download,
+    Trash2,
+    Paperclip
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -53,6 +58,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+type PersonnelDocument = {
+    id: string;
+    name: string;
+    type: 'pdf' | 'doc' | 'img';
+    size: string;
+    uploadedAt: string;
+    uploader: string;
+}
+
 type PersonnelDetailDialogProps = {
   isOpen: boolean;
   setIsOpen: (setIsOpen: boolean) => void;
@@ -64,6 +78,11 @@ type PersonnelDetailDialogProps = {
 
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
+  const [documents, setDocuments] = useState<PersonnelDocument[]>([
+    { id: 'doc-1', name: 'OSHA_30_Certification.pdf', type: 'pdf', size: '1.2MB', uploadedAt: '2024-05-12T10:00:00Z', uploader: 'Sarah Connor' },
+    { id: 'doc-2', name: 'FL_Drivers_License_Verification.jpg', type: 'img', size: '450KB', uploadedAt: '2024-03-20T14:30:00Z', uploader: 'System' }
+  ]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   if (!person) return null;
@@ -79,6 +98,38 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
   const tier = person.reliabilityTier || getReliabilityTier(person.reliabilityScore);
   const tierColor = getTierColor(tier);
   const badgeVariant = getTierBadgeVariant(tier);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        const newDoc: PersonnelDocument = {
+            id: `doc-${Date.now()}`,
+            name: file.name,
+            type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
+            size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+            uploadedAt: new Date().toISOString(),
+            uploader: 'Sarah Connor' // Mock current user
+        };
+        setDocuments(prev => [newDoc, ...prev]);
+        toast({
+            title: "Document Registered",
+            description: `${file.name} has been added to the personnel folder.`,
+        });
+    }
+  };
+
+  const handleDeleteDoc = (id: string) => {
+    setDocuments(prev => prev.filter(d => d.id !== id));
+    toast({
+        variant: "destructive",
+        title: "Asset Removed",
+        description: "Document has been purged from the personnel registry.",
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -118,7 +169,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
             <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
                 <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                     <TabsTrigger value="overview" className="tab-trigger-personnel">Overview</TabsTrigger>
-                    <TabsTrigger value="reliability" className="tab-trigger-personnel">Operational Reliability</TabsTrigger>
+                    {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Operational Reliability</TabsTrigger>}
+                    {(isTechnician || isStaff) && <TabsTrigger value="documents" className="tab-trigger-personnel">Documents</TabsTrigger>}
                     <TabsTrigger value="schedule" className="tab-trigger-personnel">Schedule</TabsTrigger>
                     {isTechnician && <TabsTrigger value="assignments" className="tab-trigger-personnel">Assignments</TabsTrigger>}
                     <TabsTrigger value="financial" className="tab-trigger-personnel">Financial</TabsTrigger>
@@ -257,6 +309,61 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                 <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
                                     <Shield size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No operational reliability events logged</p>
+                                </div>
+                            )}
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="documents" className="m-0 space-y-6 animate-in fade-in duration-300">
+                        <div className="flex justify-between items-center mb-4 px-1">
+                            <div className="space-y-1">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Personnel Folder Registry</h3>
+                                <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Tactical storage for certs, IDs, and field credentials.</p>
+                            </div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                onChange={handleFileChange}
+                            />
+                            <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={handleUploadClick}>
+                                <Upload size={14} className="mr-1.5"/> Upload Asset
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {documents.map(doc => (
+                                <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                    <div className="flex items-center gap-4 overflow-hidden">
+                                        <div className={cn(
+                                            "p-2.5 rounded-lg border",
+                                            doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
+                                            doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
+                                            "bg-bg-primary text-text-muted border-border-sub"
+                                        )}>
+                                            {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
+                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                            <Download size={14}/>
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>
+                                            <Trash2 size={14}/>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                            {documents.length === 0 && (
+                                <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                                    <Folder size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No documents registered in folder</p>
                                 </div>
                             )}
                         </div>
@@ -456,7 +563,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Operational Intelligence / Reason</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Operational Intelligence / Reason</Label>
                         <Textarea 
                             placeholder="Provide full context for this audit entry..." 
                             value={reason}

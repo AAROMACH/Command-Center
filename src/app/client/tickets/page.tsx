@@ -49,7 +49,8 @@ export default function ClientTicketsPage() {
 
     useEffect(() => {
         setMounted(true);
-        setCurrentUserId(localStorage.getItem('currentUserId'));
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentUserId(userId);
     }, []);
 
     const currentUser = useMemo(() => 
@@ -91,7 +92,11 @@ export default function ClientTicketsPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            // Input format is MM-dd-yyyy. Replaces hyphens with slashes.
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${month}/${day}/${year}`;
+            }
             return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
@@ -376,18 +381,21 @@ function TicketList({ requests, formatDateStr }: { requests: ServiceRequest[], f
                                     <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                         <MapPin size={12} className="text-brand-red"/> {ticket.location}
                                     </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                        <Calendar size={12} className="text-text-muted"/> Submitted: {formatDateStr(ticket.submittedDate)}
-                                    </div>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-8 md:border-l md:border-border-sub md:pl-8">
-                                <div className="text-left md:text-right min-w-[120px]">
-                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status Audit</p>
-                                    <Badge variant={ticket.status === 'new' ? 'pending' : ticket.status === 'approved' ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
-                                        {ticket.status}
-                                    </Badge>
+                                <div className="text-left md:text-right min-w-[140px] space-y-3">
+                                    <div className="flex items-center justify-end gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                        <Calendar size={10} className="text-text-muted"/> 
+                                        <span>Submitted: {formatDateStr(ticket.submittedDate)}</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status Audit</p>
+                                        <Badge variant={ticket.status === 'new' ? 'pending' : ticket.status === 'approved' ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
+                                            {ticket.status}
+                                        </Badge>
+                                    </div>
                                 </div>
                                 <Button variant="ghost" size="icon" className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all">
                                     <ChevronRight size={24} />

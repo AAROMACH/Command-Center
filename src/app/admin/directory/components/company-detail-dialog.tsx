@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { Technician, Invoice, Project, WorkOrder } from '@/lib/types';
 import { invoices, projects, workOrders } from '@/lib/data';
 import { 
@@ -33,11 +33,26 @@ import {
   FolderOpen,
   Plus,
   Check,
-  X
+  X,
+  Upload,
+  Trash2,
+  Download,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+type CompanyDocument = {
+    id: string;
+    name: string;
+    type: 'pdf' | 'img' | 'doc';
+    size: string;
+    uploadedAt: string;
+    uploader: string;
+}
 
 type CompanyDetailDialogProps = {
   isOpen: boolean;
@@ -50,6 +65,11 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
   const [notes, setNotes] = useState("");
   const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
   const [newSiteData, setNewSiteData] = useState({ name: '', location: '' });
+  const [companyDocs, setCompanyDocs] = useState<CompanyDocument[]>([
+    { id: 'cd-1', name: 'Master_Service_Agreement_2024.pdf', type: 'pdf', size: '2.4MB', uploadedAt: '2024-01-10T09:00:00Z', uploader: 'System' },
+    { id: 'cd-2', name: 'Site_Safety_Insurance_COI.pdf', type: 'pdf', size: '1.1MB', uploadedAt: '2024-03-15T11:30:00Z', uploader: 'Sarah Connor' }
+  ]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const companyContacts = useMemo(() => 
@@ -92,6 +112,44 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
       });
       setIsAddSiteOpen(false);
       setNewSiteData({ name: '', location: '' });
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        const newDoc: CompanyDocument = {
+            id: `cd-${Date.now()}`,
+            name: file.name,
+            type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
+            size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+            uploadedAt: new Date().toISOString(),
+            uploader: 'Sarah Connor'
+        };
+        setCompanyDocs(prev => [newDoc, ...prev]);
+        toast({
+            title: "Registry Asset Added",
+            description: `${file.name} has been successfully registered to ${companyName}.`,
+        });
+    }
+  };
+
+  const handleDeleteDoc = (id: string) => {
+    setCompanyDocs(prev => prev.filter(d => d.id !== id));
+    toast({
+        variant: "destructive",
+        title: "Asset Removed",
+        description: "Document has been purged from the company registry.",
+    });
+  };
+
+  const DocIcon = ({ type }: { type: CompanyDocument['type'] }) => {
+    if (type === 'pdf') return <FileText size={18}/>;
+    if (type === 'img') return <ImageIcon size={18}/>;
+    return <FileText size={18}/>;
   };
 
   return (
@@ -301,13 +359,57 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                 </TabsContent>
 
                 {/* DOCUMENTS */}
-                <TabsContent value="documents" className="m-0">
-                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                        <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No corporate assets uploaded to registry.</p>
-                        <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest">
-                            <Plus size={14} className="mr-2"/> Upload MSA / Contract
+                <TabsContent value="documents" className="m-0 space-y-6">
+                    <div className="flex justify-between items-center px-1">
+                        <div className="space-y-1">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Company Asset Registry</h3>
+                            <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Strategic repository for MSAs, Insurance (COI), and Service Agreements.</p>
+                        </div>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            onChange={handleFileChange}
+                        />
+                        <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={handleUploadClick}>
+                            <Upload size={14} className="mr-1.5"/> Upload MSA / Contract
                         </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {companyDocs.map(doc => (
+                            <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                <div className="flex items-center gap-4 overflow-hidden">
+                                    <div className={cn(
+                                        "p-2.5 rounded-lg border",
+                                        doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
+                                        "bg-bg-primary text-text-muted border-border-sub"
+                                    )}>
+                                        <DocIcon type={doc.type} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
+                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                            {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                        <Download size={14}/>
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>
+                                        <Trash2 size={14}/>
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {companyDocs.length === 0 && (
+                            <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
+                                <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No corporate assets uploaded to registry.</p>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
 

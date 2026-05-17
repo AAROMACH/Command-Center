@@ -717,7 +717,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                 <div className="p-4 border-b border-border-sub bg-bg-tertiary/50 space-y-3">
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                                         {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}
-                                        {mapViewMode === 'techs' ? 'Operative Base Registry' : 'Mission Target Registry'}
+                                        {mapViewMode === 'techs' ? 'Operative Base Registry' : 'Client Site Locations'}
                                     </h3>
                                     <div className="search-wrap !mb-0 h-8">
                                         <Search className="h-3 w-3" />

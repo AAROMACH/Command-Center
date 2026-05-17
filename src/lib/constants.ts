@@ -25,9 +25,9 @@ export const TERMINOLOGY = {
     SETTLE: "Payment Settlement",
   },
   CONFIG: {
-    NOTIFICATIONS: "Alert Protocol",
-    SECURITY: "Access Registry",
-    INTEGRATIONS: "System Handshakes",
+    NOTIFICATIONS: "Notifications",
+    SECURITY: "Security",
+    INTEGRATIONS: "Integrations",
   },
 } as const;
 

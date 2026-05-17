@@ -150,16 +150,16 @@ export default function TechSettingsPage() {
                     <TabsContent value="notifications" className="m-0 space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Trigger Management</CardTitle>
-                                <CardDescription>Define which low voltage job events generate system alerts.</CardDescription>
+                                <CardTitle>Notification Preferences</CardTitle>
+                                <CardDescription>Choose which updates you want to see.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {[
-                                    { id: 'n-1', label: 'New Jobs', desc: 'Alert when a new low voltage job is assigned to you.' },
+                                    { id: 'n-1', label: 'New Jobs', desc: 'Get notified when new jobs are assigned.' },
                                     { id: 'n-2', label: 'Job Updates', desc: 'Alert when site details or wiring requirements change.' },
                                     { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or job dates are modified.' },
                                     { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when field logs are approved or payouts initiated.' },
-                                    { id: 'n-5', label: 'Job Integrity Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
+                                    { id: 'n-5', label: 'Account Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
                                 ].map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                         <div className="space-y-0.5">
@@ -174,8 +174,8 @@ export default function TechSettingsPage() {
 
                         <Card>
                             <CardHeader>
-                                <CardTitle>Notification Timing</CardTitle>
-                                <CardDescription>Control alert behavior and delivery frequency.</CardDescription>
+                                <CardTitle>Timing</CardTitle>
+                                <CardDescription>Choose when and how often you get alerts.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
@@ -190,21 +190,21 @@ export default function TechSettingsPage() {
                                 </div>
                                 <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-bold uppercase tracking-wider">Field Emergency Bypass</p>
-                                        <p className="text-[10px] text-text-muted">Allow critical field job alerts to bypass quiet hours.</p>
+                                        <p className="text-xs font-bold uppercase tracking-wider">Allow Urgent Alerts</p>
+                                        <p className="text-[10px] text-text-muted">Let important messages through during quiet hours.</p>
                                     </div>
                                     <Switch defaultChecked onCheckedChange={() => handleToggle("Emergency Bypass")} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Delivery Mode</Label>
+                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Alert Frequency</Label>
                                     <Select defaultValue="instant" onValueChange={(val) => handleToggle(`Delivery Mode: ${val}`)}>
                                         <SelectTrigger className="bg-bg-primary">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="instant">Instant (Immediate Alerts)</SelectItem>
-                                            <SelectItem value="summary">Summary (Hourly Batch)</SelectItem>
-                                            <SelectItem value="daily">Daily Digest</SelectItem>
+                                            <SelectItem value="instant">Instant</SelectItem>
+                                            <SelectItem value="summary">Every hour</SelectItem>
+                                            <SelectItem value="daily">Once a day</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

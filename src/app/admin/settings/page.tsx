@@ -208,27 +208,27 @@ export default function SettingsPage() {
                     <TabsContent value="notifications">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Global Alert Protocol</CardTitle>
-                                <CardDescription>Master overrides for mission-critical event notifications.</CardDescription>
+                                <CardTitle>Notification Settings</CardTitle>
+                                <CardDescription>Choose how you want to receive updates.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                                     <Label htmlFor="global-email" className="flex flex-col space-y-1">
-                                        <span className="text-xs font-bold uppercase text-text-primary">Master Email Alerts</span>
-                                        <span className="text-[10px] text-text-muted">Global switch for tactical report delivery.</span>
+                                        <span className="text-xs font-bold uppercase text-text-primary">Email Notifications</span>
+                                        <span className="text-[10px] text-text-muted">Receive emails for important updates.</span>
                                     </Label>
                                     <Switch id="global-email" defaultChecked />
                                 </div>
                                 <div className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                                     <Label htmlFor="global-sms" className="flex flex-col space-y-1">
-                                        <span className="text-xs font-bold uppercase text-text-primary">Emergency SMS Pipeline</span>
-                                        <span className="text-[10px] text-text-muted">Immediate field escalation via SMS protocol.</span>
+                                        <span className="text-xs font-bold uppercase text-text-primary">SMS Notifications</span>
+                                        <span className="text-[10px] text-text-muted">Get text messages for urgent news.</span>
                                     </Label>
                                     <Switch id="global-sms" />
                                 </div>
                             </CardContent>
                             <CardFooter className="bg-bg-tertiary/30 border-t border-border-default pt-4">
-                                <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Save Protocol Settings</Button>
+                                <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Save Settings</Button>
                             </CardFooter>
                         </Card>
                     </TabsContent>

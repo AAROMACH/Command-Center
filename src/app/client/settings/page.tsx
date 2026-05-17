@@ -96,8 +96,8 @@ export default function ClientSettingsPage() {
                     <TabsContent value="notifications" className="m-0 space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Service Funnel Alerts</CardTitle>
-                                <CardDescription>Configure which mission-critical events generate automated alerts.</CardDescription>
+                                <CardTitle>Notification Preferences</CardTitle>
+                                <CardDescription>Choose which updates you want to receive for your sites.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {[

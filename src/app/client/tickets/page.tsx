@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -94,7 +93,7 @@ export default function ClientTicketsPage() {
         try {
             const parts = dateStr.split('-');
             if (parts.length === 3) {
-                const [year, month, day] = parts;
+                const [month, day, year] = parts;
                 return `${month}/${day}/${year}`;
             }
             return dateStr.replace(/-/g, '/');
@@ -386,12 +385,12 @@ function TicketList({ requests, formatDateStr }: { requests: ServiceRequest[], f
 
                             <div className="flex items-center gap-8 md:border-l md:border-border-sub md:pl-8">
                                 <div className="text-left md:text-right min-w-[140px] space-y-3">
-                                    <div className="flex items-center justify-end gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                        <Calendar size={10} className="text-text-muted"/> 
+                                    <div className="flex items-center justify-end gap-2 text-[10px] text-text-primary font-bold uppercase tracking-widest">
+                                        <Calendar size={10} className="text-text-primary"/> 
                                         <span>Submitted: {formatDateStr(ticket.submittedDate)}</span>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status Audit</p>
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status</p>
                                         <Badge variant={ticket.status === 'new' ? 'pending' : ticket.status === 'approved' ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
                                             {ticket.status}
                                         </Badge>

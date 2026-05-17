@@ -43,7 +43,8 @@ import {
     Upload,
     Download,
     Trash2,
-    Paperclip
+    Paperclip,
+    Image as ImageIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -564,7 +565,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
 
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Operational Intelligence / Reason</Label>
-                        <Textarea 
+                        <Input 
                             placeholder="Provide full context for this audit entry..." 
                             value={reason}
                             onChange={e => setReason(e.target.value)}

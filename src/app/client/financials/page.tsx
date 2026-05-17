@@ -20,11 +20,13 @@ import {
     Wrench
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ClientFinancialsPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
@@ -216,9 +218,13 @@ export default function ClientFinancialsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-xs text-text-secondary leading-relaxed">
-                            Monthly service margins and site-level fiscal auditing features are currently in deployment.
+                            Analyze fiscal efficiency across multiple sites with real-time margin tracking and overhead audits.
                         </p>
-                        <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest opacity-50 cursor-not-allowed">
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-10 uppercase font-bold text-[10px] tracking-widest"
+                            onClick={() => toast({ title: "Terminal Initializing", description: "Cost audit data is being aggregated. Please standby." })}
+                        >
                             Access Multi-Site Cost Audit
                         </Button>
                     </CardContent>

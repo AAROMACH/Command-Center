@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { WeeklyLog, Technician, WorkOrder, MissingAssignmentReport, WeeklyLogItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,35 +55,38 @@ const getFieldNationLink = (id: string) => {
  */
 function ImportedJobAudit({ 
     wo, 
-    onUpdatePay 
+    onUpdateWorkOrder 
 }: { 
     wo: WorkOrder; 
-    onUpdatePay: (id: string, pay: number) => void 
+    onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void 
 }) {
-    const [reimbursement, setReimbursement] = useState(0);
-    const [overhead, setOverhead] = useState(0);
-    
-    // Formula Logic:
-    // laborBase   = grossAmount - reimbursements - overhead
-    // fnFee       = grossAmount * 0.154
-    // netAfterFN  = laborBase - fnFee
-    // techPay     = (netAfterFN * 0.50) + reimbursements
-    // aaromachNet = (netAfterFN * 0.50) + overhead
-
+    // Formula Logic derived from parent WorkOrder object
     const grossAmount = wo.pay;
+    const reimbursement = wo.auditReimbursement || 0;
+    const overhead = wo.auditOverhead || 0;
+    
     const laborBase = grossAmount - reimbursement - overhead;
     const fnFee = grossAmount * 0.154;
     const netAfterFN = laborBase - fnFee;
     const techPay = (netAfterFN * 0.50) + reimbursement;
     const aaromachNet = (netAfterFN * 0.50) + overhead;
 
-    // Side effect to keep the parent state synced with the actual tech payout
-    useEffect(() => {
-        const finalTechPayout = Math.max(0, techPay);
-        if (wo.finalPay !== finalTechPayout) {
-            onUpdatePay(wo.id, finalTechPayout);
-        }
-    }, [techPay, wo.id, onUpdatePay, wo.finalPay]);
+    const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
+        // Pre-calculate the new techPay to keep the parent sum accurate
+        const nextGross = updates.pay ?? grossAmount;
+        const nextReimb = updates.auditReimbursement ?? reimbursement;
+        const nextOver = updates.auditOverhead ?? overhead;
+        
+        const nextLaborBase = nextGross - nextReimb - nextOver;
+        const nextFNFee = nextGross * 0.154;
+        const nextNet = nextLaborBase - nextFNFee;
+        const nextTechPay = (nextNet * 0.50) + nextReimb;
+        
+        onUpdateWorkOrder(wo.id, { 
+            ...updates, 
+            finalPay: Math.max(0, nextTechPay) 
+        });
+    };
 
     return (
         <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg">
@@ -95,7 +98,7 @@ function ImportedJobAudit({
                         <Input 
                             type="number"
                             value={grossAmount}
-                            onChange={(e) => onUpdatePay(wo.id, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
                             className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
                         />
                     </div>
@@ -107,7 +110,7 @@ function ImportedJobAudit({
                         <Input 
                             type="number"
                             value={reimbursement}
-                            onChange={(e) => setReimbursement(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
                             className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
                         />
                     </div>
@@ -119,7 +122,7 @@ function ImportedJobAudit({
                         <Input 
                             type="number"
                             value={overhead}
-                            onChange={(e) => setOverhead(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
                             className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
                         />
                     </div>
@@ -160,11 +163,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     }, [isOpen, initialLog]);
 
-    const findWorkOrder = (id: string): WorkOrder | undefined => {
+    const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
         return localWorkOrders.find(wo => wo.id === id);
-    };
+    }, [localWorkOrders]);
 
-    const getHoursOnsite = (woId: string) => {
+    const getHoursOnsite = useCallback((woId: string) => {
         if (!technician) return 'TBD';
         const log = assignmentTimeLogs.find(l => l.workOrderId === woId && l.technicianId === technician.id);
         if (!log) return 'TBD';
@@ -178,7 +181,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         } catch (e) {
             return 'TBD';
         }
-    }
+    }, [technician]);
     
     const handleStatusChange = (status: WeeklyLog['status']) => {
         if (localLog) {
@@ -186,11 +189,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
-    const handleUpdatePay = (woId: string, newPay: number) => {
+    const handleUpdateWorkOrder = useCallback((woId: string, updates: Partial<WorkOrder>) => {
         setLocalWorkOrders(prev => prev.map(wo => 
-            wo.id === woId ? { ...wo, pay: newPay, finalPay: newPay } : wo
+            wo.id === woId ? { ...wo, ...updates } : wo
         ));
-    };
+    }, []);
 
     const toggleAuditItem = (id: string) => {
         setAuditedIds(prev => {
@@ -217,15 +220,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             .filter(i => i.confirmationStatus === 'confirmed' || i.confirmationStatus === 'disputed')
             .reduce((acc, i) => {
                 const wo = findWorkOrder(i.workOrderId);
-                // For imported jobs, we use the finalPay (techPay derived from calculations)
-                // For others, we use the standard pay
                 return acc + (wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0);
             }, 0);
         
         const reimbursementPay = localLog.reimbursements.reduce((acc, r) => acc + r.amount, 0);
         
         return assignmentPay + reimbursementPay;
-    }, [localLog, localWorkOrders]);
+    }, [localLog, localWorkOrders, findWorkOrder]);
 
     if (!localLog || !technician) return null;
 
@@ -334,7 +335,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 
                                                 <div className="ml-4 shrink-0 min-w-[280px]">
                                                     {isImported && wo ? (
-                                                        <ImportedJobAudit wo={wo} onUpdatePay={handleUpdatePay} />
+                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
                                                     ) : (
                                                         <div className="flex items-center justify-end gap-8">
                                                             <div className="text-right">

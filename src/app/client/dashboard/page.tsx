@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -68,7 +67,11 @@ export default function ClientDashboardPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            // Consistent standard MM/DD/YYYY output
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [month, day, year] = parts;
+                return `${month}/${day}/${year}`;
+            }
             return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
@@ -92,31 +95,6 @@ export default function ClientDashboardPage() {
                     <NotificationBell />
                 </div>
             </header>
-
-            {/* TOP COMMAND BAR: SUPPORT ACCESS */}
-            <div className="bg-bg-secondary border border-border-main p-2 px-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <Activity size={14} className="text-brand-red" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Support Access</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="h-7 w-7 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-brand-red">SC</div>
-                        <div className="text-left">
-                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-none">Sarah Connor</p>
-                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">Assigned Account Lead</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none text-[9px] uppercase font-bold tracking-widest px-4 border-border-sub">
-                        <Mail size={12} className="mr-1.5" /> Email
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none text-[9px] uppercase font-bold tracking-widest px-4 border-border-sub">
-                        <MessageSquare size={12} className="mr-1.5" /> SMS
-                    </Button>
-                </div>
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-bg-secondary border-border-main">
@@ -262,4 +240,3 @@ export default function ClientDashboardPage() {
         </div>
     );
 }
-

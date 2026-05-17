@@ -14,9 +14,11 @@ import {
   Activity,
   ChevronRight,
   Info,
-  ExternalLink
+  ExternalLink,
+  Mail,
+  MessageSquare
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 import { workOrders, penaltyEvents, weeklyLogs, technicians, projects, serviceRequests } from '@/lib/data';
 import { addDays } from 'date-fns';
 import {
@@ -203,29 +205,54 @@ export function AlertBand() {
     }
   };
 
-  if (alerts.length === 0) return null;
+  const isClientPortal = pathname.startsWith('/client');
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-main bg-[#0f0f0f] px-10 py-2">
-        {alerts.map((alert) => (
-          <div
-            key={alert.id}
-            onClick={() => handleAlertClick(alert)}
-            className={cn(
-              'flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98]',
-              {
-                'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.2)]': alert.type === 'critical',
-                'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
-                'border border-border-main bg-bg-tertiary text-text-secondary': alert.type === 'info',
-                'border border-green-border bg-green-dim text-text-green animate-pulse': alert.type === 'success',
-              }
-            )}
-          >
-            <alert.icon className={cn("h-3 w-3", alert.type === 'success' && 'fill-current')} />
-            <span>{alert.text}</span>
+      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-10 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {alerts.map((alert) => (
+            <div
+              key={alert.id}
+              onClick={() => handleAlertClick(alert)}
+              className={cn(
+                'flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98]',
+                {
+                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.2)]': alert.type === 'critical',
+                  'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
+                  'border border-border-main bg-bg-tertiary text-text-secondary': alert.type === 'info',
+                  'border border-green-border bg-green-dim text-text-green animate-pulse': alert.type === 'success',
+                }
+              )}
+            >
+              <alert.icon className={cn("h-3 w-3", alert.type === 'success' && 'fill-current')} />
+              <span>{alert.text}</span>
+            </div>
+          ))}
+          {alerts.length === 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
+                <Activity size={10}/>
+                Registry Nominal
+            </div>
+          )}
+        </div>
+
+        {isClientPortal && (
+          <div className="flex items-center gap-6 border-l border-border-sub/30 pl-6">
+            <div className="flex items-center gap-3">
+               <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">SC</div>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Account Lead: <span className="text-text-primary">Sarah Connor</span></p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+                <Mail size={10} /> Email
+              </button>
+              <button className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+                <MessageSquare size={10} /> SMS
+              </button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -195,7 +195,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <History size={14} className="text-accent-gold shrink-0"/> 
-                <span>History Ledger</span>
+                <span>{TERMINOLOGY.ENTITIES.LEDGER}</span>
              </h3>
              <div className="space-y-3">
                 {mission.history && mission.history.length > 0 ? mission.history.map((evt, idx) => (

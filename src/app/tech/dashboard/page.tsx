@@ -31,6 +31,7 @@ import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
+import { TERMINOLOGY } from '@/lib/constants';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export default function TechDashboardPage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">Operational Terminal</h1>
+                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">{TERMINOLOGY.PORTAL.TECH}</h1>
                 <NotificationBell />
             </div>
 

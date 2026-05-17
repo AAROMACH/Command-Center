@@ -20,6 +20,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getAvailablePortals } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
+import { TERMINOLOGY } from '@/lib/constants';
 
 export default function DashboardPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -51,7 +52,7 @@ export default function DashboardPage() {
         <div>
           <p className="page-eyebrow flex items-center gap-2">
             <LayoutDashboard size={12} />
-            Command Center
+            {TERMINOLOGY.PORTAL.ADMIN}
           </p>
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">
@@ -72,7 +73,7 @@ export default function DashboardPage() {
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
          <Link href="/admin/assignments">
             <StatCard 
-                label="Active Assignments" 
+                label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
                 value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress').length.toString()} 
                 delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
                 deltaType="warning" 
@@ -81,7 +82,7 @@ export default function DashboardPage() {
         </Link>
         <Link href="/admin/projects">
             <StatCard 
-                label="Active Projects" 
+                label={`Active ${TERMINOLOGY.ENTITIES.PROJECT}s`} 
                 value={projects.filter(p => p.status === 'active').length.toString()} 
                 delta="2 ongoing" 
                 deltaType="neutral"
@@ -158,7 +159,7 @@ export default function DashboardPage() {
         <div>
           <Card>
              <CardHeader>
-                <CardTitle>Technician Workload</CardTitle>
+                <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
                 <CardDescription>Current open assignments per technician.</CardDescription>
             </CardHeader>
             <CardContent>

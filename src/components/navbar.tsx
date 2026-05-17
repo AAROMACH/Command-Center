@@ -24,6 +24,7 @@ import { useState, useEffect } from 'react';
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { TERMINOLOGY } from '@/lib/constants';
 
 type NavItem = {
   href: string;
@@ -78,7 +79,7 @@ export function Navbar() {
   const isTechPortal = pathname.startsWith('/tech');
   
   const navItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
-  const portalLabel = isTechPortal ? 'Technician Portal' : isClientPortal ? 'Client Portal' : 'Admin Portal';
+  const portalLabel = isTechPortal ? TERMINOLOGY.PORTAL.TECH : isClientPortal ? TERMINOLOGY.PORTAL.CLIENT : TERMINOLOGY.PORTAL.ADMIN;
   const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
   
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));

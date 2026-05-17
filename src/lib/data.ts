@@ -293,6 +293,23 @@ export const workOrders: WorkOrder[] = [
         { type: 'status_change', date: '07-25-2024', details: 'Mission finalized. Site verified clean.', user: 'Maria Garcia' }
     ]
   },
+  {
+    id: 'wo-18965948',
+    description: 'Tech for Hospitality Site Inspection Survey',
+    location: 'Monroe, MI 48162',
+    requiredSkills: ['Inspection', 'Hospitality'],
+    priority: 'medium',
+    status: 'completed',
+    assignedTechnicianId: 'tech-001',
+    clientName: 'NCR Voyix - Restaurants',
+    projectType: 'Survey',
+    scheduleDate: '05-18-2026',
+    scheduleTime: '09:00 AM EDT',
+    pay: 110.00,
+    payType: 'hourly',
+    isAcknowledged: true,
+    source: 'Imported',
+  },
    {
     id: 'wo-105',
     description: 'Full electrical wiring inspection',
@@ -673,6 +690,7 @@ export const weeklyLogs: WeeklyLog[] = [
     items: [
       { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, confirmationStatus: 'confirmed' },
       { id: 'wli-2', workOrderId: 'wo-102', outcomeCode: 'worked_revisit', isComplete: false, isAdminReviewed: false, confirmationStatus: 'disputed', disputeReason: 'Revisit needed, not complete', disputeNotes: 'Building manager was not present to sign off on final testing.' },
+      { id: 'wli-3', workOrderId: 'wo-18965948', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, confirmationStatus: 'confirmed' },
     ],
     reimbursements: [
       { id: 'fr-1', technicianId: 'tech-001', date: '07-24-2024', type: 'reimbursement', amount: 25.50, description: 'Parking for wo-104' }

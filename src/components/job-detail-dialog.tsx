@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
+import { TERMINOLOGY } from '@/lib/constants';
 import { 
   Dialog, 
   DialogContent, 
@@ -40,6 +41,10 @@ type JobDetailDialogProps = {
   onEdit?: (mission: WorkOrder) => void;
 };
 
+/**
+ * @fileOverview Master terminal for viewing Tactical Assignment (Mission) intelligence.
+ * Consolidates technical job data with Command Center operational context.
+ */
 export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetailDialogProps) {
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
 
@@ -96,6 +101,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-text-muted hover:text-brand-red transition-colors"
+                    title="View Source Registry"
                   >
                     <ExternalLink size={10} />
                   </a>
@@ -123,14 +129,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8 mt-2">
+          {/* SECTION: FINANCIAL AUDIT ALERTS */}
           {mission.payChangeRequest && (
-              <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex flex-col gap-3">
+              <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
                   <div className="flex items-center gap-3">
                       <AlertTriangle className="text-brand-red h-5 w-5 shrink-0" />
                       <div className="flex-1">
                           <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Pay Change Pending Approval</p>
                           <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">
-                              A financial modification has been requested and is currently under audit.
+                              A financial modification has been requested and is currently under audit by the Command Center.
                           </p>
                       </div>
                   </div>
@@ -146,16 +153,17 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                   </div>
                   {isPayAdmin(currentUser) && (
                       <Button className="w-full bg-brand-red h-9 text-[10px] uppercase font-bold" onClick={handleModifyClick}>
-                          <ShieldCheck size={14} className="mr-2"/> Authorize Pay Change
+                          <ShieldCheck size={14} className="mr-2"/> Authorize Registry Update
                       </Button>
                   )}
               </div>
           )}
 
+          {/* SECTION: OPERATIVE ASSIGNMENT */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <User size={14} className="text-brand-red shrink-0"/> 
-                <span>Primary Operative</span>
+                <span>{TERMINOLOGY.ENTITIES.OPERATIVE}</span>
              </h3>
              <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                 {tech ? (
@@ -183,6 +191,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              </div>
           </div>
 
+          {/* SECTION: TACTICAL LEDGER */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <History size={14} className="text-accent-gold shrink-0"/> 
@@ -213,10 +222,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              </div>
           </div>
 
+          {/* SECTION: FINANCIAL AUDIT */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <Coins size={14} className="text-text-green shrink-0"/> 
-                <span>Financial Audit</span>
+                <span>{TERMINOLOGY.ACTIONS.SETTLE} Audit</span>
              </h3>
              <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-1">
@@ -251,6 +261,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              )}
           </div>
 
+          {/* SECTION: FIELD BRIEFING */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                 <StickyNote size={14} className="text-accent-gold shrink-0"/> 
@@ -271,10 +282,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
         </div>
 
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 text-[10px] uppercase font-bold tracking-widest">Close Registry Feed</Button>
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 text-[10px] uppercase font-bold tracking-widest">Close Intelligence Feed</Button>
             {isCompleted ? (
               <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">
-                <FileCheck size={16} className="mr-2"/> Job Archived
+                <FileCheck size={16} className="mr-2"/> mission Archived
               </Button>
             ) : (
               <Button 

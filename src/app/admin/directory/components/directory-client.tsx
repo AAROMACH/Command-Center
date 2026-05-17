@@ -519,7 +519,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     )}
                                 </TabsTrigger>
                                 <TabsTrigger value="client" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
-                                    CLIENT REQUESTS
+                                    SITE REQUESTS
                                     {clientRequestsCount > 0 && (
                                         <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{clientRequestsCount}</Badge>
                                     )}

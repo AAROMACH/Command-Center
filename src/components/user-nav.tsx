@@ -66,7 +66,7 @@ export function UserNav() {
                       pathname.startsWith('/client') ? '/client/settings' : '/admin/settings';
 
   const billingPath = pathname.startsWith('/tech') ? '/tech/earnings' :
-                     pathname.startsWith('/client') ? '/client/billing' : '/admin/billing';
+                     pathname.startsWith('/client') ? '/client/billing' : null;
 
   return (
     <DropdownMenu>
@@ -126,10 +126,12 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => router.push(billingPath)}>
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Billing & Plan</span>
-          </DropdownMenuItem>
+          {billingPath && (
+            <DropdownMenuItem onSelect={() => router.push(billingPath)}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Earnings & Payouts</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => {

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +79,17 @@ export default function TechProfilePage() {
         }) : undefined);
     };
 
+    const handlePayoutPreferenceChange = (field: string, value: string) => {
+        setTech(prev => prev ? ({
+            ...prev,
+            payoutPreferences: {
+                method: 'ACH',
+                ...(prev.payoutPreferences || {}),
+                [field]: value
+            }
+        }) : undefined);
+    };
+
     const handleRequestTimeOff = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -102,16 +113,6 @@ export default function TechProfilePage() {
     
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const jobTypes = ['Low Voltage Cabling', 'Network Infrastructure', 'Security Systems', 'Electrical Repair', 'Fiber Optics', 'AV Fit-out', 'Smart Home Integration'];
-
-    const filteredProfileDetails = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-        if (!q) return true;
-        // Simple presence check for generic search matching
-        return tech.name.toLowerCase().includes(q) || 
-               tech.email.toLowerCase().includes(q) || 
-               tech.phone.toLowerCase().includes(q) ||
-               (tech.address || '').toLowerCase().includes(q);
-    }, [tech, searchQuery]);
 
     return (
         <div>
@@ -141,15 +142,18 @@ export default function TechProfilePage() {
             </header>
             
             <Tabs defaultValue="identity" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-3xl mb-8">
+                <TabsList className="grid w-full grid-cols-5 max-w-4xl mb-8">
                     <TabsTrigger value="identity" className="flex items-center gap-2">
                         <User size={14}/> Identity
+                    </TabsTrigger>
+                    <TabsTrigger value="payouts" className="flex items-center gap-2">
+                        <Banknote size={14}/> Payouts
                     </TabsTrigger>
                     <TabsTrigger value="availability" className="flex items-center gap-2">
                         <Timer size={14}/> Availability
                     </TabsTrigger>
                     <TabsTrigger value="preferences" className="flex items-center gap-2">
-                        <Settings2 size={14}/> Work Preferences
+                        <Settings2 size={14}/> Work Prefs
                     </TabsTrigger>
                     <TabsTrigger value="reliability" className="flex items-center gap-2">
                         <Activity size={14}/> Job Integrity
@@ -157,7 +161,7 @@ export default function TechProfilePage() {
                 </TabsList>
 
                 <div className="mt-6">
-                    {/* LAYER A: IDENTITY */}
+                    {/* IDENTITY */}
                     <TabsContent value="identity">
                         <Card className="max-w-4xl">
                             <CardHeader>
@@ -167,9 +171,7 @@ export default function TechProfilePage() {
                             <CardContent className="space-y-8">
                                 <div className="flex items-center gap-8 pb-8 border-b border-border-main">
                                     <Avatar className="h-24 w-24 border-2 border-border-main">
-                                       <AvatarImage asChild src={tech.avatarUrl} alt={tech.name} >
-                                           <Image src={tech.avatarUrl} alt={tech.name} width={96} height={96} />
-                                        </AvatarImage>
+                                       <AvatarImage src={tech.avatarUrl} alt={tech.name} />
                                         <AvatarFallback className="text-2xl">{tech.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="space-y-3">
@@ -182,36 +184,64 @@ export default function TechProfilePage() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-2">
-                                        <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-widest text-text-muted">Full Legal Name</Label>
-                                        <Input id="fullName" defaultValue={tech.name} className="bg-bg-primary h-11" />
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-text-muted">Full Legal Name</Label>
+                                        <Input defaultValue={tech.name} className="bg-bg-primary h-11" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Secure Email</Label>
-                                        <div className="relative">
-                                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                            <Input id="email" type="email" defaultValue={tech.email} className="bg-bg-primary pl-9 h-11" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-text-muted">Primary Phone</Label>
-                                        <div className="relative">
-                                            <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                            <Input id="phone" type="tel" defaultValue={tech.phone} className="bg-bg-primary pl-9 h-11" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="address" className="text-xs font-bold uppercase tracking-widest text-text-muted">Operational Base address</Label>
-                                        <div className="relative">
-                                            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                            <Input id="address" defaultValue={tech.address} className="bg-bg-primary pl-9 h-11" />
-                                        </div>
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-text-muted">Secure Email</Label>
+                                        <Input type="email" defaultValue={tech.email} className="bg-bg-primary h-11" />
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    {/* PAYOUT PREFERENCES */}
+                    <TabsContent value="payouts">
+                        <Card className="max-w-4xl">
+                            <CardHeader>
+                                <CardTitle>Payout Preferences</CardTitle>
+                                <CardDescription>Configure how you prefer to receive field payouts and reimbursements.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-text-muted">Preferred Payment Method</Label>
+                                        <Select 
+                                            value={tech.payoutPreferences?.method || 'ACH'} 
+                                            onValueChange={(val) => handlePayoutPreferenceChange('method', val)}
+                                        >
+                                            <SelectTrigger className="bg-bg-primary h-11">
+                                                <SelectValue placeholder="Select method..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ACH">ACH Bank Transfer</SelectItem>
+                                                <SelectItem value="Check">Physical Check</SelectItem>
+                                                <SelectItem value="Zelle">Zelle</SelectItem>
+                                                <SelectItem value="Venmo">Venmo</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-text-muted">Reference Note</Label>
+                                        <Input 
+                                            placeholder="e.g., Zelle phone or email..."
+                                            value={tech.payoutPreferences?.notes || ''} 
+                                            onChange={(e) => handlePayoutPreferenceChange('notes', e.target.value)}
+                                            className="bg-bg-primary h-11" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-bg-tertiary border border-border-sub">
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
+                                        Note: For your protection, actual bank account and routing numbers are managed externally via secure administrative handshake. Use this section for tracking preferences only.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
                     
-                    {/* LAYER B: OPERATIONAL STATUS (AVAILABILITY) */}
+                    {/* AVAILABILITY */}
                     <TabsContent value="availability" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-2">
@@ -246,8 +276,8 @@ export default function TechProfilePage() {
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                                     <div>
-                                        <CardTitle>Schedule Exceptions</CardTitle>
-                                        <CardDescription>Time off and absence logs.</CardDescription>
+                                        <CardTitle>Exceptions</CardTitle>
+                                        <CardDescription>Time off requests.</CardDescription>
                                     </div>
                                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsTimeOffDialogOpen(true)}><Plus size={14}/></Button>
                                 </CardHeader>
@@ -275,106 +305,34 @@ export default function TechProfilePage() {
                         </div>
                     </TabsContent>
 
-                    {/* LAYER C: WORK PREFERENCES */}
+                    {/* WORK PREFERENCES */}
                     <TabsContent value="preferences">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card className="lg:col-span-2">
-                                <CardHeader>
-                                    <CardTitle>Job Constraints</CardTitle>
-                                    <CardDescription>Define your low voltage job limits for automated assignment logic.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-10">
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-end">
-                                            <div className="space-y-1">
-                                                <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Work Radius</Label>
-                                                <p className="text-xs text-text-muted">Target distance for daily field jobs.</p>
-                                            </div>
-                                            <span className="font-mono text-brand-red font-bold">{tech.workPreferences.preferredRadius} Miles</span>
-                                        </div>
-                                        <Slider 
-                                            value={[tech.workPreferences.preferredRadius]} 
-                                            max={100} 
-                                            step={5}
-                                            onValueChange={([val]) => handlePreferenceChange('preferredRadius', val)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-end">
-                                            <div className="space-y-1">
-                                                <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Max Travel Distance</Label>
-                                                <p className="text-xs text-text-muted">Hard limit for high-value infrastructure jobs.</p>
-                                            </div>
-                                            <span className="font-mono text-brand-red font-bold">{tech.workPreferences.maxTravelDistance} Miles</span>
-                                        </div>
-                                        <Slider 
-                                            value={[tech.workPreferences.maxTravelDistance]} 
-                                            max={250} 
-                                            step={10}
-                                            onValueChange={([val]) => handlePreferenceChange('maxTravelDistance', val)}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Job Types</Label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {jobTypes.map(type => {
-                                                const isSelected = tech.workPreferences.preferredJobTypes.includes(type);
-                                                return (
-                                                    <button
-                                                        key={type}
-                                                        onClick={() => {
-                                                            const newTypes = isSelected 
-                                                                ? tech.workPreferences.preferredJobTypes.filter(t => t !== type)
-                                                                : [...tech.workPreferences.preferredJobTypes, type];
-                                                            handlePreferenceChange('preferredJobTypes', newTypes);
-                                                        }}
-                                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                                                            isSelected 
-                                                                ? 'bg-brand-red-dim border-brand-red text-text-primary' 
-                                                                : 'bg-bg-primary border-border-subtle text-text-muted hover:border-text-muted'
-                                                        }`}
-                                                    >
-                                                        {type}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-brand-red/20 bg-brand-red/5">
-                                <CardHeader>
-                                    <CardTitle className="text-brand-red flex items-center gap-2">
-                                        <Sliders size={14}/>
-                                        Dispatch Logic
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-subtle">
+                        <Card className="max-w-4xl">
+                            <CardHeader>
+                                <CardTitle>Job Constraints</CardTitle>
+                                <CardDescription>Define your low voltage job limits for automated assignment logic.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-10">
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-end">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Availability Override</p>
-                                            <p className="text-[10px] text-text-muted leading-tight">Allow Command Center to offer jobs outside standard hours.</p>
+                                            <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Work Radius</Label>
+                                            <p className="text-xs text-text-muted">Target distance for daily field jobs.</p>
                                         </div>
-                                        <Switch 
-                                            checked={tech.workPreferences.availabilityOverride}
-                                            onCheckedChange={(val) => handlePreferenceChange('availabilityOverride', val)}
-                                        />
+                                        <span className="font-mono text-brand-red font-bold">{tech.workPreferences.preferredRadius} Miles</span>
                                     </div>
-                                    <div className="p-4 rounded-lg bg-bg-primary border border-border-subtle space-y-4">
-                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">System Note</p>
-                                         <p className="text-[10px] text-text-secondary leading-normal">
-                                            Jobs exceeding your max travel distance will require manual override and will be flagged for "Extended Travel" pay.
-                                         </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                    <Slider 
+                                        value={[tech.workPreferences.preferredRadius]} 
+                                        max={100} 
+                                        step={5}
+                                        onValueChange={([val]) => handlePreferenceChange('preferredRadius', val)}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
 
-                    {/* LAYER D: PERFORMANCE / RELIABILITY SCORE */}
+                    {/* RELIABILITY */}
                     <TabsContent value="reliability" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="border-accent-gold/20 bg-accent-gold/5">
@@ -390,44 +348,7 @@ export default function TechProfilePage() {
                                             <Badge variant={reliabilityScore > 90 ? 'active' : 'onhold'} className="h-6 px-4 text-xs">
                                                 {reliabilityStatus}
                                             </Badge>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Live Job Integrity Score</p>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="lg:col-span-2">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase">
-                                        <ShieldAlert size={14} className="text-text-red" /> Penalty Ledger
-                                    </CardTitle>
-                                    <CardDescription>Official record of discrepancies and low voltage job failures.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/20 border border-border-red">
-                                        <div>
-                                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest">30-Day Penalty Delta</p>
-                                            <p className="text-2xl font-bold text-text-primary">-{penaltyPoints30d} Points</p>
-                                        </div>
-                                        <Activity size={32} className="text-brand-red opacity-50" />
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-2">Job History</h4>
-                                         {techPenaltyEvents.map(event => (
-                                            <div key={event.id} className="text-[11px] p-4 rounded-md bg-bg-primary border border-border-subtle flex justify-between items-center">
-                                                <div className="space-y-1">
-                                                    <span className="font-bold text-text-primary uppercase tracking-wide">{event.reason}</span>
-                                                    <div className="text-text-muted font-mono text-[10px]">{new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="font-mono font-bold text-text-red text-sm">{event.points} PTS</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {techPenaltyEvents.length === 0 && (
-                                            <div className="text-[11px] text-center p-12 border border-dashed border-border-main rounded-md text-text-muted italic">Clear record. No job discrepancies logged.</div>
-                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -467,7 +388,7 @@ export default function TechProfilePage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase tracking-widest text-text-muted">Reason</Label>
-                            <Textarea name="reason" placeholder="Brief explanation for Command Center audit..." className="bg-bg-primary" />
+                            <Textarea name="reason" placeholder="Brief explanation..." className="bg-bg-primary" />
                         </div>
                         <DialogFooter>
                             <Button type="submit">Submit Request</Button>

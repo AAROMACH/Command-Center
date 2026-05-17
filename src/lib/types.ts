@@ -88,6 +88,18 @@ export type Technician = {
     preferredJobTypes: string[];
     availabilityOverride: boolean;
   };
+  // Tracking fields for Payouts (Tech)
+  payoutPreferences?: {
+    method: 'ACH' | 'Check' | 'Zelle' | 'Venmo' | string;
+    notes?: string;
+  };
+  // Tracking fields for Billing (Client)
+  billingDetails?: {
+    contactName: string;
+    email: string;
+    terms: 'Net 15' | 'Net 30' | 'Net 60' | 'Due on Receipt' | string;
+    deliveryMethod: 'Email' | 'Portal' | 'Both' | string;
+  };
 };
 
 export type Recommendation = {

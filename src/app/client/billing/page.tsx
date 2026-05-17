@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, CreditCard, Download, Plus, Landmark, ShieldCheck, Check, Settings2, Sparkles, Search } from "lucide-react";
+import { Banknote, Download, Search, FileText, Mail, Clock, ShieldCheck, Settings2, Sparkles, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 type PlanTier = 'Standard' | 'Professional' | 'Enterprise';
 
@@ -48,6 +48,7 @@ export default function ClientBillingPage() {
     const [isModifyOpen, setIsModifyOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<PlanTier>('Enterprise');
     const [searchQuery, setSearchQuery] = useState("");
+    const router = useRouter();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -88,9 +89,7 @@ export default function ClientBillingPage() {
                         Financial Settlement
                     </p>
                     <h1 className="page-title">Billing & Subscription</h1>
-                    <p className="page-subtitle">
-                        Manage payment methods, subscription parameters, and review your global settlement history.
-                    </p>
+                    <p className="page-subtitle">Review global settlement history and manage organizational billing parameters.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
@@ -102,7 +101,7 @@ export default function ClientBillingPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" onClick={() => setIsModifyOpen(true)}>Upgrade Enterprise Plan</Button>
+                    <Button variant="outline" onClick={() => setIsModifyOpen(true)}>Upgrade Plan</Button>
                 </div>
             </header>
 
@@ -167,45 +166,45 @@ export default function ClientBillingPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Settlement Methods</CardTitle>
-                            <CardDescription>Authorized methods for automated invoice payment.</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText size={16} className="text-brand-red" />
+                                Billing Profile
+                            </CardTitle>
+                            <CardDescription>Verified organizational billing context.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-green">
-                                            <Landmark size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">ACH Transfer</p>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest font-mono">Chase •••• 9901</p>
+                        <CardContent className="space-y-5">
+                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Billing Contact</p>
+                                    <p className="text-xs font-bold text-text-primary uppercase">{currentUser?.billingDetails?.contactName || 'Awaiting Entry'}</p>
+                                    <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                        <Mail size={10} />
+                                        <span>{currentUser?.billingDetails?.email || 'No email registered'}</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub/50">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Payment Terms</p>
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary uppercase">
+                                            <Clock size={10} className="text-accent-gold" />
+                                            {currentUser?.billingDetails?.terms || 'Net 30'}
                                         </div>
                                     </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Delivery</p>
+                                        <p className="text-xs font-bold text-text-primary uppercase">{currentUser?.billingDetails?.deliveryMethod || 'Portal'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2 flex justify-between items-center">
                                     <Badge variant="active" className="text-[8px] h-4">Verified</Badge>
-                                </div>
-                                <div className="flex items-center gap-2 pt-1">
-                                    <ShieldCheck size={12} className="text-text-green" />
-                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-tighter">Primary Target for Settlement</p>
+                                    <ShieldCheck size={14} className="text-text-green" />
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between rounded-lg border border-border-sub bg-bg-primary p-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-muted">
-                                        <CreditCard className="h-[18px] w-[18px]" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Visa ending in 4242</p>
-                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">Expires 12/2026</p>
-                                    </div>
-                                </div>
-                                <Button variant="ghost" size="sm" className="h-7 text-[9px]">Edit</Button>
-                            </div>
-
-                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-[0.15em]">
-                                <Plus className="mr-2 h-3.5 w-3.5" /> 
-                                Add Payment Method
+                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest" onClick={() => router.push('/client/profile')}>
+                                Update Registry
                             </Button>
                         </CardContent>
                     </Card>
@@ -269,7 +268,7 @@ export default function ClientBillingPage() {
                         </div>
                     </div>
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
                         <Button variant="outline" onClick={() => setIsModifyOpen(false)} className="h-10 px-8">Cancel</Button>
                         <Button onClick={handleUpdatePlan} className="h-10 px-12 bg-brand-red hover:bg-brand-red-hover">
                             Request Plan Transition

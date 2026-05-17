@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, Expense, Technician, WorkOrder } from '@/lib/types';
 import { weeklyLogs, expenses as initialExpenses, technicians, workOrders } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { 
     Coins, 
     FileClock, 
@@ -19,7 +19,9 @@ import {
     Eye, 
     Clock, 
     MapPin, 
-    ClipboardList 
+    ClipboardList,
+    Settings2,
+    Info
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -155,14 +157,6 @@ export default function TechEarningsPage() {
         }
     };
 
-    const executeExport = () => {
-        toast({
-            title: "Export Initiated",
-            description: `Generating audit log for period ${formatDateStr(exportDates.from)} – ${formatDateStr(exportDates.to)}.`,
-        });
-        setIsExportDialogOpen(false);
-    };
-
     if (!mounted || !currentTechId) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Financial Vault...</div>;
     }
@@ -175,8 +169,8 @@ export default function TechEarningsPage() {
                         <Coins size={12} />
                         Financial Intelligence
                     </p>
-                    <h1 className="page-title">Payroll & Earnings</h1>
-                    <p className="page-subtitle">Historical payout audit and reimbursement tracking for {tech?.name}.</p>
+                    <h1 className="page-title">Earnings Terminal</h1>
+                    <p className="page-subtitle">Historical payout audit and reimbursement tracking.</p>
                 </div>
                 <div className="page-header-right">
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
@@ -186,331 +180,144 @@ export default function TechEarningsPage() {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Paid (YTD)</p>
-                        <Coins className="h-4 w-4 text-text-green" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-6">
+                    <div className="grid grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
+                        <div className="bg-bg-secondary p-6">
+                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Total Paid (YTD)</p>
+                            <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-bg-secondary p-6">
+                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Pending Audit</p>
+                            <p className="text-3xl font-mono font-bold text-accent-gold">${pendingPayout.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-bg-secondary p-6">
+                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Reimbursements</p>
+                            <p className="text-3xl font-mono font-bold text-text-primary">${pendingReimbursements.toFixed(2)}</p>
+                        </div>
                     </div>
-                    <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase">Across all approved logs</p>
+
+                    <Tabs defaultValue="history" className="w-full">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
+                            <TabsList className="tabs !mb-0">
+                                <TabsTrigger value="history" className="tab">Payout History</TabsTrigger>
+                                <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
+                            </TabsList>
+                        </div>
+                        
+                        <TabsContent value="history" className="mt-0">
+                            <Card>
+                                <CardContent className="p-0">
+                                    <div className="table-wrap border-none rounded-none">
+                                        <table className="tbl">
+                                            <thead>
+                                                <tr>
+                                                    <th className="text-center">Week Period</th>
+                                                    <th className="text-center">Status</th>
+                                                    <th className="text-right pr-12">Payout</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredLogs.map(log => (
+                                                    <TableRow 
+                                                        key={log.id} 
+                                                        className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
+                                                        onClick={() => setSelectedLog(log)}
+                                                    >
+                                                        <TableCell className="font-bold uppercase text-xs text-center">Week of {log.weekOf}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Badge variant={getStatusVariant(log.status)}>{log.status.toUpperCase()}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-12 font-mono font-bold">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="reimbursements" className="mt-0">
+                            <Card>
+                                <CardContent className="p-0">
+                                     <div className="table-wrap border-none rounded-none">
+                                        <table className="tbl">
+                                            <thead>
+                                                <tr>
+                                                    <th className="text-center">Date</th>
+                                                    <th className="text-center">Description</th>
+                                                    <th className="text-center">Status</th>
+                                                    <th className="text-right pr-12">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredExpenses.map(expense => (
+                                                    <TableRow key={expense.id} className="hover:bg-bg-tertiary transition-colors">
+                                                        <TableCell className="text-xs font-mono text-center">{formatDateStr(expense.date)}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <div className="font-bold text-xs uppercase">{expense.description}</div>
+                                                            <div className="text-[9px] text-text-muted uppercase font-bold">{expense.category}</div>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Badge variant={getStatusVariant(expense.status)}>{expense.status.toUpperCase()}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-12 font-mono font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Awaiting Audit</p>
-                        <FileClock className="h-4 w-4 text-accent-gold" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-accent-gold">${pendingPayout.toFixed(2)}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase">Standard assignment payouts</p>
-                </div>
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Reimbursements</p>
-                        <Receipt className="h-4 w-4 text-text-primary" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-text-primary">${pendingReimbursements.toFixed(2)}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase">Verified field expenses</p>
+
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Settings2 size={16} className="text-accent-gold" />
+                                Payout Protocol
+                            </CardTitle>
+                            <CardDescription>Verified preferences for disbursement routing.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Selected Method</p>
+                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">
+                                        {tech?.payoutPreferences?.method || 'ACH Bank Transfer'}
+                                    </p>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Notes / Instructions</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed italic">
+                                        {tech?.payoutPreferences?.notes || 'No specific routing instructions logged.'}
+                                    </p>
+                                </div>
+
+                                <div className="pt-2">
+                                    <Badge variant="active" className="text-[9px] h-5 px-3 uppercase tracking-widest">Identity Verified</Badge>
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub flex items-start gap-3">
+                                <Info size={16} className="text-text-muted shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-text-muted leading-normal uppercase font-medium">
+                                    Disbursements are cleared within 48 hours of weekly log approval. Changes to preferred methods require administrative sign-off.
+                                </p>
+                            </div>
+
+                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest" onClick={() => router.push('/tech/profile')}>
+                                Update Preferences
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
-
-            <Tabs defaultValue="history" className="w-full">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
-                    <TabsList className="tabs !mb-0">
-                        <TabsTrigger value="history" className="tab">
-                            Payout History <span className="tab-count">({filteredLogs.length})</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="reimbursements" className="tab">
-                            Reimbursement Tracker <span className="tab-count">({filteredExpenses.length})</span>
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="search-wrap flex-1 md:w-[240px]">
-                            <Search className="h-3.5 w-3.5" />
-                            <input 
-                                className="search-input !w-full !bg-bg-primary h-9 text-xs" 
-                                placeholder="Search records..." 
-                                value={logSearchQuery}
-                                onChange={(e) => setLogSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <Select value={logSortBy} onValueChange={(val: any) => setLogSortBy(val)}>
-                            <SelectTrigger className="w-[150px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
-                                <div className="flex items-center gap-2">
-                                    <ArrowUpDown size={14} className="text-text-muted" />
-                                    <SelectValue placeholder="Sort" />
-                                </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="date-desc" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                                <SelectItem value="date-asc" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
-                                <SelectItem value="payout-desc" className="text-[10px] uppercase font-bold">Highest Payout</SelectItem>
-                                <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                
-                <TabsContent value="history" className="mt-0">
-                    <Card className="bg-bg-secondary border-border-main">
-                        <CardHeader>
-                            <CardTitle>Log Manifest History</CardTitle>
-                            <CardDescription>Comprehensive audit of submitted weekly logs. Click a row to audit assignments.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="table-wrap border-none rounded-none">
-                                <table className="tbl">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-center">Week Period</th>
-                                            <th className="text-center">Authorization Status</th>
-                                            <th className="text-right pr-12">Final Payout</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredLogs.map(log => (
-                                            <TableRow 
-                                                key={log.id} 
-                                                className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
-                                                onClick={() => setSelectedLog(log)}
-                                            >
-                                                <TableCell className="font-bold uppercase text-xs tracking-wide">
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <CalendarIcon size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
-                                                        Week of {log.weekOf}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant={getStatusVariant(log.status)}>
-                                                        {log.status.toUpperCase()}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-12">
-                                                    {log.totalPayout ? (
-                                                        <div className="flex flex-col items-end">
-                                                            <span className={cn("font-mono font-bold text-sm", log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
-                                                                ${log.totalPayout.toFixed(2)}
-                                                            </span>
-                                                            <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">Verified</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-text-muted italic text-xs">Processing...</span>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {filteredLogs.length === 0 && (
-                                            <tr>
-                                                <td colSpan={3} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical manifests found.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="reimbursements" className="mt-0">
-                    <Card className="bg-bg-secondary border-border-main">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                            <div>
-                                <CardTitle>Expense Tracking Terminal</CardTitle>
-                                <CardDescription>Real-time status tracking for field material and travel reimbursements.</CardDescription>
-                            </div>
-                            <Button variant="outline" size="sm" className="h-8" onClick={() => setIsExportDialogOpen(true)}>
-                                <Download size={14} className="mr-2"/> Export Audit Log
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                             <div className="table-wrap border-none rounded-none">
-                                <table className="tbl">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-center">Transaction Date</th>
-                                            <th className="text-center">Description & Category</th>
-                                            <th className="text-center">Status</th>
-                                            <th className="text-right pr-12">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredExpenses.map(expense => (
-                                            <TableRow key={expense.id} className="hover:bg-bg-tertiary transition-colors">
-                                                <TableCell className="text-xs font-mono text-text-muted text-center">{formatDateStr(expense.date)}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <div className="font-bold text-text-primary text-xs uppercase tracking-wide">{expense.description}</div>
-                                                    <div className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{expense.category}</div>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant={getStatusVariant(expense.status)}>
-                                                        {expense.status.toUpperCase()}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-12">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-mono font-bold text-text-primary text-sm">${expense.amount.toFixed(2)}</span>
-                                                        <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">USD</span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {filteredExpenses.length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No active reimbursement claims.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-
-            {/* EXPORT RANGE TERMINAL */}
-            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default">
-                    <DialogHeader>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Download className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Export Configuration</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs">Select temporal parameters for comprehensive field log generation.</DialogDescription>
-                    </DialogHeader>
-
-                    <div className="py-6 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-2">
-                                    <CalendarIcon size={12} />
-                                    Range Start
-                                </Label>
-                                <Input 
-                                    type="date" 
-                                    value={exportDates.from}
-                                    onChange={(e) => setExportDates({...exportDates, from: e.target.value})}
-                                    className="bg-bg-primary h-11 text-xs"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-2">
-                                    <CalendarIcon size={12} />
-                                    Range End
-                                </Label>
-                                <Input 
-                                    type="date" 
-                                    value={exportDates.to}
-                                    onChange={(e) => setExportDates({...exportDates, to: e.target.value})}
-                                    className="bg-bg-primary h-11 text-xs"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="bg-bg-secondary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest">
-                            <X size={14} className="mr-2" /> Cancel
-                        </Button>
-                        <Button onClick={executeExport} className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
-                            <Check size={14} className="mr-2" /> Finalize & Download
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* LOG AUDIT POPUP */}
-            <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-                <DialogContent className="sm:max-w-3xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden max-h-[85vh]">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-bg-secondary rounded border border-border-sub text-brand-red">
-                                    <FileClock size={20} />
-                                </div>
-                                <div>
-                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest">Week Manifest Audit</DialogTitle>
-                                    <DialogDescription className="text-xs font-bold text-text-muted uppercase">Period: {selectedLog?.weekOf}</DialogDescription>
-                                </div>
-                            </div>
-                            <Badge variant={selectedLog ? getStatusVariant(selectedLog.status) : 'outline'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
-                                {selectedLog?.status}
-                            </Badge>
-                        </div>
-                    </DialogHeader>
-
-                    <ScrollArea className="flex-1">
-                        <div className="p-6 space-y-8">
-                            {/* Summary Totals */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Manifest Payout</p>
-                                    <p className="text-2xl font-mono font-bold text-text-green">${(selectedLog?.totalPayout || 0).toFixed(2)}</p>
-                                </div>
-                                <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Assignment Count</p>
-                                    <p className="text-2xl font-bold text-text-primary">{selectedLog?.items.length}</p>
-                                </div>
-                            </div>
-
-                            {/* Assignment Registry */}
-                            <section className="space-y-4">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Mission Registry</h3>
-                                <div className="space-y-2">
-                                    {selectedLog?.items.map(item => {
-                                        const wo = workOrders.find(w => w.id === item.workOrderId);
-                                        return (
-                                            <div key={item.id} className="p-4 rounded-xl border border-border-sub bg-bg-primary flex items-center justify-between group hover:border-text-muted transition-all">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="p-2 bg-bg-tertiary rounded text-text-muted">
-                                                        <ClipboardList size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo?.description}</p>
-                                                        <div className="flex items-center gap-3 mt-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                                                            <span className="font-mono text-brand-red">ID: {wo?.id.toUpperCase()}</span>
-                                                            <span>•</span>
-                                                            <span>{wo?.scheduleDate}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <Badge variant="outline" className="text-[8px] bg-bg-secondary border-border-sub uppercase tracking-tighter">
-                                                    {item.confirmationStatus === 'confirmed' ? 'Verified' : 'Flagged'}
-                                                </Badge>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </section>
-
-                            {/* Reimbursement Registry */}
-                            <section className="space-y-4">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Reimbursement Ledger</h3>
-                                <div className="space-y-2">
-                                    {selectedLog?.reimbursements && selectedLog.reimbursements.length > 0 ? selectedLog.reimbursements.map(re => (
-                                        <div key={re.id} className="flex items-center justify-between p-3 rounded-lg bg-bg-primary border border-border-sub">
-                                            <div className="space-y-0.5">
-                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{re.description}</p>
-                                                <p className="text-[9px] text-text-muted font-mono">{re.date}</p>
-                                            </div>
-                                            <p className="text-xs font-mono font-bold text-text-green">+${re.amount.toFixed(2)}</p>
-                                        </div>
-                                    )) : (
-                                        <div className="p-8 text-center border border-dashed border-border-sub rounded-xl opacity-40">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest">No reimbursements logged</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        </div>
-                    </ScrollArea>
-
-                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
-                        <Button variant="outline" onClick={() => setSelectedLog(null)} className="w-full uppercase font-bold text-[10px] tracking-widest h-10">
-                            Close Audit View
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
             <ReceiptUploadDialog 
                 isOpen={isReceiptDialogOpen}

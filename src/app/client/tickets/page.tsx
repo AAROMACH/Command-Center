@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -199,7 +198,7 @@ export default function ClientTicketsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="history" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <History size={14} className="mr-2" />
-                        Registry Archive <span className="ml-1 opacity-60">({historicalRequests.length})</span>
+                        Resolved / Closed <span className="ml-1 opacity-60">({historicalRequests.length})</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -416,4 +415,3 @@ function TicketList({ requests, formatDateStr }: { requests: ServiceRequest[], f
         </div>
     );
 }
-

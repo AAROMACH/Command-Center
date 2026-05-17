@@ -90,10 +90,6 @@ export default function ClientDashboardPage() {
                 </div>
                 <div className="page-header-right items-center">
                     <NotificationBell />
-                    <Button variant="default" className="h-10" onClick={() => router.push('/client/tickets')}>
-                        <Plus size={14} className="mr-2"/>
-                        Submit Service Request
-                    </Button>
                 </div>
             </header>
 
@@ -232,8 +228,12 @@ export default function ClientDashboardPage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
                             <CardTitle>Recent Service Requests</CardTitle>
+                            <Button variant="default" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={() => router.push('/client/tickets')}>
+                                <Plus size={12} className="mr-1.5"/>
+                                New Ticket
+                            </Button>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border-sub">

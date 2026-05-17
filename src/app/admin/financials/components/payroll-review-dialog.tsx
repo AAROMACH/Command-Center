@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { workOrders as initialWorkOrders } from '@/lib/data';
+import { workOrders as initialWorkOrders, assignmentTimeLogs } from '@/lib/data';
 import { 
     AlertTriangle, 
     CheckCircle2, 
@@ -23,7 +23,8 @@ import {
     FileText,
     ExternalLink,
     DollarSign,
-    Wrench
+    Wrench,
+    Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { differenceInMinutes, parseISO } from 'date-fns';
 
 type PayrollReviewDialogProps = {
     isOpen: boolean;
@@ -59,6 +61,22 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const findWorkOrder = (id: string): WorkOrder | undefined => {
         return localWorkOrders.find(wo => wo.id === id);
     };
+
+    const getHoursOnsite = (woId: string) => {
+        if (!technician) return 'TBD';
+        const log = assignmentTimeLogs.find(l => l.workOrderId === woId && l.technicianId === technician.id);
+        if (!log) return 'TBD';
+        if (!log.checkOutTime) return 'ACTIVE';
+        
+        try {
+            const start = parseISO(log.checkInTime);
+            const end = parseISO(log.checkOutTime);
+            const mins = differenceInMinutes(end, start);
+            return (mins / 60).toFixed(1) + 'h';
+        } catch (e) {
+            return 'TBD';
+        }
+    }
     
     const handleStatusChange = (status: WeeklyLog['status']) => {
         if (localLog) {
@@ -76,7 +94,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const confirmedItems = localLog?.items.filter(item => item.confirmationStatus === 'confirmed') || [];
     const totalJobs = localLog?.items.length || 0;
 
-    // Recalculate settlement total based on local edits
     const calculatedTotalPayout = useMemo(() => {
         if (!localLog) return 0;
         const assignmentPay = localLog.items
@@ -113,7 +130,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </div>
                 </DialogHeader>
 
-                {/* COMMAND QUICK STATS */}
                 <div className="grid grid-cols-3 gap-px bg-border-sub border-b border-border-sub">
                     <div className="bg-bg-secondary p-3 text-center">
                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Total Assignments</p>
@@ -133,7 +149,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                 <div className="flex-1 overflow-hidden p-6 space-y-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 h-full max-h-[500px]">
-                        {/* LEFT: VERIFIED JOBS */}
                         <section className="space-y-4 flex flex-col overflow-hidden text-left">
                             <div className="flex items-center justify-between px-1">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
@@ -172,17 +187,39 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 
                                                 <div className="flex items-center gap-3 ml-4 shrink-0">
                                                     {isImported ? (
-                                                        <div className="flex items-center gap-1.5 bg-bg-primary p-1 rounded border border-border-sub">
-                                                            <DollarSign size={10} className="text-text-green" />
-                                                            <input 
-                                                                type="number"
-                                                                value={wo?.pay || 0}
-                                                                onChange={(e) => handleUpdatePay(wo!.id, parseFloat(e.target.value) || 0)}
-                                                                className="w-16 bg-transparent border-none text-[11px] font-mono font-bold text-text-primary focus:ring-0 p-0"
-                                                            />
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimb</Label>
+                                                                <Input type="number" className="h-7 w-14 text-[10px] p-1 bg-bg-primary font-mono" placeholder="0.00" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">OH</Label>
+                                                                <Input type="number" className="h-7 w-14 text-[10px] p-1 bg-bg-primary font-mono" placeholder="0.00" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total</Label>
+                                                                <div className="relative">
+                                                                    <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-green" />
+                                                                    <Input 
+                                                                        type="number"
+                                                                        value={wo?.pay || 0}
+                                                                        onChange={(e) => handleUpdatePay(wo!.id, parseFloat(e.target.value) || 0)}
+                                                                        className="h-7 w-20 text-[10px] pl-4 p-1 bg-bg-primary font-mono font-bold text-text-green focus:border-brand-red"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     ) : (
-                                                        <p className="text-xs font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
+                                                        <div className="flex items-center gap-6">
+                                                            <div className="text-right">
+                                                                <p className="text-[8px] font-black text-text-muted uppercase">Hours Onsite</p>
+                                                                <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">{getHoursOnsite(wo!.id)}</p>
+                                                            </div>
+                                                            <div className="text-right min-w-[60px]">
+                                                                <p className="text-[8px] font-black text-text-muted uppercase">Base Pay</p>
+                                                                <p className="text-xs font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -197,7 +234,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </ScrollArea>
                         </section>
 
-                        {/* RIGHT: DISCREPANCIES (CARDS) */}
                         <section className="space-y-4 flex flex-col overflow-hidden text-left">
                             <div className="flex items-center gap-2 text-text-red px-1">
                                 <ShieldAlert size={14} />
@@ -298,9 +334,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Separator className="bg-border-sub" />
 
-                    {/* BOTTOM SECTION: FINANCIALS */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                        {/* LEFT: REIMBURSEMENTS */}
                         <section className="space-y-4 text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
                                 <Coins size={14} className="text-accent-gold" />
@@ -324,7 +358,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </section>
 
-                        {/* RIGHT: SETTLEMENT SUMMARY */}
                         <section className="space-y-4 text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
                                 <FileText size={14} className="text-brand-red" />

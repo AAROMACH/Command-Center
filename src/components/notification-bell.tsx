@@ -102,7 +102,7 @@ export function NotificationBell() {
         <Button variant="outline" className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group">
           <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
-            Command Comms
+            Global Alert
           </span>
           {messages.length > 0 && (
             <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]" />

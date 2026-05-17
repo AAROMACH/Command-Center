@@ -55,12 +55,13 @@ export default function DispatchPage() {
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [dispatchSearchQuery, setDispatchSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [dispatchSortBy, setDispatchSortBy] = useState<SortOption>('date');
 
   // Service Request State
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>(initialServiceRequests);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
+  const [requestSortBy, setRequestSortBy] = useState<SortOption>('priority');
 
   // Filter State
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
@@ -140,18 +141,18 @@ export default function DispatchPage() {
     });
 
     return results.sort((a, b) => {
-        if (sortBy === 'priority') {
+        if (dispatchSortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority] - prio[b.priority];
         }
-        if (sortBy === 'client') return a.clientName.localeCompare(b.clientName);
-        if (sortBy === 'type') return a.projectType.localeCompare(b.projectType);
+        if (dispatchSortBy === 'client') return a.clientName.localeCompare(b.clientName);
+        if (dispatchSortBy === 'type') return a.projectType.localeCompare(b.projectType);
         return a.scheduleDate.localeCompare(b.scheduleDate);
     });
-  }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, sortBy]);
+  }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, dispatchSortBy]);
 
-  const filteredRequests = useMemo(() => 
-    allRequests.filter(req => {
+  const filteredRequests = useMemo(() => {
+    let results = allRequests.filter(req => {
       const matchesSearch = req.id.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
         req.clientName.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
         req.description.toLowerCase().includes(requestSearchQuery.toLowerCase());
@@ -160,8 +161,18 @@ export default function DispatchPage() {
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
       
       return matchesSearch && matchesPriority && matchesType;
-    })
-  , [allRequests, requestSearchQuery, activePriorities, activeTypes]);
+    });
+
+    return results.sort((a, b) => {
+        if (requestSortBy === 'priority') {
+            const prio = { critical: 0, high: 1, medium: 2, low: 3 };
+            return prio[a.priority] - prio[b.priority];
+        }
+        if (requestSortBy === 'client') return a.clientName.localeCompare(b.clientName);
+        if (requestSortBy === 'type') return a.requestType.localeCompare(b.requestType);
+        return a.submittedDate.localeCompare(b.submittedDate);
+    });
+  }, [allRequests, requestSearchQuery, activePriorities, activeTypes, requestSortBy]);
 
   const hasActiveFilters = activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0;
 
@@ -236,22 +247,23 @@ export default function DispatchPage() {
                 />
               </div>
 
-              {activeMasterTab === 'dispatch' && (
-                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                    <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                        <div className="flex items-center gap-2">
-                            <ArrowUpDown size={14} className="text-text-muted" />
-                            <SelectValue placeholder="Sort" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="date" className="text-[10px] uppercase font-bold">By Date</SelectItem>
-                        <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
-                        <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
-                        <SelectItem value="type" className="text-[10px] uppercase font-bold">By Category</SelectItem>
-                    </SelectContent>
-                </Select>
-              )}
+              <Select 
+                value={activeMasterTab === 'dispatch' ? dispatchSortBy : requestSortBy} 
+                onValueChange={(val: any) => activeMasterTab === 'dispatch' ? setDispatchSortBy(val) : setRequestSortBy(val)}
+              >
+                  <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
+                      <div className="flex items-center gap-2">
+                          <ArrowUpDown size={14} className="text-text-muted" />
+                          <SelectValue placeholder="Sort" />
+                      </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="date" className="text-[10px] uppercase font-bold">{activeMasterTab === 'dispatch' ? 'Schedule' : 'Submission'}</SelectItem>
+                      <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
+                      <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
+                      <SelectItem value="type" className="text-[10px] uppercase font-bold">Category</SelectItem>
+                  </SelectContent>
+              </Select>
               
               <Popover>
                 <PopoverTrigger asChild>
@@ -273,22 +285,24 @@ export default function DispatchPage() {
                     </div>
                   </div>
                   <div className="p-4 space-y-6">
-                    {/* Source Filter */}
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Assignment Source</p>
-                      <div className="space-y-2">
-                        {ASSIGNMENT_SOURCES.map(source => (
-                          <div key={source} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`source-${source}`} 
-                              checked={activeSources.includes(source)}
-                              onCheckedChange={() => toggleSource(source)}
-                            />
-                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
-                          </div>
-                        ))}
+                    {/* Source Filter (Only for Dispatch) */}
+                    {activeMasterTab === 'dispatch' && (
+                      <div className="space-y-3">
+                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Assignment Source</p>
+                        <div className="space-y-2">
+                          {ASSIGNMENT_SOURCES.map(source => (
+                            <div key={source} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`source-${source}`} 
+                                checked={activeSources.includes(source)}
+                                onCheckedChange={() => toggleSource(source)}
+                              />
+                              <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Priority Filter */}
                     <div className="space-y-3">

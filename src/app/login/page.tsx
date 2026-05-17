@@ -74,12 +74,12 @@ export default function LoginPage() {
               <Image 
                 src={logo.imageUrl} 
                 alt="Aaromach Logo" 
-                width={100} 
-                height={50} 
+                width={160} 
+                height={80} 
                 className="object-contain"
                 data-ai-hint={logo.imageHint}
                 priority
-                style={{ height: '50px', width: 'auto' }}
+                style={{ height: '80px', width: 'auto' }}
               />
             )}
           </div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Secure Email</Label>
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -108,7 +108,7 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Access Key</Label>
+              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -125,7 +125,7 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest">
-              Initiate Login
+              Login
             </Button>
           </CardFooter>
         </form>

@@ -129,7 +129,7 @@ export function UserNav() {
           {billingPath && (
             <DropdownMenuItem onSelect={() => router.push(billingPath)}>
               <CreditCard className="mr-2 h-4 w-4" />
-              <span>Earnings & Payouts</span>
+              <span>Billing</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>

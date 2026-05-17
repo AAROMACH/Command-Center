@@ -49,7 +49,7 @@ export default function TechSettingsPage() {
     const [exportConfig, setExportConfig] = useState({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         to: new Date().toISOString().split('T')[0],
-        types: ['assignments', 'earnings']
+        types: ['assignments', 'billing']
     });
     
     const { toast } = useToast();
@@ -158,7 +158,7 @@ export default function TechSettingsPage() {
                                     { id: 'n-1', label: 'New Jobs', desc: 'Get notified when new jobs are assigned.' },
                                     { id: 'n-2', label: 'Job Updates', desc: 'Alert when site details or wiring requirements change.' },
                                     { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or job dates are modified.' },
-                                    { id: 'n-4', label: 'Pay & Earnings', desc: 'Alert when field logs are approved or payouts initiated.' },
+                                    { id: 'n-4', label: 'Billing & Payments', desc: 'Alert when field logs are approved or payments initiated.' },
                                     { id: 'n-5', label: 'Account Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
                                 ].map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
@@ -322,7 +322,7 @@ export default function TechSettingsPage() {
                                 <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
                                     <div className="space-y-1">
                                         <p className="text-xs font-bold uppercase tracking-wider text-text-primary">Operational Data Export</p>
-                                        <p className="text-[10px] text-text-muted">Generate a high-fidelity archive of your field activity and financial records.</p>
+                                        <p className="text-[10px] text-text-muted">Generate a high-fidelity archive of your field activity and billing records.</p>
                                     </div>
                                     <Button variant="outline" size="sm" className="h-9 px-4 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsExportDialogOpen(true)}>
                                         <Download size={14} className="mr-2"/> Initialize Export
@@ -381,7 +381,7 @@ export default function TechSettingsPage() {
                             <div className="grid grid-cols-1 gap-2">
                                 {[
                                     { id: 'assignments', label: 'Work History', desc: 'Assignment records, site locations, and completion status.', icon: FileJson },
-                                    { id: 'earnings', label: 'Earnings Ledger', desc: 'Payroll manifests, reimbursements, and authorized payouts.', icon: FileClock },
+                                    { id: 'billing', label: 'Billing Ledger', desc: 'Payroll manifests, reimbursements, and authorized payments.', icon: FileClock },
                                     { id: 'comms', label: 'Communication Logs', desc: 'Directives received and system broadcast records.', icon: MessageSquare }
                                 ].map(cat => (
                                     <div 

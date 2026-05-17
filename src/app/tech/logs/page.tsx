@@ -65,7 +65,7 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
-type SortOption = 'newest' | 'oldest' | 'status' | 'payout' | 'items';
+type SortOption = 'newest' | 'oldest' | 'status' | 'billing' | 'items';
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export default function TechWeeklyLogPage() {
             if (sortBy === 'newest') return b.weekOf.localeCompare(a.weekOf);
             if (sortBy === 'oldest') return a.weekOf.localeCompare(b.weekOf);
             if (sortBy === 'status') return a.status.localeCompare(b.status);
-            if (sortBy === 'payout') return (b.totalPayout || 0) - (a.totalPayout || 0);
+            if (sortBy === 'billing') return (b.totalPayout || 0) - (a.totalPayout || 0);
             if (sortBy === 'items') return b.items.length - a.items.length;
             return 0;
         });
@@ -187,9 +187,9 @@ export default function TechWeeklyLogPage() {
             <div className="space-y-6">
                 <header className="page-header">
                     <div>
-                        <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Payroll Audit</p>
+                        <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Billing Audit</p>
                         <h1 className="page-title">Weekly Log Registry</h1>
-                        <p className="page-subtitle text-[11px] uppercase font-bold tracking-widest mt-1">Audit terminal for assignment verification and payouts.</p>
+                        <p className="page-subtitle text-[11px] uppercase font-bold tracking-widest mt-1">Audit terminal for assignment verification and billing.</p>
                     </div>
                 </header>
 
@@ -232,7 +232,7 @@ export default function TechWeeklyLogPage() {
                                 <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
                                 <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
                                 <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
-                                <SelectItem value="payout" className="text-[10px] uppercase font-bold">By Payout</SelectItem>
+                                <SelectItem value="billing" className="text-[10px] uppercase font-bold">By Settlement</SelectItem>
                                 <SelectItem value="items" className="text-[10px] uppercase font-bold">By Count</SelectItem>
                             </SelectContent>
                         </Select>
@@ -390,7 +390,7 @@ export default function TechWeeklyLogPage() {
                         <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Audit Directive</p>
                         <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
                             Every assignment listed in this manifest must be verified for operational accuracy. 
-                            Disputed jobs will trigger a manual audit by the Command Center to ensure financial integrity.
+                            Disputed jobs will trigger a manual audit by the Command Center to ensure technical and billing integrity.
                         </p>
                     </div>
                 </div>

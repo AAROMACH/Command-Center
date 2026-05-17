@@ -146,8 +146,8 @@ export default function TechProfilePage() {
                     <TabsTrigger value="identity" className="flex items-center gap-2">
                         <User size={14}/> Identity
                     </TabsTrigger>
-                    <TabsTrigger value="payouts" className="flex items-center gap-2">
-                        <Banknote size={14}/> Payouts
+                    <TabsTrigger value="billing" className="flex items-center gap-2">
+                        <Banknote size={14}/> Billing
                     </TabsTrigger>
                     <TabsTrigger value="availability" className="flex items-center gap-2">
                         <Timer size={14}/> Availability
@@ -196,11 +196,11 @@ export default function TechProfilePage() {
                         </Card>
                     </TabsContent>
 
-                    {/* PAYOUT PREFERENCES */}
-                    <TabsContent value="payouts">
+                    {/* BILLING PREFERENCES */}
+                    <TabsContent value="billing">
                         <Card className="max-w-4xl">
                             <CardHeader>
-                                <CardTitle>Payout Preferences</CardTitle>
+                                <CardTitle>Billing Preferences</CardTitle>
                                 <CardDescription>Configure how you prefer to receive field payouts and reimbursements.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">

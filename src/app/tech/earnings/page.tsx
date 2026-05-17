@@ -149,7 +149,7 @@ export default function TechEarningsPage() {
             const parts = dateStr.split('-');
             if (parts.length === 3) {
                 const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
+                return `${month}/${day}/${year}`;
             }
             return dateStr;
         } catch (e) {
@@ -169,8 +169,8 @@ export default function TechEarningsPage() {
                         <Coins size={12} />
                         Financial Intelligence
                     </p>
-                    <h1 className="page-title">Earnings Terminal</h1>
-                    <p className="page-subtitle">Historical payout audit and reimbursement tracking.</p>
+                    <h1 className="page-title">Billing Terminal</h1>
+                    <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
                 </div>
                 <div className="page-header-right">
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
@@ -184,7 +184,7 @@ export default function TechEarningsPage() {
                 <div className="md:col-span-2 space-y-6">
                     <div className="grid grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
                         <div className="bg-bg-secondary p-6">
-                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Total Paid (YTD)</p>
+                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Total Settled (YTD)</p>
                             <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
                         </div>
                         <div className="bg-bg-secondary p-6">
@@ -200,7 +200,7 @@ export default function TechEarningsPage() {
                     <Tabs defaultValue="history" className="w-full">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
                             <TabsList className="tabs !mb-0">
-                                <TabsTrigger value="history" className="tab">Payout History</TabsTrigger>
+                                <TabsTrigger value="history" className="tab">Billing History</TabsTrigger>
                                 <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
                             </TabsList>
                         </div>
@@ -214,7 +214,7 @@ export default function TechEarningsPage() {
                                                 <tr>
                                                     <th className="text-center">Week Period</th>
                                                     <th className="text-center">Status</th>
-                                                    <th className="text-right pr-12">Payout</th>
+                                                    <th className="text-right pr-12">Settlement</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -279,7 +279,7 @@ export default function TechEarningsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Settings2 size={16} className="text-accent-gold" />
-                                Payout Protocol
+                                Settlement Protocol
                             </CardTitle>
                             <CardDescription>Verified preferences for disbursement routing.</CardDescription>
                         </CardHeader>

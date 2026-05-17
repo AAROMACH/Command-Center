@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -63,12 +64,8 @@ export default function ClientProjectsPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
-            }
-            return dateStr;
+            // Replaces hyphens with slashes for MM/DD/YYYY standard
+            return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
         }
@@ -118,7 +115,7 @@ export default function ClientProjectsPage() {
                     <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="space-y-6 mt-0">
-                    <ProjectsList onHoldProjects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} projects={onHoldProjects} />
+                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-6 mt-0">
                     <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} />

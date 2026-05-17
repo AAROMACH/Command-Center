@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -90,12 +91,8 @@ export default function ClientTicketsPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
-            }
-            return dateStr;
+            // Input format is MM-dd-yyyy. Replaces hyphens with slashes.
+            return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
         }
@@ -334,7 +331,7 @@ export default function ClientTicketsPage() {
                                 </div>
                             </div>
                         </div>
-                        <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default mt-2">
+                        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-2">
                             <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel Submission</Button>
                             <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10 uppercase font-bold text-[10px] tracking-widest h-11">
                                 <Check size={16} className="mr-2" />

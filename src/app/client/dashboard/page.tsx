@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -65,12 +66,8 @@ export default function ClientDashboardPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
-            }
-            return dateStr;
+            // Consistent standard MM/DD/YYYY output
+            return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
         }
@@ -116,7 +113,7 @@ export default function ClientDashboardPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-bold text-text-primary">{myRequests.filter(r => r.status === 'new' || r.status === 'reviewed').length}</p>
+                        <p className="text-3xl font-bold text-text-primary">{myRequests.filter(r => r.status === 'new' || r.status === 'reviewed' || r.status === 'approved').length}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">

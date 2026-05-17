@@ -16,6 +16,7 @@ type RequestsTabsProps = {
 };
 
 export function RequestsTabs({ serviceRequests }: RequestsTabsProps) {
+  // ORGANIZATIONAL LOGIC: Always sort New requests by Critical Priority first
   const newRequests = serviceRequests
     .filter(p => p.status === 'new')
     .sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);

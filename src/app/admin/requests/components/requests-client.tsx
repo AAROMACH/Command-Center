@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,7 +18,11 @@ import {
   FileText,
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  History,
+  Building2,
+  LayoutDashboard
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -40,6 +43,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -55,7 +59,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
-    // Reset pagination when data changes
     useEffect(() => {
         setCurrentPage(1);
     }, [requests.length, itemsPerPage]);
@@ -66,35 +69,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         return requests.slice(start, start + itemsPerPage);
     }, [requests, currentPage, itemsPerPage]);
 
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-          const parts = dateStr.split(/[-/]/);
-          if (parts.length === 3) {
-              let m, d, y;
-              if (parts[0].length === 4) { // yyyy-mm-dd
-                  [y, m, d] = parts;
-              } else { // mm-dd-yyyy or similar
-                  [m, d, y] = parts;
-              }
-              return `${m}-${d}-${y}`;
-          }
-          return dateStr;
-        } catch (e) {
-          return dateStr;
-        }
-    };
-
-    if (requests.length === 0) {
-        return (
-            <div className="table-wrap">
-                <div className="empty-state !py-8 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted italic opacity-40">No requests found in this category.</p>
-                </div>
-            </div>
-        )
-    }
-    
     const handleOpenReview = (req: ServiceRequest) => {
         setSelectedRequest(req);
         setIsReviewOpen(true);
@@ -133,198 +107,224 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         }
     };
 
+    if (requests.length === 0) {
+        return (
+            <div className="table-wrap">
+                <div className="empty-state !py-24 text-center border-none">
+                    <ClipboardList size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No missions match current intake filters.</p>
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div className="table-wrap">
-            <table className="tbl">
-                <thead>
-                    <tr className="bg-bg-tertiary/50">
-                        <th style={{ width: "450px" }} className="!py-1.5 text-center">Intake Identification & Description</th>
-                        <th style={{ width: "200px" }} className="!py-1.5 text-center">Site Coordinates</th>
-                        <th style={{ width: "100px" }} className="!py-1.5 text-center">Category</th>
-                        <th style={{ width: "80px" }} className="!py-1.5 text-center">Priority</th>
-                        <th style={{ width: "100px" }} className="!py-1.5 text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {paginatedRequests.map((req) => (
-                        <tr key={req.id} className="group hover:bg-bg-tertiary/80 transition-colors">
-                            <td className="!py-3">
-                                <div className="flex items-center gap-4 px-4">
-                                  <div className="flex flex-col items-center gap-1.5 shrink-0">
-                                    <div className="cell-id !text-[10px] font-mono">{req.id.toUpperCase()}</div>
-                                    <span className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">{formatDateDisplay(req.submittedDate)}</span>
-                                  </div>
-                                  <div className="flex flex-col items-start text-left min-w-0">
-                                    <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight">{req.description}</div>
-                                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{req.clientName}</div>
-                                  </div>
-                                </div>
-                            </td>
-                            <td className="!py-3">
-                                <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                  <MapPin size={10} className="text-brand-red shrink-0" />
-                                  <span className="max-w-[150px] text-center">{req.location}</span>
-                                </div>
-                            </td>
-                            <td className="!py-3">
-                                <div className="flex items-center justify-center">
-                                  <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter bg-bg-tertiary border-border-sub text-text-muted">
-                                      {req.requestType}
-                                  </Badge>
-                                </div>
-                            </td>
-                            <td className="!py-3 text-center">
-                                <div className="flex items-center justify-center">
-                                  <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-3.5 px-1.5 text-[7px] uppercase tracking-tighter">
-                                      {req.priority}
-                                  </Badge>
-                                </div>
-                            </td>
-                            <td className="!py-3 text-center">
-                                <div className="flex justify-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-text-muted hover:text-brand-red" onClick={() => handleOpenReview(req)}>
-                                        <Eye size={12}/>
-                                    </Button>
-                                    {req.status === 'approved' && (
-                                        <Button size="icon-sm" variant="secondary" className="h-6 w-6" onClick={() => router.push('/admin/dispatch')}>
-                                            <ArrowRight size={12}/>
-                                        </Button>
-                                    )}
-                                </div>
-                            </td>
+        <div className="space-y-4">
+            <div className="table-wrap">
+                <table className="tbl">
+                    <thead>
+                        <tr className="bg-bg-tertiary">
+                            <th style={{ width: "160px" }} className="text-center pl-0">Intake ID</th>
+                            <th className="text-left pl-0">Tactical Briefing & Scope</th>
+                            <th style={{ width: "220px" }} className="text-left pl-0">Site Coordinates</th>
+                            <th style={{ width: "160px" }} className="text-center">Category</th>
+                            <th style={{ width: "100px" }} className="text-center">Priority</th>
+                            <th style={{ width: "100px" }} className="text-center"></th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {paginatedRequests.map((req) => (
+                            <tr key={req.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenReview(req)}>
+                                <td className="!py-4">
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                        <div className="font-mono text-[10px] font-bold text-brand-red uppercase">{req.id.toUpperCase()}</div>
+                                        <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">{req.submittedDate}</p>
+                                    </div>
+                                </td>
+                                <td className="!py-4 text-left pl-0">
+                                    <div className="flex flex-col max-w-[450px]">
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors line-clamp-1">{req.description}</p>
+                                        <div className="flex items-center gap-2 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                            <Building2 size={10} />
+                                            <span>{req.clientName}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="!py-4 text-left pl-0">
+                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                        <MapPin size={10} className="text-brand-red shrink-0" />
+                                        <span className="truncate max-w-[180px]">{req.location}</span>
+                                    </div>
+                                </td>
+                                <td className="!py-4">
+                                    <div className="flex items-center justify-center">
+                                        <Badge variant="outline" className="text-[8px] h-4 bg-bg-primary border-border-sub text-text-muted uppercase">
+                                            {req.requestType}
+                                        </Badge>
+                                    </div>
+                                </td>
+                                <td className="!py-4">
+                                    <div className="flex items-center justify-center">
+                                        <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">
+                                            {req.priority}
+                                        </Badge>
+                                    </div>
+                                </td>
+                                <td className="!py-4">
+                                    <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <ChevronRight size={16} className="text-text-muted" />
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
 
-            {/* COMPACT PAGINATION FOOTER */}
-            {requests.length > 0 && (
-              <div className="bg-bg-tertiary/30 px-3 py-1.5 flex items-center justify-between border-t border-border-sub">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Show</p>
-                    <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                      <SelectTrigger className="h-5 w-[55px] bg-bg-primary text-[8px] font-bold border-border-sub p-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10" className="text-[10px]">10</SelectItem>
-                        <SelectItem value="25" className="text-[10px]">25</SelectItem>
-                        <SelectItem value="50" className="text-[10px]">50</SelectItem>
-                        <SelectItem value="100" className="text-[10px]">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
-                    <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> / {requests.length}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="h-5 w-5 border-border-sub bg-bg-primary"
-                  >
-                    <ChevronLeft size={10} />
-                  </Button>
-                  <span className="text-[8px] font-bold text-text-muted px-1 uppercase tracking-tighter">P{currentPage} / {totalPages}</span>
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="h-5 w-5 border-border-sub bg-bg-primary"
-                  >
-                    <ChevronRight size={10} />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* COMPACT REVIEW DIALOG */}
-            <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[85vh]">
-                    <DialogHeader className="p-4 pb-2 border-b border-border-sub bg-bg-tertiary/30">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <ClipboardList className="text-brand-red h-4 w-4" />
-                            <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Intake Audit</DialogTitle>
+                {/* PAGINATION FOOTER */}
+                <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
+                            <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                                <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted tracking-tight">Audit requirements for deployment path authorization.</DialogDescription>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                            Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> of {requests.length}
+                        </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="outline" 
+                            size="icon-sm" 
+                            disabled={currentPage === 1}
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.max(1, prev - 1)); }}
+                            className="h-7 w-7 border-border-sub bg-bg-primary"
+                        >
+                            <ChevronLeft size={14} />
+                        </Button>
+                        <div className="px-2 text-[10px] font-bold text-text-primary">Page {currentPage} of {totalPages}</div>
+                        <Button 
+                            variant="outline" 
+                            size="icon-sm" 
+                            disabled={currentPage === totalPages}
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.min(totalPages, prev + 1)); }}
+                            className="h-7 w-7 border-border-sub bg-bg-primary"
+                        >
+                            <ChevronRight size={14} />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* INTAKE AUDIT TERMINAL */}
+            <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+                <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                        <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <ClipboardList className="text-brand-red h-5 w-5" />
+                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Audit</DialogTitle>
+                                </div>
+                                <DialogDescription className="text-xs uppercase font-bold text-text-muted">Verification required for deployment path authorization.</DialogDescription>
+                            </div>
+                            <div className="text-right space-y-1">
+                                <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{selectedRequest?.id.toUpperCase()}</p>
+                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Submitted: {selectedRequest?.submittedDate}</p>
+                            </div>
+                        </div>
                     </DialogHeader>
 
                     {selectedRequest && (
-                        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-0.5">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">CLIENT</p>
-                                    <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.clientName}</p>
+                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                            {/* SECTION 1: ENTITY & COORDINATES */}
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <Building2 size={12}/> Client Entity
+                                        </p>
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <MapPin size={12}/> Site Coordinates
+                                        </p>
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-2">
+                                            <span className="text-xs font-bold text-text-primary uppercase">{selectedRequest.location}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-0.5 text-right">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SUBMITTED</p>
-                                    <p className="text-xs font-mono font-bold text-text-primary">{formatDateDisplay(selectedRequest.submittedDate)}</p>
+
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <LayoutDashboard size={12}/> Technical Category
+                                        </p>
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                            <Badge variant="outline" className="text-[10px] uppercase bg-bg-secondary">{selectedRequest.requestType}</Badge>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <AlertTriangle size={12}/> Deployment Priority
+                                        </p>
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                            <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="h-5 px-3 uppercase text-[10px]">
+                                                {selectedRequest.priority}
+                                            </Badge>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-0.5">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SITE COORDINATES</p>
-                                <div className="flex items-center gap-1.5 text-xs text-text-primary">
-                                    <MapPin size={12} className="text-brand-red" />
-                                    <span className="font-bold">{selectedRequest.location}</span>
+                            {/* SECTION 2: SCOPE BRIEFING */}
+                            <div className="space-y-3">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Scope Briefing</p>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium">
+                                    &quot;{selectedRequest.description}&quot;
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 bg-bg-primary/40 p-2.5 rounded border border-border-sub">
-                                <div>
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-1">SERVICE TYPE</p>
-                                    <Badge variant="outline" className="text-[9px] uppercase tracking-tighter bg-bg-tertiary">{selectedRequest.requestType}</Badge>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-1">PRIORITY</p>
-                                    <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="text-[9px] uppercase tracking-tighter">
-                                        {selectedRequest.priority}
-                                    </Badge>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">SCOPE BRIEFING</p>
-                                <div className="p-3 rounded bg-bg-primary border border-border-sub">
-                                    <p className="text-[11px] text-text-secondary leading-relaxed italic">
-                                        &quot;{selectedRequest.description}&quot;
+                            {/* SECTION 3: VISUALS & ASSETS */}
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+                                        <Camera size={12}/> Visual Evidence
                                     </p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 text-center">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-1.5">
-                                        <Camera size={10} className="text-brand-red" /> VISUALS
-                                    </p>
-                                    <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="grid grid-cols-2 gap-3">
                                         {selectedRequest.imageUrls && selectedRequest.imageUrls.length > 0 ? selectedRequest.imageUrls.map((img, i) => (
-                                            <div key={i} className="aspect-square rounded border border-border-sub overflow-hidden relative group">
+                                            <div key={i} className="aspect-video rounded-lg border border-border-sub overflow-hidden relative bg-bg-primary">
                                                 <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
                                             </div>
                                         )) : (
-                                            <div className="col-span-2 py-4 rounded border border-dashed border-border-sub flex items-center justify-center text-[8px] text-text-muted uppercase font-bold">N/A</div>
+                                            <div className="col-span-2 py-8 rounded-lg border-2 border-dashed border-border-sub flex items-center justify-center text-[9px] text-text-muted uppercase font-bold tracking-widest italic opacity-40">No visuals attached</div>
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-2 text-center">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-1.5">
-                                        <FileText size={10} className="text-accent-gold" /> ASSETS
+                                <div className="space-y-3">
+                                    <p className="text-[9px] font-black text-accent-gold uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+                                        <FileText size={12}/> Technical Assets
                                     </p>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-2">
                                         {selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0 ? selectedRequest.documentUrls.map((doc, i) => (
-                                            <div key={i} className="p-1.5 rounded bg-bg-primary border border-border-sub flex items-center justify-between group hover:border-accent-gold transition-colors">
-                                                <span className="text-[9px] font-bold text-text-primary uppercase truncate">{doc}</span>
-                                                <ExternalLink size={10} className="text-text-muted shrink-0" />
+                                            <div key={i} className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center justify-between group hover:border-accent-gold transition-colors cursor-pointer">
+                                                <span className="text-[10px] font-bold text-text-primary uppercase truncate">{doc}</span>
+                                                <ExternalLink size={12} className="text-text-muted group-hover:text-accent-gold shrink-0" />
                                             </div>
                                         )) : (
-                                            <div className="py-4 rounded border border-dashed border-border-sub flex items-center justify-center text-[8px] text-text-muted uppercase font-bold">N/A</div>
+                                            <div className="py-8 rounded-lg border-2 border-dashed border-border-sub flex items-center justify-center text-[9px] text-text-muted uppercase font-bold tracking-widest italic opacity-40">No assets attached</div>
                                         )}
                                     </div>
                                 </div>
@@ -332,16 +332,21 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         </div>
                     )}
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-4 border-t border-border-default grid grid-cols-3 gap-2">
-                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-9 text-[9px] uppercase font-bold tracking-widest">
-                            Reject
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-col md:flex-row items-end gap-6">
+                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 px-8 uppercase font-bold text-[10px] tracking-[0.2em] shrink-0">
+                            Reject Intake
                         </Button>
-                        <Button onClick={handleAction('approved', '/admin/dispatch')} className="h-9 text-[9px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
-                            Assign
-                        </Button>
-                        <Button variant="outline" onClick={() => handleAction('approved', '/admin/projects')} className="h-9 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                            Project
-                        </Button>
+                        <div className="flex-1 w-full">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Authorize Deployment Path:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                                    <Wrench size={16} className="mr-2" /> Dispatch as assignment
+                                </Button>
+                                <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                                    <Briefcase size={16} className="mr-2" /> Convert to project
+                                </Button>
+                            </div>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

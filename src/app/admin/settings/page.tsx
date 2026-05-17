@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -298,16 +297,6 @@ export default function SettingsPage() {
                                     </CardFooter>
                                 </Card>
                             ))}
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <AlertCircle className="text-text-muted h-4 w-4" />
-                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none">
-                                    System Owners: Use <code className="bg-bg-primary px-1.5 py-0.5 rounded border border-border-sub text-brand-red mx-1 font-mono">firebase functions:secrets:set</code> to manage signatures via CLI.
-                                </p>
-                            </div>
-                            <Button variant="link" className="text-[10px] font-bold uppercase text-accent-gold p-0 h-auto">Access Technical Wiki</Button>
                         </div>
                     </TabsContent>
                 </div>

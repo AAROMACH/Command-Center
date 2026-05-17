@@ -17,7 +17,9 @@ import {
     ChevronRight,
     Coins,
     Activity,
-    Clock
+    Clock,
+    Mail,
+    MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -208,22 +210,23 @@ export default function ClientDashboardPage() {
 
                 <div className="space-y-6">
                     <Card className="border-brand-red/20 bg-brand-red/5">
-                        <CardHeader>
-                            <CardTitle className="text-brand-red flex items-center gap-2">
-                                <Activity size={14}/> Support Access
+                        <CardHeader className="p-4 pb-2">
+                            <CardTitle className="text-brand-red flex items-center gap-2 text-[10px] uppercase tracking-widest">
+                                <Activity size={12}/> Support Access
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase">
-                                Your dedicated Command Center staff is standing by to assist with low voltage escalations or site requirements.
-                            </p>
-                            <div className="space-y-2">
-                                <div className="p-3 rounded bg-bg-primary border border-border-sub">
-                                    <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest mb-1">Assigned PM</p>
-                                    <p className="text-xs font-bold text-text-primary uppercase">Sarah Connor</p>
-                                    <p className="text-[10px] text-brand-red font-mono">admin@aaromach.com</p>
-                                </div>
-                                <Button variant="outline" className="w-full h-9 text-[10px] uppercase tracking-widest font-bold">Open Direct Line</Button>
+                        <CardContent className="p-4 pt-0 space-y-3">
+                            <div className="p-2.5 rounded bg-bg-primary border border-border-sub">
+                                <p className="text-[8px] uppercase font-black text-text-muted tracking-widest mb-1">Assigned lead</p>
+                                <p className="text-[11px] font-bold text-text-primary uppercase">Sarah Connor</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold tracking-tighter">
+                                    <Mail size={12} className="mr-1.5" /> Email
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold tracking-tighter">
+                                    <MessageSquare size={12} className="mr-1.5" /> SMS
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

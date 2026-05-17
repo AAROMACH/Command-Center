@@ -18,7 +18,7 @@ import {
   Mail,
   MessageSquare
 } from "lucide-react";
-import { cn } from "@/utils";
+import { cn } from "@/lib/utils";
 import { workOrders, penaltyEvents, weeklyLogs, technicians, projects, serviceRequests } from '@/lib/data';
 import { addDays } from 'date-fns';
 import {

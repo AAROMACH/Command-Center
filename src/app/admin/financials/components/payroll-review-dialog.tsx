@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -401,16 +400,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Separator className="bg-border-sub shrink-0" />
 
-                    <div className="p-6 bg-bg-tertiary/10 space-y-6 shrink-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                            <section className="space-y-4 text-left">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <Coins size={14} className="text-accent-gold" />
+                    <div className="p-4 bg-bg-tertiary/10 space-y-4 shrink-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <section className="space-y-2 text-left">
+                                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
+                                    <Coins size={12} className="text-accent-gold" />
                                     Authorized Expenses
                                 </h3>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {localLog.reimbursements.map(item => (
-                                        <div key={item.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
+                                        <div key={item.id} className="p-2 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
                                             <div className="min-w-0">
                                                 <p className="text-[10px] font-bold text-text-primary uppercase truncate">{item.description}</p>
                                                 <p className="text-[8px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
@@ -419,42 +418,42 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         </div>
                                     ))}
                                     {localLog.reimbursements.length === 0 && (
-                                        <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-40">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest">No expenses logged</p>
+                                        <div className="p-4 text-center border border-dashed border-border-sub rounded-lg opacity-40">
+                                            <p className="text-[9px] font-bold uppercase tracking-widest">No expenses logged</p>
                                         </div>
                                     )}
                                 </div>
                             </section>
 
-                            <section className="space-y-4 text-left">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <FileText size={14} className="text-brand-red" />
+                            <section className="space-y-2 text-left">
+                                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
+                                    <FileText size={12} className="text-brand-red" />
                                     Settlement Verification
                                 </h3>
-                                <div className="p-6 rounded-2xl bg-bg-secondary border-2 border-green-border/20 space-y-6 shadow-inner relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-5">
-                                        <Coins size={80} />
+                                <div className="p-4 rounded-xl bg-bg-secondary border-2 border-green-border/20 space-y-3 shadow-inner relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-2 opacity-5">
+                                        <Coins size={40} />
                                     </div>
-                                    <div className="space-y-3 relative z-10">
-                                        <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
+                                    <div className="space-y-2 relative z-10">
+                                        <div className="flex justify-between text-[9px] uppercase font-bold text-text-muted">
                                             <span>Assignment Net Pay</span>
                                             <span className="font-mono text-text-primary font-bold">
                                                 ${(localLog.items.reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0)).toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
+                                        <div className="flex justify-between text-[9px] uppercase font-bold text-text-muted">
                                             <span>Total Reimbursements</span>
                                             <span className="font-mono text-text-primary font-bold">
                                                 +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
                                             </span>
                                         </div>
-                                        <Separator className="bg-border-sub/50" />
-                                        <div className="flex justify-between items-center pt-2">
-                                            <div className="space-y-0.5">
-                                                <p className="text-[9px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
-                                                <p className="text-[8px] text-text-muted uppercase font-bold">Verified payout target</p>
+                                        <Separator className="bg-border-sub/30" />
+                                        <div className="flex justify-between items-center pt-1">
+                                            <div className="space-y-0">
+                                                <p className="text-[8px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
+                                                <p className="text-[7px] text-text-muted uppercase font-bold">Verified payout target</p>
                                             </div>
-                                            <p className="text-3xl font-mono font-bold text-text-green">
+                                            <p className="text-2xl font-mono font-bold text-text-green">
                                                 ${calculatedTotalPayout.toFixed(2)}
                                             </p>
                                         </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +22,8 @@ import {
     Check,
     ArrowUpDown,
     History,
-    Activity
+    Activity,
+    CheckCircle2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -80,11 +82,15 @@ export default function ClientTicketsPage() {
         });
     }, [currentUser, searchQuery, sortBy]);
 
-    const activeRequests = useMemo(() => 
-        myRequests.filter(r => r.status === 'new' || r.status === 'reviewed' || r.status === 'approved'),
+    const openRequests = useMemo(() => 
+        myRequests.filter(r => r.status === 'new'),
     [myRequests]);
 
-    const historicalRequests = useMemo(() => 
+    const activeRequests = useMemo(() => 
+        myRequests.filter(r => r.status === 'reviewed' || r.status === 'approved'),
+    [myRequests]);
+
+    const resolvedRequests = useMemo(() => 
         myRequests.filter(r => r.status === 'closed' || r.status === 'rejected'),
     [myRequests]);
 
@@ -195,20 +201,28 @@ export default function ClientTicketsPage() {
                 <TabsList className="tabs !bg-bg-tertiary p-0 h-10 mb-8 w-full md:w-auto">
                     <TabsTrigger value="active" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         <Activity size={14} className="mr-2" />
-                        Active Requests <span className="ml-1 opacity-60">({activeRequests.length})</span>
+                        Active <span className="ml-1 opacity-60">({activeRequests.length})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                        <History size={14} className="mr-2" />
-                        Resolved / Closed <span className="ml-1 opacity-60">({historicalRequests.length})</span>
+                    <TabsTrigger value="open" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        <ClipboardList size={14} className="mr-2" />
+                        Open <span className="ml-1 opacity-60">({openRequests.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="resolved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        <CheckCircle2 size={14} className="mr-2" />
+                        Resolved <span className="ml-1 opacity-60">({resolvedRequests.length})</span>
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="active" className="space-y-4 mt-0">
                     <TicketList requests={activeRequests} formatDateStr={formatDateStr} />
                 </TabsContent>
+
+                <TabsContent value="open" className="space-y-4 mt-0">
+                    <TicketList requests={openRequests} formatDateStr={formatDateStr} />
+                </TabsContent>
                 
-                <TabsContent value="history" className="space-y-4 mt-0">
-                    <TicketList requests={historicalRequests} formatDateStr={formatDateStr} />
+                <TabsContent value="resolved" className="space-y-4 mt-0">
+                    <TicketList requests={resolvedRequests} formatDateStr={formatDateStr} />
                 </TabsContent>
             </Tabs>
 
@@ -384,12 +398,12 @@ function TicketList({ requests, formatDateStr }: { requests: ServiceRequest[], f
                             </div>
 
                             <div className="flex items-center gap-8 md:border-l md:border-border-sub md:pl-8">
-                                <div className="text-left md:text-right min-w-[140px] space-y-3">
-                                    <div className="flex items-center justify-end gap-2 text-[10px] text-text-primary font-bold uppercase tracking-widest">
-                                        <Calendar size={10} className="text-text-primary"/> 
+                                <div className="text-left md:text-right min-w-[140px] flex flex-col items-center gap-3">
+                                    <div className="flex items-center gap-2 text-[10px] text-white font-bold uppercase tracking-widest">
+                                        <Calendar size={10} className="text-white"/> 
                                         <span>Submitted: {formatDateStr(ticket.submittedDate)}</span>
                                     </div>
-                                    <div>
+                                    <div className="flex flex-col items-center">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Status</p>
                                         <Badge variant={ticket.status === 'new' ? 'pending' : ticket.status === 'approved' ? 'active' : 'onhold'} className="uppercase text-[9px] tracking-widest px-4 h-6">
                                             {ticket.status}

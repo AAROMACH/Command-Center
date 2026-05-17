@@ -1,6 +1,7 @@
 'use client';
 
-import type { WeeklyLog, Technician, WorkOrder, MissingAssignmentReport } from '@/lib/types';
+import { useState, useEffect, useMemo } from 'react';
+import type { WeeklyLog, Technician, WorkOrder, MissingAssignmentReport, WeeklyLogItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { workOrders } from '@/lib/data';
+import { workOrders as initialWorkOrders } from '@/lib/data';
 import { 
     AlertTriangle, 
     CheckCircle2, 
@@ -20,13 +21,16 @@ import {
     Coins,
     ClipboardList,
     FileText,
-    History
+    ExternalLink,
+    DollarSign,
+    Wrench
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { format, parseISO } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 
 type PayrollReviewDialogProps = {
     isOpen: boolean;
@@ -36,20 +40,49 @@ type PayrollReviewDialogProps = {
     onStatusChange: (logId: string, status: WeeklyLog['status']) => void;
 };
 
-export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStatusChange }: PayrollReviewDialogProps) {
-    if (!log || !technician) return null;
+export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, onStatusChange }: PayrollReviewDialogProps) {
+    const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
+    const [localWorkOrders, setLocalWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+
+    useEffect(() => {
+        if (isOpen && initialLog) {
+            setLocalLog(JSON.parse(JSON.stringify(initialLog)));
+        }
+    }, [isOpen, initialLog]);
 
     const findWorkOrder = (id: string): WorkOrder | undefined => {
-        return workOrders.find(wo => wo.id === id);
+        return localWorkOrders.find(wo => wo.id === id);
     };
     
     const handleStatusChange = (status: WeeklyLog['status']) => {
-        onStatusChange(log.id, status);
+        if (localLog) {
+            onStatusChange(localLog.id, status);
+        }
     };
 
-    const disputedItems = log.items.filter(item => item.confirmationStatus === 'disputed');
-    const confirmedItems = log.items.filter(item => item.confirmationStatus === 'confirmed');
-    const totalJobs = log.items.length;
+    const handleUpdatePay = (woId: string, newPay: number) => {
+        setLocalWorkOrders(prev => prev.map(wo => 
+            wo.id === woId ? { ...wo, pay: newPay } : wo
+        ));
+    };
+
+    const disputedItems = localLog?.items.filter(item => item.confirmationStatus === 'disputed') || [];
+    const confirmedItems = localLog?.items.filter(item => item.confirmationStatus === 'confirmed') || [];
+    const totalJobs = localLog?.items.length || 0;
+
+    // Recalculate settlement total based on local edits
+    const calculatedTotalPayout = useMemo(() => {
+        if (!localLog) return 0;
+        const assignmentPay = localLog.items
+            .filter(i => i.confirmationStatus === 'confirmed')
+            .reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0);
+        
+        const reimbursementPay = localLog.reimbursements.reduce((acc, r) => acc + r.amount, 0);
+        
+        return assignmentPay + reimbursementPay;
+    }, [localLog, localWorkOrders]);
+
+    if (!localLog || !technician) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -64,12 +97,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                             <div>
                                 <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                                    Period: <span className="text-brand-red font-mono">{log.weekOf}</span> · Status: <span className="text-text-primary">{log.status}</span>
+                                    Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
                                 </p>
                             </div>
                         </div>
-                        <Badge variant={log.status === 'Approved' ? 'active' : 'onhold'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
-                            {log.status}
+                        <Badge variant={localLog.status === 'Approved' ? 'active' : 'onhold'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
+                            {localLog.status}
                         </Badge>
                     </div>
                 </DialogHeader>
@@ -82,19 +115,18 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                     </div>
                     <div className="bg-bg-secondary p-3 text-center border-l border-border-sub">
                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Audit Alerts</p>
-                        <p className={cn("text-lg font-bold", (disputedItems.length > 0 || (log.missingAssignmentReports?.length || 0) > 0) ? "text-text-red" : "text-text-green")}>
-                            {disputedItems.length + (log.missingAssignmentReports?.length || 0)}
+                        <p className={cn("text-lg font-bold", (disputedItems.length > 0 || (localLog.missingAssignmentReports?.length || 0) > 0) ? "text-text-red" : "text-text-green")}>
+                            {disputedItems.length + (localLog.missingAssignmentReports?.length || 0)}
                         </p>
                     </div>
                     <div className="bg-bg-secondary p-3 text-center border-l border-border-sub">
                         <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Net Settlement</p>
-                        <p className="text-lg font-mono font-bold text-text-green">${(log.totalPayout || 0).toFixed(2)}</p>
+                        <p className="text-lg font-mono font-bold text-text-green">${calculatedTotalPayout.toFixed(2)}</p>
                     </div>
                 </div>
 
                 <ScrollArea className="flex-1">
                     <div className="p-6 space-y-10">
-                        {/* TOP SECTION: JOBS vs DISCREPANCIES */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                             {/* LEFT: VERIFIED JOBS */}
                             <section className="space-y-4">
@@ -108,17 +140,38 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                 <div className="space-y-2">
                                     {confirmedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
+                                        const isImported = wo?.source === 'Imported';
                                         return (
                                             <div key={item.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-colors">
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{wo?.description}</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{wo?.description}</p>
+                                                        {isImported && (
+                                                            <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                        )}
+                                                    </div>
                                                     <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                                         <span className="text-brand-red font-mono">{wo?.id.toUpperCase()}</span>
                                                         <span>•</span>
                                                         <span>{wo?.location.split(',')[0]}</span>
                                                     </div>
                                                 </div>
-                                                <p className="text-xs font-mono font-bold text-text-primary ml-4 shrink-0">${wo?.pay.toFixed(2)}</p>
+                                                
+                                                <div className="flex items-center gap-3 ml-4 shrink-0">
+                                                    {isImported ? (
+                                                        <div className="flex items-center gap-1.5 bg-bg-primary p-1 rounded border border-border-sub">
+                                                            <DollarSign size={10} className="text-text-green" />
+                                                            <input 
+                                                                type="number"
+                                                                value={wo?.pay || 0}
+                                                                onChange={(e) => handleUpdatePay(wo!.id, parseFloat(e.target.value) || 0)}
+                                                                className="w-16 bg-transparent border-none text-[11px] font-mono font-bold text-text-primary focus:ring-0 p-0"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         )
                                     })}
@@ -130,7 +183,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                 </div>
                             </section>
 
-                            {/* RIGHT: DISCREPANCIES */}
+                            {/* RIGHT: DISCREPANCIES (CARDS) */}
                             <section className="space-y-4">
                                 <div className="flex items-center gap-2 text-text-red px-1">
                                     <ShieldAlert size={14} />
@@ -140,44 +193,78 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                     {disputedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         return (
-                                            <div key={item.id} className="p-4 rounded-lg border border-brand-red/30 bg-brand-red-dim/5 space-y-3">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="space-y-0.5">
-                                                        <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
-                                                        <p className="text-xs font-bold text-text-primary uppercase truncate max-w-[200px]">{wo?.description}</p>
+                                            <Card key={item.id} className="bg-bg-secondary border-brand-red/30 shadow-sm">
+                                                <CardContent className="p-4 space-y-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="space-y-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
+                                                                <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
+                                                            </div>
+                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo?.description}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[8px] font-black text-text-muted uppercase">Base Pay</p>
+                                                            <p className="text-xs font-mono font-bold text-text-red">${wo?.pay.toFixed(2)}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase">Registry Pay</p>
-                                                        <p className="text-xs font-mono font-bold text-text-red">${wo?.pay.toFixed(2)}</p>
+                                                    <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10">
+                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1.5 flex items-center gap-1.5">
+                                                            <AlertTriangle size={10}/> Reason: {item.disputeReason}
+                                                        </p>
+                                                        <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium">
+                                                            &quot;{item.disputeNotes}&quot;
+                                                        </p>
                                                     </div>
-                                                </div>
-                                                <div className="p-2 rounded bg-bg-primary/50 border border-brand-red/10">
-                                                    <p className="text-[9px] font-bold text-text-red uppercase mb-1 flex items-center gap-1.5"><AlertTriangle size={10}/> Dispute: {item.disputeReason}</p>
-                                                    <p className="text-[10px] text-text-secondary leading-relaxed italic">&quot;{item.disputeNotes}&quot;</p>
-                                                </div>
-                                            </div>
+                                                    <div className="flex gap-2">
+                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold">Reject Dispute</Button>
+                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red">Audit & Adjust</Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
                                         )
                                     })}
 
-                                    {log.missingAssignmentReports?.map(report => (
-                                        <div key={report.id} className="p-4 rounded-lg border border-accent-gold/30 bg-accent-gold-dim/5 space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-secondary rounded border border-accent-gold/20 text-accent-gold">
-                                                    <ClipboardList size={16}/>
+                                    {localLog.missingAssignmentReports?.map(report => (
+                                        <Card key={report.id} className="bg-bg-secondary border-accent-gold/30 shadow-sm">
+                                            <CardContent className="p-4 space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-bg-tertiary rounded border border-accent-gold/20 text-accent-gold">
+                                                            <Wrench size={16}/>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Missing Assignment Report</p>
+                                                                <Badge variant="onhold" className="text-[7px] h-3.5 px-1.5 uppercase">Audit Required</Badge>
+                                                            </div>
+                                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{report.date} · {report.location.split(',')[0]}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Missing Assignment Report</p>
-                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{report.date} · {report.location.split(',')[0]}</p>
+                                                <div className="p-3 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10">
+                                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic">&quot;{report.summary}&quot;</p>
                                                 </div>
-                                            </div>
-                                            <div className="p-2 rounded bg-bg-primary/50 border border-accent-gold/10">
-                                                <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{report.summary}&quot;</p>
-                                            </div>
-                                        </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[8px] font-black uppercase text-text-muted ml-1">Manual Pay Authorization</Label>
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
+                                                            <Input 
+                                                                placeholder="Enter payout..." 
+                                                                className="h-8 pl-8 bg-bg-primary border-border-sub text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                        <Button variant="default" size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green px-4">Authorize</Button>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
                                     ))}
 
-                                    {(disputedItems.length === 0 && (!log.missingAssignmentReports || log.missingAssignmentReports.length === 0)) && (
-                                        <div className="p-12 text-center border border-dashed border-border-sub rounded-lg opacity-40">
+                                    {(disputedItems.length === 0 && (!localLog.missingAssignmentReports || localLog.missingAssignmentReports.length === 0)) && (
+                                        <div className="p-12 text-center border border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                            <CheckCircle2 size={32} className="mx-auto mb-2 text-text-muted" />
                                             <p className="text-[10px] font-bold uppercase tracking-widest italic">Discrepancy registry clear</p>
                                         </div>
                                     )}
@@ -196,7 +283,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                     Expense Manifest
                                 </h3>
                                 <div className="space-y-2">
-                                    {log.reimbursements.map(item => (
+                                    {localLog.reimbursements.map(item => (
                                         <div key={item.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
                                             <div className="min-w-0">
                                                 <p className="text-[10px] font-bold text-text-primary uppercase truncate">{item.description}</p>
@@ -205,7 +292,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                             <p className="text-[10px] font-mono font-bold text-text-green ml-4">+${item.amount.toFixed(2)}</p>
                                         </div>
                                     ))}
-                                    {log.reimbursements.length === 0 && (
+                                    {localLog.reimbursements.length === 0 && (
                                         <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-40">
                                             <p className="text-[10px] font-bold uppercase tracking-widest">No expenses logged</p>
                                         </div>
@@ -233,7 +320,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                         <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
                                             <span>Authorized Reimbursements</span>
                                             <span className="font-mono text-text-primary font-bold">
-                                                +${(log.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
+                                                +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
                                             </span>
                                         </div>
                                         <Separator className="bg-border-sub/50" />
@@ -243,7 +330,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                                                 <p className="text-[8px] text-text-muted uppercase font-bold">Final verified payout amount</p>
                                             </div>
                                             <p className="text-3xl font-mono font-bold text-text-green">
-                                                ${(log.totalPayout || 0).toFixed(2)}
+                                                ${calculatedTotalPayout.toFixed(2)}
                                             </p>
                                         </div>
                                     </div>
@@ -254,7 +341,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log, technician, onStat
                 </ScrollArea>
 
                 <DialogFooter className="p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-row items-center gap-3">
-                    {log.status === 'Submitted' ? (
+                    {localLog.status === 'Submitted' ? (
                         <>
                             <Button variant="destructive-outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
                                 <X size={16} className="mr-2"/> Deny Manifest

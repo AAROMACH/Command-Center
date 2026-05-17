@@ -126,19 +126,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </div>
                 </div>
 
-                <ScrollArea className="flex-1">
-                    <div className="p-6 space-y-10">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                            {/* LEFT: VERIFIED JOBS */}
-                            <section className="space-y-4">
-                                <div className="flex items-center justify-between px-1">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                                        <CheckCircle2 size={14} className="text-text-green" />
-                                        Verified Jobs
-                                    </h3>
-                                    <span className="text-[9px] font-bold text-text-muted uppercase">{confirmedItems.length} Entries</span>
-                                </div>
-                                <div className="space-y-2">
+                <div className="flex-1 overflow-hidden p-6 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 h-full max-h-[500px]">
+                        {/* LEFT: VERIFIED JOBS */}
+                        <section className="space-y-4 flex flex-col overflow-hidden">
+                            <div className="flex items-center justify-between px-1">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                    <CheckCircle2 size={14} className="text-text-green" />
+                                    Verified Jobs
+                                </h3>
+                                <span className="text-[9px] font-bold text-text-muted uppercase">{confirmedItems.length} Entries</span>
+                            </div>
+                            <ScrollArea className="flex-1 pr-4">
+                                <div className="space-y-2 pb-4">
                                     {confirmedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isImported = wo?.source === 'Imported';
@@ -182,15 +182,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         </div>
                                     )}
                                 </div>
-                            </section>
+                            </ScrollArea>
+                        </section>
 
-                            {/* RIGHT: DISCREPANCIES (CARDS) */}
-                            <section className="space-y-4">
-                                <div className="flex items-center gap-2 text-text-red px-1">
-                                    <ShieldAlert size={14} />
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Discrepancy Registry</h3>
-                                </div>
-                                <div className="space-y-3">
+                        {/* RIGHT: DISCREPANCIES (CARDS) */}
+                        <section className="space-y-4 flex flex-col overflow-hidden">
+                            <div className="flex items-center gap-2 text-text-red px-1">
+                                <ShieldAlert size={14} />
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Discrepancy Registry</h3>
+                            </div>
+                            <ScrollArea className="flex-1 pr-4">
+                                <div className="space-y-3 pb-4">
                                     {disputedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         return (
@@ -270,76 +272,76 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         </div>
                                     )}
                                 </div>
-                            </section>
-                        </div>
-
-                        <Separator className="bg-border-sub" />
-
-                        {/* BOTTOM SECTION: FINANCIALS */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                            {/* LEFT: REIMBURSEMENTS */}
-                            <section className="space-y-4">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <Coins size={14} className="text-accent-gold" />
-                                    Expense Manifest
-                                </h3>
-                                <div className="space-y-2">
-                                    {localLog.reimbursements.map(item => (
-                                        <div key={item.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
-                                            <div className="min-w-0">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase truncate">{item.description}</p>
-                                                <p className="text-[8px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
-                                            </div>
-                                            <p className="text-[10px] font-mono font-bold text-text-green ml-4">+${item.amount.toFixed(2)}</p>
-                                        </div>
-                                    ))}
-                                    {localLog.reimbursements.length === 0 && (
-                                        <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-40">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest">No expenses logged</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-
-                            {/* RIGHT: SETTLEMENT SUMMARY */}
-                            <section className="space-y-4">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <FileText size={14} className="text-brand-red" />
-                                    Settlement Verification
-                                </h3>
-                                <div className="p-6 rounded-2xl bg-bg-secondary border-2 border-green-border/20 space-y-6 shadow-inner relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-5">
-                                        <Coins size={80} />
-                                    </div>
-                                    <div className="space-y-3 relative z-10">
-                                        <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
-                                            <span>Base Assignment Pay</span>
-                                            <span className="font-mono text-text-primary font-bold">
-                                                ${(confirmedItems.reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0)).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
-                                            <span>Authorized Reimbursements</span>
-                                            <span className="font-mono text-text-primary font-bold">
-                                                +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <Separator className="bg-border-sub/50" />
-                                        <div className="flex justify-between items-center pt-2">
-                                            <div className="space-y-0.5">
-                                                <p className="text-[9px] font-black text-text-green uppercase tracking-widest">Total Net Disbursement</p>
-                                                <p className="text-[8px] text-text-muted uppercase font-bold">Final verified payout amount</p>
-                                            </div>
-                                            <p className="text-3xl font-mono font-bold text-text-green">
-                                                ${calculatedTotalPayout.toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
+                            </ScrollArea>
+                        </section>
                     </div>
-                </ScrollArea>
+
+                    <Separator className="bg-border-sub" />
+
+                    {/* BOTTOM SECTION: FINANCIALS */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        {/* LEFT: REIMBURSEMENTS */}
+                        <section className="space-y-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
+                                <Coins size={14} className="text-accent-gold" />
+                                Expense Manifest
+                            </h3>
+                            <div className="space-y-2">
+                                {localLog.reimbursements.map(item => (
+                                    <div key={item.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold text-text-primary uppercase truncate">{item.description}</p>
+                                            <p className="text-[8px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
+                                        </div>
+                                        <p className="text-[10px] font-mono font-bold text-text-green ml-4">+${item.amount.toFixed(2)}</p>
+                                    </div>
+                                ))}
+                                {localLog.reimbursements.length === 0 && (
+                                    <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-40">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">No expenses logged</p>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        {/* RIGHT: SETTLEMENT SUMMARY */}
+                        <section className="space-y-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
+                                <FileText size={14} className="text-brand-red" />
+                                Settlement Verification
+                            </h3>
+                            <div className="p-6 rounded-2xl bg-bg-secondary border-2 border-green-border/20 space-y-6 shadow-inner relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-5">
+                                    <Coins size={80} />
+                                </div>
+                                <div className="space-y-3 relative z-10">
+                                    <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
+                                        <span>Base Assignment Pay</span>
+                                        <span className="font-mono text-text-primary font-bold">
+                                            ${(confirmedItems.reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0)).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
+                                        <span>Authorized Reimbursements</span>
+                                        <span className="font-mono text-text-primary font-bold">
+                                            +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <Separator className="bg-border-sub/50" />
+                                    <div className="flex justify-between items-center pt-2">
+                                        <div className="space-y-0.5">
+                                            <p className="text-[9px] font-black text-text-green uppercase tracking-widest">Total Net Disbursement</p>
+                                            <p className="text-[8px] text-text-muted uppercase font-bold">Final verified payout amount</p>
+                                        </div>
+                                        <p className="text-3xl font-mono font-bold text-text-green">
+                                            ${calculatedTotalPayout.toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
 
                 <DialogFooter className="p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-row items-center gap-3">
                     {localLog.status === 'Submitted' ? (

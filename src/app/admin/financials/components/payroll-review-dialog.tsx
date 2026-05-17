@@ -22,7 +22,8 @@ import {
     MapPin, 
     Calendar,
     MessageSquare,
-    Check
+    Check,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';

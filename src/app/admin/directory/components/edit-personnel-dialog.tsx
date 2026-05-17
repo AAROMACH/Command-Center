@@ -31,6 +31,14 @@ import {
   Save
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { technicians } from '@/lib/data';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type EditPersonnelDialogProps = {
   isOpen: boolean;
@@ -107,11 +115,22 @@ const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
 
 export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
   const [formData, setFormData] = useState<Technician>(person);
+  const [isNewCompany, setIsNewCompany] = useState(false);
+  
   const { toast } = useToast();
+
+  const existingCompanies = useMemo(() => {
+    const companies = new Set<string>();
+    technicians.forEach(t => {
+        if (t.clientCompany) companies.add(t.clientCompany);
+    });
+    return Array.from(companies).sort();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
         setFormData(person);
+        setIsNewCompany(false);
     }
   }, [person, isOpen]);
 
@@ -125,7 +144,6 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         return;
     }
 
-    // Sync legacy role field with the primary selected role to ensure tab filtering integrity
     const updatedData = {
         ...formData,
         role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
@@ -322,10 +340,47 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                     <div className="pt-4 border-t border-border-sub space-y-6">
                         {isClient && (
                             <div className="space-y-2">
-                                <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
-                                    <Info size={12}/> Associated Organization / Client Entity
-                                </Label>
-                                <Input id="company" placeholder="e.g., Global Corp, Ki9" value={formData.clientCompany || ''} onChange={(e) => setFormData({...formData, clientCompany: e.target.value})} className="bg-bg-primary h-9 text-xs border-border-sub" />
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
+                                        <Info size={12}/> Associated Organization / Client Entity
+                                    </Label>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setIsNewCompany(!isNewCompany);
+                                            setFormData(prev => ({ ...prev, clientCompany: '' }));
+                                        }}
+                                        className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline"
+                                    >
+                                        {isNewCompany ? "Select Existing" : "Create New Entity"}
+                                    </button>
+                                </div>
+                                {isNewCompany ? (
+                                    <Input 
+                                        id="company" 
+                                        placeholder="Enter new company name..." 
+                                        value={formData.clientCompany || ''} 
+                                        onChange={(e) => setFormData({...formData, clientCompany: e.target.value})} 
+                                        className="bg-bg-primary h-9 text-xs border-border-sub uppercase font-bold" 
+                                    />
+                                ) : (
+                                    <Select 
+                                        value={formData.clientCompany} 
+                                        onValueChange={(val) => setFormData({...formData, clientCompany: val})}
+                                    >
+                                        <SelectTrigger className="bg-bg-primary h-9 text-xs border-border-sub">
+                                            <SelectValue placeholder="Select organization from registry..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {existingCompanies.map(c => (
+                                                <SelectItem key={c} value={c} className="text-xs uppercase font-bold">{c}</SelectItem>
+                                            ))}
+                                            {existingCompanies.length === 0 && (
+                                                <div className="p-2 text-center text-[10px] text-text-muted uppercase">No existing entities</div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
                         )}
 
@@ -354,7 +409,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
           )}
         </div>
 
-        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
+        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Cancel Updates</Button>
           <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover group">
             <Save size={14} className="mr-2" />

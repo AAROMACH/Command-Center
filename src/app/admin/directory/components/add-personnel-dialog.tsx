@@ -30,6 +30,14 @@ import {
   Users
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { technicians } from '@/lib/data';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type AddPersonnelDialogProps = {
   isOpen: boolean;
@@ -124,6 +132,16 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     }
   });
 
+  const [isNewCompany, setIsNewCompany] = useState(false);
+
+  const existingCompanies = useMemo(() => {
+    const companies = new Set<string>();
+    technicians.forEach(t => {
+        if (t.clientCompany) companies.add(t.clientCompany);
+    });
+    return Array.from(companies).sort();
+  }, []);
+
   const { toast } = useToast();
 
   const handleSave = () => {
@@ -136,7 +154,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         return;
     }
     
-    // Sync legacy role field with the primary selected role
     const newPerson: Technician = {
         ...formData as Technician,
         id: `oper-${Date.now()}`,
@@ -168,6 +185,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             availabilityOverride: false
         }
     });
+    setIsNewCompany(false);
   }
 
   const toggleRole = (role: AppRole) => {
@@ -357,10 +375,47 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <div className="pt-4 border-t border-border-sub space-y-6">
                         {isClient && (
                             <div className="space-y-2">
-                                <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
-                                    <Info size={12}/> Associated Organization / Client Entity
-                                </Label>
-                                <Input id="company" placeholder="e.g., Global Corp, Ki9" value={formData.clientCompany || ''} onChange={(e) => setFormData({...formData, clientCompany: e.target.value})} className="bg-bg-primary h-9 text-xs border-border-sub" />
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
+                                        <Info size={12}/> Associated Organization / Client Entity
+                                    </Label>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setIsNewCompany(!isNewCompany);
+                                            setFormData(prev => ({ ...prev, clientCompany: '' }));
+                                        }}
+                                        className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline"
+                                    >
+                                        {isNewCompany ? "Select Existing" : "Create New Entity"}
+                                    </button>
+                                </div>
+                                {isNewCompany ? (
+                                    <Input 
+                                        id="company" 
+                                        placeholder="Enter new company name..." 
+                                        value={formData.clientCompany || ''} 
+                                        onChange={(e) => setFormData({...formData, clientCompany: e.target.value})} 
+                                        className="bg-bg-primary h-9 text-xs border-border-sub uppercase font-bold" 
+                                    />
+                                ) : (
+                                    <Select 
+                                        value={formData.clientCompany} 
+                                        onValueChange={(val) => setFormData({...formData, clientCompany: val})}
+                                    >
+                                        <SelectTrigger className="bg-bg-primary h-9 text-xs border-border-sub">
+                                            <SelectValue placeholder="Select organization from registry..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {existingCompanies.map(c => (
+                                                <SelectItem key={c} value={c} className="text-xs uppercase font-bold">{c}</SelectItem>
+                                            ))}
+                                            {existingCompanies.length === 0 && (
+                                                <div className="p-2 text-center text-[10px] text-text-muted uppercase">No existing entities</div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
                         )}
 

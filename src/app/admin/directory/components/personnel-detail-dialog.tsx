@@ -37,14 +37,15 @@ import {
     Plus,
     X,
     Send,
-    Lock
+    Lock,
+    Settings
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { penaltyEvents } from '@/lib/data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getReliabilityTier, getTierBadgeVariant, getTierColor, getAllEventOptions } from '@/lib/reliability';
+import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOptions } from '@/lib/reliability';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,7 +55,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 type PersonnelDetailDialogProps = {
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  setIsOpen: (setIsOpen: boolean) => void;
   person: Technician | null;
   workOrders: WorkOrder[];
   timeOffRequests: TimeOffRequest[];
@@ -201,7 +202,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                 <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
                             </div>
                             <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={() => setIsLogEventOpen(true)}>
-                                <Plus size={14} className="mr-1.5"/> Log Reliability Event
+                                <Plus size={14} className="mr-1.5"/> Log Command Decision
                             </Button>
                         </div>
 
@@ -209,6 +210,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                             {reliabilityEvents.map(event => {
                                 const isCritical = event.category === 'critical_failure';
                                 const isRecovery = event.category === 'positive_recovery';
+                                const isAutomatic = event.eventSource === 'automatic';
                                 return (
                                     <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
                                         <div className="flex items-center gap-6">
@@ -224,11 +226,18 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{event.eventType.replace(/_/g, ' ')}</p>
                                                     <Badge variant="outline" className="text-[8px] h-3.5 uppercase bg-bg-tertiary px-1">{event.category.replace(/_/g, ' ')}</Badge>
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[7px] h-3.5 uppercase tracking-tighter gap-1",
+                                                        isAutomatic ? "bg-accent-gold-dim border-accent-gold/20 text-accent-gold" : "bg-bg-primary border-border-sub text-text-muted"
+                                                    )}>
+                                                        {isAutomatic ? <Settings size={8}/> : <User size={8}/>}
+                                                        {event.eventSource}
+                                                    </Badge>
                                                 </div>
                                                 <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{event.reason}&quot;</p>
                                                 <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                                                    {format(parseISO(event.createdAt), 'MMM d, yyyy')} · Logged by {event.createdBy}
-                                                    {event.relatedAssignmentId && ` · WO: ${event.relatedAssignmentId.toUpperCase()}`}
+                                                    {format(parseISO(event.createdAt), 'MMM d, yyyy')} · {isAutomatic ? 'System Generated' : `Decision by ${event.createdBy}`}
+                                                    {event.relatedAssignmentId && ` · Mission: ${event.relatedAssignmentId.toUpperCase()}`}
                                                 </p>
                                             </div>
                                         </div>
@@ -239,7 +248,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                             )}>
                                                 {event.scoreChange > 0 ? `+${event.scoreChange}` : event.scoreChange}
                                             </p>
-                                            <p className="text-[8px] font-black text-text-muted uppercase mt-1">INDEX PTS</p>
+                                            <p className="text-[8px] font-black text-text-muted uppercase mt-1">TRUST PTS</p>
                                         </div>
                                     </div>
                                 )
@@ -284,7 +293,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                 <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>
                                                 <p className="text-[10px] text-text-muted font-mono">{req.startDate} to {req.endDate}</p>
                                             </div>
-                                            <Badge variant={req.status === 'approved' ? 'active' : 'onhold'}>{req.status.toUpperCase()}</Badge>
+                                            <Badge variant={req.status === 'approved' ? 'active' : req.status === 'onhold' ? 'onhold' : 'pending'}>{req.status.toUpperCase()}</Badge>
                                         </div>
                                     ))}
                                     {timeOffRequests.length === 0 && (
@@ -374,13 +383,13 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 }
 
 function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, person: Technician, onSave: (evt: ReliabilityEvent) => void }) {
-    const allOptions = getAllEventOptions();
+    const manualOptions = getManualEventOptions();
     const [selectedType, setSelectedType] = useState<string>("");
     const [reason, setReason] = useState("");
     const [assignmentId, setAssignmentId] = useState("");
 
     const handleSave = () => {
-        const option = allOptions.find(o => o.type === selectedType);
+        const option = manualOptions.find(o => o.type === selectedType);
         if (!option || !reason) return;
 
         const newEvent: ReliabilityEvent = {
@@ -392,7 +401,8 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
             relatedAssignmentId: assignmentId || undefined,
             createdAt: new Date().toISOString(),
             createdBy: 'Sarah Connor', // Mock current admin
-            category: option.category
+            eventSource: 'manual',
+            category: option.category as any
         };
 
         onSave(newEvent);
@@ -415,13 +425,13 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
 
                 <div className="py-4 space-y-6 text-left">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Event Identification</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Event Identification (Command Decision)</Label>
                         <Select value={selectedType} onValueChange={setSelectedType}>
                             <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
                                 <SelectValue placeholder="Select tactical event type..." />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated max-h-[300px]">
-                                {allOptions.map(opt => (
+                                {manualOptions.map(opt => (
                                     <SelectItem key={opt.type} value={opt.type} className="text-xs uppercase font-bold">
                                         <div className="flex justify-between items-center w-full gap-8">
                                             <span>{opt.label}</span>

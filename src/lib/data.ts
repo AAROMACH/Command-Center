@@ -786,9 +786,10 @@ export const siteRequests: SiteRequest[] = [
 ];
 
 export const penaltyEvents: ReliabilityEvent[] = [
-  { id: 're-1', technicianId: 'tech-001', eventType: 'late_check_in', scoreChange: -8, reason: 'Late check-in to critical job', createdAt: '2024-06-15T12:00:00Z', createdBy: 'Sarah Connor', category: 'operational_friction' },
-  { id: 're-2', technicianId: 'tech-003', eventType: 'no_show', scoreChange: -25, reason: 'Unnotified absence at Monroe site', createdAt: '2024-07-10T09:00:00Z', createdBy: 'Sarah Connor', category: 'critical_failure' },
-  { id: 're-3', technicianId: 'tech-003', eventType: 'poor_communication', scoreChange: -7, reason: 'Failed to respond to dispatch alerts', createdAt: '2024-07-20T14:00:00Z', createdBy: 'Corey Williams', category: 'operational_friction' },
+  { id: 're-1', technicianId: 'tech-001', eventType: 'late_check_in', scoreChange: -8, reason: 'Late check-in to critical job', createdAt: '2024-06-15T12:00:00Z', createdBy: 'Sarah Connor', category: 'operational_friction', eventSource: 'manual' },
+  { id: 're-2', technicianId: 'tech-003', eventType: 'no_show', scoreChange: -25, reason: 'Unnotified absence at Monroe site', createdAt: '2024-07-10T09:00:00Z', createdBy: 'Sarah Connor', category: 'critical_failure', eventSource: 'manual' },
+  { id: 're-3', technicianId: 'tech-003', eventType: 'poor_communication', scoreChange: -7, reason: 'Failed to respond to dispatch alerts', createdAt: '2024-07-20T14:00:00Z', createdBy: 'Corey Williams', category: 'operational_friction', eventSource: 'manual' },
+  { id: 're-auto-1', technicianId: 'tech-001', eventType: 'missed_acknowledgment', scoreChange: -2, reason: 'System detected missed acknowledgment deadline for WO-102', createdAt: '2024-07-27T10:00:00Z', createdBy: 'system', category: 'operational_friction', eventSource: 'automatic', eventKey: 'tech-001:missed_acknowledgment:wo-102:2024-07-27' },
 ];
 
 export const projectDailyLogs: ProjectDailyLog[] = [

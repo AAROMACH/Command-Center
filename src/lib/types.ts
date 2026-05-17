@@ -31,8 +31,12 @@ export type ReliabilityEvent = {
   scoreChange: number;
   reason: string;
   relatedAssignmentId?: string;
+  relatedWeeklyLogId?: string;
+  relatedTicketId?: string;
   createdAt: string;
-  createdBy: string;
+  createdBy: string; // "system" or admin name
+  eventSource: 'automatic' | 'manual';
+  eventKey?: string; // unique key for idempotency (e.g., techId+type+recordId+date)
   category: ReliabilityEventCategory;
 };
 

@@ -69,10 +69,61 @@ export function calculateReliabilityScore(events: ReliabilityEvent[]): number {
   return Math.min(100, Math.max(0, score));
 }
 
+/**
+ * Generates a unique key for an automatic reliability event to ensure idempotency.
+ */
+export function generateEventKey(technicianId: string, eventType: string, relatedRecordId: string = 'none', dueDate: string = ''): string {
+  return `${technicianId}:${eventType}:${relatedRecordId}:${dueDate}`.toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * Tactical creation function for automatic events.
+ * Note: In a real app, this would check Firestore for the eventKey before adding.
+ */
+export function createAutomaticReliabilityEvent(
+  params: {
+    technicianId: string;
+    eventType: keyof typeof RELIABILITY_EVENT_TYPES.OPERATIONAL | keyof typeof RELIABILITY_EVENT_TYPES.RECOVERY | keyof typeof RELIABILITY_EVENT_TYPES.CRITICAL;
+    reason: string;
+    relatedAssignmentId?: string;
+    relatedWeeklyLogId?: string;
+    relatedTicketId?: string;
+    dueDate?: string;
+  }
+): Omit<ReliabilityEvent, 'id' | 'createdAt'> {
+  const allEventOptions = getAllEventOptions();
+  const option = allEventOptions.find(o => o.type === params.eventType || (o as any).id === params.eventType);
+  
+  if (!option) {
+    throw new Error(`Invalid event type: ${params.eventType}`);
+  }
+
+  const relatedId = params.relatedAssignmentId || params.relatedWeeklyLogId || params.relatedTicketId || 'none';
+  const eventKey = generateEventKey(params.technicianId, option.type, relatedId, params.dueDate);
+
+  return {
+    technicianId: params.technicianId,
+    eventType: option.type,
+    scoreChange: option.scoreChange,
+    reason: params.reason,
+    relatedAssignmentId: params.relatedAssignmentId,
+    relatedWeeklyLogId: params.relatedWeeklyLogId,
+    relatedTicketId: params.relatedTicketId,
+    createdBy: 'system',
+    eventSource: 'automatic',
+    eventKey,
+    category: option.category as ReliabilityEventCategory
+  };
+}
+
 export function getAllEventOptions() {
   return [
     ...Object.values(RELIABILITY_EVENT_TYPES.CRITICAL),
     ...Object.values(RELIABILITY_EVENT_TYPES.OPERATIONAL),
     ...Object.values(RELIABILITY_EVENT_TYPES.RECOVERY),
   ];
+}
+
+export function getManualEventOptions() {
+  return getAllEventOptions().filter(opt => !(opt as any).isAutomatic);
 }

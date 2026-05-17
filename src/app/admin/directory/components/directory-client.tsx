@@ -429,7 +429,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             </Badge>
                                             <div className="flex items-center gap-1.5">
                                                 <Activity size={10} className={tierColor} />
-                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore} INDEX</span>
+                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore}%</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-center">

@@ -1,6 +1,7 @@
 'use client';
 
 import type { AppRole, Technician } from './types';
+import { TERMINOLOGY } from './constants';
 
 export type Permission =
   | 'view_dashboard'
@@ -146,8 +147,8 @@ export function isClient(user: Technician | null | undefined): boolean {
 export function getAvailablePortals(user: Technician | null | undefined): Portal[] {
   if (!user) return [];
   const portals: Portal[] = [];
-  if (isAdmin(user)) portals.push({ id: 'admin', label: 'Admin Portal', path: '/admin/dashboard' });
-  if (isTech(user)) portals.push({ id: 'tech', label: 'Technician Portal', path: '/tech/dashboard' });
-  if (isClient(user)) portals.push({ id: 'client', label: 'Client Portal', path: '/client/dashboard' });
+  if (isAdmin(user)) portals.push({ id: 'admin', label: TERMINOLOGY.PORTAL.ADMIN, path: '/admin/dashboard' });
+  if (isTech(user)) portals.push({ id: 'tech', label: TERMINOLOGY.PORTAL.TECH, path: '/tech/dashboard' });
+  if (isClient(user)) portals.push({ id: 'client', label: TERMINOLOGY.PORTAL.CLIENT, path: '/client/dashboard' });
   return portals;
 }

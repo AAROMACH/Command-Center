@@ -24,8 +24,7 @@ import {
     DollarSign,
     Wrench,
     Clock,
-    ClipboardCheck,
-    Tabs as TabsIcon
+    ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -400,60 +399,59 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Separator className="bg-border-sub shrink-0" />
 
-                    <div className="p-4 bg-bg-tertiary/10 space-y-4 shrink-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <section className="space-y-2 text-left">
-                                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <Coins size={12} className="text-accent-gold" />
+                    <div className="p-2 bg-bg-tertiary/10 space-y-2 shrink-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <section className="space-y-1.5 text-left">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 px-1">
+                                    <Coins size={10} className="text-accent-gold" />
                                     Authorized Expenses
                                 </h3>
-                                <div className="space-y-1.5">
+                                <div className="space-y-1">
                                     {localLog.reimbursements.map(item => (
-                                        <div key={item.id} className="p-2 rounded-lg border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
+                                        <div key={item.id} className="px-2 py-1 rounded border border-border-sub bg-bg-secondary flex justify-between items-center group hover:bg-bg-tertiary transition-colors">
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase truncate">{item.description}</p>
-                                                <p className="text-[8px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
+                                                <p className="text-[9px] font-bold text-text-primary uppercase truncate">{item.description}</p>
+                                                <p className="text-[7px] text-text-muted font-mono uppercase font-bold">{item.date}</p>
                                             </div>
-                                            <p className="text-[10px] font-mono font-bold text-text-green ml-4">+${item.amount.toFixed(2)}</p>
+                                            <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>
                                         </div>
                                     ))}
                                     {localLog.reimbursements.length === 0 && (
-                                        <div className="p-4 text-center border border-dashed border-border-sub rounded-lg opacity-40">
-                                            <p className="text-[9px] font-bold uppercase tracking-widest">No expenses logged</p>
+                                        <div className="p-2 text-center border border-dashed border-border-sub rounded opacity-40">
+                                            <p className="text-[8px] font-bold uppercase tracking-widest">No expenses logged</p>
                                         </div>
                                     )}
                                 </div>
                             </section>
 
-                            <section className="space-y-2 text-left">
-                                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 px-1">
-                                    <FileText size={12} className="text-brand-red" />
+                            <section className="space-y-1.5 text-left">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 px-1">
+                                    <FileText size={10} className="text-brand-red" />
                                     Settlement Verification
                                 </h3>
-                                <div className="p-4 rounded-xl bg-bg-secondary border-2 border-green-border/20 space-y-3 shadow-inner relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-2 opacity-5">
-                                        <Coins size={40} />
+                                <div className="p-2 rounded-lg bg-bg-secondary border-2 border-green-border/20 space-y-1.5 shadow-inner relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-1 opacity-5">
+                                        <Coins size={30} />
                                     </div>
-                                    <div className="space-y-2 relative z-10">
-                                        <div className="flex justify-between text-[9px] uppercase font-bold text-text-muted">
+                                    <div className="space-y-1 relative z-10">
+                                        <div className="flex justify-between text-[8px] uppercase font-bold text-text-muted">
                                             <span>Assignment Net Pay</span>
                                             <span className="font-mono text-text-primary font-bold">
                                                 ${(localLog.items.reduce((acc, i) => acc + (findWorkOrder(i.workOrderId)?.pay || 0), 0)).toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-[9px] uppercase font-bold text-text-muted">
+                                        <div className="flex justify-between text-[8px] uppercase font-bold text-text-muted">
                                             <span>Total Reimbursements</span>
                                             <span className="font-mono text-text-primary font-bold">
                                                 +${(localLog.reimbursements.reduce((acc, i) => acc + i.amount, 0)).toFixed(2)}
                                             </span>
                                         </div>
                                         <Separator className="bg-border-sub/30" />
-                                        <div className="flex justify-between items-center pt-1">
+                                        <div className="flex justify-between items-center pt-0.5">
                                             <div className="space-y-0">
-                                                <p className="text-[8px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
-                                                <p className="text-[7px] text-text-muted uppercase font-bold">Verified payout target</p>
+                                                <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
                                             </div>
-                                            <p className="text-2xl font-mono font-bold text-text-green">
+                                            <p className="text-xl font-mono font-bold text-text-green">
                                                 ${calculatedTotalPayout.toFixed(2)}
                                             </p>
                                         </div>

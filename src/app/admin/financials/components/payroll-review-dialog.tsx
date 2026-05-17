@@ -51,10 +51,11 @@ const getFieldNationLink = (id: string) => {
 
 /**
  * @fileOverview Specialized audit sub-component for imported platform jobs.
- * Implements high-fidelity labor split logic:
- * laborNet = totalPay - additionalCharges
- * techPay = (laborNet * 0.50) + additionalCharges
- * aaromachPay = laborNet * 0.50
+ * Implements tactical split logic with platform fee deduction:
+ * additionalNet = additionalCharges * 0.846
+ * laborNet      = totalPay - additionalNet
+ * techPay       = (laborNet * 0.50) + additionalNet
+ * aaromachPay   = laborNet * 0.50
  */
 function ImportedJobAudit({ 
     wo, 
@@ -68,17 +69,23 @@ function ImportedJobAudit({
     const overhead = wo.auditOverhead || 0;
     const additionalCharges = reimbursement + overhead;
     
-    const laborNet = totalPay - additionalCharges;
-    const techPay = (laborNet * 0.50) + additionalCharges;
+    // Financial Multiplier for Platform Fees (1 - 0.154 = 0.846)
+    const fnMultiplier = 0.846;
+    const additionalNet = additionalCharges * fnMultiplier;
+    
+    const laborNet = totalPay - additionalNet;
+    const techPay = (laborNet * 0.50) + additionalNet;
     const aaromachPay = laborNet * 0.50;
 
     const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
         const nextTotal = updates.pay ?? totalPay;
         const nextReimb = updates.auditReimbursement ?? reimbursement;
         const nextOver = updates.auditOverhead ?? overhead;
-        const nextCharges = nextReimb + nextOver;
-        const nextLaborNet = nextTotal - nextCharges;
-        const nextTechPay = (nextLaborNet * 0.50) + nextCharges;
+        
+        const nextAdditionalCharges = nextReimb + nextOver;
+        const nextAdditionalNet = nextAdditionalCharges * fnMultiplier;
+        const nextLaborNet = nextTotal - nextAdditionalNet;
+        const nextTechPay = (nextLaborNet * 0.50) + nextAdditionalNet;
         
         onUpdateWorkOrder(wo.id, { 
             ...updates, 
@@ -97,7 +104,7 @@ function ImportedJobAudit({
                             type="number"
                             value={totalPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
-                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono font-bold" 
                         />
                     </div>
                 </div>
@@ -127,18 +134,22 @@ function ImportedJobAudit({
                 </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-border-sub/30">
+             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30">
+                <div className="space-y-0">
+                    <p className="text-[7px] font-black text-text-muted uppercase">Additional Net</p>
+                    <p className="text-[9px] font-mono font-bold text-text-primary leading-none">${additionalNet.toFixed(2)}</p>
+                </div>
                 <div className="space-y-0">
                     <p className="text-[7px] font-black text-text-muted uppercase">Labor Net</p>
-                    <p className="text-[10px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
+                    <p className="text-[9px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0">
                     <p className="text-[7px] font-black text-text-green uppercase">Tech Payout</p>
-                    <p className="text-[10px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
+                    <p className="text-[9px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
                     <p className="text-[7px] font-black text-brand-red uppercase">Aaromach Pay</p>
-                    <p className="text-[10px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[9px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -327,7 +338,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="ml-4 shrink-0 min-w-[320px]">
+                                                <div className="ml-4 shrink-0 min-w-[350px]">
                                                     {isImported && wo ? (
                                                         <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
                                                     ) : (
@@ -477,15 +488,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Separator className="bg-border-sub shrink-0" />
 
-                    <div className="p-2 bg-bg-tertiary/10 space-y-1.5 shrink-0">
+                    <div className="p-2 bg-bg-tertiary/10 space-y-1 shrink-0">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <section className="space-y-1 text-left px-4">
                                 <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
-                                    <Coins size={10} className="text-accent-gold" /> Authorized Expenses
+                                    <Coins size={10} className="text-accent-gold" /> Expenses
                                 </h3>
                                 <div className="space-y-0.5">
                                     {localLog.reimbursements.map(item => (
-                                        <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center group">
+                                        <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center">
                                             <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1">{item.description}</p>
                                             <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>
                                         </div>
@@ -495,11 +506,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                             <section className="space-y-1 text-left px-4">
                                 <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
-                                    <FileText size={10} className="text-brand-red" /> Settlement Verification
+                                    <FileText size={10} className="text-brand-red" /> Settlement
                                 </h3>
                                 <div className="p-2 rounded-lg bg-bg-secondary border border-green-border/20 space-y-1 shadow-inner">
                                     <div className="flex justify-between items-center">
-                                        <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Calculated Disbursement</p>
+                                        <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Disbursement</p>
                                         <p className="text-lg font-mono font-bold text-text-green leading-none">
                                             ${calculatedTotalPayout.toFixed(2)}
                                         </p>

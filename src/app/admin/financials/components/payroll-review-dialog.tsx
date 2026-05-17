@@ -30,11 +30,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 
 type PayrollReviewDialogProps = {
     isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
+    setIsOpen: (open: boolean) => void;
     log: WeeklyLog | null;
     technician: Technician | undefined;
     onStatusChange: (logId: string, status: WeeklyLog['status']) => void;
@@ -101,7 +102,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 </p>
                             </div>
                         </div>
-                        <Badge variant={localLog.status === 'Approved' ? 'active' : 'onhold'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
+                        <Badge variant={localLog.status === 'Approved' ? 'active' : localLog.status === 'Submitted' ? 'onhold' : 'pending'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
                             {localLog.status}
                         </Badge>
                     </div>

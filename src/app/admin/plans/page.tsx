@@ -49,20 +49,8 @@ import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { isSuperAdmin, isClient } from '@/lib/permissions';
-import type { Technician } from '@/lib/types';
+import type { PlanTier, Technician } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-type PlanTier = {
-    id: string;
-    name: string;
-    price: number;
-    billingPeriod: 'monthly' | 'annual';
-    features: string[];
-    siteLimit: number;
-    responseTime: string;
-    type: 'standard' | 'custom';
-    clientName?: string;
-};
 
 const PLAN_CAPABILITIES = [
     "Standard dispatch protocol",
@@ -130,6 +118,7 @@ export default function PlansPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    const [localTechs, setLocalTechs] = useState<Technician[]>(technicians);
     
     // Delete Confirmation State
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -141,15 +130,15 @@ export default function PlansPage() {
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         if (userId) {
-            setCurrentUser(technicians.find(t => t.id === userId) || null);
+            setCurrentUser(localTechs.find(t => t.id === userId) || null);
         }
-    }, []);
+    }, [localTechs]);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
 
     const clientsList = useMemo(() => 
-        technicians.filter(t => isClient(t))
-    , []);
+        localTechs.filter(t => isClient(t))
+    , [localTechs]);
 
     const activeSubscriptions = useMemo(() => 
         clientsList.filter(c => c.planId && c.subscriptionStatus === 'active')
@@ -227,7 +216,7 @@ export default function PlansPage() {
             return;
         }
 
-        const activeUsage = technicians.filter(t => t.planId === planToDelete.id);
+        const activeUsage = localTechs.filter(t => t.planId === planToDelete.id);
         if (activeUsage.length > 0) {
             toast({
                 variant: 'destructive',
@@ -241,6 +230,23 @@ export default function PlansPage() {
         toast({ title: "Plan Purged", description: "Agreement has been removed from the operational registry." });
         setIsDeleteOpen(false);
         setPlanToDelete(null);
+    };
+
+    const handleDiscardRequest = (clientId: string) => {
+        setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'none' } : t));
+        toast({
+            variant: "destructive",
+            title: "Request Discarded",
+            description: "The pending service agreement request has been removed from the funnel.",
+        });
+    };
+
+    const handleInitializeQuote = (clientId: string) => {
+        setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'active', planId: 'std-1' } : t));
+        toast({
+            title: "Quote Initialized",
+            description: "The client has been transitioned to active status. You can now adjust their assigned tier.",
+        });
     };
 
     return (
@@ -406,8 +412,21 @@ export default function PlansPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-bold border-border-sub">Discard Request</Button>
-                                        <Button size="sm" className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90">Initialize Quote</Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            className="h-8 text-[9px] uppercase font-bold border-border-sub"
+                                            onClick={() => handleDiscardRequest(client.id)}
+                                        >
+                                            Discard Request
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90"
+                                            onClick={() => handleInitializeQuote(client.id)}
+                                        >
+                                            Initialize Quote
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>

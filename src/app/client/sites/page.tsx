@@ -194,9 +194,19 @@ export default function ClientSitesPage() {
                         <Card key={site.id} 
                             onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
                             className={cn(
-                            "bg-bg-secondary border-border-main transition-all flex flex-col group",
+                            "bg-bg-secondary border-border-main transition-all flex flex-col group relative",
                             site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
                         )}>
+                            {/* FLOATING LIVE INDICATOR */}
+                            {site.liveCheckIns.length > 0 && (
+                                <div className="absolute -top-2 -right-2 z-10 animate-in fade-in zoom-in duration-500">
+                                    <Badge variant="active" className="h-6 px-2 text-[8px] font-black uppercase tracking-widest shadow-lg border-2 border-bg-primary flex items-center gap-1.5">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-text-green animate-pulse" />
+                                        LIVE ONSITE
+                                    </Badge>
+                                </div>
+                            )}
+
                             <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
@@ -225,39 +235,14 @@ export default function ClientSitesPage() {
                                         <p className="text-[9px] text-text-muted leading-relaxed">This site coordinate has been submitted to the Command Center and is currently undergoing verification.</p>
                                     </div>
                                 ) : (
-                                    <>
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
-                                            {site.liveCheckIns.length > 0 ? (
-                                                <div className="p-3 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative">
-                                                            <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
-                                                            <div className="h-2 w-2 rounded-full bg-text-green absolute -top-1 -right-1" />
-                                                            <UserCheck size={18} className="text-text-green" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
-                                                            <p className="text-[10px] text-text-muted font-mono">{site.liveCheckIns.length} Verified Session(s)</p>
-                                                        </div>
-                                                    </div>
-                                                    <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest">LIVE</Badge>
-                                                </div>
-                                            ) : (
-                                                <div className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center gap-3 grayscale opacity-60">
-                                                    <Activity size={18} className="text-text-muted" />
-                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
-                                                </div>
-                                            )}
-                                        </div>
-
+                                    <div className="space-y-4">
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center">
                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Registry</p>
                                                 <span className="text-[9px] font-bold text-text-muted uppercase">{site.activeAssignments.length} Assignments</span>
                                             </div>
                                             <div className="space-y-2">
-                                                {site.activeAssignments.slice(0, 2).map(wo => (
+                                                {site.activeAssignments.slice(0, 3).map(wo => (
                                                     <div key={wo.id} className="p-2.5 rounded border border-border-sub bg-bg-primary flex items-center justify-between group cursor-default">
                                                         <div className="space-y-0.5">
                                                             <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{wo.description}</p>
@@ -268,17 +253,17 @@ export default function ClientSitesPage() {
                                                         </Badge>
                                                     </div>
                                                 ))}
-                                                {site.activeAssignments.length > 2 && (
+                                                {site.activeAssignments.length > 3 && (
                                                     <p className="text-[9px] text-brand-red font-bold uppercase tracking-widest text-center pt-1">
-                                                        +{site.activeAssignments.length - 2} Additional Assignments
+                                                        +{site.activeAssignments.length - 3} Additional Assignments
                                                     </p>
                                                 )}
                                                 {site.activeAssignments.length === 0 && (
-                                                    <p className="text-[10px] text-text-muted uppercase font-bold italic py-2 text-center">Awaiting dispatch</p>
+                                                    <p className="text-[10px] text-text-muted uppercase font-bold italic py-4 text-center border border-dashed border-border-sub rounded-lg bg-bg-primary/30">Awaiting dispatch</p>
                                                 )}
                                             </div>
                                         </div>
-                                    </>
+                                    </div>
                                 )}
 
                                 <div className="pt-4 border-t border-border-sub grid grid-cols-2 gap-4 mt-auto">
@@ -403,7 +388,7 @@ export default function ClientSitesPage() {
                                 </div>
                             </div>
                         </div>
-                        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
+                        <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
                             <Button variant="outline" type="button" onClick={() => setIsAddSiteOpen(false)}>Cancel</Button>
                             <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10">
                                 <Check size={16} className="mr-2" />

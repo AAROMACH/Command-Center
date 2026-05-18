@@ -82,7 +82,7 @@ import {
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
-import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay } from 'date-fns';
+import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
@@ -185,18 +185,39 @@ export default function ActivityAuditPage() {
         if (visitDateRange?.from) {
             all = all.filter(wo => {
                 try {
-                    const woDate = new Date(wo.scheduleDate);
-                    if (visitDateRange.to) {
-                        return woDate >= visitDateRange.from! && woDate <= visitDateRange.to!;
+                    // Normalize date parsing for both MM-DD-YYYY and YYYY-MM-DD
+                    const parts = wo.scheduleDate.split(/[-/]/);
+                    let woDate;
+                    if (parts[0].length === 4) {
+                        woDate = startOfDay(new Date(wo.scheduleDate));
+                    } else {
+                        const [m, d, y] = parts;
+                        woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
                     }
-                    return isSameDay(woDate, visitDateRange.from!);
-                } catch (e) { return false; }
+                    
+                    if (visitDateRange.from && visitDateRange.to) {
+                        return woDate >= startOfDay(visitDateRange.from) && woDate <= startOfDay(visitDateRange.to);
+                    }
+                    if (visitDateRange.from) {
+                        return isSameDay(woDate, visitDateRange.from);
+                    }
+                    return true;
+                } catch (e) { 
+                    console.error("Error parsing mission date:", wo.scheduleDate);
+                    return false; 
+                }
             });
         }
 
         return all.sort((a, b) => {
-            const dateA = new Date(a.scheduleDate).getTime();
-            const dateB = new Date(b.scheduleDate).getTime();
+            const parseDate = (str: string) => {
+                const parts = str.split(/[-/]/);
+                if (parts[0].length === 4) return new Date(str).getTime();
+                const [m, d, y] = parts;
+                return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).getTime();
+            };
+            const dateA = parseDate(a.scheduleDate);
+            const dateB = parseDate(b.scheduleDate);
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
     }, [activeSite, visitSortDir, visitDateRange]);

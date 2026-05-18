@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -82,7 +83,7 @@ export function TechNavbar() {
               className="object-contain"
               data-ai-hint={logo.imageHint}
               priority
-              style={{ height: '50px', width: 'auto' }}
+              style={{ height: '50px', width: "auto" }}
             />
           )}
           <div className="flex flex-col">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -85,6 +86,8 @@ import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWee
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
+type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';
+
 export default function ActivityAuditPage() {
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
@@ -97,7 +100,8 @@ export default function ActivityAuditPage() {
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
-    const [visitDateRange, setVisitDateRange] = useState<DateRange | undefined>(undefined);
+    const [auditRange, setAuditRange] = useState<SiteAuditRange>('all');
+    const [customVisitRange, setCustomVisitRange] = useState<DateRange | undefined>(undefined);
 
     // Messaging State
     const [messages, setMessages] = useState<AdminMessage[]>([]);
@@ -183,8 +187,22 @@ export default function ActivityAuditPage() {
     const sortedAllSiteVisits = useMemo(() => {
         if (!activeSite) return [];
         let all = workOrders.filter(wo => wo.location === activeSite.location);
+        const now = startOfDay(new Date());
 
-        if (visitDateRange?.from) {
+        // Apply Segmented Range Filtering
+        if (auditRange === '7d') {
+            const cutoff = subDays(now, 7);
+            all = all.filter(wo => {
+                const woDate = parseISO(wo.scheduleDate.includes('-') ? wo.scheduleDate.split('-').reverse().join('-') : wo.scheduleDate);
+                return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
+            });
+        } else if (auditRange === '30d') {
+            const cutoff = subDays(now, 30);
+            all = all.filter(wo => {
+                const woDate = parseISO(wo.scheduleDate.includes('-') ? wo.scheduleDate.split('-').reverse().join('-') : wo.scheduleDate);
+                return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
+            });
+        } else if (auditRange === 'custom' && customVisitRange?.from) {
             all = all.filter(wo => {
                 try {
                     const parts = wo.scheduleDate.split(/[-/]/);
@@ -196,17 +214,11 @@ export default function ActivityAuditPage() {
                         woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
                     }
                     
-                    if (visitDateRange.from && visitDateRange.to) {
-                        return woDate >= startOfDay(visitDateRange.from) && woDate <= startOfDay(visitDateRange.to);
+                    if (customVisitRange.from && customVisitRange.to) {
+                        return woDate >= startOfDay(customVisitRange.from) && woDate <= startOfDay(customVisitRange.to);
                     }
-                    if (visitDateRange.from) {
-                        return isSameDay(woDate, visitDateRange.from);
-                    }
-                    return true;
-                } catch (e) { 
-                    console.error("Error parsing mission date:", wo.scheduleDate);
-                    return false; 
-                }
+                    return isSameDay(woDate, customVisitRange.from!);
+                } catch (e) { return false; }
             });
         }
 
@@ -221,7 +233,7 @@ export default function ActivityAuditPage() {
             const dateB = parseDate(b.scheduleDate);
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    }, [activeSite, visitSortDir, visitDateRange, workOrders]);
+    }, [activeSite, visitSortDir, auditRange, customVisitRange, workOrders]);
 
     const anomalyCounts = useMemo(() => {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -422,7 +434,7 @@ export default function ActivityAuditPage() {
                                         msg.type === 'critical' ? "bg-brand-red-dim text-text-red border-brand-red/30" :
                                         msg.type === 'warning' ? "bg-accent-gold-dim text-accent-gold border-accent-gold/30" :
                                         msg.type === 'success' ? "bg-green-dim text-text-green border-green-border/30" :
-                                        "bg-bg-primary text-text-secondary border-border-sub"
+                                        "bg-bg-primary text-text-secondary border border-border-sub"
                                     )}>
                                         <ActivityIcon size={14} />
                                     </div>
@@ -578,7 +590,7 @@ export default function ActivityAuditPage() {
                                         <MapPin size={10} className="text-brand-red"/> {activeSite.location}
                                     </p>
                                 </div>
-                                <Badge variant="active" className="text-[8px] uppercase tracking-widest">Managed Asset</Badge>
+                                <Badge variant="active" className="text-[8px] uppercase h-5 tracking-widest">Managed Asset</Badge>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -599,40 +611,71 @@ export default function ActivityAuditPage() {
                                                     <History size={20} className="text-brand-red" />
                                                     <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-0.5 h-7">
-                                                        <div className="flex items-center gap-1 px-1.5 border-r border-border-sub">
+                                                <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-1">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === 'all' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
+                                                        onClick={() => setAuditRange('all')}
+                                                    >
+                                                        ALL
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === '7d' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
+                                                        onClick={() => setAuditRange('7d')}
+                                                    >
+                                                        7D
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === '30d' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
+                                                        onClick={() => setAuditRange('30d')}
+                                                    >
+                                                        30D
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === 'custom' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
+                                                        onClick={() => setAuditRange('custom')}
+                                                    >
+                                                        Custom
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            
+                                            {auditRange === 'custom' && (
+                                                <div className="mt-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-0.5 h-8">
+                                                        <div className="flex items-center gap-1 px-2 border-r border-border-sub">
                                                             <CalendarIcon size={10} className="text-text-muted" />
                                                             <input 
                                                                 type="date" 
                                                                 className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
-                                                                value={visitDateRange?.from ? format(visitDateRange.from, 'yyyy-MM-dd') : ''}
+                                                                value={customVisitRange?.from ? format(customVisitRange.from, 'yyyy-MM-dd') : ''}
                                                                 onChange={(e) => {
                                                                     const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                                                                    setVisitDateRange(prev => ({ from: d, to: prev?.to }));
+                                                                    setCustomVisitRange(prev => ({ from: d, to: prev?.to }));
                                                                 }}
                                                             />
                                                         </div>
-                                                        <div className="flex items-center gap-1 px-1.5">
+                                                        <div className="flex items-center gap-1 px-2">
                                                             <input 
                                                                 type="date" 
                                                                 className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
-                                                                value={visitDateRange?.to ? format(visitDateRange.to, 'yyyy-MM-dd') : ''}
+                                                                value={customVisitRange?.to ? format(customVisitRange.to, 'yyyy-MM-dd') : ''}
                                                                 onChange={(e) => {
                                                                     const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                                                                    setVisitDateRange(prev => ({ from: prev?.from, to: d }));
+                                                                    setCustomVisitRange(prev => ({ from: prev?.from, to: d }));
                                                                 }}
                                                             />
                                                         </div>
                                                     </div>
-                                                    {visitDateRange?.from && (
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => setVisitDateRange(undefined)}>
-                                                            <X size={12} />
-                                                        </Button>
-                                                    )}
-                                                    <Separator orientation="vertical" className="h-4 mx-1 bg-border-sub" />
                                                     <Select value={visitSortDir} onValueChange={(val: any) => setVisitSortDir(val)}>
-                                                        <SelectTrigger className="h-7 w-[100px] text-[8px] font-bold uppercase tracking-widest bg-bg-primary">
+                                                        <SelectTrigger className="h-8 w-[100px] text-[8px] font-bold uppercase tracking-widest bg-bg-primary">
                                                             <div className="flex items-center gap-1.5">
                                                                 <ArrowUpDown size={10} />
                                                                 <SelectValue />
@@ -644,8 +687,7 @@ export default function ActivityAuditPage() {
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                            </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted mt-1">Comprehensive historical manifest for site coordinate: {activeSite.name}</DialogDescription>
+                                            )}
                                         </DialogHeader>
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
@@ -653,7 +695,7 @@ export default function ActivityAuditPage() {
                                                     <div 
                                                         key={wo.id} 
                                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between cursor-pointer"
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-muted transition-all group flex items-center justify-between cursor-pointer"
                                                     >
                                                         <div className="flex items-center gap-4 text-left">
                                                             <div className={cn(
@@ -677,7 +719,7 @@ export default function ActivityAuditPage() {
                                                 )) : (
                                                     <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                                         <History size={48} className="mx-auto mb-2 text-text-muted" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No visit records in registry</p>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No visit records in registry for this window</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -715,7 +757,7 @@ export default function ActivityAuditPage() {
                                                     <div 
                                                         key={wo.id} 
                                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between cursor-pointer"
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-muted transition-all group flex items-center justify-between cursor-pointer"
                                                     >
                                                         <div className="flex items-center gap-4 text-left">
                                                             <div className="p-2 bg-bg-primary rounded border border-border-sub text-accent-gold">

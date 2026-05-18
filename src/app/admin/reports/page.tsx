@@ -119,7 +119,12 @@ export default function ActivityAuditPage() {
     useEffect(() => {
         const stored = localStorage.getItem('aaromach_broadcast_ledger');
         const localMsgs = stored ? JSON.parse(stored) : [];
-        setMessages([...localMsgs, ...initialMessages]);
+        
+        const revokedJson = localStorage.getItem('aaromach_revoked_messages');
+        const revokedIds = revokedJson ? JSON.parse(revokedJson) : [];
+        
+        const filteredInitial = initialMessages.filter(m => !revokedIds.includes(m.id));
+        setMessages([...localMsgs, ...filteredInitial]);
     }, []);
 
     // ── DATA RESOLUTION ──────────────────────────────────────────────────
@@ -183,7 +188,6 @@ export default function ActivityAuditPage() {
         else if (durationHours === "4") expiresAt = addHours(now, 4).toISOString();
         else if (durationHours === "24") expiresAt = addDays(now, 1).toISOString();
         else if (durationHours === "168") expiresAt = addWeeks(now, 1).toISOString();
-        // Permanent doesn't set expiresAt
 
         const msg: AdminMessage = {
             id: `msg-${Date.now()}`,
@@ -201,17 +205,31 @@ export default function ActivityAuditPage() {
         const updatedMessages = [msg, ...messages];
         setMessages(updatedMessages);
         
-        // Save to local storage for the Notification Bell to pick up
         const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
         
-        // Trigger storage event for other tabs/components
         window.dispatchEvent(new Event('storage'));
 
         setIsBroadcasting(false);
         setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
         setDurationHours("24");
         toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
+    };
+
+    const handleRevokeBroadcast = (id: string) => {
+        const updatedMessages = messages.filter(m => m.id !== id);
+        setMessages(updatedMessages);
+        
+        // Update local storage for broadcasted messages
+        const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
+        
+        // Track revoked initial IDs
+        const revokedIds = initialMessages.filter(im => !updatedMessages.some(m => m.id === im.id)).map(m => m.id);
+        localStorage.setItem('aaromach_revoked_messages', JSON.stringify(revokedIds));
+
+        window.dispatchEvent(new Event('storage'));
+        toast({ title: 'Broadcast Revoked', description: 'Directive removed from all terminals.' });
     };
 
     // ── SEARCH LOGIC ─────────────────────────────────────────────────────
@@ -262,7 +280,7 @@ export default function ActivityAuditPage() {
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4">
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
-                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => setActiveTab('tech')}>
+                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh
                 </Button>
             </div>
@@ -281,7 +299,7 @@ export default function ActivityAuditPage() {
                                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
                                 )}
                             </div>
-                            <div>
+                            <div className="text-left">
                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{t.name}</p>
                                 <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{t.email}</p>
                             </div>
@@ -308,7 +326,7 @@ export default function ActivityAuditPage() {
             <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-xl border border-border-sub">
                 <div className="flex items-center gap-3">
                     <MessageSquare className="text-brand-red h-5 w-5" />
-                    <div>
+                    <div className="text-left">
                         <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">Operational Communications</h3>
                         <p className="text-[10px] text-text-muted uppercase tracking-widest">System-wide broadcast terminal</p>
                     </div>
@@ -320,7 +338,7 @@ export default function ActivityAuditPage() {
             </div>
 
             <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Message Ledger</h3>
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Message Ledger</h3>
                 <div className="space-y-2">
                     {messages.map(msg => (
                         <div key={msg.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
@@ -335,7 +353,7 @@ export default function ActivityAuditPage() {
                                     )}>
                                         <ActivityIcon size={14} />
                                     </div>
-                                    <div>
+                                    <div className="text-left">
                                         <div className="flex items-center gap-2">
                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
                                             {msg.isLocked && <Lock size={12} className="text-brand-red" />}
@@ -348,7 +366,7 @@ export default function ActivityAuditPage() {
                                 </div>
                                 <Badge variant="outline" className="text-[8px] uppercase">{msg.type}</Badge>
                             </div>
-                            <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium">{msg.body}</p>
+                            <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">{msg.body}</p>
                             <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
@@ -356,7 +374,14 @@ export default function ActivityAuditPage() {
                                     </div>
                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Sent by {msg.senderName}</span>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-7 text-[8px] uppercase font-bold text-text-muted hover:text-text-red">Revoke Broadcast</Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 text-[8px] uppercase font-bold text-text-muted hover:text-text-red"
+                                    onClick={() => handleRevokeBroadcast(msg.id)}
+                                >
+                                    Revoke Broadcast
+                                </Button>
                             </div>
                         </div>
                     ))}
@@ -372,13 +397,13 @@ export default function ActivityAuditPage() {
             {/* BROADCAST DIALOG */}
             <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
-                    <DialogHeader>
+                    <DialogHeader className="text-left">
                         <DialogTitle className="uppercase tracking-widest font-bold">Compose Broadcast</DialogTitle>
                         <DialogDescription className="text-xs">Transmit a tactical message to the selected portal registry.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Target Portal</Label>
                                 <Select value={newMessage.targetPortal} onValueChange={(val: any) => setNewMessage({...newMessage, targetPortal: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
@@ -390,7 +415,7 @@ export default function ActivityAuditPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Priority Level</Label>
                                 <Select value={newMessage.type} onValueChange={(val: any) => setNewMessage({...newMessage, type: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
@@ -405,7 +430,7 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Broadcast Duration</Label>
                                 <Select value={durationHours} onValueChange={setDurationHours}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
@@ -418,7 +443,7 @@ export default function ActivityAuditPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted block mb-2">Registry Lock</Label>
                                 <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub h-10">
                                     <span className="text-[9px] font-bold uppercase text-text-muted">Lock Directive</span>
@@ -431,7 +456,7 @@ export default function ActivityAuditPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Subject / Headline</Label>
                             <Input 
                                 placeholder="Clear, concise directive..." 
@@ -440,7 +465,7 @@ export default function ActivityAuditPage() {
                                 className="h-10 bg-bg-primary text-xs uppercase font-bold"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Message Body</Label>
                             <Textarea 
                                 placeholder="Provide full context and required actions..." 
@@ -472,7 +497,7 @@ export default function ActivityAuditPage() {
                     </div>
 
                     <Card className="bg-bg-secondary border-border-main shadow-2xl">
-                        <CardHeader className="pb-4">
+                        <CardHeader className="pb-4 text-left">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1">
                                     <CardTitle className="text-lg uppercase tracking-wider">{activeSite.name}</CardTitle>
@@ -491,7 +516,7 @@ export default function ActivityAuditPage() {
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
                                             <p className="text-2xl font-bold text-text-primary">{siteHistorical.length + siteActive.length}</p>
-                                            <p className="text-[8px] text-text-muted uppercase">all time</p>
+                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
@@ -508,7 +533,7 @@ export default function ActivityAuditPage() {
                                                             <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
                                                             <span className="text-[8px] text-text-muted font-bold">{wo.scheduleDate}</span>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{wo.description}</p>
                                                     </div>
                                                 )) : (
                                                     <div className="py-8 text-center opacity-40">
@@ -548,8 +573,8 @@ export default function ActivityAuditPage() {
                                                                 {wo.status}
                                                             </Badge>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {wo.scheduleDate}</p>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{wo.description}</p>
+                                                        <p className="text-[8px] text-text-muted uppercase font-bold text-left">{wo.scheduleTime} • {wo.scheduleDate}</p>
                                                     </div>
                                                 )) : (
                                                     <div className="py-12 text-center space-y-2 opacity-40">
@@ -565,7 +590,7 @@ export default function ActivityAuditPage() {
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
                                     <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                    <p className="text-[8px] text-text-muted uppercase">Contract SLA</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -585,7 +610,7 @@ export default function ActivityAuditPage() {
                             <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
                                 <Building2 size={18} />
                             </div>
-                            <div>
+                            <div className="text-left">
                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</p>
                                 <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{site.client} · {site.location}</p>
                             </div>
@@ -664,7 +689,7 @@ export default function ActivityAuditPage() {
                                                             <AvatarImage src={activeTech?.avatarUrl} />
                                                             <AvatarFallback className="text-lg">{activeTech?.name.charAt(0)}</AvatarFallback>
                                                         </Avatar>
-                                                        <div className="space-y-1">
+                                                        <div className="space-y-1 text-left">
                                                             <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech?.name}</h2>
                                                             <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech?.email} · {activeTech?.id.toUpperCase()}</p>
                                                         </div>
@@ -701,7 +726,7 @@ export default function ActivityAuditPage() {
 
                             <TabsContent value="flags" className="m-0">
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
+                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Anomaly Registry</h3>
                                     <div className="space-y-2">
                                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />

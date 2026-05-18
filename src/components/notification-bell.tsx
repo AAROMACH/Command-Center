@@ -26,29 +26,37 @@ export function NotificationBell() {
     const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
     const now = new Date();
     
-    // 1. Load Broadcast Ledger
+    // 1. Load Broadcast Ledger (Custom messages)
     let storedMessages: AdminMessage[] = [];
     try {
         const json = localStorage.getItem('aaromach_broadcast_ledger');
         if (json) storedMessages = JSON.parse(json);
     } catch (e) {}
 
-    // 2. Load Cleared Registry
+    // 2. Load Cleared Registry (Seen by this user)
     let clearedIds: string[] = [];
     try {
         const clearedJson = localStorage.getItem('aaromach_cleared_messages');
         if (clearedJson) clearedIds = JSON.parse(clearedJson);
     } catch (e) {}
 
+    // 3. Load Revoked Registry (Pulled by Admin for all)
+    let revokedIds: string[] = [];
+    try {
+        const revokedJson = localStorage.getItem('aaromach_revoked_messages');
+        if (revokedJson) revokedIds = JSON.parse(revokedJson);
+    } catch (e) {}
+
     const allMessages = [...storedMessages, ...initialMessages];
     
-    // Filter by Portal AND verify not cleared AND not expired
+    // Filter by Portal AND verify not cleared AND not revoked AND not expired
     const filtered = allMessages.filter(m => {
         const matchesPortal = (m.targetPortal === 'all' || m.targetPortal === currentPortal);
         const isNotCleared = !clearedIds.includes(m.id);
+        const isNotRevoked = !revokedIds.includes(m.id);
         const isNotExpired = !m.expiresAt || isAfter(parseISO(m.expiresAt), now);
         
-        return matchesPortal && isNotCleared && isNotExpired;
+        return matchesPortal && isNotCleared && isNotRevoked && isNotExpired;
     });
     
     // Deduplicate and Sort

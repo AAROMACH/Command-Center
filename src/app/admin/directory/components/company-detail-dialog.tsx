@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import type { Technician, Invoice, Project, WorkOrder } from '@/lib/types';
-import { invoices, projects, workOrders } from '@/lib/data';
+import { invoices, projects, workOrders, assignmentTimeLogs } from '@/lib/data';
 import { 
   Dialog, 
   DialogContent, 
@@ -37,7 +37,8 @@ import {
   Upload,
   Trash2,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Activity
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,16 +88,29 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
   [companyName]);
 
   const companySites = useMemo(() => {
-    const sites = new Set<string>();
+    const sites = new Map();
+    
+    // Sites from contacts
     companyContacts.forEach(c => {
-        c.managedSites?.forEach(s => sites.add(JSON.stringify(s)));
+        c.managedSites?.forEach(s => sites.set(s.location, { id: s.id, name: s.name, location: s.location }));
     });
-    // Also check work orders
+    
+    // Sites from work orders
     workOrders.filter(wo => wo.clientName === companyName).forEach(wo => {
-        sites.add(JSON.stringify({ id: `wo-${wo.id}`, name: wo.location.split(',')[0], location: wo.location }));
+        if (!sites.has(wo.location)) {
+            sites.set(wo.location, { id: `wo-${wo.id}`, name: wo.location.split(',')[0], location: wo.location });
+        }
     });
-    return Array.from(sites).map(s => JSON.parse(s));
+    
+    return Array.from(sites.values());
   }, [companyContacts, companyName]);
+
+  const isTechOnSite = (location: string) => {
+    return assignmentTimeLogs.some(log => 
+        !log.checkOutTime && 
+        workOrders.some(wo => wo.id === log.workOrderId && wo.location === location)
+    );
+  };
 
   const totalOutstanding = useMemo(() => 
     companyInvoices
@@ -279,22 +293,36 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                         </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {companySites.map((site, idx) => (
-                            <div key={idx} className="p-4 rounded-lg border border-border-sub bg-bg-primary hover:border-text-muted transition-colors flex items-center justify-between group">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2 bg-bg-tertiary rounded border border-border-sub group-hover:text-brand-red transition-colors">
-                                        <MapPin size={16} />
+                        {companySites.map((site, idx) => {
+                            const active = isTechOnSite(site.location);
+                            return (
+                                <div key={idx} className={cn(
+                                    "p-4 rounded-lg border transition-all flex items-center justify-between group",
+                                    active ? "bg-green-dim/10 border-green-border" : "border-border-sub bg-bg-primary hover:border-text-muted"
+                                )}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "p-2 rounded border transition-colors",
+                                            active ? "bg-bg-secondary text-text-green border-green-border" : "bg-bg-tertiary border-border-sub group-hover:text-brand-red"
+                                        )}>
+                                            <MapPin size={16} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{site.name}</p>
+                                                {active && (
+                                                    <Badge variant="active" className="h-3.5 px-1 text-[7px] animate-pulse uppercase tracking-tighter">LIVE PRESENCE</Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-text-muted">{site.location}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{site.name}</p>
-                                        <p className="text-[10px] text-text-muted">{site.location}</p>
-                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                        <ExternalLink size={14} />
+                                    </Button>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
-                                    <ExternalLink size={14} />
-                                </Button>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
 
                     {isAddSiteOpen && (

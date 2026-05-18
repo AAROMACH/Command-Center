@@ -38,7 +38,8 @@ import {
     ShieldCheck,
     ExternalLink,
     Activity,
-    Lock
+    Lock,
+    UserCheck
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -58,6 +59,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { useSearchParams } from 'next/navigation';
+import { assignmentTimeLogs } from '@/lib/data';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -254,9 +256,16 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
 
     const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount;
 
+    const isTechOnSite = (location: string) => {
+        return assignmentTimeLogs.some(log => 
+            !log.checkOutTime && 
+            workOrders.some(wo => wo.id === log.workOrderId && wo.location === location)
+        );
+    };
+
     // --- MAP LOGIC ---
     const mapLocations = useMemo(() => {
-        const locations: { id: string; name: string; location: string; type: 'tech' | 'site' }[] = [];
+        const locations: { id: string; name: string; location: string; type: 'tech' | 'site'; isLive?: boolean }[] = [];
         if (mapViewMode === 'techs') {
             techniciansList.forEach(t => {
                 const loc = t.address || t.currentLocation;
@@ -267,7 +276,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         } else {
             personnel.filter(p => p.roles?.includes('client')).forEach(c => {
                 c.managedSites?.forEach(s => {
-                    locations.push({ id: s.id, name: s.name, location: s.location, type: 'site' });
+                    locations.push({ 
+                        id: s.id, 
+                        name: s.name, 
+                        location: s.location, 
+                        type: 'site',
+                        isLive: isTechOnSite(s.location)
+                    });
                 });
             });
         }
@@ -295,7 +310,12 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         } else {
             for (const client of personnel.filter(p => p.roles?.includes('client'))) {
                 const site = client.managedSites?.find(s => s.id === meta.id);
-                if (site) return { ...site, clientCompany: client.clientCompany, metaType: 'site' as const };
+                if (site) return { 
+                    ...site, 
+                    clientCompany: client.clientCompany, 
+                    metaType: 'site' as const,
+                    isLive: isTechOnSite(site.location)
+                };
             }
         }
         return null;
@@ -671,11 +691,14 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                                 <AvatarFallback>{(selectedMapEntity as Technician).name.charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                         ) : (
-                                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-accent-gold">
+                                                            <div className={cn(
+                                                                "p-1.5 rounded border shadow-sm",
+                                                                (selectedMapEntity as any).isLive ? "bg-green-dim border-green-border text-text-green" : "bg-bg-secondary rounded border border-border-sub text-accent-gold"
+                                                            )}>
                                                                 <Building2 size={16} />
                                                             </div>
                                                         )}
-                                                        <div className="min-w-0">
+                                                        <div className="min-w-0 text-left">
                                                             <CardTitle className="text-xs uppercase truncate">{(selectedMapEntity as any).name}</CardTitle>
                                                             <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                                                 {selectedMapEntity.metaType === 'tech' ? (selectedMapEntity as Technician).role : (selectedMapEntity as any).clientCompany}
@@ -684,13 +707,13 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-3 space-y-3">
-                                                    <div className="flex items-start gap-2">
+                                                    <div className="flex items-start gap-2 text-left">
                                                         <MapPin size={12} className="text-brand-red shrink-0 mt-0.5" />
                                                         <p className="text-[10px] text-text-secondary leading-tight uppercase font-medium">{(selectedMapEntity as any).location}</p>
                                                     </div>
                                                     {selectedMapEntity.metaType === 'tech' ? (
                                                         <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
-                                                            <div className="space-y-0.5">
+                                                            <div className="space-y-0.5 text-left">
                                                                 <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Reliability</p>
                                                                 <p className="text-xs font-mono font-bold text-text-green">{(selectedMapEntity as Technician).reliabilityScore}%</p>
                                                             </div>
@@ -704,19 +727,27 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             </Button>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
-                                                            <div className="space-y-0.5">
-                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Access Tier</p>
-                                                                <p className="text-[10px] font-bold text-text-primary uppercase">Standard Site</p>
+                                                        <div className="space-y-2 pt-1 border-t border-border-sub/30 mt-1">
+                                                            {(selectedMapEntity as any).isLive && (
+                                                                <div className="flex items-center gap-2 p-1.5 rounded bg-green-dim border border-green-border mb-1">
+                                                                    <div className="h-1.5 w-1.5 rounded-full bg-text-green animate-pulse" />
+                                                                    <span className="text-[8px] font-black text-text-green uppercase tracking-widest">LIVE SESSION ACTIVE</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="space-y-0.5 text-left">
+                                                                    <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Access Tier</p>
+                                                                    <p className="text-[10px] font-bold text-text-primary uppercase">Standard Site</p>
+                                                                </div>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="outline" 
+                                                                    className="h-6 text-[8px] font-bold uppercase"
+                                                                    onClick={() => handleCompanyClick((selectedMapEntity as any).clientCompany)}
+                                                                >
+                                                                    <ShieldCheck size={10} className="mr-1"/> Audit Site
+                                                                </Button>
                                                             </div>
-                                                            <Button 
-                                                                size="sm" 
-                                                                variant="outline" 
-                                                                className="h-6 text-[8px] font-bold uppercase"
-                                                                onClick={() => handleCompanyClick((selectedMapEntity as any).clientCompany)}
-                                                            >
-                                                                <ShieldCheck size={10} className="mr-1"/> Audit Site
-                                                            </Button>
                                                         </div>
                                                     )}
                                                 </CardContent>
@@ -771,13 +802,21 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             >
                                                 <div className="flex items-start gap-3">
                                                     <div className={cn(
-                                                        "p-2 rounded border border-border-sub shrink-0 transition-colors",
-                                                        loc.type === 'tech' ? "bg-brand-red-dim/20 text-brand-red group-hover:bg-brand-red group-hover:text-white" : "bg-accent-gold-dim/20 text-accent-gold group-hover:bg-accent-gold group-hover:text-white"
+                                                        "p-2 rounded border border-border-sub shrink-0 transition-all relative",
+                                                        loc.type === 'tech' ? "bg-brand-red-dim/20 text-brand-red group-hover:bg-brand-red group-hover:text-white" : 
+                                                        loc.isLive ? "bg-green-dim/20 text-text-green border-green-border group-hover:bg-text-green group-hover:text-white" :
+                                                        "bg-accent-gold-dim/20 text-accent-gold group-hover:bg-accent-gold group-hover:text-white"
                                                     )}>
                                                         {loc.type === 'tech' ? <User size={14}/> : <Building2 size={14}/>}
+                                                        {loc.isLive && (
+                                                            <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-text-green animate-pulse" />
+                                                        )}
                                                     </div>
-                                                    <div className="space-y-0.5 overflow-hidden">
-                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{loc.name}</p>
+                                                    <div className="space-y-0.5 overflow-hidden text-left">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{loc.name}</p>
+                                                            {loc.isLive && <Badge variant="active" className="h-3 px-1 text-[6px] animate-pulse">LIVE</Badge>}
+                                                        </div>
                                                         <p className="text-[9px] text-text-muted uppercase tracking-tight flex items-center gap-1">
                                                             <Navigation size={8}/> {loc.location}
                                                         </p>

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
-type PlanTier = 'Standard' | 'Professional' | 'Enterprise';
+type PlanTier = 'On-Call' | 'Site Partner' | 'Dedicated';
 
 interface PlanOption {
     id: PlanTier;
@@ -23,22 +23,22 @@ interface PlanOption {
 
 const plans: PlanOption[] = [
     { 
-        id: 'Standard', 
-        price: '$1,500.00 / Mo', 
-        description: 'Basic site management and ticketing.',
-        features: ['Up to 5 managed sites', 'Standard 24h response', 'Email support']
+        id: 'On-Call', 
+        price: '$199.00 / Mo', 
+        description: 'Priority scheduling and triage support.',
+        features: ['48-hr priority scheduling', '10% off all labor', 'Phone triage support', 'Annual site walkthrough', 'No contract — month to month']
     },
     { 
-        id: 'Professional', 
-        price: '$3,000.00 / Mo', 
-        description: 'Enhanced oversight for growing organizations.',
-        features: ['Up to 20 managed sites', 'Priority 8h response', 'Live portal tracking']
+        id: 'Site Partner', 
+        price: '$499.00 / Mo', 
+        description: 'Quarterly inspections and documentation.',
+        features: ['24-hr priority scheduling', '15% off all labor', 'Quarterly site inspection', 'Infrastructure documentation', 'Emergency dispatch available']
     },
     { 
-        id: 'Enterprise', 
-        price: '$5,000.00 / Mo', 
-        description: 'Full strategic command for global operations.',
-        features: ['Unlimited managed sites', 'Critical 4h response', 'Dedicated account lead']
+        id: 'Dedicated', 
+        price: '$999.00 / Mo', 
+        description: 'High-fidelity same-day response tier.',
+        features: ['Same-day scheduling', '20% off all labor', 'Monthly site visits included', 'Dedicated tech assignment', 'After-hours emergency dispatch', 'Full infrastructure documentation']
     }
 ];
 
@@ -46,7 +46,7 @@ export default function ClientBillingPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [isModifyOpen, setIsModifyOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<PlanTier>('Enterprise');
+    const [selectedPlan, setSelectedPlan] = useState<PlanTier>('Dedicated');
     const [searchQuery, setSearchQuery] = useState("");
     const router = useRouter();
     const { toast } = useToast();
@@ -156,8 +156,8 @@ export default function ClientBillingPage() {
                             <CardTitle>Active Plan</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <h3 className="text-2xl font-bold text-text-primary uppercase tracking-tight">Enterprise Tier</h3>
-                            <p className="text-xs text-text-muted mt-1 uppercase tracking-widest font-bold">Base Billing: $5,000.00 / Mo</p>
+                            <h3 className="text-2xl font-bold text-text-primary uppercase tracking-tight">Dedicated Tier</h3>
+                            <p className="text-xs text-text-muted mt-1 uppercase tracking-widest font-bold">Base Billing: $999.00 / Mo</p>
                         </CardContent>
                         <CardFooter className="pt-0">
                             <Button variant="outline" className="w-full h-9 text-[10px]" onClick={() => setIsModifyOpen(true)}>Modify Subscription</Button>

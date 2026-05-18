@@ -237,14 +237,14 @@ export function AlertBand() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-1.5 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-2 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2">
           {alerts.map((alert) => (
             <div
               key={alert.id}
               onClick={() => handleAlertClick(alert)}
               className={cn(
-                'flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
+                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
                 {
                   'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.15)]': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
@@ -253,13 +253,13 @@ export function AlertBand() {
                 }
               )}
             >
-              <alert.icon className={cn("h-2.5 w-2.5", alert.type === 'success' && 'fill-current')} />
+              <alert.icon className={cn("h-3 w-3", alert.type === 'success' && 'fill-current')} />
               <span>{alert.text}</span>
             </div>
           ))}
           {alerts.length === 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
-                <Activity size={10}/>
+            <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
+                <Activity size={12}/>
                 Registry Nominal
             </div>
           )}
@@ -269,14 +269,14 @@ export function AlertBand() {
           <div className="flex items-center gap-4 border-l border-border-sub/30 pl-4 shrink-0">
             <div className="flex items-center gap-2">
                <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">SC</div>
-               <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">Sarah Connor</span></p>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">Sarah Connor</span></p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
-                <Mail size={10} /> Email
+              <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+                <Mail size={12} /> Email
               </button>
-              <button className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
-                <MessageSquare size={10} /> SMS
+              <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+                <MessageSquare size={12} /> SMS
               </button>
             </div>
           </div>

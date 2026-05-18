@@ -67,7 +67,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-active',
           type: 'success',
-          text: `LIVE SESSION: On-site at ${activeJob.location}`,
+          text: `LIVE SESSION: ${activeJob.location}`,
           description: `You are currently checked into mission ${activeJob.id.toUpperCase()}. Ensure you finalize the session and upload any site photos before checking out.`,
           icon: Play,
           actionPath: '/tech/dashboard',
@@ -87,7 +87,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-upcoming',
           type: 'info',
-          text: `${upcomingJobsCount} field job${upcomingJobsCount > 1 ? 's' : ''} in next 24h`,
+          text: `${upcomingJobsCount} upcoming job${upcomingJobsCount > 1 ? 's' : ''}`,
           description: `You have ${upcomingJobsCount} upcoming assignment(s) scheduled for the next 24 hours. Review site access notes and instructions in your calendar.`,
           icon: CalendarCheck,
           actionPath: '/tech/assignments',
@@ -103,7 +103,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-logs',
           type: 'warning',
-          text: `${pendingLogsCount} field log${pendingLogsCount > 1 ? 's' : ''} pending submission`,
+          text: `${pendingLogsCount} log${pendingLogsCount > 1 ? 's' : ''} pending`,
           description: `Your weekly work log is currently in draft status. Submit for administrative audit to avoid payout delays.`,
           icon: FileWarning,
           actionPath: '/tech/logs',
@@ -116,7 +116,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-penalties',
           type: 'critical',
-          text: `${recentPenalties} recent job penalty event${recentPenalties > 1 ? 's' : ''}`,
+          text: `${recentPenalties} recent penalty event${recentPenalties > 1 ? 's' : ''}`,
           description: `Discrepancies have been identified in your recent field activity. Review the penalty ledger to see specific points of failure.`,
           icon: AlertTriangle,
           actionPath: '/tech/profile',
@@ -133,7 +133,7 @@ export function AlertBand() {
           currentAlerts.push({
             id: 'client-projects',
             type: 'info',
-            text: `${activeProjectsCount} active project${activeProjectsCount > 1 ? 's' : ''} in progress`,
+            text: `${activeProjectsCount} active project${activeProjectsCount > 1 ? 's' : ''}`,
             description: `Aaromach technicians are currently executing phase-based infrastructure deployment across ${activeProjectsCount} of your sites.`,
             icon: Briefcase,
             actionPath: '/client/projects',
@@ -145,7 +145,7 @@ export function AlertBand() {
           currentAlerts.push({
             id: 'client-tickets',
             type: 'warning',
-            text: `${pendingRequestsCount} new request${pendingRequestsCount > 1 ? 's' : ''} pending review`,
+            text: `${pendingRequestsCount} pending request${pendingRequestsCount > 1 ? 's' : ''}`,
             description: `Your recently submitted service tickets are currently undergoing administrative audit at the Command Center.`,
             icon: ClipboardList,
             actionPath: '/client/tickets',
@@ -163,7 +163,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-unassigned',
           type: 'critical',
-          text: `${unassignedJobsCount} unassigned field job${unassignedJobsCount > 1 ? 's' : ''}`,
+          text: `${unassignedJobsCount} unassigned mission${unassignedJobsCount > 1 ? 's' : ''}`,
           description: `There are ${unassignedJobsCount} missions in the active window requiring operative allocation. Immediate dispatch required.`,
           icon: AlertTriangle,
           actionPath: '/admin/dispatch',
@@ -174,7 +174,7 @@ export function AlertBand() {
       currentAlerts.push({
         id: 'admin-missed',
         type: 'warning',
-        text: `1 Late / Missed Check-In`,
+        text: `1 missed check-in`,
         description: `An operative has failed to verify site presence within the scheduled window. Follow up or force session termination.`,
         icon: Clock,
         actionPath: '/admin/reports',
@@ -185,7 +185,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-audit',
           type: 'info',
-          text: `${logsToAuditCount} field log${logsToAuditCount > 1 ? 's' : ''} pending audit`,
+          text: `${logsToAuditCount} log${logsToAuditCount > 1 ? 's' : ''} to audit`,
           description: `Field operatives have submitted weekly logs that require financial and operational authorization.`,
           icon: FileCheck,
           actionPath: '/admin/financials',
@@ -197,7 +197,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-personnel-requests',
           type: 'info',
-          text: `${pendingPersonnelCount} pending personnel request${pendingPersonnelCount > 1 ? 's' : ''}`,
+          text: `${pendingPersonnelCount} personnel request${pendingPersonnelCount > 1 ? 's' : ''}`,
           description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
           icon: Users,
           actionPath: '/admin/directory',
@@ -209,7 +209,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-site-requests',
           type: 'warning',
-          text: `${pendingSiteCount} pending site request${pendingSiteCount > 1 ? 's' : ''}`,
+          text: `${pendingSiteCount} site request${pendingSiteCount > 1 ? 's' : ''}`,
           description: `Clients have submitted new site coordinates that require verification and authorization before they can be used for assignments.`,
           icon: MapPin,
           actionPath: '/admin/directory',
@@ -237,23 +237,23 @@ export function AlertBand() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-10 py-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-1.5 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
           {alerts.map((alert) => (
             <div
               key={alert.id}
               onClick={() => handleAlertClick(alert)}
               className={cn(
-                'flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98]',
+                'flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
                 {
-                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.2)]': alert.type === 'critical',
+                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.15)]': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
                   'border border-border-main bg-bg-tertiary text-text-secondary': alert.type === 'info',
                   'border border-green-border bg-green-dim text-text-green animate-pulse': alert.type === 'success',
                 }
               )}
             >
-              <alert.icon className={cn("h-3 w-3", alert.type === 'success' && 'fill-current')} />
+              <alert.icon className={cn("h-2.5 w-2.5", alert.type === 'success' && 'fill-current')} />
               <span>{alert.text}</span>
             </div>
           ))}
@@ -266,10 +266,10 @@ export function AlertBand() {
         </div>
 
         {isClientPortal && (
-          <div className="flex items-center gap-6 border-l border-border-sub/30 pl-6">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 border-l border-border-sub/30 pl-4 shrink-0">
+            <div className="flex items-center gap-2">
                <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">SC</div>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Account Lead: <span className="text-text-primary">Sarah Connor</span></p>
+               <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">Sarah Connor</span></p>
             </div>
             <div className="flex items-center gap-3">
               <button className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">

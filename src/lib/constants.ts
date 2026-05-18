@@ -16,7 +16,7 @@ export const TERMINOLOGY = {
     PROJECT: "Project",
     INTAKE: "Service Intake",
     MISSION: "Mission",
-    LEDGER: "Tactical Ledger",
+    LEDGER: "Historical Ledger",
     BRIEFING: "Operational Briefing",
   },
   ACTIONS: {

@@ -159,6 +159,25 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
               </div>
           )}
 
+          {/* SECTION: SCOPE OF WORK */}
+          <div className="space-y-4 text-left">
+             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                <StickyNote size={14} className="text-accent-gold shrink-0"/> 
+                <span>Scope of Work</span>
+             </h3>
+             <div className="space-y-2">
+                {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (
+                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
+                        &quot;{note}&quot;
+                    </div>
+                )) : (
+                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub">
+                        <p className="text-xs text-text-muted italic uppercase font-bold tracking-widest text-center">No intelligence notes recorded.</p>
+                    </div>
+                )}
+             </div>
+          </div>
+
           {/* SECTION: OPERATIVE ASSIGNMENT */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
@@ -187,37 +206,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                   <Badge variant="outline" className="bg-green-dim border-green-border text-text-green text-[8px] uppercase tracking-widest gap-1.5 px-3">
                     <UserCheck size={10}/> Acknowledged
                   </Badge>
-                )}
-             </div>
-          </div>
-
-          {/* SECTION: TACTICAL LEDGER */}
-          <div className="space-y-4 text-left">
-             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <History size={14} className="text-accent-gold shrink-0"/> 
-                <span>{TERMINOLOGY.ENTITIES.LEDGER}</span>
-             </h3>
-             <div className="space-y-3">
-                {mission.history && mission.history.length > 0 ? mission.history.map((evt, idx) => (
-                  <div key={idx} className="flex gap-4 group">
-                    <div className="flex flex-col items-center">
-                      <div className="h-2 w-2 rounded-full bg-border-main border border-text-muted mt-1.5" />
-                      <div className="w-px flex-1 bg-border-sub group-last:bg-transparent mt-1" />
-                    </div>
-                    <div className="pb-4 space-y-1">
-                      <p className="text-[9px] font-mono font-bold text-text-muted uppercase">{formatDateDisplay(evt.date)} • {evt.user}</p>
-                      <div className="flex items-center gap-2">
-                         <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-tighter bg-bg-tertiary px-1.5">
-                            {evt.type.replace('_', ' ')}
-                         </Badge>
-                         <p className="text-xs text-text-secondary leading-relaxed">{evt.details}</p>
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-60">
-                    <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">No historical records logged</p>
-                  </div>
                 )}
              </div>
           </div>
@@ -261,21 +249,33 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
              )}
           </div>
 
-          {/* SECTION: FIELD BRIEFING */}
+          {/* SECTION: HISTORICAL LEDGER */}
           <div className="space-y-4 text-left">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <StickyNote size={14} className="text-accent-gold shrink-0"/> 
-                <span>Internal Briefing Notes</span>
+                <History size={14} className="text-accent-gold shrink-0"/> 
+                <span>{TERMINOLOGY.ENTITIES.LEDGER}</span>
              </h3>
-             <div className="space-y-2">
-                {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (
-                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
-                        &quot;{note}&quot;
+             <div className="space-y-3">
+                {mission.history && mission.history.length > 0 ? mission.history.map((evt, idx) => (
+                  <div key={idx} className="flex gap-4 group">
+                    <div className="flex flex-col items-center">
+                      <div className="h-2 w-2 rounded-full bg-border-main border border-text-muted mt-1.5" />
+                      <div className="w-px flex-1 bg-border-sub group-last:bg-transparent mt-1" />
                     </div>
+                    <div className="pb-4 space-y-1">
+                      <p className="text-[9px] font-mono font-bold text-text-muted uppercase">{formatDateDisplay(evt.date)} • {evt.user}</p>
+                      <div className="flex items-center gap-2">
+                         <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-tighter bg-bg-tertiary px-1.5">
+                            {evt.type.replace('_', ' ')}
+                         </Badge>
+                         <p className="text-xs text-text-secondary leading-relaxed">{evt.details}</p>
+                      </div>
+                    </div>
+                  </div>
                 )) : (
-                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub">
-                        <p className="text-xs text-text-muted italic uppercase font-bold tracking-widest text-center">No intelligence notes recorded.</p>
-                    </div>
+                  <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-60">
+                    <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">No historical records logged</p>
+                  </div>
                 )}
              </div>
           </div>

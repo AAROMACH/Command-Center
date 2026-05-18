@@ -22,7 +22,8 @@ import {
     X,
     Users,
     History,
-    ExternalLink
+    ExternalLink,
+    TrendingUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,49 +55,73 @@ import type { PlanTier, Technician } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PLAN_CAPABILITIES = [
-    "Standard dispatch protocol",
-    "Priority routing",
-    "Bypass dispatch queue",
-    "Email support",
-    "Live portal tracking",
-    "Critical response tier",
-    "Dedicated account lead",
-    "High-density fiber oversight",
-    "On-site audit support",
-    "Advanced Reporting",
-    "Multi-site aggregation",
-    "Custom SOW integration"
+    "48-hr priority scheduling",
+    "24-hr priority scheduling",
+    "Same-day scheduling",
+    "10% off all labor",
+    "15% off all labor",
+    "20% off all labor",
+    "Phone triage support",
+    "Annual site walkthrough",
+    "Quarterly site inspection",
+    "Monthly site visits included",
+    "Infrastructure documentation",
+    "Full infrastructure documentation",
+    "Emergency dispatch available",
+    "After-hours emergency dispatch",
+    "Dedicated tech assignment",
+    "No contract — month to month",
 ];
 
 const INITIAL_PLANS: PlanTier[] = [
     {
         id: 'std-1',
-        name: 'Standard',
-        price: 1500,
+        name: 'On-Call',
+        price: 199,
         billingPeriod: 'monthly',
-        features: ['Standard dispatch protocol', 'Email support'],
+        features: [
+            '48-hr priority scheduling', 
+            '10% off all labor', 
+            'Phone triage support', 
+            'Annual site walkthrough', 
+            'No contract — month to month'
+        ],
         siteLimit: 5,
-        responseTime: '24h',
+        responseTime: '48h',
         type: 'standard'
     },
     {
         id: 'std-2',
-        name: 'Professional',
-        price: 3000,
+        name: 'Site Partner',
+        price: 499,
         billingPeriod: 'monthly',
-        features: ['Priority routing', 'Live portal tracking', 'Email support'],
+        features: [
+            '24-hr priority scheduling', 
+            '15% off all labor', 
+            'Quarterly site inspection', 
+            'Infrastructure documentation', 
+            'Emergency dispatch available', 
+            'No contract — month to month'
+        ],
         siteLimit: 20,
-        responseTime: '8h',
+        responseTime: '24h',
         type: 'standard'
     },
     {
         id: 'std-3',
-        name: 'Enterprise',
-        price: 5000,
+        name: 'Dedicated',
+        price: 999,
         billingPeriod: 'monthly',
-        features: ['Unlimited managed sites', 'Dedicated account lead', 'Critical response tier'],
+        features: [
+            'Same-day scheduling', 
+            '20% off all labor', 
+            'Monthly site visits included', 
+            'Dedicated tech assignment', 
+            'After-hours emergency dispatch', 
+            'Full infrastructure documentation'
+        ],
         siteLimit: 100,
-        responseTime: '4h',
+        responseTime: 'Same-Day',
         type: 'standard'
     },
     {
@@ -105,7 +130,7 @@ const INITIAL_PLANS: PlanTier[] = [
         clientName: 'Global Corp',
         price: 8500,
         billingPeriod: 'monthly',
-        features: ['High-density fiber oversight', 'On-site audit support', 'Bypass dispatch queue'],
+        features: ['Full infrastructure documentation', 'Dedicated tech assignment', 'After-hours emergency dispatch'],
         siteLimit: 50,
         responseTime: '2h',
         type: 'custom'
@@ -165,7 +190,7 @@ export default function PlansPage() {
             billingPeriod: 'monthly',
             features: [],
             siteLimit: 5,
-            responseTime: '4h'
+            responseTime: '24h'
         });
         setIsTerminalOpen(true);
     };
@@ -599,10 +624,12 @@ export default function PlansPage() {
                                 >
                                     <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Same-Day">Same-Day Priority</SelectItem>
                                         <SelectItem value="2h">2-Hour Emergency</SelectItem>
                                         <SelectItem value="4h">4-Hour Critical</SelectItem>
                                         <SelectItem value="8h">8-Hour Priority</SelectItem>
                                         <SelectItem value="24h">24-Hour Standard</SelectItem>
+                                        <SelectItem value="48h">48-Hour Routine</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -750,14 +777,14 @@ function PlanCard({
 
                 <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
-                        {plan.features.slice(0, 4).map((feature, i) => (
+                        {plan.features.slice(0, 5).map((feature, i) => (
                             <div key={i} className="flex items-center gap-2">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />
                                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight truncate">{feature}</span>
                             </div>
                         ))}
-                        {plan.features.length > 4 && (
-                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{plan.features.length - 4} More Capabilities</p>
+                        {plan.features.length > 5 && (
+                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{plan.features.length - 5} More Capabilities</p>
                         )}
                     </div>
 
@@ -772,7 +799,15 @@ function PlanCard({
                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase">
                                 <Clock size={12}/> Target SLA
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-text-primary">{plan.responseTime} Response</span>
+                            <span className="text-[10px] font-mono font-bold text-text-primary">{plan.responseTime}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase">
+                                <TrendingUp size={12}/> Est. Margin
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-text-green">
+                                ~${(plan.price * 0.75).toFixed(0)} / mo
+                            </span>
                         </div>
                     </div>
                 </div>

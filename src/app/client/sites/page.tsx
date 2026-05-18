@@ -194,9 +194,14 @@ export default function ClientSitesPage() {
                         <Card key={site.id} 
                             onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
                             className={cn(
-                            "bg-bg-secondary border-border-main transition-all flex flex-col group relative",
+                            "bg-bg-secondary border-border-main transition-all flex flex-col group relative overflow-hidden",
                             site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
                         )}>
+                            {/* WATERMARK */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03]">
+                                <Building2 size={240} className="text-text-muted rotate-[-12deg] -mr-12 -mb-12" />
+                            </div>
+
                             {/* FLOATING LIVE INDICATOR */}
                             {site.liveCheckIns.length > 0 && (
                                 <div className="absolute -top-2 -right-2 z-10 animate-in fade-in zoom-in duration-500">
@@ -207,7 +212,7 @@ export default function ClientSitesPage() {
                                 </div>
                             )}
 
-                            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
+                            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 relative z-10">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
@@ -227,7 +232,7 @@ export default function ClientSitesPage() {
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-5 flex-1 space-y-6">
+                            <CardContent className="p-5 flex-1 space-y-6 relative z-10">
                                 {site.status === 'pending' ? (
                                     <div className="p-4 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/20 flex flex-col items-center text-center space-y-2">
                                         <AlertCircle size={24} className="text-accent-gold opacity-50" />

@@ -65,6 +65,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 import { 
     technicians, 
     workOrders, 
@@ -79,7 +82,7 @@ import {
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
-import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks } from 'date-fns';
+import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
@@ -92,6 +95,7 @@ export default function ActivityAuditPage() {
     
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
+    const [visitDateRange, setVisitDateRange] = useState<DateRange | undefined>(undefined);
 
     // Messaging State
     const [messages, setMessages] = useState<AdminMessage[]>([]);
@@ -176,13 +180,26 @@ export default function ActivityAuditPage() {
 
     const sortedAllSiteVisits = useMemo(() => {
         if (!activeSite) return [];
-        const all = workOrders.filter(wo => wo.location === activeSite.location);
+        let all = workOrders.filter(wo => wo.location === activeSite.location);
+
+        if (visitDateRange?.from) {
+            all = all.filter(wo => {
+                try {
+                    const woDate = new Date(wo.scheduleDate);
+                    if (visitDateRange.to) {
+                        return woDate >= visitDateRange.from! && woDate <= visitDateRange.to!;
+                    }
+                    return isSameDay(woDate, visitDateRange.from!);
+                } catch (e) { return false; }
+            });
+        }
+
         return all.sort((a, b) => {
             const dateA = new Date(a.scheduleDate).getTime();
             const dateB = new Date(b.scheduleDate).getTime();
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    }, [activeSite, visitSortDir]);
+    }, [activeSite, visitSortDir, visitDateRange]);
 
     const anomalyCounts = useMemo(() => {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -535,7 +552,7 @@ export default function ActivityAuditPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                {/* TOTAL VISITS POPUP */}
+                                {/* TOTAL VISITS DIALOG */}
                                 <Dialog>
                                     <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
@@ -544,7 +561,7 @@ export default function ActivityAuditPage() {
                                             <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
                                     </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
                                         <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
@@ -552,7 +569,25 @@ export default function ActivityAuditPage() {
                                                     <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Label className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Sort By Date:</Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="sm" className={cn("h-7 text-[8px] uppercase font-bold tracking-widest bg-bg-primary", visitDateRange?.from && "border-brand-red text-brand-red")}>
+                                                                <CalendarIcon size={10} className="mr-1.5" />
+                                                                {visitDateRange?.from ? (
+                                                                    visitDateRange.to ? `${format(visitDateRange.from, "MM/dd")} - ${format(visitDateRange.to, "MM/dd")}` : format(visitDateRange.from, "MM/dd")
+                                                                ) : "Filter Date"}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="end">
+                                                            <Calendar mode="range" selected={visitDateRange} onSelect={setVisitDateRange} />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    {visitDateRange && (
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => setVisitDateRange(undefined)}>
+                                                            <X size={12} />
+                                                        </Button>
+                                                    )}
+                                                    <Separator orientation="vertical" className="h-4 mx-1 bg-border-sub" />
                                                     <Select value={visitSortDir} onValueChange={(val: any) => setVisitSortDir(val)}>
                                                         <SelectTrigger className="h-7 w-[100px] text-[8px] font-bold uppercase tracking-widest bg-bg-primary">
                                                             <div className="flex items-center gap-1.5">
@@ -567,7 +602,7 @@ export default function ActivityAuditPage() {
                                                     </Select>
                                                 </div>
                                             </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted mt-1">Full operational history for coordinate: {activeSite.name}</DialogDescription>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted mt-1">Comprehensive historical manifest for site coordinate: {activeSite.name}</DialogDescription>
                                         </DialogHeader>
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
@@ -600,7 +635,7 @@ export default function ActivityAuditPage() {
                                                 )}
                                             </div>
                                         </ScrollArea>
-                                        <DialogFooter className="p-4 bg-bg-tertiary/50 border-t border-border-default">
+                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
                                             <DialogClose asChild>
                                                 <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
                                             </DialogClose>
@@ -608,7 +643,7 @@ export default function ActivityAuditPage() {
                                     </DialogContent>
                                 </Dialog>
 
-                                {/* OPEN TICKETS POPUP */}
+                                {/* OPEN TICKETS DIALOG */}
                                 <Dialog>
                                     <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
@@ -619,7 +654,7 @@ export default function ActivityAuditPage() {
                                             </p>
                                         </div>
                                     </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
                                         <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                                             <div className="flex items-center gap-3">
                                                 <AlertTriangle size={20} className="text-accent-gold" />
@@ -761,7 +796,7 @@ export default function ActivityAuditPage() {
                                                     <div className="flex items-center gap-6">
                                                         <Avatar className="h-16 w-16 border-2 border-border-sub">
                                                             <AvatarImage src={activeTech?.avatarUrl} />
-                                                            <AvatarFallback className="text-lg">{activeTech?.name.charAt(0)}</AvatarFallback>
+                                                            <AvatarFallback>{activeTech?.name.charAt(0)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="space-y-1 text-left">
                                                             <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech?.name}</h2>

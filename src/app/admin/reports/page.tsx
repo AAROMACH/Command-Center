@@ -50,7 +50,9 @@ import {
     DialogHeader, 
     DialogTitle, 
     DialogDescription, 
-    DialogFooter 
+    DialogFooter,
+    DialogTrigger,
+    DialogClose
 } from '@/components/ui/dialog';
 import {
   Popover,
@@ -173,6 +175,12 @@ export default function ActivityAuditPage() {
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
         return unassigned + overdueLogs + openCheckins + 2;
     }, []);
+
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        setSelectedTechId(null);
+        setSelectedSiteId(null);
+    };
 
     // ── BROADCAST LOGIC ──────────────────────────────────────────────────
 
@@ -511,44 +519,58 @@ export default function ActivityAuditPage() {
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
                                 {/* TOTAL VISITS POPUP */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                <Dialog>
+                                    <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
                                             <p className="text-2xl font-bold text-text-primary">{siteHistorical.length + siteActive.length}</p>
                                             <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <History size={12} className="text-brand-red"/> Visit Registry Audit
-                                            </p>
-                                        </div>
-                                        <ScrollArea className="max-h-[300px]">
-                                            <div className="p-3 space-y-2">
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <History size={20} className="text-brand-red" />
+                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
+                                            </div>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Comprehensive historical manifest for site coordinate: {activeSite.name}</DialogDescription>
+                                        </DialogHeader>
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-6 space-y-3">
                                                 {siteHistorical.length > 0 ? siteHistorical.map(wo => (
-                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
-                                                            <span className="text-[8px] text-text-muted font-bold">{wo.scheduleDate}</span>
+                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between">
+                                                        <div className="flex items-center gap-4 text-left">
+                                                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-brand-red">
+                                                                <FileText size={18} />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                                    ID: {wo.id.toUpperCase()} · Completed: {wo.scheduleDate}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{wo.description}</p>
+                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>View Session Detail</Button>
                                                     </div>
                                                 )) : (
-                                                    <div className="py-8 text-center opacity-40">
-                                                        <History size={24} className="mx-auto mb-1 text-text-muted" />
-                                                        <p className="text-[9px] font-bold uppercase">No historical visits</p>
+                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                                        <History size={48} className="mx-auto mb-2 text-text-muted" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No historical visits registered in system</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </ScrollArea>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DialogFooter className="p-4 bg-bg-tertiary/50 border-t border-border-default">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
                                 {/* OPEN TICKETS POPUP */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                <Dialog>
+                                    <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
                                             <p className="text-2xl font-bold text-text-primary">{siteActive.length}</p>
@@ -556,36 +578,52 @@ export default function ActivityAuditPage() {
                                                 {siteActive.length > 0 ? 'Active Queue' : 'Service Clean'}
                                             </p>
                                         </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <AlertTriangle size={12} className="text-accent-gold"/> Active Mission Audit
-                                            </p>
-                                        </div>
-                                        <ScrollArea className="max-h-[300px]">
-                                            <div className="p-3 space-y-2">
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <AlertTriangle size={20} className="text-accent-gold" />
+                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Active Mission Audit</DialogTitle>
+                                            </div>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Live dispatch buffer and intake funnel for site coordinate: {activeSite.name}</DialogDescription>
+                                        </DialogHeader>
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-6 space-y-3">
                                                 {siteActive.length > 0 ? siteActive.map(wo => (
-                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
-                                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
-                                                                {wo.status}
-                                                            </Badge>
+                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between">
+                                                        <div className="flex items-center gap-4 text-left">
+                                                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-accent-gold">
+                                                                <Clock size={18} />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                                <div className="flex items-center gap-3 mt-0.5">
+                                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
+                                                                        ID: {wo.id.toUpperCase()} · {wo.scheduleTime} · {wo.scheduleDate}
+                                                                    </p>
+                                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-3.5 px-1 text-[7px] uppercase tracking-tighter">
+                                                                        {wo.status}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{wo.description}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase font-bold text-left">{wo.scheduleTime} • {wo.scheduleDate}</p>
+                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>Audit Ticket Detail</Button>
                                                     </div>
                                                 )) : (
-                                                    <div className="py-12 text-center space-y-2 opacity-40">
-                                                        <CheckCircle2 size={32} className="mx-auto text-text-green" />
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
+                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                                        <CheckCircle2 size={48} className="mx-auto mb-2 text-text-green" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">Mission funnel clear: No active tickets</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </ScrollArea>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Audit Terminal</Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
@@ -643,11 +681,7 @@ export default function ActivityAuditPage() {
                 </div>
 
                 {!searchQuery ? (
-                    <Tabs value={activeTab} onValueChange={(val) => {
-                        setActiveTab(val);
-                        setSelectedTechId(null);
-                        setSelectedSiteId(null);
-                    }} className="w-full">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                         <div className="flex justify-center">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-12 justify-center mb-8">
                                 <TabsTrigger 

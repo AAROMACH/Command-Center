@@ -29,14 +29,20 @@ import {
     AlertCircle,
     Info,
     ArrowUpRight,
-    ExternalLink
+    ExternalLink,
+    Check
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-    Popover, 
-    PopoverContent, 
-    PopoverTrigger 
-} from '@/components/ui/popover';
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription,
+    DialogFooter,
+    DialogTrigger,
+    DialogClose
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
@@ -183,45 +189,52 @@ export default function SiteDetailPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                {/* TOTAL VISITS POPUP */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                {/* TOTAL VISITS DIALOG */}
+                                <Dialog>
+                                    <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
                                             <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
                                             <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <History size={12} className="text-brand-red"/> Visit Registry Audit
-                                            </p>
-                                        </div>
-                                        <ScrollArea className="max-h-[300px]">
-                                            <div className="p-3 space-y-2">
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
+                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <History size={20} className="text-brand-red" />
+                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
+                                            </div>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Full historical manifest for site coordinate: {siteData.name}</DialogDescription>
+                                        </DialogHeader>
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-6 space-y-3">
                                                 {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
-                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
+                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-1 text-left group hover:border-text-muted transition-all">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
+                                                            <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
                                                             <span className="text-[8px] text-text-muted font-bold">{formatDateDisplay(wo.scheduleDate)}</span>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
                                                     </div>
                                                 )) : (
-                                                    <div className="py-8 text-center opacity-40">
-                                                        <History size={24} className="mx-auto mb-1 text-text-muted" />
-                                                        <p className="text-[9px] font-bold uppercase">No historical visits</p>
+                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                                        <History size={48} className="mx-auto mb-2 text-text-muted" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No historical records found</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </ScrollArea>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
-                                {/* OPEN TICKETS POPUP */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                {/* OPEN TICKETS DIALOG */}
+                                <Dialog>
+                                    <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
                                             <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
@@ -229,72 +242,101 @@ export default function SiteDetailPage() {
                                                 {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Service Clean'}
                                             </p>
                                         </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <AlertCircle size={12} className="text-accent-gold"/> Mission Funnel Audit
-                                            </p>
-                                        </div>
-                                        <ScrollArea className="max-h-[300px]">
-                                            <div className="p-3 space-y-2">
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
+                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <AlertCircle size={20} className="text-accent-gold" />
+                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Active Mission Funnel</DialogTitle>
+                                            </div>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Live dispatch buffer and intake funnel for site coordinate: {siteData.name}</DialogDescription>
+                                        </DialogHeader>
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-6 space-y-3">
                                                 {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
-                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
-                                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
-                                                                {wo.status}
-                                                            </Badge>
+                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between">
+                                                        <div className="text-left space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
+                                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
+                                                                    {wo.status}
+                                                                </Badge>
+                                                            </div>
+                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
-                                                        <p className="text-[8px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
+                                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
                                                     </div>
                                                 )) : (
-                                                    <div className="py-12 text-center space-y-2 opacity-40">
-                                                        <CheckCircle2 size={32} className="mx-auto text-text-green" />
-                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
+                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                                        <CheckCircle2 size={48} className="mx-auto mb-2 text-text-green" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">Mission funnel clear: No active tickets</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </ScrollArea>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
-                                {/* UPTIME TIER POPUP */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                {/* UPTIME TIER DIALOG */}
+                                <Dialog>
+                                    <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Uptime Tier</p>
                                             <p className="text-2xl font-bold text-text-primary">99.9%</p>
                                             <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
                                         </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <TrendingUp size={12} className="text-brand-red"/> SLA Performance
-                                            </p>
-                                        </div>
-                                        <div className="p-3 space-y-4">
-                                            <div className="space-y-1">
-                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contractual Target</p>
-                                                <div className="flex justify-between items-center bg-bg-primary p-2 rounded border border-border-sub">
-                                                    <span className="text-[10px] font-bold uppercase">Standard Tier</span>
-                                                    <span className="text-[10px] font-mono font-bold text-text-green">99.0%</span>
-                                                </div>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[70vh] shadow-2xl">
+                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <TrendingUp size={20} className="text-brand-red" />
+                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">SLA Performance Audit</DialogTitle>
                                             </div>
-                                            <div className="space-y-1">
-                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">30-Day Pulse</p>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-1 flex-1 rounded-full bg-bg-tertiary overflow-hidden">
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Real-time uptime verification and performance tracking.</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="p-8 space-y-8">
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-end">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Active Response Tier</p>
+                                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Enterprise Standard (4-Hour)</p>
+                                                    </div>
+                                                    <Badge variant="active" className="h-5 px-2 text-[8px] uppercase tracking-widest">Compliant</Badge>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                                        <span>Target Uptime</span>
+                                                        <span className="text-text-primary">99.9%</span>
+                                                    </div>
+                                                    <div className="h-2 w-full rounded-full bg-bg-tertiary overflow-hidden border border-border-sub">
                                                         <div className="h-full bg-text-green" style={{ width: '99.9%' }} />
                                                     </div>
-                                                    <span className="text-[9px] font-mono font-bold text-text-primary">99.9%</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-start gap-4">
+                                                <Info size={18} className="text-brand-red shrink-0 mt-0.5" />
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Audit Parameter</p>
+                                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                                                        Uptime calculations are derived from historical ticket completion timelines and verified field check-ins.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Audit</Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </CardContent>
                     </Card>

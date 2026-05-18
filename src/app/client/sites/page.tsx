@@ -197,9 +197,25 @@ export default function ClientSitesPage() {
                             "bg-bg-secondary border-border-main transition-all flex flex-col group relative overflow-hidden",
                             site.status === 'pending' ? "opacity-90 border-dashed border-accent-gold/40 cursor-default" : "hover:border-text-muted cursor-pointer"
                         )}>
-                            {/* WATERMARK */}
+                            {/* WATERMARK - CITY SKYLINE */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03]">
-                                <Building2 size={240} className="text-text-muted rotate-[-12deg] -mr-12 -mb-12" />
+                                <svg 
+                                    width={240} 
+                                    height={240} 
+                                    viewBox="0 0 24 24" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    strokeWidth="1" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    className="text-text-muted rotate-[-12deg] -mr-12 -mb-12"
+                                >
+                                    <path d="M2 22h20" />
+                                    <path d="M3 22V11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v11" />
+                                    <path d="M8 22V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v15" />
+                                    <path d="M14 22v-8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v8" />
+                                    <path d="M18 22V5a1 1 0 0 1 1-1h2v18" />
+                                </svg>
                             </div>
 
                             {/* FLOATING LIVE INDICATOR */}

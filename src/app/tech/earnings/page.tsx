@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -39,6 +40,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateRange } from 'react-day-picker';
 import { 
     Select, 
     SelectContent, 
@@ -47,7 +51,7 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, isSameDay } from 'date-fns';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
 type ExpenseSortOption = 'date-desc' | 'amount-desc' | 'status';
@@ -66,6 +70,7 @@ export default function TechEarningsPage() {
     const [logSortBy, setLogSortBy] = useState<LogSortOption>('date-desc');
     const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
     const [expenseSortBy, setExpenseSortBy] = useState<ExpenseSortOption>('date-desc');
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
     const [exportDates, setExportDates] = useState({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -93,6 +98,19 @@ export default function TechEarningsPage() {
             results = results.filter(l => l.weekOf.toLowerCase().includes(logSearchQuery.toLowerCase()));
         }
 
+        if (dateRange?.from) {
+            results = results.filter(log => {
+                try {
+                    const [m, d, y] = log.weekOf.split('-');
+                    const logDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                    if (dateRange.from && dateRange.to) {
+                        return logDate >= startOfDay(dateRange.from) && logDate <= startOfDay(dateRange.to);
+                    }
+                    return isSameDay(logDate, dateRange.from!);
+                } catch(e) { return true; }
+            });
+        }
+
         return results.sort((a, b) => {
             if (logSortBy === 'date-desc') return b.weekOf.localeCompare(a.weekOf);
             if (logSortBy === 'date-asc') return a.weekOf.localeCompare(b.weekOf);
@@ -100,7 +118,7 @@ export default function TechEarningsPage() {
             if (logSortBy === 'status') return a.status.localeCompare(b.status);
             return 0;
         });
-    }, [currentTechId, logSearchQuery, logSortBy]);
+    }, [currentTechId, logSearchQuery, logSortBy, dateRange]);
 
     // FILTERED & SORTED EXPENSES
     const filteredExpenses = useMemo(() => {
@@ -115,13 +133,25 @@ export default function TechEarningsPage() {
             );
         }
 
+        if (dateRange?.from) {
+            results = results.filter(exp => {
+                try {
+                    const expDate = startOfDay(new Date(exp.date));
+                    if (dateRange.from && dateRange.to) {
+                        return expDate >= startOfDay(dateRange.from) && expDate <= startOfDay(dateRange.to);
+                    }
+                    return isSameDay(expDate, dateRange.from!);
+                } catch(e) { return true; }
+            });
+        }
+
         return results.sort((a, b) => {
             if (expenseSortBy === 'date-desc') return b.date.localeCompare(a.date);
             if (expenseSortBy === 'amount-desc') return b.amount - a.amount;
             if (expenseSortBy === 'status') return a.status.localeCompare(b.status);
             return 0;
         });
-    }, [tech, expenseSearchQuery, expenseSortBy]);
+    }, [tech, expenseSearchQuery, expenseSortBy, dateRange]);
 
     const totalPaid = useMemo(() => 
         filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0)
@@ -149,7 +179,7 @@ export default function TechEarningsPage() {
             const parts = dateStr.split('-');
             if (parts.length === 3) {
                 const [year, month, day] = parts;
-                return `${month}/${day}/${year}`;
+                return `${month}-${day}-${year}`;
             }
             return dateStr;
         } catch (e) {
@@ -182,7 +212,7 @@ export default function TechEarningsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
-                    <div className="grid grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
                         <div className="bg-bg-secondary p-6">
                             <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Total Settled (YTD)</p>
                             <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
@@ -198,11 +228,53 @@ export default function TechEarningsPage() {
                     </div>
 
                     <Tabs defaultValue="history" className="w-full">
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
                             <TabsList className="tabs !mb-0">
                                 <TabsTrigger value="history" className="tab">Billing History</TabsTrigger>
                                 <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
                             </TabsList>
+
+                            <div className="flex items-center gap-3">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className={cn(
+                                            "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                                            dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                                        )}>
+                                            <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                                dateRange?.from ? "text-text-primary" : "text-text-muted"
+                                            )}>
+                                                {dateRange?.from ? (
+                                                    dateRange.to ? <>{format(dateRange.from, "MM-dd")} – {format(dateRange.to, "MM-dd")}</> : format(dateRange.from, "MM-dd")
+                                                ) : "Pick Period"}
+                                            </span>
+                                            {dateRange?.from && (
+                                                <button 
+                                                    className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                                    onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                                        <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
+                                    </PopoverContent>
+                                </Popover>
+
+                                <div className="search-wrap !mb-0 w-[180px]">
+                                    <Search />
+                                    <input 
+                                        className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" 
+                                        placeholder="Filter results..." 
+                                        value={logSearchQuery}
+                                        onChange={(e) => setLogSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
                         
                         <TabsContent value="history" className="mt-0">
@@ -231,6 +303,11 @@ export default function TechEarningsPage() {
                                                         <TableCell className="text-right pr-12 font-mono font-bold">${(log.totalPayout || 0).toFixed(2)}</TableCell>
                                                     </TableRow>
                                                 ))}
+                                                {filteredLogs.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={3} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records match your filters.</td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -265,6 +342,11 @@ export default function TechEarningsPage() {
                                                         <TableCell className="text-right pr-12 font-mono font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
                                                     </TableRow>
                                                 ))}
+                                                {filteredExpenses.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement records match your filters.</td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -284,7 +366,7 @@ export default function TechEarningsPage() {
                             <CardDescription>Verified preferences for disbursement routing.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
+                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 shadow-sm">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Selected Method</p>
                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide">

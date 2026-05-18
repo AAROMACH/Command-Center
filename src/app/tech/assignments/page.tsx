@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   MapPin, 
   Clock, 
   CircleCheck, 
@@ -21,7 +22,7 @@ import {
   LogOut,
   FileCheck,
   RotateCcw,
-  Eye
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -31,9 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 import { useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { cn } from '@/lib/utils';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -63,6 +72,7 @@ export default function TechAssignmentsPage() {
     const [mounted, setMounted] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('date');
     const [searchQuery, setSearchQuery] = useState("");
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
     
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
@@ -89,13 +99,39 @@ export default function TechAssignmentsPage() {
         if (!currentTechId) return [];
         return allWorkOrders
             .filter(wo => wo.assignedTechnicianId === currentTechId)
-            .filter(wo => 
-                wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                wo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                wo.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                wo.location.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-    }, [allWorkOrders, currentTechId, searchQuery]);
+            .filter(wo => {
+                const q = searchQuery.toLowerCase();
+                const matchesSearch = (
+                    wo.id.toLowerCase().includes(q) ||
+                    wo.description.toLowerCase().includes(q) ||
+                    wo.clientName.toLowerCase().includes(q) ||
+                    wo.location.toLowerCase().includes(q)
+                );
+
+                const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
+                    try {
+                        const parts = wo.scheduleDate.split(/[-/]/);
+                        let woDate;
+                        if (parts[0].length === 4) {
+                            woDate = startOfDay(new Date(wo.scheduleDate));
+                        } else {
+                            const [m, d, y] = parts;
+                            woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                        }
+                        
+                        if (dateRange.from && dateRange.to) {
+                            return woDate >= startOfDay(dateRange.from) && woDate <= startOfDay(dateRange.to);
+                        }
+                        if (dateRange.from) {
+                            return isSameDay(woDate, dateRange.from);
+                        }
+                        return true;
+                    } catch (e) { return false; }
+                })());
+
+                return matchesSearch && matchesDate;
+            });
+    }, [allWorkOrders, currentTechId, searchQuery, dateRange]);
 
     const activeAssignments = useMemo(() => 
         techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed'),
@@ -269,7 +305,7 @@ export default function TechAssignmentsPage() {
             </header>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
                     <TabsList className="tabs !mb-0">
                         <TabsTrigger value="active" className="tab">
                             Active Assignments <span className="tab-count">({activeAssignments.length})</span>
@@ -279,19 +315,51 @@ export default function TechAssignmentsPage() {
                         </TabsTrigger>
                     </TabsList>
 
-                    <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                        <SelectTrigger className="w-[160px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
-                            <div className="flex items-center gap-2">
-                                <ArrowUpDown size={14} className="text-text-muted" />
-                                <SelectValue placeholder="Sort Registry" />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="date" className="text-[10px] uppercase font-bold">By Window</SelectItem>
-                            <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
-                            <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className={cn(
+                                    "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                                )}>
+                                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                        dateRange?.from ? "text-text-primary" : "text-text-muted"
+                                    )}>
+                                        {dateRange?.from ? (
+                                            dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
+                                        ) : "Filter Window"}
+                                    </span>
+                                    {dateRange?.from && (
+                                        <button 
+                                            className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    )}
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
+                            </PopoverContent>
+                        </Popover>
+
+                        <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                            <SelectTrigger className="w-[160px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                                <div className="flex items-center gap-2">
+                                    <ArrowUpDown size={14} className="text-text-muted" />
+                                    <SelectValue placeholder="Sort Registry" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="date" className="text-[10px] uppercase font-bold">By Window</SelectItem>
+                                <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
+                                <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 
                 <TabsContent value="active" className="mt-0">
@@ -347,7 +415,7 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="cell-sched">
                                                 <div className="cell-sched-date">
-                                                    <Calendar size={13}/>
+                                                    <CalendarIcon size={13}/>
                                                     <span>{formatDateStr(wo.scheduleDate)}</span>
                                                 </div>
                                                 <div className="cell-sched-time">
@@ -388,7 +456,7 @@ export default function TechAssignmentsPage() {
                                 ))}
                                 {activeAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments on record.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments match your registry filters.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -476,7 +544,7 @@ export default function TechAssignmentsPage() {
                                 })}
                                 {completedAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No completed assignments found.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No assignments match your filters.</td>
                                     </tr>
                                 )}
                             </tbody>

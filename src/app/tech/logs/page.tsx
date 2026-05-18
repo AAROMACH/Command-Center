@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -12,7 +13,7 @@ import {
     AlertTriangle, 
     Clock, 
     MapPin, 
-    Calendar,
+    Calendar as CalendarIcon,
     Send,
     CircleCheck,
     History,
@@ -34,7 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isSameDay, startOfDay } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -50,6 +51,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 
 const DISPUTE_REASONS = [
@@ -76,6 +80,7 @@ export default function TechWeeklyLogPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
 
     const { toast } = useToast();
@@ -101,6 +106,20 @@ export default function TechWeeklyLogPage() {
             filtered = filtered.filter(l => l.weekOf.includes(q));
         }
 
+        // Date Range Filter
+        if (dateRange?.from) {
+            filtered = filtered.filter(log => {
+                try {
+                    const [m, d, y] = log.weekOf.split('-');
+                    const logDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                    if (dateRange.from && dateRange.to) {
+                        return logDate >= startOfDay(dateRange.from) && logDate <= startOfDay(dateRange.to);
+                    }
+                    return isSameDay(logDate, dateRange.from!);
+                } catch(e) { return true; }
+            });
+        }
+
         // Sorting
         return filtered.sort((a, b) => {
             if (sortBy === 'newest') return b.weekOf.localeCompare(a.weekOf);
@@ -110,7 +129,7 @@ export default function TechWeeklyLogPage() {
             if (sortBy === 'items') return b.items.length - a.items.length;
             return 0;
         });
-    }, [currentTechId, searchQuery, sortBy, statusFilter]);
+    }, [currentTechId, searchQuery, sortBy, statusFilter, dateRange]);
 
     const handleLogSelection = (log: WeeklyLog) => {
         setActiveLog(JSON.parse(JSON.stringify(log))); // Clone for local state
@@ -206,8 +225,38 @@ export default function TechWeeklyLogPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className={cn(
+                                    "flex items-center h-10 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                                )}>
+                                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                        dateRange?.from ? "text-text-primary" : "text-text-muted"
+                                    )}>
+                                        {dateRange?.from ? (
+                                            dateRange.to ? <>{format(dateRange.from, "MM-dd")} – {format(dateRange.to, "MM-dd")}</> : format(dateRange.from, "MM-dd")
+                                        ) : "Period Window"}
+                                    </span>
+                                    {dateRange?.from && (
+                                        <button 
+                                            className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    )}
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
+                            </PopoverContent>
+                        </Popover>
+
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                            <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                                 <div className="flex items-center gap-2">
                                     <SlidersHorizontal size={14} className="text-text-muted" />
                                     <SelectValue placeholder="Status" />
@@ -222,7 +271,7 @@ export default function TechWeeklyLogPage() {
                         </Select>
 
                         <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                                 <div className="flex items-center gap-2">
                                     <ArrowUpDown size={14} className="text-text-muted" />
                                     <SelectValue placeholder="Sort" />
@@ -255,7 +304,7 @@ export default function TechWeeklyLogPage() {
                                             log.status === 'Approved' ? "bg-green-dim border-green-border/30 text-text-green" : 
                                             "bg-bg-tertiary border-border-sub text-text-muted"
                                         )}>
-                                            <Calendar size={20} />
+                                            <CalendarIcon size={20} />
                                         </div>
                                         <div className="text-left">
                                             <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
@@ -277,11 +326,11 @@ export default function TechWeeklyLogPage() {
                         ))
                     ) : (
                         <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
-                            {searchQuery || statusFilter !== 'all' ? (
+                            {(searchQuery || statusFilter !== 'all' || dateRange?.from) ? (
                                 <>
                                     <Search size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
                                     <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic">No logs match your registry constraints.</p>
-                                    <Button variant="link" onClick={() => { setSearchQuery(""); setStatusFilter("all"); }} className="text-brand-red text-xs mt-2 uppercase font-bold tracking-widest">Clear All Filters</Button>
+                                    <Button variant="link" onClick={() => { setSearchQuery(""); setStatusFilter("all"); setDateRange(undefined); }} className="text-brand-red text-xs mt-2 uppercase font-bold tracking-widest">Clear All Filters</Button>
                                 </>
                             ) : (
                                 <>
@@ -455,7 +504,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><Calendar size={12}/> Work Date</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1.5"><CalendarIcon size={12}/> Work Date</Label>
                             <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                         <div className="space-y-2">
@@ -518,7 +567,7 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                             item.confirmationStatus === 'confirmed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
                         )}>
-                            {isDisputed ? <X size={24}/> : item.confirmationStatus === 'confirmed' ? <Check size={24}/> : <Calendar size={24}/>}
+                            {isDisputed ? <X size={24}/> : item.confirmationStatus === 'confirmed' ? <Check size={24}/> : <CalendarIcon size={24}/>}
                         </div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-3">
@@ -527,7 +576,7 @@ function JobAuditCard({ item, isLocked, onConfirm, onDispute }: { item: WeeklyLo
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
-                                <span className="flex items-center gap-1.5"><Calendar size={10}/> {job.scheduleDate}</span>
+                                <span className="flex items-center gap-1.5"><CalendarIcon size={10}/> {job.scheduleDate}</span>
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
                                   {job.source === 'Imported' && (

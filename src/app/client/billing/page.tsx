@@ -101,7 +101,6 @@ export default function ClientBillingPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" onClick={() => setIsModifyOpen(true)}>Upgrade Plan</Button>
                 </div>
             </header>
 

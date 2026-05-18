@@ -57,6 +57,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
+import { useSearchParams } from 'next/navigation';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -69,11 +70,12 @@ type ViewMode = 'rows' | 'grid';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders, siteRequests: initialSiteRequests }: DirectoryClientProps) {
+    const searchParams = useSearchParams();
     const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
-    const [activeTab, setActiveTab] = useState('technicians');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'technicians');
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
     const [mapSearch, setMapSearch] = useState("");
     const [selectedMapAddress, setSelectedMapAddress] = useState<string | null>(null);
@@ -92,6 +94,11 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [siteRequests, setSiteRequests] = useState(initialSiteRequests);
     
     const { toast } = useToast();
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -510,7 +517,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsContent>
 
                     <TabsContent value="requests" className="m-0 animate-in fade-in duration-300">
-                        <Tabs defaultValue="personnel" className="w-full">
+                        <Tabs defaultValue={searchParams.get('subtab') || "personnel"} className="w-full">
                             <TabsList className="tabs !bg-bg-secondary/50 border border-border-sub mb-6 h-9">
                                 <TabsTrigger value="personnel" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
                                     PERSONNEL REQUESTS

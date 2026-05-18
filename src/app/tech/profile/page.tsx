@@ -21,13 +21,16 @@ import { subDays, isAfter, format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSearchParams } from 'next/navigation';
 
 export default function TechProfilePage() {
+    const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [tech, setTech] = useState<Technician | undefined>(undefined);
     const [myTimeOff, setMyTimeOff] = useState<TimeOffRequest[]>([]);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'identity');
     const { toast } = useToast();
     
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
@@ -41,6 +44,11 @@ export default function TechProfilePage() {
             setMyTimeOff(initialTimeOffRequests.filter(r => r.technicianId === userId));
         }
     }, []);
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
 
     const reliabilityEvents = useMemo(() => {
         if (!currentTechId) return [];
@@ -141,7 +149,7 @@ export default function TechProfilePage() {
                 </div>
             </header>
             
-            <Tabs defaultValue="identity" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-5 max-w-4xl mb-8">
                     <TabsTrigger value="identity" className="flex items-center gap-2">
                         <User size={14}/> Identity

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { workOrders as initialWorkOrders, technicians, serviceRequests as initialServiceRequests } from "@/lib/data";
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSearchParams } from 'next/navigation';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -44,8 +44,9 @@ const ASSIGNMENT_SOURCES = [
 type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function DispatchPage() {
+  const searchParams = useSearchParams();
   // Master Tab State
-  const [activeMasterTab, setActiveMasterTab] = useState('dispatch');
+  const [activeMasterTab, setActiveMasterTab] = useState(searchParams.get('tab') === 'requests' ? 'requests' : 'dispatch');
   
   // Work Order / Dispatch State
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -69,6 +70,12 @@ export default function DispatchPage() {
   const [activeSources, setActiveSources] = useState<string[]>([]);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'requests') setActiveMasterTab('requests');
+    else if (tab === 'dispatch') setActiveMasterTab('dispatch');
+  }, [searchParams]);
 
   // Notification Counts
   const unassignedCount = useMemo(() => allWorkOrders.filter(wo => wo.status === 'unassigned').length, [allWorkOrders]);

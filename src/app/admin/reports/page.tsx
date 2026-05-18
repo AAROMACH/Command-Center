@@ -70,10 +70,12 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'next/navigation';
 
 export default function ActivityAuditPage() {
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState("tech");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "tech");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     
@@ -100,6 +102,11 @@ export default function ActivityAuditPage() {
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     const { toast } = useToast();
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
 
     // Load messages from registry
     useEffect(() => {
@@ -566,15 +573,15 @@ export default function ActivityAuditPage() {
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-4">
                                                     <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
+                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
                                                         <p className="text-2xl font-bold text-text-primary">{techStats?.total}</p>
                                                     </div>
                                                     <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
+                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
                                                         <p className="text-2xl font-bold text-text-primary">{techStats?.completed}</p>
                                                     </div>
                                                     <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
+                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
                                                         <p className={cn("text-2xl font-bold", techStats && techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats?.reliability}%</p>
                                                     </div>
                                                 </div>

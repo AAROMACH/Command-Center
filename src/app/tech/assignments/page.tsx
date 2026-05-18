@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSearchParams } from 'next/navigation';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -35,11 +36,13 @@ const getFieldNationLink = (id: string) => {
 };
 
 export default function TechAssignmentsPage() {
+    const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
     const [mounted, setMounted] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('date');
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -47,6 +50,11 @@ export default function TechAssignmentsPage() {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
@@ -129,7 +137,7 @@ export default function TechAssignmentsPage() {
                 </div>
             </header>
 
-            <Tabs defaultValue="active" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub">
                     <TabsList className="tabs !mb-0">
                         <TabsTrigger value="active" className="tab">

@@ -67,7 +67,7 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-active',
           type: 'success',
-          text: `LIVE SESSION: ${activeJob.location}`,
+          text: `LIVE SESSION`,
           description: `You are currently checked into mission ${activeJob.id.toUpperCase()}. Ensure you finalize the session and upload any site photos before checking out.`,
           icon: Play,
           actionPath: '/tech/dashboard',
@@ -90,7 +90,7 @@ export function AlertBand() {
           text: `${upcomingJobsCount} upcoming job${upcomingJobsCount > 1 ? 's' : ''}`,
           description: `You have ${upcomingJobsCount} upcoming assignment(s) scheduled for the next 24 hours. Review site access notes and instructions in your calendar.`,
           icon: CalendarCheck,
-          actionPath: '/tech/assignments',
+          actionPath: '/tech/assignments?tab=active',
           actionLabel: 'View Schedule'
         });
       }
@@ -116,10 +116,10 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-penalties',
           type: 'critical',
-          text: `${recentPenalties} recent penalty event${recentPenalties > 1 ? 's' : ''}`,
+          text: `${recentPenalties} penalty events`,
           description: `Discrepancies have been identified in your recent field activity. Review the penalty ledger to see specific points of failure.`,
           icon: AlertTriangle,
-          actionPath: '/tech/profile',
+          actionPath: '/tech/profile?tab=reliability',
           actionLabel: 'Audit Penalty Ledger'
         });
       }
@@ -133,10 +133,10 @@ export function AlertBand() {
           currentAlerts.push({
             id: 'client-projects',
             type: 'info',
-            text: `${activeProjectsCount} active project${activeProjectsCount > 1 ? 's' : ''}`,
+            text: `${activeProjectsCount} projects`,
             description: `Aaromach technicians are currently executing phase-based infrastructure deployment across ${activeProjectsCount} of your sites.`,
             icon: Briefcase,
-            actionPath: '/client/projects',
+            actionPath: '/client/projects?tab=active',
             actionLabel: 'Track Progress'
           });
         }
@@ -145,10 +145,10 @@ export function AlertBand() {
           currentAlerts.push({
             id: 'client-tickets',
             type: 'warning',
-            text: `${pendingRequestsCount} pending request${pendingRequestsCount > 1 ? 's' : ''}`,
+            text: `${pendingRequestsCount} pending tickets`,
             description: `Your recently submitted service tickets are currently undergoing administrative audit at the Command Center.`,
             icon: ClipboardList,
-            actionPath: '/client/tickets',
+            actionPath: '/client/tickets?tab=requested',
             actionLabel: 'View Tickets'
           });
         }
@@ -163,10 +163,10 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-unassigned',
           type: 'critical',
-          text: `${unassignedJobsCount} unassigned mission${unassignedJobsCount > 1 ? 's' : ''}`,
+          text: `${unassignedJobsCount} unassigned jobs`,
           description: `There are ${unassignedJobsCount} missions in the active window requiring operative allocation. Immediate dispatch required.`,
           icon: AlertTriangle,
-          actionPath: '/admin/dispatch',
+          actionPath: '/admin/dispatch?tab=unassigned',
           actionLabel: 'Dispatch Hub'
         });
       }
@@ -177,7 +177,7 @@ export function AlertBand() {
         text: `1 missed check-in`,
         description: `An operative has failed to verify site presence within the scheduled window. Follow up or force session termination.`,
         icon: Clock,
-        actionPath: '/admin/reports',
+        actionPath: '/admin/reports?tab=flags',
         actionLabel: 'Activity Audit'
       });
 
@@ -185,10 +185,10 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-audit',
           type: 'info',
-          text: `${logsToAuditCount} log${logsToAuditCount > 1 ? 's' : ''} to audit`,
+          text: `${logsToAuditCount} logs pending`,
           description: `Field operatives have submitted weekly logs that require financial and operational authorization.`,
           icon: FileCheck,
-          actionPath: '/admin/financials',
+          actionPath: '/admin/financials?tab=payroll',
           actionLabel: 'Payroll Terminal'
         });
       }
@@ -197,10 +197,10 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-personnel-requests',
           type: 'info',
-          text: `${pendingPersonnelCount} personnel request${pendingPersonnelCount > 1 ? 's' : ''}`,
+          text: `${pendingPersonnelCount} personnel requests`,
           description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
           icon: Users,
-          actionPath: '/admin/directory',
+          actionPath: '/admin/directory?tab=requests&subtab=personnel',
           actionLabel: 'Review Requests'
         });
       }
@@ -209,10 +209,10 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-site-requests',
           type: 'warning',
-          text: `${pendingSiteCount} site request${pendingSiteCount > 1 ? 's' : ''}`,
+          text: `${pendingSiteCount} site requests`,
           description: `Clients have submitted new site coordinates that require verification and authorization before they can be used for assignments.`,
           icon: MapPin,
-          actionPath: '/admin/directory',
+          actionPath: '/admin/directory?tab=requests&subtab=client',
           actionLabel: 'Verify Coordinates'
         });
       }
@@ -238,7 +238,7 @@ export function AlertBand() {
   return (
     <>
       <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-2 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {alerts.map((alert) => (
             <div
               key={alert.id}
@@ -253,7 +253,7 @@ export function AlertBand() {
                 }
               )}
             >
-              <alert.icon className={cn("h-3 w-3", alert.type === 'success' && 'fill-current')} />
+              <alert.icon className={cn("h-3.5 w-3.5", alert.type === 'success' && 'fill-current')} />
               <span>{alert.text}</span>
             </div>
           ))}

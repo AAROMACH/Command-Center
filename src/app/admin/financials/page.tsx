@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isSuperAdmin } from '@/lib/permissions';
+import { useSearchParams } from 'next/navigation';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -28,12 +28,13 @@ const financialMetrics = [
 ];
 
 export default function FinancialsPage() {
+    const searchParams = useSearchParams();
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [expenses, setExpenses] = useState(initialExpenses);
     const [invoices, setInvoices] = useState(initialInvoices);
     const [weeklyLogs, setWeeklyLogs] = useState(initialWeeklyLogs);
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState("summary");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
     const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -53,6 +54,11 @@ export default function FinancialsPage() {
     });
 
     const { toast } = useToast();
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');

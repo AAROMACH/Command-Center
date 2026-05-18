@@ -103,6 +103,7 @@ export type Technician = {
   clientCompany?: string; 
   businessType?: string; // New field for corporate classification
   planId?: string; // Links client to a specific PlanTier
+  subscriptionStatus?: 'active' | 'pending' | 'none'; // New field for subscription lifecycle
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
     preferredRadius: number;

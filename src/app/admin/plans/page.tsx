@@ -19,7 +19,9 @@ import {
     AlertTriangle,
     Lock,
     ShieldAlert,
-    X
+    X,
+    Users,
+    History
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,8 +48,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { isSuperAdmin } from '@/lib/permissions';
+import { isSuperAdmin, isClient } from '@/lib/permissions';
 import type { Technician } from '@/lib/types';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type PlanTier = {
     id: string;
@@ -145,8 +148,16 @@ export default function PlansPage() {
     const userIsSuperAdmin = isSuperAdmin(currentUser);
 
     const clientsList = useMemo(() => 
-        technicians.filter(t => t.roles?.includes('client') || t.role.toLowerCase().includes('client'))
+        technicians.filter(t => isClient(t))
     , []);
+
+    const activeSubscriptions = useMemo(() => 
+        clientsList.filter(c => c.planId && c.subscriptionStatus === 'active')
+    , [clientsList]);
+
+    const pendingSubscriptions = useMemo(() => 
+        clientsList.filter(c => c.subscriptionStatus === 'pending')
+    , [clientsList]);
 
     const filteredPlans = useMemo(() => {
         if (!searchQuery) return plans;
@@ -276,7 +287,7 @@ export default function PlansPage() {
                         <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Active Agreements</p>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold text-text-primary">{plans.length}</p>
+                        <p className="text-2xl font-bold text-text-primary">{activeSubscriptions.length}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">
@@ -292,7 +303,7 @@ export default function PlansPage() {
                         <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Pending Quotes</p>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold text-accent-gold">2</p>
+                        <p className="text-2xl font-bold text-accent-gold">{pendingSubscriptions.length}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -300,6 +311,14 @@ export default function PlansPage() {
             <Tabs defaultValue="all" className="w-full">
                 <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
                     <TabsTrigger value="all" className="tab-trigger-plans">All Agreements</TabsTrigger>
+                    <TabsTrigger value="subscriptions" className="tab-trigger-plans flex items-center gap-2">
+                        Active Subscriptions
+                        <Badge variant="outline" className="h-4 px-1.5 text-[8px] bg-bg-tertiary border-border-sub">{activeSubscriptions.length}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" className="tab-trigger-plans flex items-center gap-2">
+                        Pending Requests
+                        {pendingSubscriptions.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[8px]">{pendingSubscriptions.length}</Badge>}
+                    </TabsTrigger>
                     <TabsTrigger value="standard" className="tab-trigger-plans">Standard Tiers</TabsTrigger>
                     <TabsTrigger value="custom" className="tab-trigger-plans">Custom Plans</TabsTrigger>
                 </TabsList>
@@ -316,6 +335,89 @@ export default function PlansPage() {
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="subscriptions" className="m-0">
+                    <div className="grid grid-cols-1 gap-3 max-w-5xl">
+                        {activeSubscriptions.map(client => {
+                            const plan = plans.find(p => p.id === client.planId);
+                            return (
+                                <Card key={client.id} className="bg-bg-secondary border-border-main group hover:border-text-muted transition-all">
+                                    <CardContent className="p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-6">
+                                            <div className="p-3 bg-bg-tertiary rounded-xl border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                                <Building2 size={24} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{client.clientCompany || client.name}</p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">Active Partner</Badge>
+                                                    <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{client.businessType || 'Strategic Entity'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-12">
+                                            <div className="text-left min-w-[150px]">
+                                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Assigned Tier</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs font-bold text-text-primary uppercase">{plan?.name || 'Manual Settlement'}</p>
+                                                    <Badge variant="outline" className="text-[8px] bg-bg-tertiary">{plan?.type === 'custom' ? 'CUSTOM' : 'STD'}</Badge>
+                                                </div>
+                                            </div>
+                                            <div className="text-right min-w-[120px]">
+                                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Monthly Settlement</p>
+                                                <p className="text-sm font-mono font-bold text-text-green">${(plan?.price || 0).toLocaleString()}</p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
+                                                <ChevronRight size={18} />
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
+                        {activeSubscriptions.length === 0 && (
+                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
+                                <ShieldCheck size={48} className="mx-auto text-text-muted mb-2" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">No active client agreements in registry</p>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="pending" className="m-0">
+                    <div className="grid grid-cols-1 gap-3 max-w-5xl">
+                        {pendingSubscriptions.map(client => (
+                            <Card key={client.id} className="bg-bg-secondary border-border-main border-dashed border-accent-gold/40">
+                                <CardContent className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-6">
+                                        <div className="p-3 bg-accent-gold-dim/20 rounded-xl border border-accent-gold/20 text-accent-gold">
+                                            <History size={24} />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{client.clientCompany || client.name}</p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <Badge variant="onhold" className="text-[8px] h-4 uppercase tracking-widest">Awaiting Authorization</Badge>
+                                                <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">New Partner Registry</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-bold border-border-sub">Discard Request</Button>
+                                        <Button size="sm" className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90">Initialize Quote</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                        {pendingSubscriptions.length === 0 && (
+                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
+                                <Zap size={48} className="mx-auto text-text-muted mb-2" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">No pending service agreements</p>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
                 

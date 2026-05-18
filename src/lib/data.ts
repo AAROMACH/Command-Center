@@ -185,6 +185,7 @@ export const technicians: Technician[] = [
     avatarUrl: getImageUrl('technician-5'),
     availability: {},
     planId: 'std-3', // Enterprise
+    subscriptionStatus: 'active',
     workPreferences: {
       preferredRadius: 0,
       maxTravelDistance: 0,
@@ -211,6 +212,30 @@ export const technicians: Technician[] = [
       { id: 'site-det-01', name: 'Detroit Renaissance Data Center', location: '100 Renaissance Center, Detroit, MI 48243' }
     ],
     planId: 'std-2', // Professional
+    subscriptionStatus: 'active',
+    workPreferences: {
+      preferredRadius: 0,
+      maxTravelDistance: 0,
+      preferredJobTypes: [],
+      availabilityOverride: true,
+    }
+  },
+  {
+    id: 'client-003',
+    name: 'Robert Miller',
+    role: 'Facility Director',
+    roles: ['client'],
+    email: 'rmiller@metrolabs.io',
+    phone: '555-777-6666',
+    clientCompany: 'Metro Labs',
+    businessType: 'Research & Dev',
+    currentLocation: 'Ann Arbor, MI',
+    reliabilityScore: 100,
+    currentWorkload: 0,
+    skills: [],
+    avatarUrl: getImageUrl('technician-2'),
+    availability: {},
+    subscriptionStatus: 'pending',
     workPreferences: {
       preferredRadius: 0,
       maxTravelDistance: 0,

@@ -25,7 +25,8 @@ import {
   LogOut,
   ChevronDown,
   MonitorUp,
-  Check
+  Check,
+  Zap
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
@@ -52,7 +53,6 @@ export function UserNav() {
   const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
   
   const displayIsAdmin = isAdmin(currentUser);
-  const displayIsTech = isTech(currentUser);
   const displayIsClient = isClient(currentUser);
   
   const availablePortals = getAvailablePortals(currentUser);
@@ -67,6 +67,9 @@ export function UserNav() {
 
   const billingPath = pathname.startsWith('/tech') ? '/tech/earnings' :
                      pathname.startsWith('/client') ? '/client/billing' : null;
+
+  const plansPath = pathname.startsWith('/admin') ? '/admin/plans' : 
+                    pathname.startsWith('/client') ? '/client/billing' : null;
 
   return (
     <DropdownMenu>
@@ -126,7 +129,13 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {billingPath && (
+          {plansPath && (
+            <DropdownMenuItem onSelect={() => router.push(plansPath)}>
+              <Zap className="mr-2 h-4 w-4 text-brand-red" />
+              <span>Plans & Pricing</span>
+            </DropdownMenuItem>
+          )}
+          {billingPath && !plansPath && (
             <DropdownMenuItem onSelect={() => router.push(billingPath)}>
               <CreditCard className="mr-2 h-4 w-4" />
               <span>Billing</span>

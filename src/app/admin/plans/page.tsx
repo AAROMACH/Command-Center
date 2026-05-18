@@ -21,7 +21,8 @@ import {
     ShieldAlert,
     X,
     Users,
-    History
+    History,
+    ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -394,6 +395,26 @@ export default function PlansPage() {
                 </TabsContent>
 
                 <TabsContent value="pending" className="m-0">
+                    <div className="mb-6 p-4 rounded-xl bg-bg-secondary border border-border-sub flex flex-col md:flex-row items-center justify-between gap-4 max-w-5xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-brand-red-dim rounded-lg border border-brand-red/20 text-brand-red">
+                                <ExternalLink size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">External Intake Buffer</p>
+                                <p className="text-[10px] text-text-muted font-medium uppercase leading-relaxed">
+                                    New partner applications are synchronized from the global enrollment form.
+                                </p>
+                            </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] uppercase font-bold tracking-widest border-border-sub" asChild>
+                            <a href="https://forms.gle/t2oLLtwqtuuL5KJ78" target="_blank" rel="noopener noreferrer">
+                                <ExternalLink size={14} className="mr-2" />
+                                View Source Form
+                            </a>
+                        </Button>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-3 max-w-5xl">
                         {pendingSubscriptions.map(client => (
                             <Card key={client.id} className="bg-bg-secondary border-border-main border-dashed border-accent-gold/40">
@@ -589,8 +610,8 @@ export default function PlansPage() {
 
                         {/* SELECTABLE CAPABILITY GRID */}
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 block">Capability Matrix</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 block text-left">Capability Matrix</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-left">
                                 {PLAN_CAPABILITIES.map(feature => {
                                     const isSelected = selectedPlan.features?.includes(feature);
                                     return (

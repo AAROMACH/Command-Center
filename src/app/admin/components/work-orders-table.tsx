@@ -135,7 +135,7 @@ export const WorkOrdersTable = React.memo(({
     setIsDetailOpen(true);
   }, []);
 
-  const handleGetRecommendation = async () => {
+  const handleGetAiRecommendation = async () => {
     if (!selectedOrder) return;
     setIsLoading(true);
     try {

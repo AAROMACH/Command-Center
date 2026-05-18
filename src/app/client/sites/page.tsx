@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -208,7 +207,7 @@ export default function ClientSitesPage() {
 
                             {/* FLOATING LIVE INDICATOR */}
                             {site.liveCheckIns.length > 0 && (
-                                <div className="absolute -top-2 -right-2 z-10 animate-in fade-in zoom-in duration-500">
+                                <div className="absolute top-2 right-2 z-20 animate-in fade-in zoom-in duration-500">
                                     <Badge variant="active" className="h-6 px-2 text-[8px] font-black uppercase tracking-widest shadow-lg border-2 border-bg-primary flex items-center gap-1.5">
                                         <div className="h-1.5 w-1.5 rounded-full bg-text-green animate-pulse" />
                                         LIVE ONSITE

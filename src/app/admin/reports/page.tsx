@@ -27,7 +27,9 @@ import {
     ArrowLeft,
     Send,
     MessageSquare,
-    Lock
+    Lock,
+    TrendingUp,
+    CheckCircle2
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -50,6 +52,11 @@ import {
     DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -144,6 +151,16 @@ export default function ActivityAuditPage() {
     }, []);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
+
+    const siteHistorical = useMemo(() => {
+        if (!activeSite) return [];
+        return workOrders.filter(wo => wo.location === activeSite.location && wo.status === 'completed');
+    }, [activeSite]);
+
+    const siteActive = useMemo(() => {
+        if (!activeSite) return [];
+        return workOrders.filter(wo => wo.location === activeSite.location && wo.status !== 'completed');
+    }, [activeSite]);
 
     const anomalyCounts = useMemo(() => {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -468,16 +485,83 @@ export default function ActivityAuditPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
-                                    <p className="text-2xl font-bold text-text-primary">12</p>
-                                    <p className="text-[8px] text-text-muted uppercase">all time</p>
-                                </div>
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
-                                    <p className="text-2xl font-bold text-text-primary">0</p>
-                                    <p className="text-[8px] text-text-green uppercase">Service Clean</p>
-                                </div>
+                                {/* TOTAL VISITS POPUP */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
+                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
+                                            <p className="text-2xl font-bold text-text-primary">{siteHistorical.length + siteActive.length}</p>
+                                            <p className="text-[8px] text-text-muted uppercase">all time</p>
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <History size={12} className="text-brand-red"/> Visit Registry Audit
+                                            </p>
+                                        </div>
+                                        <ScrollArea className="max-h-[300px]">
+                                            <div className="p-3 space-y-2">
+                                                {siteHistorical.length > 0 ? siteHistorical.map(wo => (
+                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
+                                                            <span className="text-[8px] text-text-muted font-bold">{wo.scheduleDate}</span>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                    </div>
+                                                )) : (
+                                                    <div className="py-8 text-center opacity-40">
+                                                        <History size={24} className="mx-auto mb-1 text-text-muted" />
+                                                        <p className="text-[9px] font-bold uppercase">No historical visits</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    </PopoverContent>
+                                </Popover>
+
+                                {/* OPEN TICKETS POPUP */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
+                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
+                                            <p className="text-2xl font-bold text-text-primary">{siteActive.length}</p>
+                                            <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteActive.length > 0 ? "text-accent-gold" : "text-text-green")}>
+                                                {siteActive.length > 0 ? 'Active Queue' : 'Service Clean'}
+                                            </p>
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <AlertTriangle size={12} className="text-accent-gold"/> Active Mission Audit
+                                            </p>
+                                        </div>
+                                        <ScrollArea className="max-h-[300px]">
+                                            <div className="p-3 space-y-2">
+                                                {siteActive.length > 0 ? siteActive.map(wo => (
+                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
+                                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
+                                                                {wo.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                        <p className="text-[8px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {wo.scheduleDate}</p>
+                                                    </div>
+                                                )) : (
+                                                    <div className="py-12 text-center space-y-2 opacity-40">
+                                                        <CheckCircle2 size={32} className="mx-auto text-text-green" />
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    </PopoverContent>
+                                </Popover>
+
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
                                     <p className="text-2xl font-bold text-text-primary">99.9%</p>
@@ -496,7 +580,7 @@ export default function ActivityAuditPage() {
                     <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Site Coordinates</p>
                 </div>
                 {siteList.map(site => (
-                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-text-muted transition-all cursor-pointer group">
+                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
                         <div className="flex items-center gap-4">
                             <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
                                 <Building2 size={18} />

@@ -20,7 +20,10 @@ import {
     Calendar,
     Wrench,
     CheckCircle2,
-    History
+    History,
+    FileText,
+    Download,
+    FolderOpen
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -77,6 +80,11 @@ export default function SiteDetailPage() {
             historicalAssignments,
             liveCheckIns,
             contact: 'Site Manager - 555-0199',
+            documents: [
+                { id: 'sd-1', name: 'Site_Safety_Protocol_v2.pdf', size: '1.2MB', date: '01/15/2024' },
+                { id: 'sd-2', name: 'MDF_Rack_Layout_Final.pdf', size: '3.4MB', date: '03/22/2024' },
+                { id: 'sd-3', name: 'Emergency_Contact_Sheet.pdf', size: '450KB', date: '05/10/2024' }
+            ]
         };
     }, [currentUser, id]);
 
@@ -166,6 +174,7 @@ export default function SiteDetailPage() {
                         <TabsList className="tabs !p-0 !bg-bg-tertiary mb-6">
                             <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Active Activity</TabsTrigger>
                             <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Job History</TabsTrigger>
+                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Documents</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
@@ -252,6 +261,33 @@ export default function SiteDetailPage() {
                                     <div className="p-24 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
                                         <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
                                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No historical records found for this coordinate.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="documents" className="space-y-4 mt-0">
+                            <div className="space-y-2">
+                                {siteData.documents.map(doc => (
+                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
+                                                <FileText size={18} />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{doc.name}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{doc.size} • Uploaded {doc.date}</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
+                                            <Download size={18} />
+                                        </Button>
+                                    </div>
+                                ))}
+                                {siteData.documents.length === 0 && (
+                                    <div className="p-24 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
+                                        <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No site assets registered.</p>
                                     </div>
                                 )}
                             </div>

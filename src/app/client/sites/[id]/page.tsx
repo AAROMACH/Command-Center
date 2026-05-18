@@ -28,7 +28,8 @@ import {
     TrendingUp,
     AlertCircle,
     Info,
-    ArrowUpRight
+    ArrowUpRight,
+    ExternalLink
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -38,6 +39,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format, parseISO } from 'date-fns';
 
 export default function SiteDetailPage() {
     const params = useParams();
@@ -97,6 +99,20 @@ export default function SiteDetailPage() {
             ]
         };
     }, [currentUser, id]);
+
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const [month, day, year] = parts;
+                return `${month}/${day}/${year}`;
+            }
+            return dateStr.replace(/-/g, '/');
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     if (!mounted || !currentUserId) return null;
     if (!siteData) return (
@@ -165,42 +181,41 @@ export default function SiteDetailPage() {
                                 <Activity size={14} className="text-brand-red"/> Operational Pulse
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
                                 {/* TOTAL VISITS POPUP */}
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
-                                            <p className="text-2xl font-bold text-text-primary">12</p>
-                                            <p className="text-[8px] text-text-muted uppercase">all time</p>
+                                            <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
+                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
                                         <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <History size={12} className="text-brand-red"/> Visit History Audit
+                                                <History size={12} className="text-brand-red"/> Visit Registry Audit
                                             </p>
                                         </div>
-                                        <div className="p-3 space-y-3">
-                                            <div className="space-y-1.5">
-                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Recent Sessions</p>
-                                                <div className="space-y-1">
-                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
-                                                        <span className="font-medium text-text-secondary">JUL 2024</span>
-                                                        <span className="font-bold text-text-primary">4 VISITS</span>
+                                        <ScrollArea className="max-h-[300px]">
+                                            <div className="p-3 space-y-2">
+                                                {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
+                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
+                                                            <span className="text-[8px] text-text-muted font-bold">{formatDateDisplay(wo.scheduleDate)}</span>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
                                                     </div>
-                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
-                                                        <span className="font-medium text-text-secondary">JUN 2024</span>
-                                                        <span className="font-bold text-text-primary">5 VISITS</span>
+                                                )) : (
+                                                    <div className="py-8 text-center opacity-40">
+                                                        <History size={24} className="mx-auto mb-1 text-text-muted" />
+                                                        <p className="text-[9px] font-bold uppercase">No historical visits</p>
                                                     </div>
-                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
-                                                        <span className="font-medium text-text-secondary">MAY 2024</span>
-                                                        <span className="font-bold text-text-primary">3 VISITS</span>
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
-                                        </div>
+                                        </ScrollArea>
                                     </PopoverContent>
                                 </Popover>
 
@@ -209,21 +224,39 @@ export default function SiteDetailPage() {
                                     <PopoverTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
-                                            <p className="text-2xl font-bold text-text-primary">0</p>
-                                            <p className="text-[8px] text-text-green uppercase">Service Clean</p>
-                                        </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
-                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                                <AlertCircle size={12} className="text-text-green"/> Mission Funnel
+                                            <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
+                                            <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
+                                                {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Service Clean'}
                                             </p>
                                         </div>
-                                        <div className="p-6 text-center space-y-2">
-                                            <CheckCircle2 size={32} className="mx-auto text-text-green opacity-40" />
-                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
-                                            <p className="text-[9px] text-text-muted uppercase leading-relaxed">No pending tickets or unassigned assignments for this coordinate.</p>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <AlertCircle size={12} className="text-accent-gold"/> Mission Funnel Audit
+                                            </p>
                                         </div>
+                                        <ScrollArea className="max-h-[300px]">
+                                            <div className="p-3 space-y-2">
+                                                {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
+                                                    <div key={wo.id} className="p-2 rounded bg-bg-primary border border-border-sub space-y-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[9px] font-mono font-bold text-brand-red">{wo.id.toUpperCase()}</span>
+                                                            <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
+                                                                {wo.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                        <p className="text-[8px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
+                                                    </div>
+                                                )) : (
+                                                    <div className="py-12 text-center space-y-2 opacity-40">
+                                                        <CheckCircle2 size={32} className="mx-auto text-text-green" />
+                                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
                                     </PopoverContent>
                                 </Popover>
 
@@ -233,7 +266,7 @@ export default function SiteDetailPage() {
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Uptime Tier</p>
                                             <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                            <p className="text-[8px] text-text-muted uppercase">Contract SLA</p>
+                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
                                         </div>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
@@ -323,7 +356,7 @@ export default function SiteDetailPage() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">Completed: {wo.scheduleDate} • {wo.id.toUpperCase()}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">Completed: {formatDateDisplay(wo.scheduleDate)} • {wo.id.toUpperCase()}</p>
                                             </div>
                                         </div>
                                         <Badge variant="active" className="text-[9px]">FINALIZED</Badge>

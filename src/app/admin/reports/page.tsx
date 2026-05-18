@@ -589,20 +589,32 @@ export default function ActivityAuditPage() {
                                                     <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <Button variant="outline" size="sm" className={cn("h-7 text-[8px] uppercase font-bold tracking-widest bg-bg-primary", visitDateRange?.from && "border-brand-red text-brand-red")}>
-                                                                <CalendarIcon size={10} className="mr-1.5" />
-                                                                {visitDateRange?.from ? (
-                                                                    visitDateRange.to ? `${format(visitDateRange.from, "MM/dd")} - ${format(visitDateRange.to, "MM/dd")}` : format(visitDateRange.from, "MM/dd")
-                                                                ) : "Filter Date"}
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="end">
-                                                            <Calendar mode="range" selected={visitDateRange} onSelect={setVisitDateRange} />
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    {visitDateRange && (
+                                                    <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-0.5 h-7">
+                                                        <div className="flex items-center gap-1 px-1.5 border-r border-border-sub">
+                                                            <CalendarIcon size={10} className="text-text-muted" />
+                                                            <input 
+                                                                type="date" 
+                                                                className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
+                                                                value={visitDateRange?.from ? format(visitDateRange.from, 'yyyy-MM-dd') : ''}
+                                                                onChange={(e) => {
+                                                                    const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
+                                                                    setVisitDateRange(prev => ({ from: d, to: prev?.to }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-1 px-1.5">
+                                                            <input 
+                                                                type="date" 
+                                                                className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
+                                                                value={visitDateRange?.to ? format(visitDateRange.to, 'yyyy-MM-dd') : ''}
+                                                                onChange={(e) => {
+                                                                    const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
+                                                                    setVisitDateRange(prev => ({ from: prev?.from, to: d }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    {visitDateRange?.from && (
                                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => setVisitDateRange(undefined)}>
                                                             <X size={12} />
                                                         </Button>

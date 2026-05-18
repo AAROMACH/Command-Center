@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder } from '@/lib/types';
-import { workOrders } from '@/lib/data';
+import type { WorkOrder, Technician } from '@/lib/types';
+import { workOrders, technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -16,7 +16,9 @@ import {
   FileCheck,
   ArrowUpDown,
   Search,
-  ExternalLink
+  ExternalLink,
+  Navigation,
+  Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -27,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSearchParams } from 'next/navigation';
+import { format } from 'date-fns';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -56,6 +59,10 @@ export default function TechAssignmentsPage() {
         if (tab) setActiveTab(tab);
     }, [searchParams]);
 
+    const currentTech = useMemo(() => 
+        currentTechId ? technicians.find(t => t.id === currentTechId) : null
+    , [currentTechId]);
+
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
         return allWorkOrders
@@ -69,7 +76,7 @@ export default function TechAssignmentsPage() {
     }, [allWorkOrders, currentTechId, searchQuery]);
 
     const activeAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress'),
+        techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'on-my-way' || wo.status === 'in-progress'),
     [techWorkOrders]);
 
     const sortedActive = useMemo(() => {
@@ -89,9 +96,45 @@ export default function TechAssignmentsPage() {
     [techWorkOrders]);
 
     const handleConfirmSchedule = (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                return {
+                    ...wo,
+                    status: 'on-my-way',
+                    isAcknowledged: true,
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE.`, user: currentTech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
         toast({
-            title: "Schedule Confirmed",
-            description: "Confirmation sent to operations. Reporting window locked.",
+            title: "Trip Started",
+            description: "Mission status transitioned to En Route. Operations notified.",
+        });
+    };
+
+    const handleCheckIn = (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                return {
+                    ...wo,
+                    status: 'in-progress',
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Trip completed. Status: ON SITE.`, user: currentTech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
+        toast({
+            title: "Check In Successful",
+            description: "GPS-verified arrival confirmed. Session initialized.",
         });
     };
 
@@ -188,7 +231,16 @@ export default function TechAssignmentsPage() {
                                                   </a>
                                                 )}
                                               </div>
-                                              <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5">{wo.status}</Badge>
+                                              <Badge 
+                                                variant={
+                                                    wo.status === 'in-progress' ? 'inprogress' : 
+                                                    wo.status === 'on-my-way' ? 'pending' : 
+                                                    'scheduled'
+                                                } 
+                                                className="capitalize text-[8px] h-4 px-1.5"
+                                              >
+                                                {wo.status.replace(/-/g, ' ')}
+                                              </Badge>
                                             </div>
                                         </td>
                                         <td>
@@ -218,15 +270,21 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex items-center justify-center">
                                               {wo.status === 'assigned' && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => handleConfirmSchedule(wo.id)}>
-                                                      <ClipboardCheck size={14} className="mr-2"/>
-                                                      Confirm Schedule
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleConfirmSchedule(wo.id)}>
+                                                      <Navigation size={14} className="mr-2"/>
+                                                      Confirm & Start Trip
+                                                  </Button>
+                                              )}
+                                              {wo.status === 'on-my-way' && (
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim" onClick={() => handleCheckIn(wo.id)}>
+                                                      <Play size={14} className="mr-2 fill-current"/>
+                                                      Check In (Arrived)
                                                   </Button>
                                               )}
                                               {wo.status === 'in-progress' && (
                                                   <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-center gap-2">
                                                       <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
-                                                      Assignment Active
+                                                      Active On Site
                                                   </div>
                                               )}
                                             </div>

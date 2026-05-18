@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
-import { isSameDay, parseISO } from 'date-fns';
+import { isSameDay, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
 import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
@@ -74,7 +74,7 @@ export default function TechDashboardPage() {
     [techWorkOrders]);
 
     const activeJob = useMemo(() => 
-        todaysWorkOrders.find(wo => wo.status === 'in-progress'),
+        todaysWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way'),
     [todaysWorkOrders]);
 
     const nextAction = useMemo(() => {
@@ -100,9 +100,33 @@ export default function TechDashboardPage() {
     };
 
     const handleStatusTransition = (woId: string, newStatus: WorkOrder['status']) => {
-        setAllWorkOrders(prev => prev.map(wo => wo.id === woId ? { ...wo, status: newStatus } : wo));
+        const now = format(new Date(), 'HH:mm');
+        const today = format(new Date(), 'MM-dd-yyyy');
+        
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                let noteDetails = '';
+                if (newStatus === 'on-my-way') noteDetails = `Trip initiated at ${now}. Status: EN ROUTE.`;
+                if (newStatus === 'in-progress') noteDetails = `Arrival verified at ${now}. Trip completed. Status: ON SITE.`;
+                if (newStatus === 'completed') noteDetails = `Mission finalized and checked out at ${now}.`;
+
+                return { 
+                    ...wo, 
+                    status: newStatus,
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: today, details: noteDetails, user: tech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
+
+        const title = newStatus === 'on-my-way' ? 'Trip Started' : 
+                      newStatus === 'in-progress' ? 'Check In Successful' : 'Job Status Updated';
+        
         toast({
-            title: `Job Status Updated`,
+            title,
             description: `Assignment has been transitioned to ${newStatus.replace('-', ' ')}.`,
         });
     };
@@ -191,9 +215,9 @@ export default function TechDashboardPage() {
                                 <div className="flex gap-3">
                                     <Button 
                                       className="flex-1 h-12 gap-2 text-sm" 
-                                      onClick={(e) => { e.stopPropagation(); handleStatusTransition(nextAction.id, 'in-progress'); }}
+                                      onClick={(e) => { e.stopPropagation(); handleStatusTransition(nextAction.id, 'on-my-way'); }}
                                     >
-                                        <Play size={16} fill="currentColor"/> START JOB
+                                        <Navigation size={18} className="mr-2"/> CONFIRM & START TRIP
                                     </Button>
                                     {!nextAction.isAcknowledged && (
                                         <Button variant="secondary" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleAcknowledge(nextAction.id); }}>ACKNOWLEDGE</Button>
@@ -206,16 +230,23 @@ export default function TechDashboardPage() {
 
                 {activeJob && (
                     <Card 
-                        className="border-2 border-text-green bg-green-dim/10 cursor-pointer hover:bg-green-dim/15 transition-colors"
+                        className={cn(
+                            "border-2 cursor-pointer transition-colors",
+                            activeJob.status === 'on-my-way' ? "border-accent-gold bg-accent-gold-dim/10 hover:bg-accent-gold-dim/15" : "border-text-green bg-green-dim/10 hover:bg-green-dim/15"
+                        )}
                         onClick={() => handleOpenJobDetail(activeJob)}
                     >
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-text-green animate-pulse"/>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">Live assignment</span>
+                                <div className={cn("h-2 w-2 rounded-full animate-pulse", activeJob.status === 'on-my-way' ? "bg-accent-gold" : "bg-text-green")}/>
+                                <span className={cn("text-[10px] font-bold uppercase tracking-widest", activeJob.status === 'on-my-way' ? "text-accent-gold" : "text-text-green")}>
+                                    {activeJob.status === 'on-my-way' ? 'TRIP IN PROGRESS' : 'LIVE ASSIGNMENT'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Badge variant="active">On-Site</Badge>
+                                <Badge variant={activeJob.status === 'on-my-way' ? 'onhold' : 'active'}>
+                                    {activeJob.status === 'on-my-way' ? 'En Route' : 'On-Site'}
+                                </Badge>
                                 <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
                             </div>
                         </CardHeader>
@@ -224,18 +255,24 @@ export default function TechDashboardPage() {
                                 <div className="space-y-4">
                                     <div className="flex gap-8">
                                         <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Checked In</p>
-                                            <p className="text-lg font-mono text-text-green">{activeJob.scheduleTime}</p>
+                                            <p className="text-[10px] uppercase font-bold text-text-muted">{activeJob.status === 'on-my-way' ? 'Trip Started' : 'Checked In'}</p>
+                                            <p className={cn("text-lg font-mono font-bold", activeJob.status === 'on-my-way' ? "text-accent-gold" : "text-text-green")}>{activeJob.scheduleTime}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Duration</p>
+                                            <p className="text-[10px] uppercase font-bold text-text-muted">Active Duration</p>
                                             <p className="text-lg font-mono">01:42:15</p>
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                    <LogOut size={16}/> CHECK OUT / FINALIZE
-                                </Button>
+                                {activeJob.status === 'on-my-way' ? (
+                                    <Button className="h-12 gap-2 text-sm bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                        <Play size={16} fill="currentColor"/> CHECK IN (ARRIVED)
+                                    </Button>
+                                ) : (
+                                    <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                        <LogOut size={16}/> CHECK OUT / FINALIZE
+                                    </Button>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -261,7 +298,7 @@ export default function TechDashboardPage() {
             <CheckInDialog
                 isOpen={isCheckInDialogOpen}
                 setIsOpen={setIsCheckInDialogOpen}
-                workOrders={techWorkOrders.filter(wo => wo.status === 'assigned')}
+                workOrders={techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'on-my-way')}
                 projects={[]}
             />
 

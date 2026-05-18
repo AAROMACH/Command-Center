@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -46,12 +47,17 @@ import {
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 export default function SiteDetailPage() {
     const params = useParams();
     const router = useRouter();
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    
+    // Job Detail state
+    const [isJobOpen, setIsJobOpen] = useState(false);
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -208,10 +214,17 @@ export default function SiteDetailPage() {
                                         </DialogHeader>
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
-                                                {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
-                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-1 text-left group hover:border-text-muted transition-all">
+                                                {[...siteData.historicalAssignments, ...siteData.activeAssignments].length > 0 ? [...siteData.historicalAssignments, ...siteData.activeAssignments].map(wo => (
+                                                    <div 
+                                                        key={wo.id} 
+                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-1 text-left group hover:border-text-muted transition-all cursor-pointer"
+                                                    >
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
+                                                                <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[7px] h-3.5 px-1 uppercase">{wo.status}</Badge>
+                                                            </div>
                                                             <span className="text-[8px] text-text-muted font-bold">{formatDateDisplay(wo.scheduleDate)}</span>
                                                         </div>
                                                         <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
@@ -254,7 +267,11 @@ export default function SiteDetailPage() {
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
                                                 {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
-                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between">
+                                                    <div 
+                                                        key={wo.id} 
+                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between cursor-pointer"
+                                                    >
                                                         <div className="text-left space-y-1">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
@@ -357,7 +374,11 @@ export default function SiteDetailPage() {
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-left">Active Assignment Registry</p>
                                 <div className="space-y-2">
                                     {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
-                                        <Card key={wo.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
+                                        <Card 
+                                            key={wo.id} 
+                                            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
+                                            onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                        >
                                             <CardContent className="p-4 flex items-center justify-between">
                                                 <div className="flex items-center gap-4 text-left">
                                                     <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted">
@@ -391,7 +412,11 @@ export default function SiteDetailPage() {
                         <TabsContent value="history" className="space-y-4 mt-0">
                             <div className="space-y-2">
                                 {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
-                                    <div key={wo.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                    <div 
+                                        key={wo.id} 
+                                        className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer"
+                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                    >
                                         <div className="flex items-center gap-4 text-left">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-green">
                                                 <CheckCircle2 size={16} />
@@ -470,6 +495,8 @@ export default function SiteDetailPage() {
                     </div>
                 </div>
             )}
+
+            <JobDetailDialog isOpen={isJobOpen} setIsOpen={setIsJobOpen} mission={selectedJob} />
         </div>
     );
 }

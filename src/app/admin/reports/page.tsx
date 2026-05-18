@@ -185,7 +185,6 @@ export default function ActivityAuditPage() {
         if (visitDateRange?.from) {
             all = all.filter(wo => {
                 try {
-                    // Normalize date parsing for both MM-DD-YYYY and YYYY-MM-DD
                     const parts = wo.scheduleDate.split(/[-/]/);
                     let woDate;
                     if (parts[0].length === 4) {
@@ -628,7 +627,11 @@ export default function ActivityAuditPage() {
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
                                                 {sortedAllSiteVisits.length > 0 ? sortedAllSiteVisits.map(wo => (
-                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between">
+                                                    <div 
+                                                        key={wo.id} 
+                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between cursor-pointer"
+                                                    >
                                                         <div className="flex items-center gap-4 text-left">
                                                             <div className={cn(
                                                                 "p-2 rounded border border-border-sub",
@@ -646,7 +649,7 @@ export default function ActivityAuditPage() {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>View Session Detail</Button>
+                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold">View Detail</Button>
                                                     </div>
                                                 )) : (
                                                     <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
@@ -686,7 +689,11 @@ export default function ActivityAuditPage() {
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
                                                 {siteActive.length > 0 ? siteActive.map(wo => (
-                                                    <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between">
+                                                    <div 
+                                                        key={wo.id} 
+                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between cursor-pointer"
+                                                    >
                                                         <div className="flex items-center gap-4 text-left">
                                                             <div className="p-2 bg-bg-primary rounded border border-border-sub text-accent-gold">
                                                                 <Clock size={18} />
@@ -703,7 +710,7 @@ export default function ActivityAuditPage() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>Audit Ticket Detail</Button>
+                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold">Audit Detail</Button>
                                                     </div>
                                                 )) : (
                                                     <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
@@ -749,7 +756,7 @@ export default function ActivityAuditPage() {
                                 <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{site.client} · {site.location}</p>
                             </div>
                         </div>
-                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-all" />
+                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
                     </div>
                 ))}
             </div>

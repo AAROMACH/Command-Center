@@ -272,12 +272,18 @@ export function AlertBand() {
                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">Sarah Connor</span></p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+              <a 
+                href="mailto:admin@aaromach.com" 
+                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
+              >
                 <Mail size={12} /> Email
-              </button>
-              <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors">
+              </a>
+              <a 
+                href="sms:+15550000000" 
+                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
+              >
                 <MessageSquare size={12} /> SMS
-              </button>
+              </a>
             </div>
           </div>
         )}

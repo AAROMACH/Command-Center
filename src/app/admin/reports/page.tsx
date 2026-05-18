@@ -618,11 +618,27 @@ export default function ActivityAuditPage() {
                 </div>
 
                 {!searchQuery ? (
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <Tabs value={activeTab} onValueChange={(val) => {
+                        setActiveTab(val);
+                        setSelectedTechId(null);
+                        setSelectedSiteId(null);
+                    }} className="w-full">
                         <div className="flex justify-center">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-12 justify-center mb-8">
-                                <TabsTrigger value="tech" className="tab-trigger-activity">Technician activity</TabsTrigger>
-                                <TabsTrigger value="sites" className="tab-trigger-activity">Site activity</TabsTrigger>
+                                <TabsTrigger 
+                                    value="tech" 
+                                    className="tab-trigger-activity"
+                                    onClick={() => setSelectedTechId(null)}
+                                >
+                                    Technician activity
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="sites" 
+                                    className="tab-trigger-activity"
+                                    onClick={() => setSelectedSiteId(null)}
+                                >
+                                    Site activity
+                                </TabsTrigger>
                                 <TabsTrigger value="messaging" className="tab-trigger-activity">Broadcast Comms</TabsTrigger>
                                 <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                                     Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>

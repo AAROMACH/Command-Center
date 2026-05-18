@@ -1,26 +1,31 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   LayoutDashboard,
   MonitorUp,
   Wrench,
   FolderKanban,
   Clock,
-  Building2
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { WorkloadChart } from './components/workload-chart';
 import { workOrders, technicians, projects, siteRequests } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { getAvailablePortals } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
+
+// Performance: Code-splitting heavy chart library
+const WorkloadChart = dynamic(() => import('./components/workload-chart').then(mod => mod.WorkloadChart), {
+    loading: () => <div className="h-[250px] w-full bg-bg-tertiary animate-pulse rounded-lg" />,
+    ssr: false
+});
 
 export default function DashboardPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -33,141 +38,151 @@ export default function DashboardPage() {
         }
     }, []);
 
-    const highPriorityJobs = workOrders.filter(wo => wo.status === 'unassigned' && (wo.priority === 'critical' || wo.priority === 'high'));
+    // Memoize heavy filtering operations
+    const highPriorityJobs = useMemo(() => 
+        workOrders.filter(wo => wo.status === 'unassigned' && (wo.priority === 'critical' || wo.priority === 'high'))
+    , []);
 
-    const workloadData = technicians.map(tech => ({
-        name: tech.name,
-        assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
-    }));
+    const workloadData = useMemo(() => 
+        technicians.map(tech => ({
+            name: tech.name,
+            assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
+        }))
+    , []);
 
-    const pendingSitesCount = siteRequests.filter(sr => sr.status === 'pending').length;
+    const pendingSitesCount = useMemo(() => 
+        siteRequests.filter(sr => sr.status === 'pending').length
+    , []);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
-    const canSwap = availablePortals.length > 1;
-    const techPortal = availablePortals.find(p => p.id === 'tech');
+    const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
 
-  return (
-    <div>
-      <header className="page-header">
-        <div>
-          <p className="page-eyebrow flex items-center gap-2">
-            <LayoutDashboard size={12} />
-            {TERMINOLOGY.PORTAL.ADMIN}
-          </p>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">
-            A high-level overview of all field service operations.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-            <NotificationBell />
-            {canSwap && techPortal && (
-                <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest border-border-main" onClick={() => router.push(techPortal.path)}>
-                    <MonitorUp size={12} className="mr-1.5 text-text-muted" />
-                    Swap View
-                </Button>
-            )}
-        </div>
-      </header>
+    const handleSwapPortal = useCallback(() => {
+        if (techPortal) router.push(techPortal.path);
+    }, [router, techPortal]);
 
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
-         <Link href="/admin/assignments">
-            <StatCard 
-                label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
-                value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress').length.toString()} 
-                delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
-                deltaType="warning" 
-                icon="Wrench"
-            />
-        </Link>
-        <Link href="/admin/projects">
-            <StatCard 
-                label={`Active ${TERMINOLOGY.ENTITIES.PROJECT}s`} 
-                value={projects.filter(p => p.status === 'active').length.toString()} 
-                delta="2 ongoing" 
-                deltaType="neutral"
-                icon="FolderKanban"
-            />
-        </Link>
-        <Link href="/admin/directory">
-            <StatCard 
-                label="Pending Site Registry" 
-                value={pendingSitesCount.toString()}
-                delta="Awaiting Audit" 
-                deltaType="warning"
-                icon="Clock"
-            />
-        </Link>
-        <Link href="/admin/assignments">
-            <StatCard 
-                label="Late/Missed Check-ins" 
-                value="1"
-                delta="1 tech affected" 
-                deltaType="negative"
-                icon="Clock"
-            />
-        </Link>
-      </div>
+    return (
+        <div className="animate-in fade-in duration-500">
+            <header className="page-header">
+                <div className="text-left">
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <LayoutDashboard size={12} />
+                        {TERMINOLOGY.PORTAL.ADMIN}
+                    </p>
+                    <h1 className="page-title">Dashboard</h1>
+                    <p className="page-subtitle">
+                        A high-level overview of all field service operations.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <NotificationBell />
+                    {availablePortals.length > 1 && techPortal && (
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest border-border-main" onClick={handleSwapPortal}>
+                            <MonitorUp size={12} className="mr-1.5 text-text-muted" />
+                            Swap View
+                        </Button>
+                    )}
+                </div>
+            </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-                <CardTitle>High Priority Queue</CardTitle>
-                <CardDescription>Unassigned jobs that require immediate attention.</CardDescription>
-            </CardHeader>
-            <CardContent className="table-wrap !border-none !rounded-none p-0">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Work Order</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Location</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead className="text-right">Action</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {highPriorityJobs.map(job => (
-                            <TableRow key={job.id}>
-                                <TableCell>
-                                    <div className="cell-id !mb-0">{job.id.toUpperCase()}</div>
-                                    <div className="text-sm text-text-secondary">{job.description}</div>
-                                </TableCell>
-                                <TableCell>{job.clientName}</TableCell>
-                                <TableCell>{job.location}</TableCell>
-                                <TableCell>
-                                    <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch')}>Assign</Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                         {highPriorityJobs.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-center h-24">
-                                    No critical jobs in the queue. Well done!
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </CardContent>
-          </Card>
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+                <Link href="/admin/assignments">
+                    <StatCard 
+                        label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
+                        value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress').length.toString()} 
+                        delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
+                        deltaType="warning" 
+                        icon="Wrench"
+                    />
+                </Link>
+                <Link href="/admin/projects">
+                    <StatCard 
+                        label={`Active ${TERMINOLOGY.ENTITIES.PROJECT}s`} 
+                        value={projects.filter(p => p.status === 'active').length.toString()} 
+                        delta="2 ongoing" 
+                        deltaType="neutral"
+                        icon="FolderKanban"
+                    />
+                </Link>
+                <Link href="/admin/directory">
+                    <StatCard 
+                        label="Pending Site Registry" 
+                        value={pendingSitesCount.toString()}
+                        delta="Awaiting Audit" 
+                        deltaType="warning"
+                        icon="Clock"
+                    />
+                </Link>
+                <Link href="/admin/assignments">
+                    <StatCard 
+                        label="Late/Missed Check-ins" 
+                        value="1"
+                        delta="1 tech affected" 
+                        deltaType="negative"
+                        icon="Clock"
+                    />
+                </Link>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>High Priority Queue</CardTitle>
+                            <CardDescription>Unassigned jobs that require immediate attention.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="table-wrap !border-none !rounded-none p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Work Order</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Location</TableHead>
+                                        <TableHead>Priority</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {highPriorityJobs.map(job => (
+                                        <TableRow key={job.id}>
+                                            <TableCell className="text-left">
+                                                <div className="cell-id !mb-0">{job.id.toUpperCase()}</div>
+                                                <div className="text-[11px] text-text-secondary line-clamp-1 uppercase font-bold">{job.description}</div>
+                                            </TableCell>
+                                            <TableCell className="text-left text-xs font-bold uppercase text-text-muted">{job.clientName}</TableCell>
+                                            <TableCell className="text-left text-xs font-bold uppercase">{job.location}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch')}>Assign</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {highPriorityJobs.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center h-24 text-xs font-bold uppercase text-text-muted italic opacity-40">
+                                                No critical jobs in the queue.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
+                            <CardDescription>Current open assignments per technician.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <WorkloadChart data={workloadData} />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
-        <div>
-          <Card>
-             <CardHeader>
-                <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
-                <CardDescription>Current open assignments per technician.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <WorkloadChart data={workloadData} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

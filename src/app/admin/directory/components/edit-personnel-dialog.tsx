@@ -15,14 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
+import { ROLE_DATA } from '@/lib/constants/roles';
 import { 
-  Shield, 
-  ShieldAlert, 
   User, 
-  Briefcase, 
-  Banknote, 
-  Hammer, 
-  Building2, 
   ChevronRight, 
   Lock, 
   Info,
@@ -45,72 +40,6 @@ type EditPersonnelDialogProps = {
   setIsOpen: (isOpen: boolean) => void;
   person: Technician;
   onSave: (updatedPerson: Technician) => void;
-};
-
-type RoleOption = {
-    id: AppRole;
-    label: string;
-    desc: string;
-    icon: any;
-    permissions: string[];
-};
-
-const ROLE_DATA: Record<'admin' | 'tech' | 'client', RoleOption[]> = {
-    admin: [
-        { 
-            id: 'super_admin', 
-            label: 'Super Admin', 
-            desc: 'Full system authorization.', 
-            icon: ShieldAlert,
-            permissions: ['Full System Access', 'User Management', 'Financial Override', 'Global Operations']
-        },
-        { 
-            id: 'dispatch_admin', 
-            label: 'Dispatch Admin', 
-            desc: 'Logistics and scheduling lead.', 
-            icon: Briefcase,
-            permissions: ['Manage Assignments', 'Technician Dispatch', 'View All Projects', 'Schedule Control']
-        },
-        { 
-            id: 'payroll_admin', 
-            label: 'Payroll Admin', 
-            desc: 'Financial audit specialist.', 
-            icon: Banknote,
-            permissions: ['Approve Weekly Logs', 'Manage Reimbursements', 'Payout Authorization']
-        },
-        { 
-            id: 'project_manager', 
-            label: 'Project Manager', 
-            desc: 'Strategic project oversight.', 
-            icon: Shield,
-            permissions: ['Create Projects', 'Phase Management', 'Task Definition', 'Resource Planning']
-        },
-    ],
-    tech: [
-        { 
-            id: 'project_lead', 
-            label: 'Project Lead', 
-            desc: 'On-site infrastructure lead.', 
-            icon: Hammer,
-            permissions: ['Update Project Progress', 'Field Documentation', 'Task Management', 'Site Reporting']
-        },
-        { 
-            id: 'field_technician', 
-            label: 'Field Tech', 
-            desc: 'Low voltage service specialist.', 
-            icon: User,
-            permissions: ['Check In / Check Out', 'Submit Logs', 'Upload Receipts', 'Acknowledge Work']
-        },
-    ],
-    client: [
-        { 
-            id: 'client', 
-            label: 'Client Contact', 
-            desc: 'External project stakeholder.', 
-            icon: Building2,
-            permissions: ['View Project Status', 'Submit Service Requests', 'View Work History']
-        },
-    ]
 };
 
 export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
@@ -179,7 +108,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
   const isInternalStaff = formData.roles?.some(r => 
     [...ROLE_DATA.admin, ...ROLE_DATA.tech].map(role => role.id).includes(r)
   );
-  const isClient = formData.roles?.includes('client');
+  const isClientRole = formData.roles?.includes('client');
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -187,12 +116,11 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         <DialogHeader>
           <DialogTitle className="page-title text-xl">Personnel Profile Update</DialogTitle>
           <DialogDescription>
-            Modify credentials and adjust low voltage job permissions for <span className="text-text-primary font-bold">{person.name}</span>.
+            Modify credentials and adjust permissions for <span className="text-text-primary font-bold">{person.name}</span>.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-10">
-          {/* Section 1: Identity */}
           <section className="space-y-4">
              <div className="flex items-center gap-2 text-brand-red mb-4">
                 <Users size={16} />
@@ -220,7 +148,6 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
              </div>
           </section>
 
-          {/* Section 2: Unified Permission Matrix */}
           <section className="space-y-6">
              <div className="flex items-center gap-2 text-brand-red mb-2">
                 <Lock size={16} />
@@ -228,90 +155,36 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Admin Roles Column */}
-                <div className="space-y-4">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Administrative</h4>
-                    <div className="space-y-2">
-                        {ROLE_DATA.admin.map(role => {
-                            const isSelected = (formData.roles || []).includes(role.id);
-                            return (
-                                <div 
-                                    key={role.id} 
-                                    onClick={() => toggleRole(role.id)}
-                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
-                                        isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
-                                    }`}
-                                >
-                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
-                                        <role.icon size={14} />
+                {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
+                    <div key={category} className="space-y-4">
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize">{category}</h4>
+                        <div className="space-y-2">
+                            {ROLE_DATA[category].map(role => {
+                                const isSelected = (formData.roles || []).includes(role.id);
+                                return (
+                                    <div 
+                                        key={role.id} 
+                                        onClick={() => toggleRole(role.id)}
+                                        className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
+                                            isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
+                                        }`}
+                                    >
+                                        <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
+                                            <role.icon size={14} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
+                                        </div>
+                                        <Checkbox checked={isSelected} className="h-3 w-3" />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
-                                    </div>
-                                    <Checkbox checked={isSelected} className="h-3 w-3" />
-                                </div>
-                            )
-                        })}
+                                )
+                            })}
+                        </div>
                     </div>
-                </div>
-
-                {/* Tech Roles Column */}
-                <div className="space-y-4">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Operational</h4>
-                    <div className="space-y-2">
-                        {ROLE_DATA.tech.map(role => {
-                            const isSelected = (formData.roles || []).includes(role.id);
-                            return (
-                                <div 
-                                    key={role.id} 
-                                    onClick={() => toggleRole(role.id)}
-                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
-                                        isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
-                                    }`}
-                                >
-                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
-                                        <role.icon size={14} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
-                                    </div>
-                                    <Checkbox checked={isSelected} className="h-3 w-3" />
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-
-                {/* Client Roles Column */}
-                <div className="space-y-4">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Client</h4>
-                    <div className="space-y-2">
-                        {ROLE_DATA.client.map(role => {
-                            const isSelected = (formData.roles || []).includes(role.id);
-                            return (
-                                <div 
-                                    key={role.id} 
-                                    onClick={() => toggleRole(role.id)}
-                                    className={`p-2.5 rounded border transition-all cursor-pointer flex items-center gap-3 ${
-                                        isSelected ? 'bg-brand-red-dim border-brand-red' : 'bg-bg-primary border-border-sub hover:border-text-muted'
-                                    }`}
-                                >
-                                    <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
-                                        <role.icon size={14} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
-                                    </div>
-                                    <Checkbox checked={isSelected} className="h-3 w-3" />
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
+                ))}
              </div>
           </section>
 
-          {/* Section 3: Permission Summary & Dynamic Fields */}
           {(formData.roles || []).length > 0 && (
              <section className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                  <div className="p-5 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6">
@@ -329,17 +202,16 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-4">
                         {currentPermissions.map((perm, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-[10px] font-semibold text-text-secondary">
+                            <div key={idx} className="flex items-center gap-2 text-[10px] font-semibold text-text-secondary text-left">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />
                                 {perm}
                             </div>
                         ))}
                     </div>
 
-                    {/* Dynamic Logic Fields */}
                     <div className="pt-4 border-t border-border-sub space-y-6">
-                        {isClient && (
-                            <div className="space-y-2">
+                        {isClientRole && (
+                            <div className="space-y-2 text-left">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
                                         <Info size={12}/> Associated Organization / Client Entity
@@ -375,32 +247,9 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                                             {existingCompanies.map(c => (
                                                 <SelectItem key={c} value={c} className="text-xs uppercase font-bold">{c}</SelectItem>
                                             ))}
-                                            {existingCompanies.length === 0 && (
-                                                <div className="p-2 text-center text-[10px] text-text-muted uppercase">No existing entities</div>
-                                            )}
                                         </SelectContent>
                                     </Select>
                                 )}
-                            </div>
-                        )}
-
-                        {isInternalStaff && (
-                            <div className="space-y-4">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted border-b border-border-sub/20 pb-1">Emergency Contact Protocol</p>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="emergencyContactName" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Contact Name</Label>
-                                        <Input id="emergencyContactName" value={formData.emergencyContact?.name || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: ''}), name: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="emergencyContactRelation" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Relation</Label>
-                                        <Input id="emergencyContactRelation" value={formData.emergencyContact?.relation || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: '0'}), relation: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="emergencyContactPhone" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Emergency Line</Label>
-                                    <Input id="emergencyContactPhone" type="tel" value={formData.emergencyContact?.phone || ''} onChange={(e) => setFormData({...formData, emergencyContact: {...(formData.emergencyContact || {name: '', relation: '', phone: ''}), phone: e.target.value}})} className="bg-bg-primary h-9 text-xs border-border-sub" />
-                                </div>
                             </div>
                         )}
                     </div>

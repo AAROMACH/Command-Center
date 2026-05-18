@@ -32,7 +32,8 @@ import {
   Search,
   Trash2,
   X,
-  UserPlus
+  UserPlus,
+  Sparkles
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         setRecommendation(null);
     }
   }, [isOpen]);
+
+  // Memoized operative list moved before early return to satisfy React rules
+  const filteredTechs = useMemo(() => {
+    return technicians
+      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
+      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .sort((a, b) => b.reliabilityScore - a.reliabilityScore);
+  }, [techSearchQuery]);
 
   if (!mission) return null;
 
@@ -201,13 +210,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
     onUpdate(mission.id, updates);
     toast({ variant: "destructive", title: "Allocation Rescinded", description: `${targetTech?.name} removed from mission support.` });
   };
-
-  const filteredTechs = useMemo(() => {
-    return technicians
-      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
-      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => b.reliabilityScore - a.reliabilityScore);
-  }, [techSearchQuery]);
 
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';

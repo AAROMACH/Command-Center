@@ -35,6 +35,20 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
+const getGPSCoordinates = (): Promise<string> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      resolve("GPS Unavailable");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
+      () => resolve("GPS Restricted"),
+      { timeout: 5000 }
+    );
+  });
+};
+
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
@@ -101,17 +115,18 @@ export default function TechDashboardPage() {
         setIsDetailOpen(true);
     };
 
-    const handleStatusTransition = (woId: string, newStatus: WorkOrder['status']) => {
+    const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
         const now = format(new Date(), 'HH:mm');
         const today = format(new Date(), 'MM-dd-yyyy');
+        const coords = await getGPSCoordinates();
         
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 let noteDetails = '';
-                if (newStatus === 'confirmed') noteDetails = `Assignment confirmed at ${now}.`;
-                if (newStatus === 'on-my-way') noteDetails = `Trip initiated at ${now}. Status: EN ROUTE.`;
-                if (newStatus === 'in-progress') noteDetails = `Arrival verified at ${now}. Trip completed. Status: ON SITE.`;
-                if (newStatus === 'completed') noteDetails = `Mission finalized and checked out at ${now}.`;
+                if (newStatus === 'confirmed') noteDetails = `Assignment confirmed at ${now}. GPS: [${coords}].`;
+                if (newStatus === 'on-my-way') noteDetails = `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`;
+                if (newStatus === 'in-progress') noteDetails = `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`;
+                if (newStatus === 'completed') noteDetails = `Mission finalized at ${now}. GPS: [${coords}].`;
 
                 return { 
                     ...wo, 

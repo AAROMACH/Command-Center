@@ -42,6 +42,20 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
+const getGPSCoordinates = (): Promise<string> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      resolve("GPS Unavailable");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
+      () => resolve("GPS Restricted"),
+      { timeout: 5000 }
+    );
+  });
+};
+
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -103,8 +117,9 @@ export default function TechAssignmentsPage() {
             .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate)),
     [techWorkOrders]);
 
-    const handleConfirm = (woId: string) => {
+    const handleConfirm = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
@@ -113,7 +128,7 @@ export default function TechAssignmentsPage() {
                     isAcknowledged: true,
                     history: [
                         ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
                     ]
                 };
             }
@@ -122,8 +137,9 @@ export default function TechAssignmentsPage() {
         toast({ title: "Assignment Confirmed", description: "Command Center notified of acknowledgment." });
     };
 
-    const handleStartTrip = (woId: string) => {
+    const handleStartTrip = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
@@ -131,7 +147,7 @@ export default function TechAssignmentsPage() {
                     status: 'on-my-way',
                     history: [
                         ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE.`, user: currentTech?.name || 'Field Operative' }
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
                     ]
                 };
             }
@@ -140,8 +156,9 @@ export default function TechAssignmentsPage() {
         toast({ title: "Trip Started", description: "Mission status transitioned to En Route." });
     };
 
-    const handleCheckIn = (woId: string) => {
+    const handleCheckIn = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
@@ -149,7 +166,7 @@ export default function TechAssignmentsPage() {
                     status: 'in-progress',
                     history: [
                         ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Trip completed. Status: ON SITE.`, user: currentTech?.name || 'Field Operative' }
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
                     ]
                 };
             }
@@ -158,8 +175,9 @@ export default function TechAssignmentsPage() {
         toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
     };
 
-    const handleCheckOut = (woId: string) => {
+    const handleCheckOut = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
@@ -167,7 +185,7 @@ export default function TechAssignmentsPage() {
                     status: 'completed',
                     history: [
                         ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized and checked out at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
                     ]
                 };
             }
@@ -176,8 +194,9 @@ export default function TechAssignmentsPage() {
         toast({ title: "Job Finalized", description: "Mission registry closed and moved to history." });
     };
 
-    const handleReopen = (woId: string) => {
+    const handleReopen = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
@@ -185,7 +204,7 @@ export default function TechAssignmentsPage() {
                     status: 'in-progress',
                     history: [
                         ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened by operative at ${now} for correction.`, user: currentTech?.name || 'Field Operative' }
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
                     ]
                 };
             }
@@ -196,7 +215,6 @@ export default function TechAssignmentsPage() {
     };
 
     const isAudited = (woId: string) => {
-        // Mock check: if the job exists in an 'Approved' weekly log, it's audited.
         return weeklyLogs.some(log => 
             log.status === 'Approved' && 
             log.items.some(item => item.workOrderId === woId)
@@ -322,7 +340,7 @@ export default function TechAssignmentsPage() {
                                         </td>
                                         <td>
                                             <div className="flex items-center justify-center gap-1.5 text-xs text-text-secondary text-center">
-                                                <MapPin className="h-3.5 w-3.5 text-brand-red shrink-0" />
+                                                <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                                 <span className="max-w-[150px]">{wo.location}</span>
                                             </div>
                                         </td>

@@ -159,25 +159,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
               </div>
           )}
 
-          {/* SECTION: SCOPE OF WORK */}
-          <div className="space-y-4 text-left">
-             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <StickyNote size={14} className="text-accent-gold shrink-0"/> 
-                <span>Scope of Work</span>
-             </h3>
-             <div className="space-y-2">
-                {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (
-                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
-                        &quot;{note}&quot;
-                    </div>
-                )) : (
-                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub">
-                        <p className="text-xs text-text-muted italic uppercase font-bold tracking-widest text-center">No intelligence notes recorded.</p>
-                    </div>
-                )}
-             </div>
-          </div>
-
           {/* SECTION: OPERATIVE ASSIGNMENT */}
           <div className="space-y-4">
              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
@@ -206,6 +187,25 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit }: JobDetai
                   <Badge variant="outline" className="bg-green-dim border-green-border text-text-green text-[8px] uppercase tracking-widest gap-1.5 px-3">
                     <UserCheck size={10}/> Acknowledged
                   </Badge>
+                )}
+             </div>
+          </div>
+
+          {/* SECTION: SCOPE OF WORK */}
+          <div className="space-y-4 text-left">
+             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                <StickyNote size={14} className="text-accent-gold shrink-0"/> 
+                <span>Scope of Work</span>
+             </h3>
+             <div className="space-y-2">
+                {mission.notes && mission.notes.length > 0 ? mission.notes.map((note, i) => (
+                    <div key={i} className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
+                        &quot;{note}&quot;
+                    </div>
+                )) : (
+                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub">
+                        <p className="text-xs text-text-muted italic uppercase font-bold tracking-widest text-center">No intelligence notes recorded.</p>
+                    </div>
                 )}
              </div>
           </div>

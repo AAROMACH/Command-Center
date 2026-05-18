@@ -399,6 +399,26 @@ export const workOrders: WorkOrder[] = [
     ]
   },
   {
+    id: 'wo-108',
+    description: 'Emergency Switch Calibration',
+    location: '100 Renaissance Center, Detroit, MI 48243',
+    requiredSkills: ['Networking'],
+    priority: 'critical',
+    status: 'in-progress',
+    assignedTechnicianId: 'tech-001',
+    clientName: 'Test Organization',
+    projectType: 'Troubleshooting',
+    scheduleDate: '07-28-2024',
+    scheduleTime: '09:00 AM EST',
+    pay: 250.00,
+    payType: 'fixed',
+    isAcknowledged: true,
+    source: 'Manual',
+    history: [
+      { type: 'note', date: '07-28-2024', details: 'Technician arrived on-site. Beginning diagnostics on core switch.', user: 'Alex Johnson' }
+    ]
+  },
+  {
     id: 'wo-mock-88',
     description: 'Audit Server Rack Terminations',
     location: '999 Tech Plaza, Detroit, MI 48201',
@@ -716,6 +736,7 @@ export const profitabilityData = [
 export const assignmentTimeLogs: AssignmentTimeLog[] = [
   { id: 'atl-1', workOrderId: 'wo-102', technicianId: 'tech-001', checkInTime: '2024-07-28T14:05:00Z', location: '42.3314° N, 83.0458° W'},
   { id: 'atl-2', workOrderId: 'wo-106', technicianId: 'tech-001', checkInTime: '2024-07-28T13:00:00Z', location: '42.3314° N, 83.0458° W'},
+  { id: 'atl-3', workOrderId: 'wo-108', technicianId: 'tech-001', checkInTime: '2024-07-28T10:00:00Z', location: '100 Renaissance Center, Detroit, MI 48243'},
 ];
 
 export const weeklyLogs: WeeklyLog[] = [

@@ -184,6 +184,7 @@ export const technicians: Technician[] = [
     skills: [],
     avatarUrl: getImageUrl('technician-5'),
     availability: {},
+    planId: 'std-3', // Enterprise
     workPreferences: {
       preferredRadius: 0,
       maxTravelDistance: 0,
@@ -209,6 +210,7 @@ export const technicians: Technician[] = [
     managedSites: [
       { id: 'site-det-01', name: 'Detroit Renaissance Data Center', location: '100 Renaissance Center, Detroit, MI 48243' }
     ],
+    planId: 'std-2', // Professional
     workPreferences: {
       preferredRadius: 0,
       maxTravelDistance: 0,

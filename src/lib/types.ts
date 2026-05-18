@@ -102,6 +102,7 @@ export type Technician = {
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; 
   businessType?: string; // New field for corporate classification
+  planId?: string; // Links client to a specific PlanTier
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
     preferredRadius: number;

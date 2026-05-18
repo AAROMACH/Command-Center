@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
     Zap, 
     Plus, 
@@ -12,11 +12,12 @@ import {
     Building2,
     Search,
     DollarSign,
-    MoreHorizontal,
     PenTool,
     Trash2,
     Sparkles,
-    LayoutDashboard
+    Eye,
+    AlertTriangle,
+    Lock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,10 +40,11 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { isSuperAdmin } from '@/lib/permissions';
+import type { Technician } from '@/lib/types';
 
 type PlanTier = {
     id: string;
@@ -102,17 +104,22 @@ const INITIAL_PLANS: PlanTier[] = [
 
 export default function PlansPage() {
     const [plans, setPlans] = useState<PlanTier[]>(INITIAL_PLANS);
-    const [isArchitectOpen, setIsArchitectOpen] = useState(false);
+    const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+    const [terminalMode, setTerminalOpen] = useState<'create' | 'edit' | 'view'>('view');
     const [searchQuery, setSearchQuery] = useState("");
-    const [newPlan, setNewPlan] = useState<Partial<PlanTier>>({
-        type: 'custom',
-        billingPeriod: 'monthly',
-        features: [],
-        siteLimit: 5,
-        responseTime: '4h'
-    });
+    const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     const { toast } = useToast();
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId) || null);
+        }
+    }, []);
+
+    const userIsSuperAdmin = isSuperAdmin(currentUser);
 
     const clientsList = useMemo(() => 
         technicians.filter(t => t.roles?.includes('client') || t.role.toLowerCase().includes('client'))
@@ -127,32 +134,52 @@ export default function PlansPage() {
         );
     }, [plans, searchQuery]);
 
-    const handleCreateCustomPlan = () => {
-        if (!newPlan.name || !newPlan.clientName || !newPlan.price) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: 'Please populate all critical plan parameters.' });
-            return;
-        }
-
-        const plan: PlanTier = {
-            ...newPlan as PlanTier,
-            id: `cust-${Date.now()}`,
-            type: 'custom'
-        };
-
-        setPlans(prev => [...prev, plan]);
-        setIsArchitectOpen(false);
-        setNewPlan({
+    const handleOpenTerminal = (mode: 'create' | 'edit' | 'view', plan?: PlanTier) => {
+        setTerminalOpen(mode);
+        setSelectedPlan(plan ? { ...plan } : {
             type: 'custom',
             billingPeriod: 'monthly',
             features: [],
             siteLimit: 5,
             responseTime: '4h'
         });
+        setIsTerminalOpen(true);
+    };
+
+    const handleSavePlan = () => {
+        if (!selectedPlan.name || !selectedPlan.price) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: 'Please populate all critical plan parameters.' });
+            return;
+        }
+
+        if (terminalMode === 'create') {
+            const plan: PlanTier = {
+                ...selectedPlan as PlanTier,
+                id: `cust-${Date.now()}`,
+            };
+            setPlans(prev => [...prev, plan]);
+            toast({ title: "Custom Agreement Authorized", description: `${plan.name} has been committed to the registry.` });
+        } else {
+            setPlans(prev => prev.map(p => p.id === selectedPlan.id ? selectedPlan as PlanTier : p));
+            toast({ title: "Agreement Updated", description: `${selectedPlan.name} parameters have been synchronized.` });
+        }
         
-        toast({
-            title: "Custom Agreement Authorized",
-            description: `${plan.name} for ${plan.clientName} has been committed to the registry.`,
-        });
+        setIsTerminalOpen(false);
+    };
+
+    const handleDeletePlan = (id: string) => {
+        const activeUsage = technicians.filter(t => t.planId === id);
+        if (activeUsage.length > 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Deletion Blocked',
+                description: `This plan is linked to ${activeUsage.length} active client registry folder(s). Unlink all accounts before removal.`,
+            });
+            return;
+        }
+
+        setPlans(prev => prev.filter(p => p.id !== id));
+        toast({ title: "Plan Purged", description: "Agreement has been removed from the operational registry." });
     };
 
     return (
@@ -176,10 +203,12 @@ export default function PlansPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={() => setIsArchitectOpen(true)} className="h-10 px-6 font-bold uppercase tracking-widest">
-                        <Plus size={16} className="mr-2" />
-                        Architect Custom Plan
-                    </Button>
+                    {userIsSuperAdmin && (
+                        <Button onClick={() => handleOpenTerminal('create')} className="h-10 px-6 font-bold uppercase tracking-widest">
+                            <Plus size={16} className="mr-2" />
+                            Architect Custom Plan
+                        </Button>
+                    )}
                 </div>
             </header>
 
@@ -228,7 +257,14 @@ export default function PlansPage() {
                 <TabsContent value="all" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.map(plan => (
-                            <PlanCard key={plan.id} plan={plan} />
+                            <PlanCard 
+                                key={plan.id} 
+                                plan={plan} 
+                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                                onView={(p) => handleOpenTerminal('view', p)}
+                                onDelete={(id) => handleDeletePlan(id)}
+                                canEdit={userIsSuperAdmin}
+                            />
                         ))}
                     </div>
                 </TabsContent>
@@ -236,7 +272,14 @@ export default function PlansPage() {
                 <TabsContent value="standard" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.filter(p => p.type === 'standard').map(plan => (
-                            <PlanCard key={plan.id} plan={plan} />
+                            <PlanCard 
+                                key={plan.id} 
+                                plan={plan} 
+                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                                onView={(p) => handleOpenTerminal('view', p)}
+                                onDelete={(id) => handleDeletePlan(id)}
+                                canEdit={userIsSuperAdmin}
+                            />
                         ))}
                     </div>
                 </TabsContent>
@@ -244,7 +287,14 @@ export default function PlansPage() {
                 <TabsContent value="custom" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.filter(p => p.type === 'custom').map(plan => (
-                            <PlanCard key={plan.id} plan={plan} />
+                            <PlanCard 
+                                key={plan.id} 
+                                plan={plan} 
+                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                                onView={(p) => handleOpenTerminal('view', p)}
+                                onDelete={(id) => handleDeletePlan(id)}
+                                canEdit={userIsSuperAdmin}
+                            />
                         ))}
                         {filteredPlans.filter(p => p.type === 'custom').length === 0 && (
                             <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
@@ -256,24 +306,35 @@ export default function PlansPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* PLAN ARCHITECT DIALOG */}
-            <Dialog open={isArchitectOpen} onOpenChange={setIsArchitectOpen}>
+            {/* PLAN ARCHITECT / AUDIT TERMINAL */}
+            <Dialog open={isTerminalOpen} onOpenChange={setIsTerminalOpen}>
                 <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30">
                         <div className="flex items-center gap-3">
-                            <PenTool className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Custom Plan Architect</DialogTitle>
+                            {terminalMode === 'view' ? <Eye className="text-accent-gold h-5 w-5" /> : <PenTool className="text-brand-red h-5 w-5" />}
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">
+                                {terminalMode === 'create' ? 'Custom Plan Architect' : 
+                                 terminalMode === 'edit' ? 'Modify Agreement Registry' : 
+                                 'Agreement Audit Shell'}
+                            </DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Construct a high-fidelity service agreement for strategic stakeholders.</DialogDescription>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">
+                            {terminalMode === 'view' ? 'High-fidelity technical specifications for this agreement tier.' : 'Construct or adjust strategic service agreement parameters.'}
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Target Client</Label>
-                                <Select onValueChange={(val) => setNewPlan({...newPlan, clientName: val})}>
-                                    <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue placeholder="Select registry..." /></SelectTrigger>
+                                <Select 
+                                    disabled={terminalMode === 'view'}
+                                    value={selectedPlan.clientName || ""}
+                                    onValueChange={(val) => setSelectedPlan({...selectedPlan, clientName: val})}
+                                >
+                                    <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue placeholder="Standard Tier" /></SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Standard Tier">Standard Tier (Global)</SelectItem>
                                         {clientsList.map(c => (
                                             <SelectItem key={c.id} value={c.clientCompany || c.name} className="text-xs uppercase font-bold">
                                                 {c.clientCompany || c.name}
@@ -285,9 +346,11 @@ export default function PlansPage() {
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Agreement Identifier</Label>
                                 <Input 
+                                    readOnly={terminalMode === 'view'}
                                     placeholder="e.g. Q3 Strategic Fiber" 
                                     className="h-11 bg-bg-primary text-xs font-bold uppercase"
-                                    onChange={e => setNewPlan({...newPlan, name: e.target.value})}
+                                    value={selectedPlan.name || ''}
+                                    onChange={e => setSelectedPlan({...selectedPlan, name: e.target.value})}
                                 />
                             </div>
                         </div>
@@ -298,16 +361,22 @@ export default function PlansPage() {
                                 <div className="relative">
                                     <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-green" />
                                     <Input 
+                                        readOnly={terminalMode === 'view'}
                                         type="number" 
                                         placeholder="0.00" 
                                         className="h-11 bg-bg-primary pl-10 text-sm font-mono font-bold"
-                                        onChange={e => setNewPlan({...newPlan, price: parseFloat(e.target.value) || 0})}
+                                        value={selectedPlan.price || 0}
+                                        onChange={e => setSelectedPlan({...selectedPlan, price: parseFloat(e.target.value) || 0})}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Settlement Cycle</Label>
-                                <Select defaultValue="monthly">
+                                <Select 
+                                    disabled={terminalMode === 'view'}
+                                    value={selectedPlan.billingPeriod} 
+                                    onValueChange={(val: any) => setSelectedPlan({...selectedPlan, billingPeriod: val})}
+                                >
                                     <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="monthly">Monthly Recurring</SelectItem>
@@ -322,15 +391,20 @@ export default function PlansPage() {
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Site Quota</Label>
                                 <Input 
+                                    readOnly={terminalMode === 'view'}
                                     type="number" 
-                                    defaultValue={5} 
                                     className="h-11 bg-bg-primary text-sm font-mono font-bold"
-                                    onChange={e => setNewPlan({...newPlan, siteLimit: parseInt(e.target.value) || 0})}
+                                    value={selectedPlan.siteLimit || 0}
+                                    onChange={e => setSelectedPlan({...selectedPlan, siteLimit: parseInt(e.target.value) || 0})}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Response Tier SLA</Label>
-                                <Select defaultValue="4h" onValueChange={(val) => setNewPlan({...newPlan, responseTime: val})}>
+                                <Select 
+                                    disabled={terminalMode === 'view'}
+                                    value={selectedPlan.responseTime} 
+                                    onValueChange={(val) => setSelectedPlan({...selectedPlan, responseTime: val})}
+                                >
                                     <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="2h">2-Hour Emergency</SelectItem>
@@ -342,22 +416,44 @@ export default function PlansPage() {
                             </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-accent-gold-dim/5 border border-accent-gold/20 flex items-start gap-4">
-                            <Sparkles className="text-accent-gold h-5 w-5 shrink-0 mt-0.5" />
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black text-accent-gold uppercase tracking-widest">Protocol Note</p>
-                                <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                                    Custom agreements bypass standard portal constraints. Ensure specific SOW parameters are attached to the client folder in the registry.
-                                </p>
+                        {terminalMode !== 'view' && (
+                            <div className="p-4 rounded-xl bg-accent-gold-dim/5 border border-accent-gold/20 flex items-start gap-4">
+                                <Sparkles className="text-accent-gold h-5 w-5 shrink-0 mt-0.5" />
+                                <div className="space-y-1 text-left">
+                                    <p className="text-[10px] font-black text-accent-gold uppercase tracking-widest">Protocol Note</p>
+                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                                        Custom agreements bypass standard portal constraints. Ensure specific SOW parameters are attached to the client folder in the registry.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        
+                        {terminalMode === 'view' && (
+                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-4 text-left">
+                                <h4 className="text-[9px] font-black text-text-muted uppercase tracking-widest border-b border-border-sub pb-2">Active Technical Features</h4>
+                                <div className="space-y-2">
+                                    {selectedPlan.features?.map((f, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <ShieldCheck size={12} className="text-text-green" />
+                                            <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{f}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default grid grid-cols-2 gap-3">
-                        <Button variant="outline" onClick={() => setIsArchitectOpen(false)} className="h-11 uppercase font-bold text-[10px] tracking-widest">Discard Shell</Button>
-                        <Button onClick={handleCreateCustomPlan} className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
-                            Authorize Agreement
-                        </Button>
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
+                        {terminalMode === 'view' ? (
+                            <Button variant="outline" onClick={() => setIsTerminalOpen(false)} className="w-full h-11 uppercase font-bold text-[10px] tracking-widest">Exit Audit</Button>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                <Button variant="outline" onClick={() => setIsTerminalOpen(false)} className="h-11 uppercase font-bold text-[10px] tracking-widest">Discard Changes</Button>
+                                <Button onClick={handleSavePlan} className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                                    Authorize Agreement
+                                </Button>
+                            </div>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -371,21 +467,33 @@ export default function PlansPage() {
     );
 }
 
-function PlanCard({ plan }: { plan: PlanTier }) {
+function PlanCard({ 
+    plan, 
+    onEdit, 
+    onView, 
+    onDelete, 
+    canEdit 
+}: { 
+    plan: PlanTier; 
+    onEdit: (p: PlanTier) => void; 
+    onView: (p: PlanTier) => void; 
+    onDelete: (id: string) => void;
+    canEdit: boolean;
+}) {
     const isCustom = plan.type === 'custom';
     return (
         <Card className={cn(
             "bg-bg-secondary border-border-main flex flex-col group transition-all hover:border-text-muted",
             isCustom ? "border-brand-red/30 shadow-[0_0_15px_rgba(204,34,0,0.05)]" : ""
         )}>
-            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
+            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 text-left">
                 <div className="flex justify-between items-start mb-2">
                     <Badge variant={isCustom ? "high" : "outline"} className={cn("text-[9px] uppercase tracking-widest h-5", !isCustom && "bg-bg-primary text-text-muted")}>
                         {plan.type} Agreement
                     </Badge>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary"><PenTool size={14}/></Button>
-                        {!isCustom && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red"><Trash2 size={14}/></Button>}
+                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => onEdit(plan)}><PenTool size={14}/></Button>}
+                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => onDelete(plan.id)}><Trash2 size={14}/></Button>}
                     </div>
                 </div>
                 <div className="space-y-1">
@@ -398,13 +506,13 @@ function PlanCard({ plan }: { plan: PlanTier }) {
                 </div>
             </CardHeader>
             <CardContent className="p-5 flex-1 flex flex-col">
-                <div className="mb-6 flex items-baseline gap-1.5">
+                <div className="mb-6 flex items-baseline gap-1.5 justify-start">
                     <span className="text-3xl font-mono font-bold text-text-primary">${plan.price.toLocaleString()}</span>
                     <span className="text-[10px] font-bold text-text-muted uppercase">/ {plan.billingPeriod}</span>
                 </div>
 
                 <div className="space-y-4 flex-1">
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-left">
                         {plan.features.map((feature, i) => (
                             <div key={i} className="flex items-center gap-2">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />
@@ -430,7 +538,7 @@ function PlanCard({ plan }: { plan: PlanTier }) {
                 </div>
             </CardContent>
             <CardFooter className="pt-0 p-5">
-                <Button variant="outline" className="w-full h-9 text-[10px] font-bold uppercase tracking-widest bg-bg-primary hover:bg-bg-tertiary">
+                <Button variant="outline" className="w-full h-9 text-[10px] font-bold uppercase tracking-widest bg-bg-primary hover:bg-bg-tertiary" onClick={() => onView(plan)}>
                     View Registry Details
                     <ChevronRight size={14} className="ml-2" />
                 </Button>

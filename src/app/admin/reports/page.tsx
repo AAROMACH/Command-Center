@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -70,7 +69,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { 
     technicians, 
-    workOrders, 
+    workOrders as initialWorkOrders, 
     projects, 
     penaltyEvents,
     weeklyLogs,
@@ -93,6 +92,9 @@ export default function ActivityAuditPage() {
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     
+    // Mission Registry state for local updates
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
     const [visitDateRange, setVisitDateRange] = useState<DateRange | undefined>(undefined);
@@ -151,7 +153,7 @@ export default function ActivityAuditPage() {
         const reliability = Math.max(0, 100 - (points * 5));
         
         return { total: myJobs.length, completed, reliability, penaltyPoints: points, penalties };
-    }, [selectedTechId]);
+    }, [selectedTechId, workOrders]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
@@ -164,19 +166,19 @@ export default function ActivityAuditPage() {
             }
         });
         return Array.from(uniqueSites.values());
-    }, []);
+    }, [workOrders]);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
 
     const siteHistorical = useMemo(() => {
         if (!activeSite) return [];
         return workOrders.filter(wo => wo.location === activeSite.location && wo.status === 'completed');
-    }, [activeSite]);
+    }, [activeSite, workOrders]);
 
     const siteActive = useMemo(() => {
         if (!activeSite) return [];
         return workOrders.filter(wo => wo.location === activeSite.location && wo.status !== 'completed');
-    }, [activeSite]);
+    }, [activeSite, workOrders]);
 
     const sortedAllSiteVisits = useMemo(() => {
         if (!activeSite) return [];
@@ -219,19 +221,28 @@ export default function ActivityAuditPage() {
             const dateB = parseDate(b.scheduleDate);
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    }, [activeSite, visitSortDir, visitDateRange]);
+    }, [activeSite, visitSortDir, visitDateRange, workOrders]);
 
     const anomalyCounts = useMemo(() => {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
         const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
         return unassigned + overdueLogs + openCheckins + 2;
-    }, []);
+    }, [workOrders]);
 
     const handleTabChange = (val: string) => {
         setActiveTab(val);
         setSelectedTechId(null);
         setSelectedSiteId(null);
+    };
+
+    const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
+        setWorkOrders(prev => prev.map(order => 
+            order.id === woId ? { ...order, ...updates } : order
+        ));
+        if (selectedJob?.id === woId) {
+            setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
+        }
     };
 
     // ── BROADCAST LOGIC ──────────────────────────────────────────────────
@@ -320,7 +331,7 @@ export default function ActivityAuditPage() {
         });
 
         return results;
-    }, [searchQuery]);
+    }, [searchQuery, workOrders]);
 
     const handleResultClick = (result: any) => {
         if (result.type === 'Technician') {
@@ -933,7 +944,12 @@ export default function ActivityAuditPage() {
                 )}
             </div>
 
-            <JobDetailDialog isOpen={isJobOpen} setIsOpen={setIsJobOpen} mission={selectedJob} />
+            <JobDetailDialog 
+                isOpen={isJobOpen} 
+                setIsOpen={setIsJobOpen} 
+                mission={selectedJob} 
+                onUpdate={handleJobUpdate}
+            />
             
             <style jsx global>{`
                 .tab-trigger-activity {

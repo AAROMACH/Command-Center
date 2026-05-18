@@ -237,6 +237,16 @@ export function WorkOrdersClient({
     toast({ title: "Pay Authorized", description: "Registry updated with approved financial parameters." });
   };
 
+  const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
+    const updated = allWorkOrders.map(order => 
+        order.id === woId ? { ...order, ...updates } : order
+    );
+    onWorkOrdersChange(updated);
+    if (detailJob?.id === woId) {
+        setDetailJob(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
   const handleConfirmAssignments = () => {
     toast({
       title: "Transmission Initiated",
@@ -482,6 +492,7 @@ export function WorkOrdersClient({
           setIsDetailOpen(false);
           handleOpenEditDialog(m);
         }}
+        onUpdate={handleJobUpdate}
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

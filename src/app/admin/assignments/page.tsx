@@ -210,6 +210,15 @@ export default function AssignmentsHubPage() {
     toast({ title: "Registry Updated", description: "Assignment parameters committed." });
   };
 
+  const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
+    setWorkOrders(prev => prev.map(order => 
+        order.id === woId ? { ...order, ...updates } : order
+    ));
+    if (selectedJob?.id === woId) {
+        setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
   const hasActiveFilters = !!dateRange?.from || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
   return (
@@ -548,7 +557,13 @@ export default function AssignmentsHubPage() {
             </TabsContent>
         </div>
 
-        <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} />
+        <JobDetailDialog 
+            isOpen={isDetailOpen} 
+            setIsOpen={setIsDetailOpen} 
+            mission={selectedJob} 
+            onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} 
+            onUpdate={handleJobUpdate}
+        />
         
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">

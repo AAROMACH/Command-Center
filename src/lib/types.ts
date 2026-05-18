@@ -48,6 +48,7 @@ export type WorkOrder = {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'completed';
   assignedTechnicianId?: string;
+  additionalTechnicianIds?: string[];
   clientName: string;
   projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission' | string;
   scheduleDate: string;
@@ -59,7 +60,7 @@ export type WorkOrder = {
   isImported?: boolean; // Flag for jobs from FieldNation
   source?: 'Imported' | 'Manual' | 'Client'; // Origin of the assignment
   // Enhanced detail fields
-  history?: { type: 'tech_swap' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
+  history?: { type: 'tech_swap' | 'tech_add' | 'tech_remove' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
   notes?: string[];
   reimbursements?: FinancialRecord[];
   finalPay?: number;

@@ -182,26 +182,26 @@ export default function SiteDetailPage() {
                             <div className="space-y-3">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
                                 {siteData.liveCheckIns.length > 0 ? (
-                                    <div className="p-4 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
+                                    <div className="p-2.5 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
                                             <div className="relative">
-                                                <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
-                                                <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1" />
-                                                <div className="p-3 bg-bg-secondary rounded border border-green-border text-text-green">
-                                                    <UserCheck size={24} />
+                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-0.5 -right-0.5 animate-ping" />
+                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-0.5 -right-0.5" />
+                                                <div className="p-1.5 bg-bg-secondary rounded border border-green-border text-text-green">
+                                                    <UserCheck size={16} />
                                                 </div>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
-                                                <p className="text-[11px] text-text-muted font-mono">{siteData.liveCheckIns.length} Verified Session(s) Active</p>
+                                                <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
+                                                <p className="text-[10px] text-text-muted font-mono">{siteData.liveCheckIns.length} Verified Session(s) Active</p>
                                             </div>
                                         </div>
-                                        <Badge variant="active" className="h-6 uppercase text-[10px] tracking-widest px-4">LIVE SESSION</Badge>
+                                        <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest px-3">LIVE</Badge>
                                     </div>
                                 ) : (
-                                    <div className="p-8 text-center border border-dashed border-border-sub rounded-lg opacity-60">
-                                        <Activity size={24} className="mx-auto text-text-muted mb-2" />
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported at this time</p>
+                                    <div className="p-6 text-center border border-dashed border-border-sub rounded-lg opacity-60">
+                                        <Activity size={18} className="mx-auto text-text-muted mb-2" />
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
                                     </div>
                                 )}
                             </div>

@@ -23,7 +23,10 @@ import {
     Users,
     History,
     ExternalLink,
-    TrendingUp
+    TrendingUp,
+    Activity,
+    Wrench,
+    UserCheck
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,8 +103,7 @@ const INITIAL_PLANS: PlanTier[] = [
             '15% off all labor', 
             'Quarterly site inspection', 
             'Infrastructure documentation', 
-            'Emergency dispatch available', 
-            'No contract — month to month'
+            'Emergency dispatch available'
         ],
         siteLimit: 20,
         responseTime: '24h',
@@ -135,6 +137,14 @@ const INITIAL_PLANS: PlanTier[] = [
         responseTime: '2h',
         type: 'custom'
     }
+];
+
+const SERVICE_RATES = [
+    { service: 'Fiber', rate: '$150/hr', min: '2 hr minimum', icon: Zap },
+    { service: 'Installation', rate: '$120/hr', min: '2 hr minimum', icon: Wrench },
+    { service: 'Diagnostics', rate: '$100/hr', min: '1 hr minimum', icon: Activity },
+    { service: 'Smart Hands', rate: '$85/hr', min: '2 hr minimum', icon: UserCheck },
+    { service: 'After Hours', rate: '1.5× base', min: '2 hr minimum', icon: Clock },
 ];
 
 export default function PlansPage() {
@@ -353,6 +363,7 @@ export default function PlansPage() {
                     </TabsTrigger>
                     <TabsTrigger value="standard" className="tab-trigger-plans">Standard Tiers</TabsTrigger>
                     <TabsTrigger value="custom" className="tab-trigger-plans">Custom Plans</TabsTrigger>
+                    <TabsTrigger value="rates" className="tab-trigger-plans">Service Rates</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="all" className="m-0">
@@ -428,7 +439,7 @@ export default function PlansPage() {
                             <div className="text-left">
                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">External Intake Buffer</p>
                                 <p className="text-[10px] text-text-muted font-medium uppercase leading-relaxed">
-                                    New partner applications are synchronized from the global enrollment form.
+                                    Partner applications are synchronized from the global enrollment form.
                                 </p>
                             </div>
                         </div>
@@ -519,6 +530,33 @@ export default function PlansPage() {
                                 <p className="text-[10px] font-bold uppercase tracking-widest">No custom client agreements in registry</p>
                             </div>
                         )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="rates" className="m-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {SERVICE_RATES.map((rate, i) => (
+                            <Card key={i} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
+                                <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-bg-primary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red/30 transition-all">
+                                            <rate.icon size={20} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                        </div>
+                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{rate.service}</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-8 text-center space-y-3">
+                                    <p className="text-4xl font-mono font-bold text-text-primary tracking-tighter">{rate.rate}</p>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="h-1 w-1 rounded-full bg-brand-red animate-pulse" />
+                                        <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em]">{rate.min}</p>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="bg-bg-tertiary/20 border-t border-border-sub/50 p-3 justify-center">
+                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Standard Labor Policy Applied</p>
+                                </CardFooter>
+                            </Card>
+                        ))}
                     </div>
                 </TabsContent>
             </Tabs>

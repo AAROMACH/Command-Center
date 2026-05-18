@@ -140,11 +140,11 @@ const INITIAL_PLANS: PlanTier[] = [
 ];
 
 const SERVICE_RATES = [
-    { service: 'Fiber', rate: '$150/hr', min: '2 hr minimum', icon: Zap },
-    { service: 'Installation', rate: '$120/hr', min: '2 hr minimum', icon: Wrench },
-    { service: 'Diagnostics', rate: '$100/hr', min: '1 hr minimum', icon: Activity },
-    { service: 'Smart Hands', rate: '$85/hr', min: '2 hr minimum', icon: UserCheck },
-    { service: 'After Hours', rate: '1.5× base', min: '2 hr minimum', icon: Clock },
+    { service: 'Fiber', rate: '$150/hr', min: '2 hr min', icon: Zap },
+    { service: 'Installation', rate: '$120/hr', min: '2 hr min', icon: Wrench },
+    { service: 'Diagnostics', rate: '$100/hr', min: '1 hr min', icon: Activity },
+    { service: 'Smart Hands', rate: '$85/hr', min: '2 hr min', icon: UserCheck },
+    { service: 'After Hours', rate: '1.5× base', min: '2 hr min', icon: Clock },
 ];
 
 export default function PlansPage() {
@@ -534,26 +534,26 @@ export default function PlansPage() {
                 </TabsContent>
 
                 <TabsContent value="rates" className="m-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {SERVICE_RATES.map((rate, i) => (
                             <Card key={i} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-                                <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-bg-primary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red/30 transition-all">
-                                            <rate.icon size={20} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub p-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-bg-primary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red/30 transition-all">
+                                            <rate.icon size={16} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                         </div>
-                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{rate.service}</CardTitle>
+                                        <CardTitle className="text-[10px] font-bold uppercase tracking-wider truncate">{rate.service}</CardTitle>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-8 text-center space-y-3">
-                                    <p className="text-4xl font-mono font-bold text-text-primary tracking-tighter">{rate.rate}</p>
-                                    <div className="flex items-center justify-center gap-2">
+                                <CardContent className="p-4 text-center space-y-2">
+                                    <p className="text-xl font-mono font-bold text-text-primary tracking-tighter">{rate.rate}</p>
+                                    <div className="flex items-center justify-center gap-1.5">
                                         <div className="h-1 w-1 rounded-full bg-brand-red animate-pulse" />
-                                        <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em]">{rate.min}</p>
+                                        <p className="text-[8px] font-black text-brand-red uppercase tracking-widest">{rate.min}</p>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="bg-bg-tertiary/20 border-t border-border-sub/50 p-3 justify-center">
-                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Standard Labor Policy Applied</p>
+                                <CardFooter className="bg-bg-tertiary/20 border-t border-border-sub/50 p-2 justify-center">
+                                    <p className="text-[7px] font-bold text-text-muted uppercase tracking-tighter">Standard Policy</p>
                                 </CardFooter>
                             </Card>
                         ))}
@@ -564,7 +564,7 @@ export default function PlansPage() {
             {/* PLAN ARCHITECT / AUDIT TERMINAL */}
             <Dialog open={isTerminalOpen} onOpenChange={setIsTerminalOpen}>
                 <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
-                    <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30">
+                    <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-3">
                             {terminalMode === 'view' ? <Eye className="text-accent-gold h-5 w-5" /> : <PenTool className="text-brand-red h-5 w-5" />}
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">
@@ -581,7 +581,7 @@ export default function PlansPage() {
                     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Target Client</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Target Client</Label>
                                 <Select 
                                     disabled={terminalMode === 'view' || selectedPlan.type === 'standard'}
                                     value={selectedPlan.clientName || "Standard Tier"}
@@ -599,7 +599,7 @@ export default function PlansPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Agreement Identifier</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Agreement Identifier</Label>
                                 <Input 
                                     readOnly={terminalMode === 'view'}
                                     placeholder="e.g. Q3 Strategic Fiber" 
@@ -612,7 +612,7 @@ export default function PlansPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Monthly Rate ($)</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Monthly Rate ($)</Label>
                                 <div className="relative">
                                     <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-green" />
                                     <Input 
@@ -626,7 +626,7 @@ export default function PlansPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Settlement Cycle</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Settlement Cycle</Label>
                                 <Select 
                                     disabled={terminalMode === 'view'}
                                     value={selectedPlan.billingPeriod} 
@@ -644,7 +644,7 @@ export default function PlansPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Site Quota</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Verified Site Quota</Label>
                                 <Input 
                                     readOnly={terminalMode === 'view'}
                                     type="number" 
@@ -654,7 +654,7 @@ export default function PlansPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Response Tier SLA</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted flex">Response Tier SLA</Label>
                                 <Select 
                                     disabled={terminalMode === 'view'}
                                     value={selectedPlan.responseTime} 
@@ -704,7 +704,7 @@ export default function PlansPage() {
                         ) : (
                             <div className="grid grid-cols-2 gap-3 w-full">
                                 <Button variant="outline" onClick={() => setIsTerminalOpen(false)} className="h-11 uppercase font-bold text-[10px] tracking-widest">Discard Changes</Button>
-                                <Button onClick={handleSavePlan} className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                                <Button onClick={handleSavePlan} className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
                                     Authorize Agreement
                                 </Button>
                             </div>
@@ -733,7 +733,7 @@ export default function PlansPage() {
                         </div>
 
                         <div className="space-y-2 pt-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">{planToDelete?.name}</span> to confirm</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted flex">Type <span className="text-text-primary ml-1">{planToDelete?.name}</span> to confirm</Label>
                             <Input 
                                 placeholder="Enter identifier..." 
                                 value={deleteConfirmText}
@@ -749,7 +749,7 @@ export default function PlansPage() {
                             variant="destructive"
                             onClick={executeDelete} 
                             disabled={deleteConfirmText !== planToDelete?.name}
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white"
                         >
                             Authorize Purge
                         </Button>

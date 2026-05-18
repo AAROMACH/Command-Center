@@ -24,9 +24,18 @@ import {
     FileText,
     Download,
     FolderOpen,
-    ChevronRight
+    ChevronRight,
+    TrendingUp,
+    AlertCircle,
+    Info,
+    ArrowUpRight
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+    Popover, 
+    PopoverContent, 
+    PopoverTrigger 
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -115,7 +124,7 @@ export default function SiteDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* LEFT: Site Stats & Map */}
                 <div className="space-y-6">
-                    <Card className="bg-bg-secondary border-border-main overflow-hidden">
+                    <Card className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
                              <iframe 
                                 src={`https://www.google.com/maps/embed/v1/place?key=AIzaSy...FAKEKEY&q=${encodeURIComponent(siteData.location)}`} 
@@ -134,16 +143,16 @@ export default function SiteDetailPage() {
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
-                                <p className="text-sm font-bold text-text-primary">{siteData.location}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Address</p>
+                                <p className="text-sm font-bold text-text-primary text-left">{siteData.location}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
                                     <p className="text-[10px] font-bold text-text-primary uppercase">{siteData.contact}</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><ShieldCheck size={10}/> Access Tier</p>
+                                <div className="space-y-1 text-right">
+                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
                                     <p className="text-[10px] font-bold text-text-primary uppercase">Tier 1 Internal</p>
                                 </div>
                             </div>
@@ -151,19 +160,108 @@ export default function SiteDetailPage() {
                     </Card>
 
                     <Card className="bg-bg-tertiary/30 border-border-sub">
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-3 text-left">
                             <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2">
-                                <Activity size={14} className="text-brand-red"/> Site Metrics
+                                <Activity size={14} className="text-brand-red"/> Operational Pulse
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
-                                <span className="text-[10px] font-bold uppercase text-text-muted">Total Jobs</span>
-                                <span className="font-mono text-text-primary font-bold">{siteData.activeAssignments.length + siteData.historicalAssignments.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded bg-bg-primary border border-border-sub">
-                                <span className="text-[10px] font-bold uppercase text-text-muted">Avg. Response</span>
-                                <span className="font-mono text-text-primary font-bold">3.2 Hours</span>
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* TOTAL VISITS POPUP */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
+                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
+                                            <p className="text-2xl font-bold text-text-primary">12</p>
+                                            <p className="text-[8px] text-text-muted uppercase">all time</p>
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <History size={12} className="text-brand-red"/> Visit History Audit
+                                            </p>
+                                        </div>
+                                        <div className="p-3 space-y-3">
+                                            <div className="space-y-1.5">
+                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Recent Sessions</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
+                                                        <span className="font-medium text-text-secondary">JUL 2024</span>
+                                                        <span className="font-bold text-text-primary">4 VISITS</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
+                                                        <span className="font-medium text-text-secondary">JUN 2024</span>
+                                                        <span className="font-bold text-text-primary">5 VISITS</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[10px] p-1.5 rounded bg-bg-primary">
+                                                        <span className="font-medium text-text-secondary">MAY 2024</span>
+                                                        <span className="font-bold text-text-primary">3 VISITS</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+
+                                {/* OPEN TICKETS POPUP */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
+                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
+                                            <p className="text-2xl font-bold text-text-primary">0</p>
+                                            <p className="text-[8px] text-text-green uppercase">Service Clean</p>
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <AlertCircle size={12} className="text-text-green"/> Mission Funnel
+                                            </p>
+                                        </div>
+                                        <div className="p-6 text-center space-y-2">
+                                            <CheckCircle2 size={32} className="mx-auto text-text-green opacity-40" />
+                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Registry Clear</p>
+                                            <p className="text-[9px] text-text-muted uppercase leading-relaxed">No pending tickets or unassigned assignments for this coordinate.</p>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+
+                                {/* UPTIME TIER POPUP */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
+                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Uptime Tier</p>
+                                            <p className="text-2xl font-bold text-text-primary">99.9%</p>
+                                            <p className="text-[8px] text-text-muted uppercase">Contract SLA</p>
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 bg-bg-elevated border-border-main p-0 shadow-2xl">
+                                        <div className="p-3 border-b border-border-sub bg-bg-tertiary/50">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                                <TrendingUp size={12} className="text-brand-red"/> SLA Performance
+                                            </p>
+                                        </div>
+                                        <div className="p-3 space-y-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Contractual Target</p>
+                                                <div className="flex justify-between items-center bg-bg-primary p-2 rounded border border-border-sub">
+                                                    <span className="text-[10px] font-bold uppercase">Standard Tier</span>
+                                                    <span className="text-[10px] font-mono font-bold text-text-green">99.0%</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">30-Day Pulse</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-1 flex-1 rounded-full bg-bg-tertiary overflow-hidden">
+                                                        <div className="h-full bg-text-green" style={{ width: '99.9%' }} />
+                                                    </div>
+                                                    <span className="text-[9px] font-mono font-bold text-text-primary">99.9%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </CardContent>
                     </Card>
@@ -181,7 +279,7 @@ export default function SiteDetailPage() {
                         <TabsContent value="activity" className="space-y-6 mt-0">
                             {/* Active Assignments */}
                             <div className="space-y-3">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Assignment Registry</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-left">Active Assignment Registry</p>
                                 <div className="space-y-2">
                                     {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
                                         <Card key={wo.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
@@ -242,7 +340,7 @@ export default function SiteDetailPage() {
                         <TabsContent value="documents" className="space-y-4 mt-0">
                             <div className="space-y-2">
                                 {siteData.documents.map(doc => (
-                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors">
+                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
                                                 <FileText size={18} />

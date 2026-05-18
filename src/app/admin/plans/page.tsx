@@ -17,7 +17,9 @@ import {
     Sparkles,
     Eye,
     AlertTriangle,
-    Lock
+    Lock,
+    ShieldAlert,
+    X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -58,13 +61,28 @@ type PlanTier = {
     clientName?: string;
 };
 
+const PLAN_CAPABILITIES = [
+    "Standard dispatch protocol",
+    "Priority routing",
+    "Bypass dispatch queue",
+    "Email support",
+    "Live portal tracking",
+    "Critical response tier",
+    "Dedicated account lead",
+    "High-density fiber oversight",
+    "On-site audit support",
+    "Advanced Reporting",
+    "Multi-site aggregation",
+    "Custom SOW integration"
+];
+
 const INITIAL_PLANS: PlanTier[] = [
     {
         id: 'std-1',
         name: 'Standard',
         price: 1500,
         billingPeriod: 'monthly',
-        features: ['Up to 5 managed sites', 'Standard dispatch protocol', 'Email support'],
+        features: ['Standard dispatch protocol', 'Email support'],
         siteLimit: 5,
         responseTime: '24h',
         type: 'standard'
@@ -74,7 +92,7 @@ const INITIAL_PLANS: PlanTier[] = [
         name: 'Professional',
         price: 3000,
         billingPeriod: 'monthly',
-        features: ['Up to 20 managed sites', 'Priority routing', 'Live portal tracking'],
+        features: ['Priority routing', 'Live portal tracking', 'Email support'],
         siteLimit: 20,
         responseTime: '8h',
         type: 'standard'
@@ -105,11 +123,16 @@ const INITIAL_PLANS: PlanTier[] = [
 export default function PlansPage() {
     const [plans, setPlans] = useState<PlanTier[]>(INITIAL_PLANS);
     const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-    const [terminalMode, setTerminalOpen] = useState<'create' | 'edit' | 'view'>('view');
+    const [terminalMode, setTerminalMode] = useState<'create' | 'edit' | 'view'>('view');
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
+    // Delete Confirmation State
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [planToDelete, setPlanToDelete] = useState<PlanTier | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -135,7 +158,7 @@ export default function PlansPage() {
     }, [plans, searchQuery]);
 
     const handleOpenTerminal = (mode: 'create' | 'edit' | 'view', plan?: PlanTier) => {
-        setTerminalOpen(mode);
+        setTerminalMode(mode);
         setSelectedPlan(plan ? { ...plan } : {
             type: 'custom',
             billingPeriod: 'monthly',
@@ -167,8 +190,33 @@ export default function PlansPage() {
         setIsTerminalOpen(false);
     };
 
-    const handleDeletePlan = (id: string) => {
-        const activeUsage = technicians.filter(t => t.planId === id);
+    const handleToggleFeature = (feature: string) => {
+        if (terminalMode === 'view') return;
+        const currentFeatures = selectedPlan.features || [];
+        const nextFeatures = currentFeatures.includes(feature)
+            ? currentFeatures.filter(f => f !== feature)
+            : [...currentFeatures, feature];
+        setSelectedPlan({ ...selectedPlan, features: nextFeatures });
+    };
+
+    const confirmDeleteRequest = (plan: PlanTier) => {
+        if (plan.type === 'standard') {
+            toast({ variant: 'destructive', title: 'Action Restricted', description: 'Standard Tiers are mission-critical and cannot be purged from the registry.' });
+            return;
+        }
+        setPlanToDelete(plan);
+        setDeleteConfirmText("");
+        setIsDeleteOpen(true);
+    };
+
+    const executeDelete = () => {
+        if (!planToDelete) return;
+        if (deleteConfirmText !== planToDelete.name) {
+            toast({ variant: 'destructive', title: 'Authorization Failed', description: 'Input does not match registry identifier.' });
+            return;
+        }
+
+        const activeUsage = technicians.filter(t => t.planId === planToDelete.id);
         if (activeUsage.length > 0) {
             toast({
                 variant: 'destructive',
@@ -178,8 +226,10 @@ export default function PlansPage() {
             return;
         }
 
-        setPlans(prev => prev.filter(p => p.id !== id));
+        setPlans(prev => prev.filter(p => p.id !== planToDelete.id));
         toast({ title: "Plan Purged", description: "Agreement has been removed from the operational registry." });
+        setIsDeleteOpen(false);
+        setPlanToDelete(null);
     };
 
     return (
@@ -262,7 +312,7 @@ export default function PlansPage() {
                                 plan={plan} 
                                 onEdit={(p) => handleOpenTerminal('edit', p)}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(id) => handleDeletePlan(id)}
+                                onDelete={(p) => confirmDeleteRequest(p)}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -277,7 +327,7 @@ export default function PlansPage() {
                                 plan={plan} 
                                 onEdit={(p) => handleOpenTerminal('edit', p)}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(id) => handleDeletePlan(id)}
+                                onDelete={(p) => confirmDeleteRequest(p)}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -292,7 +342,7 @@ export default function PlansPage() {
                                 plan={plan} 
                                 onEdit={(p) => handleOpenTerminal('edit', p)}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(id) => handleDeletePlan(id)}
+                                onDelete={(p) => confirmDeleteRequest(p)}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -308,7 +358,7 @@ export default function PlansPage() {
 
             {/* PLAN ARCHITECT / AUDIT TERMINAL */}
             <Dialog open={isTerminalOpen} onOpenChange={setIsTerminalOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+                <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30">
                         <div className="flex items-center gap-3">
                             {terminalMode === 'view' ? <Eye className="text-accent-gold h-5 w-5" /> : <PenTool className="text-brand-red h-5 w-5" />}
@@ -323,14 +373,14 @@ export default function PlansPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Target Client</Label>
                                 <Select 
-                                    disabled={terminalMode === 'view'}
-                                    value={selectedPlan.clientName || ""}
-                                    onValueChange={(val) => setSelectedPlan({...selectedPlan, clientName: val})}
+                                    disabled={terminalMode === 'view' || selectedPlan.type === 'standard'}
+                                    value={selectedPlan.clientName || "Standard Tier"}
+                                    onValueChange={(val) => setSelectedPlan({...selectedPlan, clientName: val === "Standard Tier" ? undefined : val})}
                                 >
                                     <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue placeholder="Standard Tier" /></SelectTrigger>
                                     <SelectContent>
@@ -416,31 +466,29 @@ export default function PlansPage() {
                             </div>
                         </div>
 
-                        {terminalMode !== 'view' && (
-                            <div className="p-4 rounded-xl bg-accent-gold-dim/5 border border-accent-gold/20 flex items-start gap-4">
-                                <Sparkles className="text-accent-gold h-5 w-5 shrink-0 mt-0.5" />
-                                <div className="space-y-1 text-left">
-                                    <p className="text-[10px] font-black text-accent-gold uppercase tracking-widest">Protocol Note</p>
-                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                                        Custom agreements bypass standard portal constraints. Ensure specific SOW parameters are attached to the client folder in the registry.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {terminalMode === 'view' && (
-                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-4 text-left">
-                                <h4 className="text-[9px] font-black text-text-muted uppercase tracking-widest border-b border-border-sub pb-2">Active Technical Features</h4>
-                                <div className="space-y-2">
-                                    {selectedPlan.features?.map((f, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                            <ShieldCheck size={12} className="text-text-green" />
-                                            <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{f}</span>
+                        {/* SELECTABLE CAPABILITY GRID */}
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 block">Capability Matrix</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {PLAN_CAPABILITIES.map(feature => {
+                                    const isSelected = selectedPlan.features?.includes(feature);
+                                    return (
+                                        <div 
+                                            key={feature} 
+                                            onClick={() => handleToggleFeature(feature)}
+                                            className={cn(
+                                                "flex items-center justify-between p-3 rounded-lg border transition-all",
+                                                isSelected ? "bg-brand-red-dim/10 border-brand-red" : "bg-bg-primary border-border-sub",
+                                                terminalMode !== 'view' ? "cursor-pointer hover:border-text-muted" : "opacity-80"
+                                            )}
+                                        >
+                                            <span className={cn("text-[10px] font-bold uppercase tracking-tight", isSelected ? "text-text-primary" : "text-text-muted")}>{feature}</span>
+                                            <Checkbox checked={isSelected} className={cn("h-4 w-4", terminalMode === 'view' && "pointer-events-none")} />
                                         </div>
-                                    ))}
-                                </div>
+                                    )
+                                })}
                             </div>
-                        )}
+                        </div>
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
@@ -454,6 +502,50 @@ export default function PlansPage() {
                                 </Button>
                             </div>
                         )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* DELETE CONFIRMATION TERMINAL */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <ShieldAlert className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Authorize Deletion</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs">This will permanently purge the plan from the operational registry.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-6 space-y-4 text-left">
+                        <div className="p-4 rounded-lg bg-brand-red-dim/5 border border-brand-red/30">
+                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest mb-1">Safety Lock Required</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
+                                To confirm deletion of <span className="text-text-primary font-bold">{planToDelete?.name}</span>, type the plan name exactly as shown below.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">{planToDelete?.name}</span> to confirm</Label>
+                            <Input 
+                                placeholder="Enter identifier..." 
+                                value={deleteConfirmText}
+                                onChange={e => setDeleteConfirmText(e.target.value)}
+                                className="h-11 bg-bg-primary border-border-sub text-center font-mono font-bold uppercase tracking-widest"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
+                        <Button 
+                            variant="destructive"
+                            onClick={executeDelete} 
+                            disabled={deleteConfirmText !== planToDelete?.name}
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
+                        >
+                            Authorize Purge
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -477,10 +569,12 @@ function PlanCard({
     plan: PlanTier; 
     onEdit: (p: PlanTier) => void; 
     onView: (p: PlanTier) => void; 
-    onDelete: (id: string) => void;
+    onDelete: (p: PlanTier) => void;
     canEdit: boolean;
 }) {
     const isCustom = plan.type === 'custom';
+    const isStandard = plan.type === 'standard';
+
     return (
         <Card className={cn(
             "bg-bg-secondary border-border-main flex flex-col group transition-all hover:border-text-muted",
@@ -493,7 +587,8 @@ function PlanCard({
                     </Badge>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => onEdit(plan)}><PenTool size={14}/></Button>}
-                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => onDelete(plan.id)}><Trash2 size={14}/></Button>}
+                        {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => onDelete(plan)}><Trash2 size={14}/></Button>}
+                        {canEdit && isStandard && <div className="h-7 w-7 flex items-center justify-center text-text-muted/30" title="Standard Tier Locked"><Lock size={12}/></div>}
                     </div>
                 </div>
                 <div className="space-y-1">
@@ -513,12 +608,15 @@ function PlanCard({
 
                 <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
-                        {plan.features.map((feature, i) => (
+                        {plan.features.slice(0, 4).map((feature, i) => (
                             <div key={i} className="flex items-center gap-2">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight">{feature}</span>
+                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight truncate">{feature}</span>
                             </div>
                         ))}
+                        {plan.features.length > 4 && (
+                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{plan.features.length - 4} More Capabilities</p>
+                        )}
                     </div>
 
                     <div className="pt-4 border-t border-border-sub mt-auto space-y-3">

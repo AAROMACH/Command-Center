@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -29,7 +30,8 @@ import {
     MessageSquare,
     Lock,
     TrendingUp,
-    CheckCircle2
+    CheckCircle2,
+    ArrowUpDown
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -88,6 +90,9 @@ export default function ActivityAuditPage() {
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     
+    // Audit Detail States
+    const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
+
     // Messaging State
     const [messages, setMessages] = useState<AdminMessage[]>([]);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -151,7 +156,7 @@ export default function ActivityAuditPage() {
         });
         workOrders.forEach(wo => {
             if (!uniqueSites.has(wo.location)) {
-                uniqueSites.set(wo.location, { id: `site-${wo.id}`, name: wo.location.split(',')[0], location: wo.location, client: wo.clientName });
+                uniqueSites.set(wo.location, { id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, name: wo.location.split(',')[0], location: wo.location, client: wo.clientName });
             }
         });
         return Array.from(uniqueSites.values());
@@ -168,6 +173,16 @@ export default function ActivityAuditPage() {
         if (!activeSite) return [];
         return workOrders.filter(wo => wo.location === activeSite.location && wo.status !== 'completed');
     }, [activeSite]);
+
+    const sortedAllSiteVisits = useMemo(() => {
+        if (!activeSite) return [];
+        const all = workOrders.filter(wo => wo.location === activeSite.location);
+        return all.sort((a, b) => {
+            const dateA = new Date(a.scheduleDate).getTime();
+            const dateB = new Date(b.scheduleDate).getTime();
+            return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+    }, [activeSite, visitSortDir]);
 
     const anomalyCounts = useMemo(() => {
         const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -228,13 +243,15 @@ export default function ActivityAuditPage() {
         const updatedMessages = messages.filter(m => m.id !== id);
         setMessages(updatedMessages);
         
-        // Update local storage for broadcasted messages
         const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
         
-        // Track revoked initial IDs
-        const revokedIds = initialMessages.filter(im => !updatedMessages.some(m => m.id === im.id)).map(m => m.id);
-        localStorage.setItem('aaromach_revoked_messages', JSON.stringify(revokedIds));
+        const revokedJson = localStorage.getItem('aaromach_revoked_messages');
+        let revokedIds = revokedJson ? JSON.parse(revokedJson) : [];
+        if (initialMessages.some(im => im.id === id) && !revokedIds.includes(id)) {
+            revokedIds.push(id);
+            localStorage.setItem('aaromach_revoked_messages', JSON.stringify(revokedIds));
+        }
 
         window.dispatchEvent(new Event('storage'));
         toast({ title: 'Broadcast Revoked', description: 'Directive removed from all terminals.' });
@@ -523,30 +540,53 @@ export default function ActivityAuditPage() {
                                     <DialogTrigger asChild>
                                         <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
-                                            <p className="text-2xl font-bold text-text-primary">{siteHistorical.length + siteActive.length}</p>
+                                            <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.length}</p>
                                             <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
                                         </div>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
                                         <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <History size={20} className="text-brand-red" />
-                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <History size={20} className="text-brand-red" />
+                                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Label className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Sort By Date:</Label>
+                                                    <Select value={visitSortDir} onValueChange={(val: any) => setVisitSortDir(val)}>
+                                                        <SelectTrigger className="h-7 w-[100px] text-[8px] font-bold uppercase tracking-widest bg-bg-primary">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <ArrowUpDown size={10} />
+                                                                <SelectValue />
+                                                            </div>
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="desc" className="text-[8px] font-bold uppercase">Newest</SelectItem>
+                                                            <SelectItem value="asc" className="text-[8px] font-bold uppercase">Oldest</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Comprehensive historical manifest for site coordinate: {activeSite.name}</DialogDescription>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted mt-1">Full operational history for coordinate: {activeSite.name}</DialogDescription>
                                         </DialogHeader>
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
-                                                {siteHistorical.length > 0 ? siteHistorical.map(wo => (
+                                                {sortedAllSiteVisits.length > 0 ? sortedAllSiteVisits.map(wo => (
                                                     <div key={wo.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-text-muted transition-all group flex items-center justify-between">
                                                         <div className="flex items-center gap-4 text-left">
-                                                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-brand-red">
-                                                                <FileText size={18} />
+                                                            <div className={cn(
+                                                                "p-2 rounded border border-border-sub",
+                                                                wo.status === 'completed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary text-accent-gold border-border-sub"
+                                                            )}>
+                                                                {wo.status === 'completed' ? <CheckCircle2 size={18}/> : <ActivityIcon size={18}/>}
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-3.5 text-[7px] uppercase px-1">{wo.status}</Badge>
+                                                                </div>
                                                                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
-                                                                    ID: {wo.id.toUpperCase()} · Completed: {wo.scheduleDate}
+                                                                    ID: {wo.id.toUpperCase()} · Scheduled: {wo.scheduleDate}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -555,7 +595,7 @@ export default function ActivityAuditPage() {
                                                 )) : (
                                                     <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                                         <History size={48} className="mx-auto mb-2 text-text-muted" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No historical visits registered in system</p>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No visit records in registry</p>
                                                     </div>
                                                 )}
                                             </div>

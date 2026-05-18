@@ -23,7 +23,8 @@ import {
     History,
     FileText,
     Download,
-    FolderOpen
+    FolderOpen,
+    ChevronRight
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -97,7 +98,7 @@ export default function SiteDetailPage() {
     );
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/client/sites')} className="h-10 w-10">
                     <ChevronLeft size={24} />
@@ -178,34 +179,6 @@ export default function SiteDetailPage() {
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
-                            {/* Live Pulse Section */}
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Operational Pulse</p>
-                                {siteData.liveCheckIns.length > 0 ? (
-                                    <div className="p-2.5 rounded-lg bg-green-dim/10 border border-green-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="relative">
-                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-0.5 -right-0.5 animate-ping" />
-                                                <div className="h-2 w-2 rounded-full bg-text-green absolute -top-0.5 -right-0.5" />
-                                                <div className="p-1.5 bg-bg-secondary rounded border border-green-border text-text-green">
-                                                    <UserCheck size={16} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-text-green uppercase tracking-wide">Technician On-Site</p>
-                                                <p className="text-[10px] text-text-muted font-mono">{siteData.liveCheckIns.length} Verified Session(s) Active</p>
-                                            </div>
-                                        </div>
-                                        <Badge variant="active" className="h-5 uppercase text-[8px] tracking-widest px-3">LIVE</Badge>
-                                    </div>
-                                ) : (
-                                    <div className="p-6 text-center border border-dashed border-border-sub rounded-lg opacity-60">
-                                        <Activity size={18} className="mx-auto text-text-muted mb-2" />
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No active sessions reported</p>
-                                    </div>
-                                )}
-                            </div>
-
                             {/* Active Assignments */}
                             <div className="space-y-3">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Active Assignment Registry</p>
@@ -213,7 +186,7 @@ export default function SiteDetailPage() {
                                     {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
                                         <Card key={wo.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all">
                                             <CardContent className="p-4 flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-4 text-left">
                                                     <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted">
                                                         <Wrench size={16} />
                                                     </div>
@@ -246,7 +219,7 @@ export default function SiteDetailPage() {
                             <div className="space-y-2">
                                 {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
                                     <div key={wo.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 text-left">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-green">
                                                 <CheckCircle2 size={16} />
                                             </div>
@@ -295,6 +268,35 @@ export default function SiteDetailPage() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* LIVE ONSITE POPUP INDICATOR */}
+            {siteData.liveCheckIns.length > 0 && (
+                <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-6 duration-500">
+                    <div className="bg-[#0c0c0c]/90 backdrop-blur-xl border border-green-border/50 rounded-2xl p-4 shadow-[0_0_40px_rgba(31,138,85,0.25)] flex items-center gap-5 ring-1 ring-white/10">
+                        <div className="relative">
+                            <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
+                            <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1" />
+                            <div className="p-2.5 bg-green-dim/20 rounded-xl border border-green-border text-text-green">
+                                <UserCheck size={22} />
+                            </div>
+                        </div>
+                        <div className="text-left space-y-0.5">
+                            <div className="flex items-center gap-2.5">
+                                <p className="text-xs font-black text-white uppercase tracking-widest">Technician On-Site</p>
+                                <Badge variant="active" className="h-4 px-1.5 text-[7px] animate-pulse uppercase tracking-tighter">LIVE PULSE</Badge>
+                            </div>
+                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-tight">Verified presence at {siteData.name}</p>
+                        </div>
+                        <div className="h-8 w-px bg-white/10 mx-1" />
+                        <button 
+                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-text-muted hover:text-white"
+                            title="Audit Session Details"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

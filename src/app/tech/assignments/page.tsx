@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { workOrders, technicians } from '@/lib/data';
+import { workOrders, technicians, weeklyLogs } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -19,7 +19,9 @@ import {
   Play,
   Check,
   LogOut,
-  FileCheck
+  FileCheck,
+  RotateCcw,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -47,6 +50,10 @@ export default function TechAssignmentsPage() {
     const [sortBy, setSortBy] = useState<SortOption>('date');
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
+    
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -166,7 +173,39 @@ export default function TechAssignmentsPage() {
             }
             return wo;
         }));
-        toast({ title: "Job Finalized", description: "Mission registry closed and checked out." });
+        toast({ title: "Job Finalized", description: "Mission registry closed and moved to history." });
+    };
+
+    const handleReopen = (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                return {
+                    ...wo,
+                    status: 'in-progress',
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened by operative at ${now} for correction.`, user: currentTech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
+        setActiveTab('active');
+        toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal for editing." });
+    };
+
+    const isAudited = (woId: string) => {
+        // Mock check: if the job exists in an 'Approved' weekly log, it's audited.
+        return weeklyLogs.some(log => 
+            log.status === 'Approved' && 
+            log.items.some(item => item.workOrderId === woId)
+        );
+    };
+
+    const handleOpenDetail = (wo: WorkOrder) => {
+        setSelectedJob(wo);
+        setIsDetailOpen(true);
     };
 
     const formatDateStr = (dateStr: string) => {
@@ -184,7 +223,7 @@ export default function TechAssignmentsPage() {
     };
 
     if (!mounted || !currentTechId) {
-        return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Loading assignments...</div>;
+        return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Initializing Terminal...</div>;
     }
 
     return (
@@ -251,13 +290,13 @@ export default function TechAssignmentsPage() {
                             </thead>
                             <tbody>
                                 {sortedActive.map((wo) => (
-                                    <tr key={wo.id}>
+                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleOpenDetail(wo)}>
                                         <td>
                                             <div className="flex flex-col items-center justify-center">
                                               <div className="flex items-center gap-1.5">
                                                 <div className="cell-id">{wo.id.toUpperCase()}</div>
                                                 {wo.source === 'Imported' && (
-                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                     <ExternalLink size={10} />
                                                   </a>
                                                 )}
@@ -300,7 +339,7 @@ export default function TechAssignmentsPage() {
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="flex items-center justify-center">
+                                            <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                               {wo.status === 'assigned' && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                                       <Check size={14} className="mr-2"/>
@@ -346,58 +385,77 @@ export default function TechAssignmentsPage() {
                                 <tr>
                                     <th className="text-center">Work Order</th>
                                     <th className="text-center">Service Result</th>
+                                    <th className="text-center">Site Location</th>
                                     <th className="text-center">Date Completed</th>
-                                    <th className="text-center">Payroll Status</th>
-                                    <th className="text-center">Approved Payout</th>
+                                    <th className="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {completedAssignments.map((wo) => (
-                                    <tr key={wo.id}>
-                                        <td>
-                                            <div className="flex flex-col items-center justify-center">
-                                              <div className="flex items-center gap-1.5">
-                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
-                                                {wo.source === 'Imported' && (
-                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
-                                                    <ExternalLink size={10} />
-                                                  </a>
-                                                )}
-                                              </div>
-                                              <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="flex flex-col items-center justify-center text-center">
-                                              <div className="cell-desc-title">{wo.description}</div>
-                                              <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
-                                                  <CircleCheck size={12}/> COMPLETED
-                                              </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="text-center">
-                                              <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center justify-center">
-                                              <Badge variant="completed" className="uppercase text-[8px] h-4 px-1.5">
-                                                  <FileCheck size={11} className="mr-1"/>
-                                                  Audit Passed
-                                              </Badge>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="text-center">
-                                              <div className="text-sm font-bold text-text-green font-mono">
-                                                  ${wo.pay.toFixed(2)}
-                                              </div>
-                                              <div className="text-[9px] text-text-muted uppercase tracking-widest">Final Approved</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {completedAssignments.map((wo) => {
+                                    const audited = isAudited(wo.id);
+                                    return (
+                                        <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleOpenDetail(wo)}>
+                                            <td>
+                                                <div className="flex flex-col items-center justify-center">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                    {wo.source === 'Imported' && (
+                                                      <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                  <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="flex flex-col items-center justify-center text-center">
+                                                  <div className="cell-desc-title">{wo.description}</div>
+                                                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
+                                                      <CircleCheck size={12}/> COMPLETED
+                                                  </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center justify-center gap-1.5 text-[10px] text-text-secondary text-center">
+                                                    <MapPin className="h-3 w-3 text-text-muted shrink-0" />
+                                                    <span className="max-w-[150px] truncate">{wo.location}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="text-center">
+                                                  <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
+                                                  <div className="mt-1">
+                                                    {audited ? (
+                                                        <Badge variant="completed" className="uppercase text-[7px] h-3.5 px-1.5">
+                                                            <FileCheck size={10} className="mr-1"/>
+                                                            Audited
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="pending" className="uppercase text-[7px] h-3.5 px-1.5">
+                                                            Awaiting Audit
+                                                        </Badge>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                                                    {audited ? (
+                                                        <Button variant="ghost" size="sm" className="h-8 !text-[10px] uppercase font-bold text-text-muted cursor-default" disabled>
+                                                            <CheckCircle2 size={14} className="mr-2 text-text-green"/> Locked
+                                                        </Button>
+                                                    ) : (
+                                                        <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                                            <RotateCcw size={14} className="mr-2"/>
+                                                            Check back in
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {completedAssignments.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No completed assignments found.</td>
@@ -408,6 +466,12 @@ export default function TechAssignmentsPage() {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            <JobDetailDialog 
+                isOpen={isDetailOpen} 
+                setIsOpen={setIsDetailOpen} 
+                mission={selectedJob} 
+            />
         </div>
     );
 }

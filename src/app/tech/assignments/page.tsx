@@ -12,14 +12,14 @@ import {
   Clock, 
   CircleCheck, 
   Wrench, 
-  ClipboardCheck,
-  FileCheck,
   ArrowUpDown,
   Search,
   ExternalLink,
   Navigation,
   Play,
-  Check
+  Check,
+  LogOut,
+  FileCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -149,6 +149,24 @@ export default function TechAssignmentsPage() {
             return wo;
         }));
         toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
+    };
+
+    const handleCheckOut = (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                return {
+                    ...wo,
+                    status: 'completed',
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized and checked out at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
+        toast({ title: "Job Finalized", description: "Mission registry closed and checked out." });
     };
 
     const formatDateStr = (dateStr: string) => {
@@ -302,10 +320,10 @@ export default function TechAssignmentsPage() {
                                                   </Button>
                                               )}
                                               {wo.status === 'in-progress' && (
-                                                  <div className="text-[10px] font-bold text-text-green uppercase tracking-widest flex items-center justify-center gap-2">
-                                                      <div className="w-2 h-2 rounded-full bg-text-green animate-pulse"/>
-                                                      Active On Site
-                                                  </div>
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
+                                                      <LogOut size={14} className="mr-2"/>
+                                                      Check Out
+                                                  </Button>
                                               )}
                                             </div>
                                         </td>

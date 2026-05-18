@@ -19,7 +19,8 @@ import {
   Coins,
   Navigation,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { isSameDay, parseISO, format } from 'date-fns';
@@ -32,6 +33,7 @@ import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export default function TechDashboardPage() {
     [techWorkOrders]);
 
     const activeJob = useMemo(() => 
-        todaysWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way'),
+        todaysWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed'),
     [todaysWorkOrders]);
 
     const nextAction = useMemo(() => {
@@ -106,6 +108,7 @@ export default function TechDashboardPage() {
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 let noteDetails = '';
+                if (newStatus === 'confirmed') noteDetails = `Assignment confirmed at ${now}.`;
                 if (newStatus === 'on-my-way') noteDetails = `Trip initiated at ${now}. Status: EN ROUTE.`;
                 if (newStatus === 'in-progress') noteDetails = `Arrival verified at ${now}. Trip completed. Status: ON SITE.`;
                 if (newStatus === 'completed') noteDetails = `Mission finalized and checked out at ${now}.`;
@@ -113,6 +116,7 @@ export default function TechDashboardPage() {
                 return { 
                     ...wo, 
                     status: newStatus,
+                    isAcknowledged: newStatus === 'confirmed' ? true : wo.isAcknowledged,
                     history: [
                         ...(wo.history || []),
                         { type: 'note', date: today, details: noteDetails, user: tech?.name || 'Field Operative' }
@@ -122,18 +126,17 @@ export default function TechDashboardPage() {
             return wo;
         }));
 
-        const title = newStatus === 'on-my-way' ? 'Trip Started' : 
-                      newStatus === 'in-progress' ? 'Check In Successful' : 'Job Status Updated';
+        const titles: Record<string, string> = {
+            confirmed: 'Assignment Confirmed',
+            'on-my-way': 'Trip Started',
+            'in-progress': 'Check In Successful',
+            completed: 'Job Finalized'
+        };
         
         toast({
-            title,
+            title: titles[newStatus] || 'Status Updated',
             description: `Assignment has been transitioned to ${newStatus.replace('-', ' ')}.`,
         });
-    };
-
-    const handleAcknowledge = (woId: string) => {
-        setAllWorkOrders(prev => prev.map(wo => wo.id === woId ? { ...wo, isAcknowledged: true } : wo));
-        toast({ title: "Acknowledgment Transmitted", description: "Administrative center notified of receipt." });
     };
 
     if (!mounted || !currentTechId || !tech) {
@@ -195,7 +198,7 @@ export default function TechDashboardPage() {
                             <CardTitle className="text-2xl mt-1">{nextAction.description}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-6">
+                            <div className="space-y-6 text-left">
                                 <div className="flex flex-wrap gap-6">
                                     <div className="flex items-center gap-2">
                                         <div className="p-2 bg-bg-primary rounded-md"><Clock size={16} className="text-accent-gold"/></div>
@@ -214,14 +217,11 @@ export default function TechDashboardPage() {
                                 </div>
                                 <div className="flex gap-3">
                                     <Button 
-                                      className="flex-1 h-12 gap-2 text-sm" 
-                                      onClick={(e) => { e.stopPropagation(); handleStatusTransition(nextAction.id, 'on-my-way'); }}
+                                      className="flex-1 h-12 gap-2 text-sm bg-accent-gold hover:bg-accent-gold/90" 
+                                      onClick={(e) => { e.stopPropagation(); handleStatusTransition(nextAction.id, 'confirmed'); }}
                                     >
-                                        <Navigation size={18} className="mr-2"/> CONFIRM & START TRIP
+                                        <Check size={18} className="mr-2"/> CONFIRM ASSIGNMENT
                                     </Button>
-                                    {!nextAction.isAcknowledged && (
-                                        <Button variant="secondary" className="h-12 px-6" onClick={(e) => { e.stopPropagation(); handleAcknowledge(nextAction.id); }}>ACKNOWLEDGE</Button>
-                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -232,45 +232,65 @@ export default function TechDashboardPage() {
                     <Card 
                         className={cn(
                             "border-2 cursor-pointer transition-colors",
-                            activeJob.status === 'on-my-way' ? "border-accent-gold bg-accent-gold-dim/10 hover:bg-accent-gold-dim/15" : "border-text-green bg-green-dim/10 hover:bg-green-dim/15"
+                            activeJob.status === 'confirmed' ? "border-accent-gold bg-accent-gold-dim/10 hover:bg-accent-gold-dim/15" :
+                            activeJob.status === 'on-my-way' ? "border-brand-red bg-brand-red-dim/10 hover:bg-brand-red-dim/15" : 
+                            "border-text-green bg-green-dim/10 hover:bg-green-dim/15"
                         )}
                         onClick={() => handleOpenJobDetail(activeJob)}
                     >
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
-                                <div className={cn("h-2 w-2 rounded-full animate-pulse", activeJob.status === 'on-my-way' ? "bg-accent-gold" : "bg-text-green")}/>
-                                <span className={cn("text-[10px] font-bold uppercase tracking-widest", activeJob.status === 'on-my-way' ? "text-accent-gold" : "text-text-green")}>
-                                    {activeJob.status === 'on-my-way' ? 'TRIP IN PROGRESS' : 'LIVE ASSIGNMENT'}
+                                <div className={cn("h-2 w-2 rounded-full animate-pulse", 
+                                    activeJob.status === 'confirmed' ? "bg-accent-gold" :
+                                    activeJob.status === 'on-my-way' ? "bg-brand-red" : "bg-text-green")
+                                }/>
+                                <span className={cn("text-[10px] font-bold uppercase tracking-widest", 
+                                    activeJob.status === 'confirmed' ? "text-accent-gold" :
+                                    activeJob.status === 'on-my-way' ? "text-brand-red" : "text-text-green")
+                                }>
+                                    {activeJob.status === 'confirmed' ? 'ASSIGNMENT CONFIRMED' :
+                                     activeJob.status === 'on-my-way' ? 'TRIP IN PROGRESS' : 'LIVE ON SITE'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Badge variant={activeJob.status === 'on-my-way' ? 'onhold' : 'active'}>
-                                    {activeJob.status === 'on-my-way' ? 'En Route' : 'On-Site'}
+                                <Badge variant={
+                                    activeJob.status === 'confirmed' ? 'active' :
+                                    activeJob.status === 'on-my-way' ? 'pending' : 'active'
+                                }>
+                                    {activeJob.status.replace('-', ' ')}
                                 </Badge>
-                                <CardTitle className="text-2xl mt-1">{activeJob.description}</CardTitle>
+                                <CardTitle className="text-2xl mt-1 text-left">{activeJob.description}</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                                 <div className="space-y-4">
-                                    <div className="flex gap-8">
+                                    <div className="flex gap-8 text-left">
                                         <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">{activeJob.status === 'on-my-way' ? 'Trip Started' : 'Checked In'}</p>
-                                            <p className={cn("text-lg font-mono font-bold", activeJob.status === 'on-my-way' ? "text-accent-gold" : "text-text-green")}>{activeJob.scheduleTime}</p>
+                                            <p className="text-[10px] uppercase font-bold text-text-muted">Start Window</p>
+                                            <p className="text-lg font-mono font-bold text-text-primary">{activeJob.scheduleTime}</p>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Active Duration</p>
-                                            <p className="text-lg font-mono">01:42:15</p>
-                                        </div>
+                                        {activeJob.status !== 'confirmed' && (
+                                            <div>
+                                                <p className="text-[10px] uppercase font-bold text-text-muted">Active Duration</p>
+                                                <p className="text-lg font-mono">01:42:15</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                {activeJob.status === 'on-my-way' ? (
-                                    <Button className="h-12 gap-2 text-sm bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                        <Play size={16} fill="currentColor"/> CHECK IN (ARRIVED)
+                                {activeJob.status === 'confirmed' && (
+                                    <Button className="h-12 gap-2 text-sm bg-brand-red hover:bg-brand-red-hover" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>
+                                        <Navigation size={18} className="mr-2"/> START TRIP (EN ROUTE)
                                     </Button>
-                                ) : (
+                                )}
+                                {activeJob.status === 'on-my-way' && (
+                                    <Button className="h-12 gap-2 text-sm bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                        <Play size={16} fill="currentColor" className="mr-2"/> CHECK IN (ARRIVED)
+                                    </Button>
+                                )}
+                                {activeJob.status === 'in-progress' && (
                                     <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                        <LogOut size={16}/> CHECK OUT / FINALIZE
+                                        <LogOut size={16} className="mr-2"/> CHECK OUT / FINALIZE
                                     </Button>
                                 )}
                             </div>
@@ -298,7 +318,7 @@ export default function TechDashboardPage() {
             <CheckInDialog
                 isOpen={isCheckInDialogOpen}
                 setIsOpen={setIsCheckInDialogOpen}
-                workOrders={techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'on-my-way')}
+                workOrders={techWorkOrders.filter(wo => wo.status === 'on-my-way')}
                 projects={[]}
             />
 

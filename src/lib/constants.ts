@@ -42,6 +42,7 @@ export const STATUS_LABELS = {
   // Assignment / Work Order Statuses
   unassigned: "Unassigned",
   assigned: "Scheduled",
+  confirmed: "Confirmed",
   "on-my-way": "En Route",
   "in-progress": "On Site",
   completed: "Closed",

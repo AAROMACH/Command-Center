@@ -18,7 +18,8 @@ import {
   Search,
   ExternalLink,
   Navigation,
-  Play
+  Play,
+  Check
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -76,7 +77,7 @@ export default function TechAssignmentsPage() {
     }, [allWorkOrders, currentTechId, searchQuery]);
 
     const activeAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.status === 'assigned' || wo.status === 'on-my-way' || wo.status === 'in-progress'),
+        techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed'),
     [techWorkOrders]);
 
     const sortedActive = useMemo(() => {
@@ -95,14 +96,32 @@ export default function TechAssignmentsPage() {
             .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate)),
     [techWorkOrders]);
 
-    const handleConfirmSchedule = (woId: string) => {
+    const handleConfirm = (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        setAllWorkOrders(prev => prev.map(wo => {
+            if (wo.id === woId) {
+                return {
+                    ...wo,
+                    status: 'confirmed',
+                    isAcknowledged: true,
+                    history: [
+                        ...(wo.history || []),
+                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                    ]
+                };
+            }
+            return wo;
+        }));
+        toast({ title: "Assignment Confirmed", description: "Command Center notified of acknowledgment." });
+    };
+
+    const handleStartTrip = (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         setAllWorkOrders(prev => prev.map(wo => {
             if (wo.id === woId) {
                 return {
                     ...wo,
                     status: 'on-my-way',
-                    isAcknowledged: true,
                     history: [
                         ...(wo.history || []),
                         { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE.`, user: currentTech?.name || 'Field Operative' }
@@ -111,10 +130,7 @@ export default function TechAssignmentsPage() {
             }
             return wo;
         }));
-        toast({
-            title: "Trip Started",
-            description: "Mission status transitioned to En Route. Operations notified.",
-        });
+        toast({ title: "Trip Started", description: "Mission status transitioned to En Route." });
     };
 
     const handleCheckIn = (woId: string) => {
@@ -132,10 +148,7 @@ export default function TechAssignmentsPage() {
             }
             return wo;
         }));
-        toast({
-            title: "Check In Successful",
-            description: "GPS-verified arrival confirmed. Session initialized.",
-        });
+        toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
     };
 
     const formatDateStr = (dateStr: string) => {
@@ -235,6 +248,7 @@ export default function TechAssignmentsPage() {
                                                 variant={
                                                     wo.status === 'in-progress' ? 'inprogress' : 
                                                     wo.status === 'on-my-way' ? 'pending' : 
+                                                    wo.status === 'confirmed' ? 'active' :
                                                     'scheduled'
                                                 } 
                                                 className="capitalize text-[8px] h-4 px-1.5"
@@ -270,15 +284,21 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex items-center justify-center">
                                               {wo.status === 'assigned' && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleConfirmSchedule(wo.id)}>
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
+                                                      <Check size={14} className="mr-2"/>
+                                                      Confirm
+                                                  </Button>
+                                              )}
+                                              {wo.status === 'confirmed' && (
+                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
                                                       <Navigation size={14} className="mr-2"/>
-                                                      Confirm & Start Trip
+                                                      Start Trip
                                                   </Button>
                                               )}
                                               {wo.status === 'on-my-way' && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim" onClick={() => handleCheckIn(wo.id)}>
                                                       <Play size={14} className="mr-2 fill-current"/>
-                                                      Check In (Arrived)
+                                                      Check In
                                                   </Button>
                                               )}
                                               {wo.status === 'in-progress' && (

@@ -1,234 +1,712 @@
 {
-  "__comments": {
-    "format": "Top-level keys are Firestore collection names. Documents are keyed by ID. Subcollections are nested inside parent documents under '__subcollections'.",
-    "timestamps": "Date fields are ISO strings. In production, these should be stored as Firestore Timestamps.",
-    "domain": "Aaromach Command Center - Low Voltage Infrastructure & Field Service Management"
-  },
+  "firestore_schema": {
+    "version": "3.1.0",
 
-  "users": {
-    "uid_admin_001": {
-      "uid": "uid_admin_001",
-      "name": "Marcus Webb",
-      "email": "marcus.webb@aaromach.com",
-      "role": "Administrator",
-      "roles": ["super_admin"],
-      "phone": "313-555-0101",
-      "avatarUrl": "https://picsum.photos/seed/marcus/200/200",
-      "isActive": true,
-      "createdAt": "2024-01-10T08:00:00Z",
-      "updatedAt": "2024-01-10T08:00:00Z"
-    },
-    "uid_tech_001": {
-      "uid": "uid_tech_001",
-      "name": "Darnell Foster",
-      "email": "darnell.foster@aaromach.com",
-      "role": "Lead Technician",
-      "roles": ["project_lead", "field_technician"],
-      "phone": "313-555-0202",
-      "avatarUrl": "https://picsum.photos/seed/darnell/200/200",
-      "isActive": true,
-      "reliabilityScore": 97,
-      "reliabilityTier": "Elite",
-      "assignmentStreak": 14,
-      "totalAssignmentsCompleted": 82,
-      "skills": ["low-voltage", "networking", "AV", "security-cameras", "fiber-splicing"],
-      "certifications": ["BICSI Installer 1", "OSHA 10"],
-      "hourlyRate": 28.00,
-      "address": "456 W Lafayette Blvd, Detroit, MI 48226",
-      "createdAt": "2024-01-15T09:00:00Z",
-      "updatedAt": "2025-03-01T14:22:00Z",
-      "__subcollections": {
-        "reliabilityEvents": {
-          "evt_001": {
-            "id": "evt_001",
-            "technicianId": "uid_tech_001",
-            "assignmentId": "assign_001",
-            "eventType": "completed_assignment_no_issue",
-            "scoreChange": 1,
-            "category": "positive_recovery",
-            "eventSource": "automatic",
-            "reason": "Successful completion of mission assign_001 at Nexus HQ",
-            "notes": "Verified GPS and photo documentation compliant.",
-            "createdAt": "2025-03-01T14:22:00Z",
-            "createdBy": "system"
-          },
-          "evt_002": {
-            "id": "evt_002",
-            "technicianId": "uid_tech_001",
-            "eventType": "ten_assignment_streak_no_issue",
-            "scoreChange": 3,
-            "category": "positive_recovery",
-            "eventSource": "automatic",
-            "reason": "Operational Excellence: 10 consecutive missions finalized without friction.",
-            "createdAt": "2025-02-14T10:00:00Z",
-            "createdBy": "system"
-          }
-        }
+    "_id_system": {
+      "_description": "Every document ID uses a typed prefix + zero-padded 4-digit counter (e.g. usr_0001). Example IDs shown throughout this schema match the seed data in seed.ts. Auth UIDs from Firebase Auth are used as the Firestore document ID for the users collection; userId (usr_0001) is the stable cross-collection reference.",
+      "prefixes": {
+        "usr_"   : "users (all roles — admin, technician, client)",
+        "wo_"    : "workOrders",
+        "asmt_"  : "assignments",
+        "tl_"    : "assignments/{id}/timeLogs",
+        "hist_"  : "workOrders/{id}/history  |  assignments/{id}/history",
+        "proj_"  : "projects",
+        "ph_"    : "projects/{id}/phases",
+        "task_"  : "projects/{id}/phases/{id}/tasks",
+        "dl_"    : "projects/{id}/dailyLogs",
+        "pdoc_"  : "projects/{id}/documents",
+        "wl_"    : "weeklyLogs",
+        "wli_"   : "weeklyLogs/{id}/items",
+        "creq_"  : "clientRequests",
+        "mreq_"  : "manualWorkOrderEntries",
+        "fin_"   : "financialRecords",
+        "pen_"   : "penaltyEvents",
+        "batch_" : "importBatches",
+        "notif_" : "notifications",
+        "msg_"   : "messages",
+        "tor_"   : "timeOffRequests",
+        "route_" : "routes",
+        "inv_"   : "invoices",
+        "plan_"  : "planTiers",
+        "site_"  : "sites",
+        "sreq_"  : "siteRequests",
+        "rpt_"   : "reports"
       }
     },
-    "uid_client_001": {
-      "uid": "uid_client_001",
-      "name": "Sandra Okafor",
-      "email": "sandra.okafor@nexuscorp.com",
-      "role": "client",
-      "roles": ["client"],
-      "clientCompany": "Nexus Corporate Solutions",
-      "businessType": "Enterprise Technology",
-      "phone": "248-555-0404",
-      "avatarUrl": "https://picsum.photos/seed/sandra/200/200",
-      "isActive": true,
-      "managedSites": [
-        { "id": "site_nexus_det", "name": "Nexus HQ", "location": "1200 Renaissance Dr, Detroit, MI 48243" }
-      ],
-      "billingDetails": {
-        "contactName": "Sandra Okafor",
-        "email": "billing@nexuscorp.com",
-        "terms": "Net 30",
-        "deliveryMethod": "Both"
+
+    "collections": {
+
+      "users": {
+        "_description": "All authenticated users — admins, technicians, and clients. Document ID = Firebase Auth UID.",
+        "_document_id": "authUid (Firebase Auth UID) — display/reference ID stored as userId e.g. usr_0001",
+        "fields": {
+          "id": "string (authUid)",
+          "userId": "string (usr_0001 — stable human-readable reference ID)",
+          "authUid": "string (Firebase Auth UID)",
+          "fullName": "string",
+          "email": "string",
+          "phone": "string | null",
+          "avatarUrl": "string | null",
+          "role": "string (admin | technician | client)",
+          "status": "string (active | inactive | suspended)",
+          "reliabilityScore": "number (0–100) | null — technicians only",
+          "reliabilityStatus": "string (reliable | at_risk | restricted) | null — technicians only",
+          "penaltyPoints30d": "number | null — technicians only",
+          "hourlyRate": "number | null — technicians only",
+          "skills": "string[] | null — technicians only",
+          "address": "string | null",
+          "emergencyContact": {
+            "name": "string",
+            "relation": "string",
+            "phone": "string"
+          },
+          "availability": {
+            "monday":    { "start": "string (HH:MM) | null", "end": "string (HH:MM) | null" },
+            "tuesday":   { "start": "string | null", "end": "string | null" },
+            "wednesday": { "start": "string | null", "end": "string | null" },
+            "thursday":  { "start": "string | null", "end": "string | null" },
+            "friday":    { "start": "string | null", "end": "string | null" },
+            "saturday":  { "start": "string | null", "end": "string | null" },
+            "sunday":    { "start": "string | null", "end": "string | null" }
+          },
+          "workPreferences": {
+            "preferredRadius": "number | null",
+            "maxTravelDistance": "number | null",
+            "preferredJobTypes": "string[] | null",
+            "availabilityOverride": "boolean | null"
+          },
+          "payoutPreferences": {
+            "method": "string (ach | check | zelle | venmo) | null",
+            "notes": "string | null"
+          },
+          "clientCompany": "string | null — clients only",
+          "businessType": "string | null — clients only",
+          "planId": "string (plan_0001) | null — clients only",
+          "subscriptionStatus": "string (active | inactive | trial) | null — clients only",
+          "billingContact": {
+            "name": "string | null",
+            "email": "string | null",
+            "terms": "string | null",
+            "deliveryMethod": "string (email | mail | portal) | null"
+          },
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
       },
-      "createdAt": "2024-03-20T10:00:00Z",
-      "updatedAt": "2024-03-20T10:00:00Z"
-    }
-  },
 
-  "projects": {
-    "proj_001": {
-      "id": "proj_001",
-      "name": "Nexus HQ Network Infrastructure Upgrade",
-      "client": "Nexus Corporate Solutions",
-      "location": "1200 Renaissance Dr, Detroit, MI 48243",
-      "status": "active",
-      "startDate": "2025-01-05",
-      "startTime": "08:00 AM EST",
-      "estimatedDuration": "4 weeks",
-      "assignedTechnicianIds": ["uid_tech_001"],
-      "team": [
-        { "technicianId": "uid_tech_001", "role": "Project Lead" }
-      ],
-      "scope": "Full structured cabling overhaul across floors 2-4. Includes CAT6A runs, patch panels, and server room cleanup.",
-      "onsiteContact": "Sandra Okafor - 248-555-0404",
-      "siteAccessInstructions": "Check in at main security desk. Aaromach badges are staged. Safety vests mandatory on floor 2.",
-      "siteHazardNotes": [
-        { "id": "h1", "text": "Active server environment", "type": "info" },
-        { "id": "h2", "text": "Ladder work required for floor 3", "type": "info" }
-      ],
-      "projectBudget": 18500.00,
-      "estimatedHours": 120,
-      "actualBudget": 5200.00,
-      "actualHours": 34.5,
-      "phases": [
-        {
-          "id": "p1",
-          "phaseNumber": 1,
-          "name": "Floor 2 Rough-in",
-          "tasks": [
-            { "id": "t1", "name": "Run primary trunk", "isCompleted": true, "requiresPhoto": true, "estimatedHours": 8 },
-            { "id": "t2", "name": "Install J-hooks", "isCompleted": true, "requiresPhoto": false, "estimatedHours": 12 },
-            { "id": "t3", "name": "Pull Cat6A bundles", "isCompleted": true, "requiresPhoto": true, "estimatedHours": 16 }
-          ]
-        },
-        {
-          "id": "p2",
-          "phaseNumber": 2,
-          "name": "Floor 3 & 4 Cable Pull",
-          "tasks": [
-            { "id": "t4", "name": "Ceiling grid access", "isCompleted": false, "requiresPhoto": false, "estimatedHours": 24 },
-            { "id": "t5", "name": "Secondary IDF termination", "isCompleted": false, "requiresPhoto": true, "estimatedHours": 16 }
-          ]
-        }
-      ]
-    }
-  },
-
-  "assignments": {
-    "assign_001": {
-      "id": "assign_001",
-      "description": "Floor 2 CAT6A Cable Pull",
-      "location": "1200 Renaissance Dr, Detroit, MI 48243",
-      "requiredSkills": ["cabling", "networking"],
-      "priority": "high",
-      "status": "completed",
-      "assignedTechnicianId": "uid_tech_001",
-      "clientName": "Nexus Corporate Solutions",
-      "projectType": "Installation",
-      "scheduleDate": "2025-02-10",
-      "scheduleTime": "08:00 AM EST",
-      "pay": 239.40,
-      "payType": "hourly",
-      "isAcknowledged": true,
-      "source": "Manual",
-      "finalPay": 239.40,
-      "notes": ["Mission verified by client lead Sandra Okafor. 48 drops confirmed."],
-      "history": [
-        { "type": "note", "date": "2025-02-10", "details": "Mission finalized. All 48 drops completed and tested. Patch panel labeled per floor plan.", "user": "Darnell Foster" }
-      ],
-      "__subcollections": {
-        "checkIns": {
-          "checkin_001": {
-            "id": "checkin_001",
-            "type": "check_in",
-            "timestamp": "2025-02-10T08:12:00Z",
-            "location": "42.3314, -83.0458",
-            "photoUrl": "https://picsum.photos/seed/checkin1/400/400"
+      "workOrders": {
+        "_description": "The job itself — title, location, scheduling, client, and source. A workOrder can have one or more assignments (one per assigned tech). May optionally belong to a project.",
+        "_document_id": "wo_0001",
+        "fields": {
+          "id": "string (wo_0001)",
+          "title": "string",
+          "description": "string | null",
+          "locationText": "string",
+          "siteGeo": {
+            "lat": "number | null",
+            "lng": "number | null"
           },
-          "checkin_002": {
-            "id": "checkin_002",
-            "type": "check_out",
-            "timestamp": "2025-02-10T16:45:00Z",
-            "location": "42.3314, -83.0458"
+          "gpsRequired": "boolean",
+          "source": "string (field_nation | client_portal | aaromach | manual)",
+          "importBatchId": "string (batch_0001) | null",
+          "externalWorkOrderId": "string | null — source system reference",
+          "clientId": "string (usr_0001) | null",
+          "clientName": "string | null — denormalized",
+          "projectId": "string (proj_0001) | null — null if standalone",
+          "assignedTechIds": "string[] (usr_0001)",
+          "requiredSkills": "string[]",
+          "jobType": "string (installation | troubleshooting | maintenance | survey | repair | decommission | follow_up)",
+          "priority": "string (low | normal | high | critical)",
+          "status": "string (unassigned | assigned | confirmed | on-my-way | in-progress | completed | cancelled)",
+          "isOpenForScheduling": "boolean",
+          "scheduleDate": "string (YYYY-MM-DD) | null",
+          "scheduleTime": "string (HH:MM) | null",
+          "confirmedStartAt": "timestamp | null",
+          "pay": "number | null",
+          "payType": "string (fixed | hourly | blended) | null",
+          "finalPay": "number | null",
+          "revisitCount": "number",
+          "latestOutcomeCode": "string (worked_completed | worked_revisit_same_work_order | did_not_work | other) | null",
+          "notes": "string | null",
+          "createdBy": "string (usr_0001)",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        },
+        "subcollections": {
+          "history": {
+            "_description": "Audit trail of every status change or edit on this work order.",
+            "_document_id": "hist_0001",
+            "fields": {
+              "id": "string (hist_0001)",
+              "eventType": "string (created | status_changed | rescheduled | assigned | reassigned | cancelled | pay_changed)",
+              "fromValue": "string | null",
+              "toValue": "string",
+              "note": "string | null",
+              "changedBy": "string (usr_0001)",
+              "changedAt": "timestamp"
+            }
+          }
+        }
+      },
+
+      "assignments": {
+        "_description": "The pairing of a technician to a workOrder. One workOrder can produce multiple assignment records. Assignments may optionally belong to a project.",
+        "_document_id": "asmt_0001",
+        "fields": {
+          "id": "string (asmt_0001)",
+          "workOrderId": "string (wo_0001)",
+          "projectId": "string (proj_0001) | null",
+          "techId": "string (usr_0001)",
+          "techName": "string — denormalized for display",
+          "status": "string (scheduled | acknowledged | on-my-way | in-progress | completed | cancelled | removed)",
+          "acknowledgmentStatus": "string (pending | acknowledged | missed)",
+          "scheduledAt": "timestamp",
+          "acknowledgedAt": "timestamp | null",
+          "acknowledgmentRequiredAt": "timestamp | null",
+          "currentScheduledDate": "timestamp",
+          "latestOutcomeCode": "string (worked_completed | worked_revisit_same_work_order | did_not_work | other) | null",
+          "needsAdminReview": "boolean",
+          "revisitCount": "number",
+          "active": "boolean",
+          "acknowledgmentMissed": "boolean",
+          "removedAfterAcknowledgment": "boolean",
+          "removedAt": "timestamp | null",
+          "removedBy": "string (usr_0001) | null",
+          "removalReasonCode": "string | null",
+          "assignedBy": "string (usr_0001)",
+          "assignedAt": "timestamp",
+          "updatedAt": "timestamp"
+        },
+        "subcollections": {
+          "timeLogs": {
+            "_description": "GPS check-in/check-out records for this assignment. One document per tech visit.",
+            "_document_id": "tl_0001",
+            "fields": {
+              "id": "string (tl_0001)",
+              "assignmentId": "string (asmt_0001)",
+              "workOrderId": "string (wo_0001)",
+              "techId": "string (usr_0001)",
+              "source": "string (gps | manual | client_portal)",
+              "checkInAt": "timestamp | null",
+              "checkOutAt": "timestamp | null",
+              "checkInLocation": {
+                "lat": "number | null",
+                "lng": "number | null",
+                "accuracyMeters": "number | null"
+              },
+              "checkOutLocation": {
+                "lat": "number | null",
+                "lng": "number | null",
+                "accuracyMeters": "number | null"
+              },
+              "distanceFromSiteMetersAtCheckIn": "number | null",
+              "distanceFromSiteMetersAtCheckOut": "number | null",
+              "gpsValidationStatus": "string (pending | valid | exception)",
+              "gpsExceptionReason": "string | null",
+              "onSiteCheckIn": "boolean | null",
+              "onSiteCheckOut": "boolean | null",
+              "lateCheckIn": "boolean",
+              "minutesWorked": "number | null",
+              "status": "string (checked_in | checked_out | incomplete)",
+              "note": "string | null",
+              "createdAt": "timestamp",
+              "updatedAt": "timestamp"
+            }
+          },
+          "history": {
+            "_description": "Audit trail of reschedules, removals, and status changes on this assignment.",
+            "_document_id": "hist_0001",
+            "fields": {
+              "id": "string (hist_0001)",
+              "eventType": "string (assigned | rescheduled | acknowledged | removed | completed | cancelled | status_changed)",
+              "oldScheduledDate": "timestamp | null",
+              "newScheduledDate": "timestamp | null",
+              "reasonCode": "string | null",
+              "note": "string | null",
+              "changedBy": "string (usr_0001)",
+              "changedAt": "timestamp"
+            }
+          }
+        }
+      },
+
+      "routes": {
+        "_description": "A named group of work orders dispatched to one technician on one day.",
+        "_document_id": "route_0001",
+        "fields": {
+          "id": "string (route_0001)",
+          "name": "string",
+          "techId": "string (usr_0001)",
+          "techName": "string — denormalized",
+          "workOrderIds": "string[] (wo_0001)",
+          "date": "string (YYYY-MM-DD)",
+          "createdBy": "string (usr_0001)",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "projects": {
+        "_description": "Cumulative job folder grouping multiple work orders and assignments under one engagement. Not all work orders belong to a project.",
+        "_document_id": "proj_0001",
+        "fields": {
+          "id": "string (proj_0001)",
+          "title": "string",
+          "clientId": "string (usr_0001) | null",
+          "clientName": "string | null — denormalized",
+          "location": "string",
+          "siteIds": "string[] (site_0001)",
+          "status": "string (active | on-hold | completed | cancelled)",
+          "projectType": "string (quoted_project | service_contract | time_and_materials)",
+          "scopeSummary": "string | null",
+          "expectedOutcome": "string | null",
+          "criticalNotes": "string | null",
+          "onsiteContact": "string | null",
+          "siteAccessInstructions": "string | null",
+          "siteHazardNotes": "string | null",
+          "projectLeadId": "string (usr_0001)",
+          "crewIds": "string[] (usr_0001)",
+          "workOrderIds": "string[] (wo_0001) — all work orders grouped under this project",
+          "targetStartDate": "string (YYYY-MM-DD)",
+          "targetEndDate": "string (YYYY-MM-DD)",
+          "quotedAmount": "number | null",
+          "estLaborHours": "number | null",
+          "estMaterialCost": "number | null",
+          "actualBudget": "number | null",
+          "actualHours": "number | null",
+          "progressPct": "number (0–100)",
+          "createdBy": "string (usr_0001)",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        },
+        "subcollections": {
+          "phases": {
+            "_description": "Ordered phases of work within this project.",
+            "_document_id": "ph_0001",
+            "fields": {
+              "id": "string (ph_0001)",
+              "projectId": "string (proj_0001)",
+              "name": "string",
+              "description": "string | null",
+              "order": "number",
+              "status": "string (pending | in-progress | completed | skipped)",
+              "plannedStartDate": "string (YYYY-MM-DD) | null",
+              "plannedEndDate": "string (YYYY-MM-DD) | null",
+              "notes": "string | null",
+              "photoUrls": "string[]",
+              "createdAt": "timestamp",
+              "updatedAt": "timestamp"
+            },
+            "subcollections": {
+              "tasks": {
+                "_description": "Individual checklist tasks within this phase.",
+                "_document_id": "task_0001",
+                "fields": {
+                  "id": "string (task_0001)",
+                  "projectId": "string (proj_0001)",
+                  "phaseId": "string (ph_0001)",
+                  "name": "string",
+                  "description": "string | null",
+                  "order": "number",
+                  "status": "string (not_started | in-progress | completed | blocked)",
+                  "assignedTechIds": "string[] (usr_0001)",
+                  "requiresPhoto": "boolean",
+                  "requiresText": "boolean",
+                  "requiresNumeric": "boolean",
+                  "requiresDropdown": "boolean",
+                  "dropdownOptions": "string[] | null",
+                  "requiresSignature": "boolean",
+                  "requiresFileUpload": "boolean",
+                  "requiresOther": "boolean",
+                  "otherRequirementLabel": "string | null",
+                  "estimatedHours": "number | null",
+                  "refImageUrls": "string[]",
+                  "completionPhotoUrls": "string[]",
+                  "notes": "string | null",
+                  "createdAt": "timestamp",
+                  "updatedAt": "timestamp"
+                }
+              }
+            }
+          },
+          "dailyLogs": {
+            "_description": "Daily technician progress entries for this project.",
+            "_document_id": "dl_0001",
+            "fields": {
+              "id": "string (dl_0001)",
+              "projectId": "string (proj_0001)",
+              "assignmentId": "string (asmt_0001) | null",
+              "techId": "string (usr_0001)",
+              "logDate": "string (YYYY-MM-DD)",
+              "hoursWorked": "number",
+              "workSummary": "string",
+              "phaseIdsWorked": "string[] (ph_0001)",
+              "taskIdsCompleted": "string[] (task_0001)",
+              "taskIdsProgressed": "string[] (task_0001)",
+              "issues": "string | null",
+              "materialsUsed": "string[]",
+              "photoUrls": "string[]",
+              "createdAt": "timestamp",
+              "updatedAt": "timestamp"
+            }
+          },
+          "documents": {
+            "_description": "Files and documents attached to this project, optionally scoped to a phase or task.",
+            "_document_id": "pdoc_0001",
+            "fields": {
+              "id": "string (pdoc_0001)",
+              "projectId": "string (proj_0001)",
+              "name": "string",
+              "type": "string (pdf | img | doc | csv | other)",
+              "label": "string | null",
+              "uploadedBy": "string (usr_0001)",
+              "uploadDate": "string (YYYY-MM-DD)",
+              "size": "string | null",
+              "phaseId": "string (ph_0001) | null",
+              "taskId": "string (task_0001) | null",
+              "url": "string (Firebase Storage URL)"
+            }
+          }
+        }
+      },
+
+      "weeklyLogs": {
+        "_description": "Weekly payroll and work-verification records. One per technician per week.",
+        "_document_id": "wl_0001",
+        "fields": {
+          "id": "string (wl_0001)",
+          "techId": "string (usr_0001)",
+          "techName": "string — denormalized",
+          "weekStartDate": "timestamp (Monday 00:00:00)",
+          "weekEndDate": "timestamp (Sunday 23:59:59)",
+          "dueAt": "timestamp",
+          "status": "string (draft | submitted | approved | rejected)",
+          "syncStatus": "string (live | snapshot)",
+          "locked": "boolean",
+          "snapshotTakenAt": "timestamp | null",
+          "totalPayout": "number | null",
+          "submittedAt": "timestamp | null",
+          "reviewedAt": "timestamp | null",
+          "reviewedBy": "string (usr_0001) | null",
+          "adminNotes": "string | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        },
+        "subcollections": {
+          "items": {
+            "_description": "One item per assignment covered in this weekly log.",
+            "_document_id": "wli_0001",
+            "fields": {
+              "id": "string (wli_0001)",
+              "weeklyLogId": "string (wl_0001)",
+              "assignmentId": "string (asmt_0001)",
+              "workOrderId": "string (wo_0001)",
+              "techId": "string (usr_0001)",
+              "displayTitle": "string — denormalized workOrder title",
+              "displayLocationText": "string — denormalized",
+              "displayScheduledDate": "timestamp",
+              "didWork": "boolean",
+              "isCompleted": "boolean",
+              "outcomeCode": "string (worked_completed | worked_revisit_same_work_order | did_not_work | other) | null",
+              "didNotWorkReasonCode": "string | null",
+              "incompleteReasonCode": "string (revisit_same_work_order | pending_parts | site_not_ready | other) | null",
+              "needsAdminReview": "boolean",
+              "reviewNote": "string | null",
+              "createdAt": "timestamp",
+              "updatedAt": "timestamp"
+            }
+          }
+        }
+      },
+
+      "clientRequests": {
+        "_description": "Service requests submitted by clients through the client portal (Tickets). Approved requests are converted into a workOrder.",
+        "_document_id": "creq_0001",
+        "fields": {
+          "id": "string (creq_0001)",
+          "clientId": "string (usr_0001)",
+          "clientName": "string — denormalized",
+          "createdBy": "string (usr_0001)",
+          "title": "string",
+          "description": "string",
+          "locationText": "string",
+          "requestType": "string (installation | troubleshooting | maintenance | survey | repair | decommission | follow_up | other)",
+          "priority": "string (low | normal | high | critical)",
+          "preferredDate": "timestamp | null",
+          "attachments": "string[] (Firebase Storage URLs)",
+          "status": "string (pending | reviewed | approved | rejected | converted | closed)",
+          "convertedWorkOrderId": "string (wo_0001) | null",
+          "convertedAt": "timestamp | null",
+          "convertedBy": "string (usr_0001) | null",
+          "adminNotes": "string | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "manualWorkOrderEntries": {
+        "_description": "Internal job requests created by admins or managers — not from client portal or import. Converted into a workOrder on approval.",
+        "_document_id": "mreq_0001",
+        "fields": {
+          "id": "string (mreq_0001)",
+          "createdBy": "string (usr_0001)",
+          "title": "string",
+          "description": "string",
+          "locationText": "string",
+          "requestType": "string (installation | troubleshooting | maintenance | follow_up | other)",
+          "priority": "string (low | normal | high | critical)",
+          "preferredDate": "timestamp | null",
+          "status": "string (pending | converted | cancelled)",
+          "convertedWorkOrderId": "string (wo_0001) | null",
+          "convertedAt": "timestamp | null",
+          "convertedBy": "string (usr_0001) | null",
+          "notes": "string | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "financialRecords": {
+        "_description": "Reimbursements, payouts, and penalties tied to assignments and weekly logs.",
+        "_document_id": "fin_0001",
+        "fields": {
+          "id": "string (fin_0001)",
+          "type": "string (reimbursement | payout | penalty)",
+          "techId": "string (usr_0001)",
+          "workOrderId": "string (wo_0001) | null",
+          "assignmentId": "string (asmt_0001) | null",
+          "weeklyLogId": "string (wl_0001) | null",
+          "weeklyLogItemId": "string (wli_0001) | null",
+          "projectId": "string (proj_0001) | null",
+          "amount": "number",
+          "category": "string (materials | travel | meals | tools | labor | penalty | other)",
+          "note": "string | null",
+          "receiptUrls": "string[]",
+          "reviewStatus": "string (pending | approved | rejected)",
+          "paymentStatus": "string (unpaid | paid | voided)",
+          "createdBy": "string (usr_0001)",
+          "createdAt": "timestamp",
+          "reviewedBy": "string (usr_0001) | null",
+          "reviewedAt": "timestamp | null"
+        }
+      },
+
+      "penaltyEvents": {
+        "_description": "Reliability penalty point events recorded against a technician. Drives reliabilityScore and reliabilityStatus on the user.",
+        "_document_id": "pen_0001",
+        "fields": {
+          "id": "string (pen_0001)",
+          "techId": "string (usr_0001)",
+          "type": "string (missed_acknowledgment | late_log | no_show | late_checkin | gps_exception | other)",
+          "points": "number",
+          "assignmentId": "string (asmt_0001) | null",
+          "workOrderId": "string (wo_0001) | null",
+          "weeklyLogId": "string (wl_0001) | null",
+          "recordedBy": "string (usr_0001)",
+          "note": "string | null",
+          "createdAt": "timestamp"
+        }
+      },
+
+      "importBatches": {
+        "_description": "Records of CSV/external import runs (e.g. Field Nation bulk uploads).",
+        "_document_id": "batch_0001",
+        "fields": {
+          "id": "string (batch_0001)",
+          "source": "string (field_nation_csv | other)",
+          "fileName": "string",
+          "uploadedBy": "string (usr_0001)",
+          "uploadedAt": "timestamp",
+          "rowCount": "number",
+          "createdCount": "number",
+          "updatedCount": "number",
+          "duplicateCount": "number",
+          "status": "string (processing | completed | failed)",
+          "notes": "string | null"
+        }
+      },
+
+      "invoices": {
+        "_description": "Client-facing invoices tied to projects or individual work orders.",
+        "_document_id": "inv_0001",
+        "fields": {
+          "id": "string (inv_0001)",
+          "invoiceNumber": "string (human-readable e.g. INV-0001)",
+          "clientId": "string (usr_0001)",
+          "clientName": "string — denormalized",
+          "projectId": "string (proj_0001) | null",
+          "workOrderId": "string (wo_0001) | null",
+          "issueDate": "string (YYYY-MM-DD)",
+          "dueDate": "string (YYYY-MM-DD)",
+          "status": "string (draft | sent | paid | overdue | void)",
+          "lineItems": [
+            {
+              "id": "string",
+              "description": "string",
+              "quantity": "number",
+              "unitPrice": "number"
+            }
+          ],
+          "notes": "string | null",
+          "subtotal": "number",
+          "tax": "number",
+          "total": "number",
+          "createdBy": "string (usr_0001)",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "planTiers": {
+        "_description": "Subscription plan tiers available to client accounts.",
+        "_document_id": "plan_0001",
+        "fields": {
+          "id": "string (plan_0001)",
+          "name": "string (e.g. On-Call | Site Partner | Dedicated)",
+          "price": "number",
+          "billingPeriod": "string (monthly | annual)",
+          "features": "string[]",
+          "siteLimit": "number",
+          "responseTime": "string",
+          "type": "string (standard | custom)",
+          "clientId": "string (usr_0001) | null — set only for custom plans",
+          "clientName": "string | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "sites": {
+        "_description": "Physical managed sites belonging to a client. Requested via siteRequests, activated by admin.",
+        "_document_id": "site_0001",
+        "fields": {
+          "id": "string (site_0001)",
+          "clientId": "string (usr_0001)",
+          "clientName": "string — denormalized",
+          "siteName": "string",
+          "locationText": "string",
+          "siteGeo": {
+            "lat": "number | null",
+            "lng": "number | null"
+          },
+          "managerName": "string | null",
+          "managerPhone": "string | null",
+          "siteAccessInstructions": "string | null",
+          "status": "string (active | inactive | pending)",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "siteRequests": {
+        "_description": "Client requests to add a new managed site. Approved requests create a site_ document.",
+        "_document_id": "sreq_0001",
+        "fields": {
+          "id": "string (sreq_0001)",
+          "clientId": "string (usr_0001)",
+          "clientName": "string — denormalized",
+          "siteName": "string",
+          "locationText": "string",
+          "managerName": "string",
+          "managerPhone": "string",
+          "status": "string (pending | approved | denied)",
+          "convertedSiteId": "string (site_0001) | null",
+          "reviewedBy": "string (usr_0001) | null",
+          "reviewedAt": "timestamp | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "notifications": {
+        "_description": "Scheduled or triggered notifications sent to users.",
+        "_document_id": "notif_0001",
+        "fields": {
+          "id": "string (notif_0001)",
+          "userId": "string (usr_0001)",
+          "type": "string (weekly_log_reminder | acknowledgment_reminder | assignment_update | penalty_issued | general)",
+          "relatedId": "string | null",
+          "relatedEntityType": "string (workOrder | assignment | weeklyLog | project) | null",
+          "channel": "string (email | push | sms)",
+          "scheduledFor": "timestamp",
+          "sentAt": "timestamp | null",
+          "attemptCount": "number",
+          "lastAttemptAt": "timestamp | null",
+          "deliveryStatus": "string (queued | sent | delivered | failed)",
+          "deliveryError": "string | null",
+          "message": "string"
+        }
+      },
+
+      "messages": {
+        "_description": "In-app messages between admins and technicians or clients.",
+        "_document_id": "msg_0001",
+        "fields": {
+          "id": "string (msg_0001)",
+          "senderId": "string (usr_0001)",
+          "senderName": "string — denormalized",
+          "recipientIds": "string[] (usr_0001)",
+          "type": "string (system | direct | broadcast)",
+          "content": "string",
+          "relatedEntityType": "string (workOrder | assignment | project | weeklyLog) | null",
+          "relatedEntityId": "string | null",
+          "isRead": "boolean",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "timeOffRequests": {
+        "_description": "Technician time-off and unavailability requests.",
+        "_document_id": "tor_0001",
+        "fields": {
+          "id": "string (tor_0001)",
+          "userId": "string (usr_0001)",
+          "userName": "string — denormalized",
+          "type": "string (vacation | sick | personal | other)",
+          "startDate": "string (YYYY-MM-DD)",
+          "endDate": "string (YYYY-MM-DD)",
+          "reason": "string | null",
+          "status": "string (pending | approved | denied | cancelled)",
+          "reviewedBy": "string (usr_0001) | null",
+          "reviewedAt": "timestamp | null",
+          "notes": "string | null",
+          "createdAt": "timestamp",
+          "updatedAt": "timestamp"
+        }
+      },
+
+      "reports": {
+        "_description": "Generated system reports (financial, operational, compliance, technician performance).",
+        "_document_id": "rpt_0001",
+        "fields": {
+          "id": "string (rpt_0001)",
+          "name": "string",
+          "type": "string (financial | operational | compliance | technician_performance | site_activity)",
+          "generationDate": "string (YYYY-MM-DD)",
+          "generatedBy": "string (usr_0001)",
+          "fileUrl": "string (Firebase Storage URL) | null",
+          "createdAt": "timestamp"
+        }
+      },
+
+      "systemConfig": {
+        "_description": "Global system configuration. Each document is a named config group.",
+        "_document_id": "fixed string key (e.g. penalties, featureFlags)",
+        "documents": {
+          "penalties": {
+            "id": "penalties",
+            "missedAcknowledgmentPoints": "number",
+            "lateWeeklyLogPoints": "number",
+            "noShowPoints": "number",
+            "lateCheckInPoints": "number",
+            "reliableMax": "number",
+            "atRiskMax": "number",
+            "restrictedMin": "number"
           }
         }
       }
-    }
-  },
 
-  "weeklyLogs": {
-    "log_001": {
-      "id": "log_001",
-      "technicianId": "uid_tech_001",
-      "weekOf": "02-10-2025",
-      "status": "Approved",
-      "items": [
-        { "id": "wli_1", "workOrderId": "assign_001", "confirmationStatus": "confirmed", "outcomeCode": "worked_completed", "isComplete": true, "isAdminReviewed": true }
-      ],
-      "reimbursements": [
-        { "id": "reimb_1", "technicianId": "uid_tech_001", "date": "2025-02-10", "type": "reimbursement", "amount": 12.50, "description": "Ladder rental surcharge" }
-      ],
-      "totalPayout": 251.90,
-      "submittedAt": "2025-02-16T18:00:00Z"
-    }
-  },
-
-  "serviceIntakes": {
-    "intake_001": {
-      "id": "intake_001",
-      "clientName": "Nexus Corporate Solutions",
-      "location": "1200 Renaissance Dr, Detroit, MI 48243",
-      "requestType": "Repair",
-      "description": "Access Control Panel Offline - Building A. Door 1 and Door 2 stuck open after power surge.",
-      "status": "approved",
-      "submittedDate": "2025-04-10",
-      "priority": "critical"
-    }
-  },
-
-  "invoices": {
-    "inv_001": {
-      "id": "inv_001",
-      "invoiceNumber": "2025-001",
-      "clientId": "uid_client_001",
-      "clientName": "Nexus Corporate Solutions",
-      "projectId": "proj_001",
-      "issueDate": "2025-02-20",
-      "dueDate": "2025-03-22",
-      "status": "paid",
-      "lineItems": [
-        { "id": "li_1", "description": "Floor 2 CAT6A Cable Pull - Labor (8.55 hrs @ $28)", "quantity": 8.55, "unitPrice": 28.00 },
-        { "id": "li_2", "description": "Materials - CAT6A Cable, Patch Panel, Keystone Jacks", "quantity": 1, "unitPrice": 4960.60 }
-      ],
-      "subtotal": 5200.00,
-      "tax": 364.00,
-      "total": 5564.00
     }
   }
 }

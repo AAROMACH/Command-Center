@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "studio-2516854429-df882"
-  }
+    "default": "aaromach-command-center"
+  },
+  "targets": {},
+  "etags": {}
 }

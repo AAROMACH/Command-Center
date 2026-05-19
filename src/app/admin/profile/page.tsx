@@ -1,19 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { technicians } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { User, Search } from "lucide-react";
 import Image from "next/image";
 
 export default function ProfilePage() {
-    const userAvatar = PlaceHolderImages.find(image => image.id === 'user-avatar-1');
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+
+    useEffect(() => {
+        setMounted(true);
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId));
+        }
+    }, []);
+
+    const userFallback = useMemo(() => {
+        if (!currentUser) return 'SA';
+        return currentUser.name.split(' ').map((n: string) => n[0]).join('');
+    }, [currentUser]);
+
+    if (!mounted) return null;
 
     return (
         <div className="space-y-6">
@@ -49,10 +65,10 @@ export default function ProfilePage() {
                         <CardContent className="space-y-6">
                             <div className="flex items-center gap-6">
                                 <Avatar className="h-20 w-20">
-                                    {userAvatar && <AvatarImage asChild src={userAvatar.imageUrl} alt="User Avatar" >
-                                       <Image src={userAvatar.imageUrl} alt="User Avatar" width={80} height={80} data-ai-hint={userAvatar.imageHint} />
-                                    </AvatarImage>}
-                                    <AvatarFallback>SA</AvatarFallback>
+                                    <AvatarImage asChild src={currentUser?.avatarUrl} alt="User Avatar" >
+                                       <Image src={currentUser?.avatarUrl || "https://picsum.photos/seed/user1/80/80"} alt="User Avatar" width={80} height={80} data-ai-hint="person face" />
+                                    </AvatarImage>
+                                    <AvatarFallback>{userFallback}</AvatarFallback>
                                 </Avatar>
                                 <div className="space-y-2">
                                     <Button variant="outline">Change Avatar</Button>
@@ -62,11 +78,11 @@ export default function ProfilePage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="fullName">Full Name</Label>
-                                    <Input id="fullName" defaultValue="System Administrator" />
+                                    <Input id="fullName" defaultValue={currentUser?.name || "System Administrator"} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" defaultValue="admin@aaromach.com" />
+                                    <Input id="email" type="email" defaultValue={currentUser?.email || "admin@aaromach.com"} />
                                 </div>
                             </div>
                         </CardContent>

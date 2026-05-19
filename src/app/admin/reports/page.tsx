@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -94,6 +93,7 @@ export default function ActivityAuditPage() {
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "tech");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     // Mission Registry state for local updates
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
@@ -130,6 +130,11 @@ export default function ActivityAuditPage() {
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab) setActiveTab(tab);
+        
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            setCurrentUser(technicians.find(t => t.id === userId) || null);
+        }
     }, [searchParams]);
 
     // Load messages from registry
@@ -274,8 +279,8 @@ export default function ActivityAuditPage() {
 
         const msg: AdminMessage = {
             id: `msg-${Date.now()}`,
-            senderId: 'admin-001',
-            senderName: 'Sarah Connor',
+            senderId: currentUser?.id || 'admin-001',
+            senderName: currentUser?.name || 'Sarah Connor',
             subject: newMessage.subject!,
             body: newMessage.body!,
             timestamp: now.toISOString(),
@@ -759,23 +764,17 @@ export default function ActivityAuditPage() {
                                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
                                                         className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-muted transition-all group flex items-center justify-between cursor-pointer"
                                                     >
-                                                        <div className="flex items-center gap-4 text-left">
-                                                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-accent-gold">
-                                                                <Clock size={18} />
+                                                        <div className="text-left space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
+                                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
+                                                                    {wo.status}
+                                                                </Badge>
                                                             </div>
-                                                            <div className="text-left">
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                                <div className="flex items-center gap-3 mt-0.5">
-                                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
-                                                                        ID: {wo.id.toUpperCase()} · {wo.scheduleTime} · {wo.scheduleDate}
-                                                                    </p>
-                                                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-3.5 px-1 text-[7px] uppercase tracking-tighter">
-                                                                        {wo.status}
-                                                                    </Badge>
-                                                                </div>
-                                                            </div>
+                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
                                                         </div>
-                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold">Audit Detail</Button>
+                                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
                                                     </div>
                                                 )) : (
                                                     <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">

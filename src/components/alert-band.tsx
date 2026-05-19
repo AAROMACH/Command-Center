@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   AlertTriangle, 
@@ -51,6 +51,7 @@ export function AlertBand() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const userId = localStorage.getItem('currentUserId');
@@ -58,6 +59,7 @@ export function AlertBand() {
 
     const user = technicians.find(t => t.id === userId);
     if (!user) return;
+    setCurrentUser(user);
 
     const currentAlerts: Alert[] = [];
 
@@ -234,6 +236,9 @@ export function AlertBand() {
   };
 
   const isClientPortal = pathname.startsWith('/client');
+  
+  const leadAdmin = useMemo(() => technicians.find(t => t.id === 'admin-001'), []);
+  const leadInitials = leadAdmin?.name.split(' ').map(n => n[0]).join('') || 'SC';
 
   return (
     <>
@@ -268,18 +273,18 @@ export function AlertBand() {
         {isClientPortal && (
           <div className="flex items-center gap-4 border-l border-border-sub/30 pl-4 shrink-0">
             <div className="flex items-center gap-2">
-               <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">SC</div>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">Sarah Connor</span></p>
+               <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">{leadInitials}</div>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">{leadAdmin?.name || 'Sarah Connor'}</span></p>
             </div>
             <div className="flex items-center gap-3">
               <a 
-                href="mailto:admin@aaromach.com" 
+                href={`mailto:${leadAdmin?.email || 'admin@aaromach.com'}`}
                 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
               >
                 <Mail size={12} /> Email
               </a>
               <a 
-                href="sms:+15550000000" 
+                href={`sms:${leadAdmin?.phone || '+15550000000'}`}
                 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
               >
                 <MessageSquare size={12} /> SMS

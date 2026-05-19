@@ -81,7 +81,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([
     { id: 'doc-1', name: 'OSHA_30_Certification.pdf', type: 'pdf', size: '1.2MB', uploadedAt: '2024-05-12T10:00:00Z', uploader: 'System Admin' },
-    { id: 'doc-2', name: 'FL_Drivers_License_Verification.jpg', type: 'img', size: '450KB', uploadedAt: '2024-03-20T14:30:00Z', uploader: 'System' }
+    { id: 'doc-2', name: 'FL_Drivers_License_Verification.jpg', type: 'img', size: '450KB', uploadedAt: '2024-03-20T14:30:00Z', uploader: 'System Admin' }
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -185,8 +185,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <section className="space-y-6">
                                   <div className="space-y-3">
-                                      <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Core Identity</h3>
-                                      <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs">
+                                      <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Core Identity</h3>
+                                      <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs text-left">
                                           <span className="text-text-muted font-bold uppercase">Official Email</span>
                                           <span className="text-text-primary">{person.email || 'N/A'}</span>
                                           <span className="text-text-muted font-bold uppercase">Direct Line</span>
@@ -207,7 +207,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
                                               <HeartPulse size={14}/> Emergency Protocol
                                           </h3>
-                                          <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2">
+                                          <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{person.emergencyContact.name}</p>
                                               <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                                   <span>{person.emergencyContact.relation}</span>
@@ -222,7 +222,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                               {isTechnician && (
                                   <section className="space-y-6">
                                       <div className="space-y-3">
-                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Trust Index</h3>
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Trust Index</h3>
                                           <div className="grid grid-cols-2 gap-4">
                                               <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
@@ -237,7 +237,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           </div>
                                       </div>
                                       <div className="space-y-3">
-                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Specializations</h3>
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Specializations</h3>
                                           <div className="flex flex-wrap gap-2">
                                               {(person.skills || []).map(skill => (
                                                   <Badge key={skill} variant="outline" className="text-[9px] bg-bg-secondary border-border-sub text-text-primary h-6 px-3">{skill}</Badge>
@@ -251,7 +251,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
                       <TabsContent value="reliability" className="m-0 space-y-6 animate-in fade-in duration-300">
                           <div className="flex justify-between items-center mb-4 px-1">
-                              <div className="space-y-1">
+                              <div className="space-y-1 text-left">
                                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust Manifest</h3>
                                   <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
                               </div>
@@ -318,7 +318,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
                       <TabsContent value="documents" className="m-0 space-y-6 animate-in fade-in duration-300">
                           <div className="flex justify-between items-center mb-4 px-1">
-                              <div className="space-y-1">
+                              <div className="space-y-1 text-left">
                                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Personnel Folder Registry</h3>
                                   <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Tactical storage for certs, IDs, and field credentials.</p>
                               </div>
@@ -345,7 +345,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           )}>
                                               {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
                                           </div>
-                                          <div className="min-w-0">
+                                          <div className="min-w-0 text-left">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
                                               <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
                                                   {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
@@ -374,7 +374,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       <TabsContent value="schedule" className="m-0">
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="space-y-4">
-                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Weekly Availability</h3>
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Weekly Availability</h3>
                                   <div className="space-y-2">
                                       {daysOfWeek.map(day => {
                                           const availability = person.availability?.[day.toLowerCase()];
@@ -397,7 +397,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   </h3>
                                   <div className="space-y-2">
                                       {timeOffRequests.map((req) => (
-                                          <div key={req.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                          <div key={req.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between text-left">
                                               <div className="space-y-1">
                                                   <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>
                                                   <p className="text-[10px] text-text-muted font-mono">{req.startDate} to {req.endDate}</p>
@@ -425,19 +425,19 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <TableRow className="hover:bg-transparent border-border-sub">
                                           <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
                                           <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
-                                          <TableHead className="text-[10px] tracking-widest">Status</TableHead>
+                                          <TableHead className="text-[10px] tracking-widest text-center">Status</TableHead>
                                           <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                       {workOrders.map((wo) => (
                                           <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                              <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{wo.id.toUpperCase()}</TableCell>
-                                              <TableCell>
+                                              <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">{wo.id.toUpperCase()}</TableCell>
+                                              <TableCell className="text-left">
                                                   <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
                                                   <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
                                               </TableCell>
-                                              <TableCell>
+                                              <TableCell className="text-center">
                                                   <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[8px] uppercase">
                                                       {wo.status}
                                                   </Badge>
@@ -459,13 +459,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       </TabsContent>
                   </div>
               </ScrollArea>
-              
+
               <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
                   <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
                   <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
                       <Pencil size={14} className="mr-2"/> Modify Identity Registry
                   </Button>
               </DialogFooter>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

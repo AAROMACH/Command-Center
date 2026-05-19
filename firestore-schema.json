@@ -1,0 +1,272 @@
+{
+  "__comments": {
+    "format": "Top-level keys are Firestore collection names. Each collection contains sample documents keyed by document ID. Subcollections are nested inside their parent document under '__subcollections'.",
+    "timestamps": "All *At fields should be Firestore Timestamp in production. ISO strings are used here for readability.",
+    "subcollections": "reliabilityEvents and checkIns are subcollections on their parent documents, not top-level collections."
+  },
+
+  "users": {
+    "uid_admin_001": {
+      "uid": "uid_admin_001",
+      "role": "admin",
+      "name": "Marcus Webb",
+      "email": "marcus.webb@aaromach.com",
+      "phone": "313-555-0101",
+      "avatarUrl": "https://picsum.photos/seed/marcus/200/200",
+      "isActive": true,
+      "createdAt": "2024-01-10T08:00:00Z",
+      "updatedAt": "2024-01-10T08:00:00Z"
+    },
+    "uid_tech_001": {
+      "uid": "uid_tech_001",
+      "role": "technician",
+      "name": "Darnell Foster",
+      "email": "darnell.foster@aaromach.com",
+      "phone": "313-555-0202",
+      "avatarUrl": "https://picsum.photos/seed/darnell/200/200",
+      "isActive": true,
+      "reliabilityScore": 97,
+      "reliabilityTier": "Elite",
+      "assignmentStreak": 14,
+      "totalAssignmentsCompleted": 82,
+      "skills": ["low-voltage", "networking", "AV", "security-cameras"],
+      "certifications": ["BICSI Installer 1", "OSHA 10"],
+      "payRateDefault": 28.00,
+      "payTypeDefault": "hourly",
+      "createdAt": "2024-01-15T09:00:00Z",
+      "updatedAt": "2025-03-01T14:22:00Z",
+      "__subcollections": {
+        "reliabilityEvents": {
+          "evt_001": {
+            "eventId": "evt_001",
+            "technicianId": "uid_tech_001",
+            "assignmentId": "assign_001",
+            "eventType": "completed_assignment_no_issue",
+            "scoreChange": 1,
+            "category": "positive_recovery",
+            "isAutomatic": true,
+            "notes": null,
+            "createdAt": "2025-03-01T14:22:00Z",
+            "createdBy": "system"
+          },
+          "evt_002": {
+            "eventId": "evt_002",
+            "technicianId": "uid_tech_001",
+            "assignmentId": "assign_003",
+            "eventType": "ten_assignment_streak_no_issue",
+            "scoreChange": 3,
+            "category": "positive_recovery",
+            "isAutomatic": true,
+            "notes": null,
+            "createdAt": "2025-02-14T10:00:00Z",
+            "createdBy": "system"
+          }
+        }
+      }
+    },
+    "uid_client_001": {
+      "uid": "uid_client_001",
+      "role": "client",
+      "name": "Sandra Okafor",
+      "email": "sandra.okafor@nexuscorp.com",
+      "phone": "248-555-0404",
+      "company": "Nexus Corporate Solutions",
+      "avatarUrl": "https://picsum.photos/seed/sandra/200/200",
+      "isActive": true,
+      "createdAt": "2024-03-20T10:00:00Z",
+      "updatedAt": "2024-03-20T10:00:00Z"
+    }
+  },
+
+  "projects": {
+    "proj_001": {
+      "projectId": "proj_001",
+      "clientId": "uid_client_001",
+      "title": "Nexus HQ Network Infrastructure Upgrade",
+      "description": "Full structured cabling overhaul across floors 2-4. Includes CAT6A runs, patch panels, and server room cleanup.",
+      "requestType": "new_install",
+      "status": "ACTIVE",
+      "priority": "high",
+      "address": {
+        "street": "1200 Renaissance Dr",
+        "city": "Detroit",
+        "state": "MI",
+        "zip": "48243"
+      },
+      "assignedTechnicianIds": ["uid_tech_001"],
+      "totalAssignments": 4,
+      "completedAssignments": 1,
+      "estimatedValue": 18500.00,
+      "invoiceId": "inv_001",
+      "phases": [
+        {
+          "id": "p1",
+          "name": "Floor 2 Rough-in",
+          "isCompleted": true,
+          "tasks": ["Run primary trunk", "Install J-hooks", "Pull Cat6A bundles"]
+        },
+        {
+          "id": "p2",
+          "name": "Floor 3 & 4 Cable Pull",
+          "isCompleted": false,
+          "tasks": ["Ceiling grid access", "Secondary IDF termination"]
+        }
+      ],
+      "createdAt": "2025-01-05T09:00:00Z",
+      "updatedAt": "2025-04-18T14:00:00Z"
+    }
+  },
+
+  "assignments": {
+    "assign_001": {
+      "assignmentId": "assign_001",
+      "projectId": "proj_001",
+      "clientId": "uid_client_001",
+      "technicianId": "uid_tech_001",
+      "title": "Floor 2 CAT6A Cable Pull",
+      "description": "Run and terminate 48 CAT6A drops on floor 2. Label all ports per the client floor plan.",
+      "status": "completed",
+      "priority": "high",
+      "scheduledDate": "2025-02-10T08:00:00Z",
+      "scheduledEndDate": "2025-02-10T17:00:00Z",
+      "checkedInAt": "2025-02-10T08:12:00Z",
+      "checkedOutAt": "2025-02-10T16:45:00Z",
+      "address": {
+        "street": "1200 Renaissance Dr",
+        "city": "Detroit",
+        "state": "MI",
+        "zip": "48243"
+      },
+      "payType": "hourly",
+      "payRate": 28.00,
+      "hoursWorked": 8.55,
+      "totalPay": 239.40,
+      "outcomeCode": "worked_completed",
+      "photos": [
+        "https://picsum.photos/seed/site1/800/600",
+        "https://picsum.photos/seed/site2/800/600"
+      ],
+      "notes": "All 48 drops completed and tested. Patch panel labeled per floor plan. Client rep signed off on site.",
+      "requiresAcknowledgment": true,
+      "acknowledgedAt": "2025-02-09T19:30:00Z",
+      "createdAt": "2025-01-20T10:00:00Z",
+      "updatedAt": "2025-02-10T16:45:00Z",
+      "__subcollections": {
+        "checkIns": {
+          "checkin_001": {
+            "checkInId": "checkin_001",
+            "assignmentId": "assign_001",
+            "technicianId": "uid_tech_001",
+            "type": "check_in",
+            "timestamp": "2025-02-10T08:12:00Z",
+            "location": {
+              "lat": 42.3314,
+              "lng": -83.0458
+            },
+            "photoUrl": "https://picsum.photos/seed/checkin1/400/400"
+          },
+          "checkin_002": {
+            "checkInId": "checkin_002",
+            "assignmentId": "assign_001",
+            "technicianId": "uid_tech_001",
+            "type": "check_out",
+            "timestamp": "2025-02-10T16:45:00Z",
+            "location": {
+              "lat": 42.3314,
+              "lng": -83.0458
+            },
+            "photoUrl": null
+          }
+        }
+      }
+    }
+  },
+
+  "weeklyLogs": {
+    "log_001": {
+      "logId": "log_001",
+      "technicianId": "uid_tech_001",
+      "weekStartDate": "2025-02-10T00:00:00Z",
+      "weekEndDate": "2025-02-16T23:59:59Z",
+      "status": "approved",
+      "totalHours": 8.55,
+      "totalPay": 239.40,
+      "assignmentIds": ["assign_001"],
+      "penalties": [],
+      "adjustments": [],
+      "submittedAt": "2025-02-16T18:00:00Z",
+      "approvedAt": "2025-02-17T09:30:00Z",
+      "approvedBy": "uid_admin_001",
+      "lockedAt": "2025-02-18T00:00:00Z",
+      "createdAt": "2025-02-10T08:00:00Z",
+      "updatedAt": "2025-02-18T00:00:00Z"
+    }
+  },
+
+  "serviceIntakes": {
+    "intake_001": {
+      "intakeId": "intake_001",
+      "clientId": "uid_client_001",
+      "requestType": "break_fix",
+      "title": "Access Control Panel Offline - Building A",
+      "description": "The main access control panel for Building A stopped responding after the power outage last Tuesday. Door 1 and Door 2 are stuck open.",
+      "status": "converted",
+      "priority": "critical",
+      "attachments": [
+        "https://picsum.photos/seed/intake1/800/600"
+      ],
+      "createdAt": "2025-04-10T07:45:00Z",
+      "updatedAt": "2025-04-11T10:00:00Z",
+      "reviewedBy": "uid_admin_001",
+      "convertedAt": "2025-04-11T10:00:00Z",
+      "convertedToProjectId": null,
+      "convertedToAssignmentId": "assign_004"
+    }
+  },
+
+  "invoices": {
+    "inv_001": {
+      "invoiceId": "inv_001",
+      "clientId": "uid_client_001",
+      "projectId": "proj_001",
+      "title": "Nexus HQ Network Infrastructure Upgrade - Phase 1",
+      "status": "sent",
+      "subtotal": 5200.00,
+      "tax": 364.00,
+      "total": 5564.00,
+      "lineItems": [
+        {
+          "description": "Floor 2 CAT6A Cable Pull - Labor (8.55 hrs @ $28)",
+          "quantity": 8.55,
+          "unitPrice": 28.00,
+          "total": 239.40
+        },
+        {
+          "description": "Materials - CAT6A Cable, Patch Panel, Keystone Jacks",
+          "quantity": 1,
+          "unitPrice": 4960.60,
+          "total": 4960.60
+        }
+      ],
+      "issuedAt": "2025-02-20T09:00:00Z",
+      "dueAt": "2025-03-22T23:59:59Z",
+      "notes": "Net 30 terms. Please remit to accounts@aaromach.com.",
+      "createdAt": "2025-02-20T09:00:00Z",
+      "updatedAt": "2025-02-20T09:00:00Z"
+    }
+  },
+
+  "notifications": {
+    "notif_001": {
+      "notificationId": "notif_001",
+      "userId": "uid_tech_001",
+      "type": "assignment_update",
+      "title": "New Assignment Scheduled",
+      "message": "You have been assigned to Floor 2 CAT6A Cable Pull on Feb 10, 2025.",
+      "isRead": false,
+      "relatedDocId": "assign_001",
+      "relatedDocType": "assignment",
+      "createdAt": "2025-02-01T10:05:00Z"
+    }
+  }
+}

@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +40,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
   
   const {
@@ -45,24 +52,48 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  function onSubmit(data: LoginFormValues) {
-    const user = technicians.find(
-      (t) => t.email.toLowerCase() === data.email.toLowerCase()
-    );
+  async function onSubmit(data: LoginFormValues) {
+    setIsLoading(true);
+    try {
+      // 1. Execute Firebase Auth Handshake
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const firebaseUser = userCredential.user;
 
-    if (typeof window !== "undefined" && user) {
-      localStorage.setItem("currentUserId", user.id);
-    }
+      // 2. Cross-reference with Personnel Registry
+      const user = technicians.find(
+        (t) => t.email.toLowerCase() === firebaseUser.email?.toLowerCase()
+      );
 
-    if (isAdmin(user)) {
-      router.push("/admin/dashboard");
-    } else if (isTech(user)) {
-      router.push("/tech/dashboard");
-    } else if (isClient(user)) {
-      router.push("/client/dashboard");
-    } else {
-      // Default fallback
-      router.push("/admin/dashboard");
+      if (typeof window !== "undefined" && user) {
+        localStorage.setItem("currentUserId", user.id);
+      }
+
+      toast({
+        title: "Authorization Successful",
+        description: `Terminal access granted for ${user?.name || 'Authorized User'}.`,
+      });
+
+      // 3. Strategic Redirection
+      if (isAdmin(user)) {
+        router.push("/admin/dashboard");
+      } else if (isTech(user)) {
+        router.push("/tech/dashboard");
+      } else if (isClient(user)) {
+        router.push("/client/dashboard");
+      } else {
+        router.push("/admin/dashboard");
+      }
+    } catch (error: any) {
+      console.error("Authentication error:", error);
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: error.code === 'auth/invalid-credential' 
+          ? "Invalid operative credentials. Please verify your email and access key."
+          : "An unexpected error occurred during the security handshake.",
+      });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -100,6 +131,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
+                disabled={isLoading}
                 placeholder="admin@aaromach.com"
                 className="bg-bg-primary border-border-sub"
                 {...register("email")}
@@ -121,6 +153,7 @@ export default function LoginPage() {
               <Input 
                 id="password" 
                 type="password" 
+                disabled={isLoading}
                 {...register("password")} 
                 placeholder="••••••••" 
                 className="bg-bg-primary border-border-sub"
@@ -133,8 +166,19 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest">
-              Login
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                "Authorize Login"
+              )}
             </Button>
           </CardFooter>
         </form>

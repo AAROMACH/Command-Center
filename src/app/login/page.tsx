@@ -85,12 +85,26 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
+      
+      let errorMessage = "An unexpected error occurred during the security handshake.";
+      
+      if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid operative credentials. Please verify your email and access key.";
+      } else if (error.code === 'auth/api-key-not-valid') {
+        errorMessage = "Mission Blocked: Firebase API Key is missing or invalid. Please check your registry configuration.";
+        toast({
+          variant: "destructive",
+          title: "Configuration Error",
+          description: "Terminal requires a valid Firebase API Key. Please visit the console to retrieve your credentials.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: error.code === 'auth/invalid-credential' 
-          ? "Invalid operative credentials. Please verify your email and access key."
-          : "An unexpected error occurred during the security handshake.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);

@@ -4,16 +4,19 @@ import { getAuth } from "firebase/auth";
 
 /**
  * @fileOverview Firebase Client SDK Initialization.
- * Reverted to neutral placeholders. Connection to a specific Firebase project must be re-established.
+ * Configured for project: aaromach-command-center
+ * 
+ * IMPORTANT: NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_APP_ID 
+ * must be provided in the environment for cloud authentication to function.
  */
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER", 
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "SENDER_ID_PLACEHOLDER",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:SENDER_ID_PLACEHOLDER:web:PLACEHOLDER",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER-REQUIRED", 
+  authDomain: "aaromach-command-center.firebaseapp.com",
+  projectId: "aaromach-command-center",
+  storageBucket: "aaromach-command-center.firebasestorage.app",
+  messagingSenderId: "222038994379",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:222038994379:web:PLACEHOLDER-REQUIRED",
 };
 
 // Initialize Firebase

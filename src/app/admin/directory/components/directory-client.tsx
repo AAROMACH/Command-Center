@@ -1,3 +1,4 @@
+
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -60,6 +61,8 @@ import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { useSearchParams } from 'next/navigation';
 import { assignmentTimeLogs } from '@/lib/data';
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 type DirectoryClientProps = {
     technicians: Technician[];
@@ -71,9 +74,8 @@ type DirectoryClientProps = {
 type ViewMode = 'rows' | 'grid';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
-export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests: initialTimeOffRequests, workOrders, siteRequests: initialSiteRequests }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, siteRequests }: DirectoryClientProps) {
     const searchParams = useSearchParams();
-    const [personnel, setPersonnel] = useState(initialPersonnel);
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
@@ -91,9 +93,6 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isCompanyDetailOpen, setIsCompanyDetailOpen] = useState(false);
-    
-    const [timeOffRequests, setTimeOffRequests] = useState(initialTimeOffRequests);
-    const [siteRequests, setSiteRequests] = useState(initialSiteRequests);
     
     const { toast } = useToast();
 
@@ -122,44 +121,50 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         setIsEditPersonnelOpen(true);
     };
 
-    const handleSavePersonnel = (updatedPerson: Technician) => {
-        setPersonnel(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
-        if (selectedPerson?.id === updatedPerson.id) {
-            setSelectedPerson(updatedPerson);
+    const handleSavePersonnel = async (updatedPerson: Technician) => {
+        try {
+            const { id, ...data } = updatedPerson;
+            await updateDoc(doc(db, 'users', id), data);
+            toast({
+                title: "Operative Updated",
+                description: `Personnel records for ${updatedPerson.name} committed.`
+            });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
         }
-        toast({
-            title: "Operative Updated",
-            description: `Personnel records for ${updatedPerson.name} committed.`
-        });
     };
 
-    const handleAddPersonnel = (newPerson: Technician) => {
-        setPersonnel(prev => [newPerson, ...prev]);
-        toast({
-            title: "Personnel Enrolled",
-            description: `${newPerson.name} has been successfully registered.`
-        });
+    const handleAddPersonnel = async (newPerson: Technician) => {
+        try {
+            await setDoc(doc(db, 'users', newPerson.id), newPerson);
+            toast({
+                title: "Personnel Enrolled",
+                description: `${newPerson.name} has been successfully registered.`
+            });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+        }
     };
 
     const techniciansList = personnel.filter(p => {
         if (p.roles && p.roles.length > 0) {
             return p.roles.some(r => r.includes('tech') || r.includes('lead'));
         }
-        return p.role.toLowerCase().includes('tech');
+        return (p.role || '').toLowerCase().includes('tech');
     });
 
     const staffList = personnel.filter(p => {
         if (p.roles && p.roles.length > 0) {
             return p.roles.some(r => r.includes('admin') || r.includes('manager'));
         }
-        return p.role.toLowerCase() === 'dispatcher' || p.role.toLowerCase() === 'admin';
+        return (p.role || '').toLowerCase() === 'dispatcher' || (p.role || '').toLowerCase() === 'admin';
     });
 
     const clientsList = personnel.filter(p => {
         if (p.roles && p.roles.length > 0) {
             return p.roles.includes('client');
         }
-        return p.role.toLowerCase().includes('client');
+        return (p.role || '').toLowerCase().includes('client');
     });
 
     const companies = useMemo(() => {
@@ -183,24 +188,24 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
     const filteredTechnicians = useMemo(() => {
         return techniciansList
             .filter((tech) =>
-                tech.name.toLowerCase().includes(lowercasedQuery) ||
-                tech.email.toLowerCase().includes(lowercasedQuery)
+                (tech.name || '').toLowerCase().includes(lowercasedQuery) ||
+                (tech.email || '').toLowerCase().includes(lowercasedQuery)
             )
             .sort((a, b) => {
-                if (sortBy === 'reliability') return b.reliabilityScore - a.reliabilityScore;
-                return a.name.localeCompare(b.name);
+                if (sortBy === 'reliability') return (b.reliabilityScore || 0) - (a.reliabilityScore || 0);
+                return (a.name || '').localeCompare(b.name || '');
             });
     }, [techniciansList, lowercasedQuery, sortBy]);
 
     const filteredStaff = useMemo(() => {
         return staffList
             .filter((s) =>
-                s.name.toLowerCase().includes(lowercasedQuery) ||
-                s.email.toLowerCase().includes(lowercasedQuery)
+                (s.name || '').toLowerCase().includes(lowercasedQuery) ||
+                (s.email || '').toLowerCase().includes(lowercasedQuery)
             )
             .sort((a, b) => {
-                if (sortBy === 'role') return a.role.localeCompare(b.role);
-                return a.name.localeCompare(b.name);
+                if (sortBy === 'role') return (a.role || '').localeCompare(b.role || '');
+                return (a.name || '').localeCompare(b.name || '');
             });
     }, [staffList, lowercasedQuery, sortBy]);
 
@@ -209,8 +214,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             .filter((c) =>
                 c.name.toLowerCase().includes(lowercasedQuery) ||
                 c.contacts.some(contact => 
-                    contact.name.toLowerCase().includes(lowercasedQuery) || 
-                    contact.email.toLowerCase().includes(lowercasedQuery)
+                    (contact.name || '').toLowerCase().includes(lowercasedQuery) || 
+                    (contact.email || '').toLowerCase().includes(lowercasedQuery)
                 )
             )
             .sort((a, b) => {
@@ -243,7 +248,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
         if (person.roles && person.roles.length > 0) {
             return person.roles[0].replace(/_/g, ' ').toUpperCase();
         }
-        return person.role.toUpperCase();
+        return (person.role || '').toUpperCase();
     };
 
     const personnelRequestsCount = useMemo(() => 
@@ -270,7 +275,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
             techniciansList.forEach(t => {
                 const loc = t.address || t.currentLocation;
                 if (loc) {
-                    locations.push({ id: t.id, name: t.name, location: loc, type: 'tech' });
+                    locations.push({ id: t.id, name: t.name || 'Unnamed', location: loc, type: 'tech' });
                 }
             });
         } else {
@@ -422,7 +427,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                             </div>
                             <ScrollArea className="h-full">
                                 {paginatedTechnicians.map(tech => {
-                                    const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore);
+                                    const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
                                     const tierColor = getTierColor(tier);
                                     const badgeVariant = getTierBadgeVariant(tier);
                                     const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
@@ -432,10 +437,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                         <div className="flex items-center justify-start gap-3 pl-0">
                                             <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                 <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{tech.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                <AvatarFallback className="text-[10px]">{(tech.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col items-start min-w-0">
-                                                <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name}</span>
+                                                <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name || 'Unnamed'}</span>
                                                 <span className="text-[9px] font-mono text-brand-red uppercase">{tech.id}</span>
                                             </div>
                                         </div>
@@ -456,7 +461,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                             </Badge>
                                             <div className="flex items-center gap-1.5">
                                                 <Activity size={10} className={tierColor} />
-                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore}%</span>
+                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore || 0}%</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-center">
@@ -486,9 +491,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                     <div className="flex items-center justify-start gap-3 pl-0">
                                         <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                             <AvatarImage src={s.avatarUrl} />
-                                            <AvatarFallback className="text-[10px]">{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            <AvatarFallback className="text-[10px]">{(s.name || 'S').split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                         </Avatar>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name}</span>
+                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name || 'Unnamed'}</span>
                                     </div>
                                     <div className="text-left">
                                         <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
@@ -572,10 +577,10 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             <div className="flex items-center gap-3">
                                                                 <Avatar className="h-8 w-8 border border-border-sub">
                                                                     <AvatarImage src={tech?.avatarUrl} />
-                                                                    <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                                    <AvatarFallback>{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                                 </Avatar>
-                                                                <div>
-                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
+                                                                <div className="text-left">
+                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name || 'Operative'}</p>
                                                                     <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.type} Request</p>
                                                                 </div>
                                                             </div>
@@ -584,12 +589,12 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                                 <p className="text-[8px] text-text-muted uppercase font-bold">to {req.endDate}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub italic text-[11px] text-text-secondary leading-relaxed">
+                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub italic text-[11px] text-text-secondary leading-relaxed text-left">
                                                             &quot;{req.reason}&quot;
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ title: "Request Denied", description: "Technician schedule manifest remains locked." })}>Deny</Button>
-                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => toast({ title: "Absence Authorized", description: "Temporal registry updated for field staff." })}>Approve</Button>
+                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'denied' })}>Deny</Button>
+                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'approved' })}>Approve</Button>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -623,7 +628,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-accent-gold">
                                                                 <MapPin size={16} />
                                                             </div>
-                                                            <div>
+                                                            <div className="text-left">
                                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
                                                                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.clientName}</p>
                                                             </div>
@@ -638,8 +643,8 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                         <span className="truncate">{req.location}</span>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => toast({ variant: "destructive", title: "Coordinates Rejected", description: "Client notified of registry failure." })}>Reject Coordinates</Button>
-                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={() => toast({ title: "Registry Authorized", description: "Site coordinates committed to managed asset database." })}>Authorize Site</Button>
+                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'denied' })}>Reject</Button>
+                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'approved' })}>Authorize</Button>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -657,6 +662,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                     </TabsContent>
 
                     <TabsContent value="map" className="m-0">
+                         {/* Map content left unchanged as it's primarily read-only visualization */}
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[650px] mt-4">
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
@@ -688,7 +694,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                         {selectedMapEntity.metaType === 'tech' ? (
                                                             <Avatar className="h-8 w-8 border border-border-sub">
                                                                 <AvatarImage src={(selectedMapEntity as Technician).avatarUrl} />
-                                                                <AvatarFallback>{(selectedMapEntity as Technician).name.charAt(0)}</AvatarFallback>
+                                                                <AvatarFallback>{((selectedMapEntity as Technician).name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                         ) : (
                                                             <div className={cn(
@@ -699,7 +705,7 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                                                             </div>
                                                         )}
                                                         <div className="min-w-0 text-left">
-                                                            <CardTitle className="text-xs uppercase truncate">{(selectedMapEntity as any).name}</CardTitle>
+                                                            <CardTitle className="text-xs uppercase truncate">{(selectedMapEntity as any).name || 'Unnamed'}</CardTitle>
                                                             <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                                                 {selectedMapEntity.metaType === 'tech' ? (selectedMapEntity as Technician).role : (selectedMapEntity as any).clientCompany}
                                                             </p>
@@ -890,9 +896,9 @@ export function DirectoryClient({ technicians: initialPersonnel, timeOffRequests
                 isOpen={isDetailOpen} 
                 setIsOpen={setIsDetailOpen} 
                 person={selectedPerson}
-                workOrders={[]}
+                workOrders={workOrders}
                 onEdit={() => handleEditClick(selectedPerson!)}
-                timeOffRequests={[]}
+                timeOffRequests={timeOffRequests}
             />
 
             {selectedCompany && (

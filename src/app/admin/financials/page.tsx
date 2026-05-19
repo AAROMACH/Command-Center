@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info } from "lucide-react";
-import { expenses as initialExpenses, reports, weeklyLogs as initialWeeklyLogs, technicians, invoices as initialInvoices, projects, workOrders } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
@@ -16,9 +16,10 @@ import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
 
 const financialMetrics = [
     { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
@@ -30,9 +31,13 @@ const financialMetrics = [
 export default function FinancialsPage() {
     const searchParams = useSearchParams();
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [expenses, setExpenses] = useState(initialExpenses);
-    const [invoices, setInvoices] = useState(initialInvoices);
-    const [weeklyLogs, setWeeklyLogs] = useState(initialWeeklyLogs);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [technicians, setTechnicians] = useState<Technician[]>([]);
+    const [projects, setProjects] = useState<any[]>([]);
+    const [workOrders, setWorkOrders] = useState<any[]>([]);
+    
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
@@ -55,35 +60,60 @@ export default function FinancialsPage() {
 
     const { toast } = useToast();
 
+    // 1. Initialize Registry Listeners
     useEffect(() => {
-        const tab = searchParams.get('tab');
-        if (tab) setActiveTab(tab);
-    }, [searchParams]);
+        const unsubExp = onSnapshot(collection(db, 'expenses'), (snap) => {
+            setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
+        });
+        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+            setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+        });
+        const unsubLog = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+            setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+        });
+        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+            setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+        });
+        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+            setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+        });
+        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+        });
 
-    useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         if (userId) {
-            setCurrentUser(technicians.find(t => t.id === userId) || null);
+            const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
+                if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
+            });
+            return () => {
+                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubUser();
+            };
         }
+
+        return () => {
+            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO();
+        };
     }, []);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
 
-    const handleExpenseStatusChange = (id: string, status: 'Approved' | 'Rejected') => {
-        setExpenses(currentExpenses =>
-            currentExpenses.map(exp => (exp.id === id ? { ...exp, status } : exp))
-        );
-        toast({
-            title: `Expense ${status}`,
-            description: `The expense has been successfully ${status.toLowerCase()}.`,
-        });
+    const handleExpenseStatusChange = async (id: string, status: 'Approved' | 'Rejected') => {
+        try {
+            await updateDoc(doc(db, 'expenses', id), { status });
+            toast({
+                title: `Expense ${status}`,
+                description: `The expense has been successfully ${status.toLowerCase()}.`,
+            });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
     };
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
     const getTechnician = (id: string) => technicians.find(t => t.id === id);
 
-
-    const clients = technicians.filter(t => t.roles?.includes('client') || t.role.toLowerCase().includes('client'));
+    const clients = technicians.filter(t => t.roles?.includes('client') || (t.role || '').toLowerCase().includes('client'));
     
     const handleCreateNewInvoice = () => {
         setSelectedInvoice(null);
@@ -95,17 +125,19 @@ export default function FinancialsPage() {
         setIsInvoiceEditorOpen(true);
     };
     
-    const handleSaveInvoice = (savedInvoice: Invoice) => {
-        const isNew = !savedInvoice.id || !invoices.some(inv => inv.id === savedInvoice.id);
-        if (isNew) {
-            const newInvoiceWithId = { ...savedInvoice, id: `inv-${Date.now()}`};
-            setInvoices(current => [newInvoiceWithId, ...current]);
-             toast({ title: 'Invoice Created', description: `Invoice ${newInvoiceWithId.invoiceNumber} has been successfully created.` });
-        } else {
-            setInvoices(current => current.map(inv => inv.id === savedInvoice.id ? savedInvoice : inv));
-            toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
+    const handleSaveInvoice = async (savedInvoice: Invoice) => {
+        try {
+            if (savedInvoice.id) {
+                await setDoc(doc(db, 'invoices', savedInvoice.id), savedInvoice);
+                toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
+            } else {
+                const docRef = await addDoc(collection(db, 'invoices'), savedInvoice);
+                toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
+            }
+            setIsInvoiceEditorOpen(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Save Failed", description: e.message });
         }
-        setIsInvoiceEditorOpen(false);
     };
 
     const getInvoiceStatusVariant = (status: Invoice['status']) => {
@@ -124,17 +156,17 @@ export default function FinancialsPage() {
         setIsReviewDialogOpen(true);
     };
     
-    const handleUpdateLogStatus = (logId: string, status: WeeklyLog['status']) => {
-        setWeeklyLogs(currentLogs =>
-            currentLogs.map(log =>
-                log.id === logId ? { ...log, status } : log
-            )
-        );
-        toast({
-            title: `Log ${status}`,
-            description: `The weekly log has been ${status.toLowerCase()}.`,
-        });
-        setIsReviewDialogOpen(false);
+    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status']) => {
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', logId), { status });
+            toast({
+                title: `Log ${status}`,
+                description: `The weekly log has been ${status.toLowerCase()}.`,
+            });
+            setIsReviewDialogOpen(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
     };
 
     const handleExecuteClosePeriod = () => {
@@ -153,15 +185,6 @@ export default function FinancialsPage() {
         setConfirmationText("");
     };
 
-    const toggleExportType = (type: string) => {
-        setExportConfig(prev => ({
-            ...prev,
-            types: prev.types.includes(type) 
-                ? prev.types.filter(t => t !== type) 
-                : [...prev.types, type]
-        }));
-    };
-
     const handleExecuteExport = () => {
         if (exportConfig.types.length === 0) {
             toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category to export.' });
@@ -177,25 +200,25 @@ export default function FinancialsPage() {
     const filteredWeeklyLogs = useMemo(() => {
         const q = searchQuery.toLowerCase();
         return weeklyLogs.filter(log => 
-            log.weekOf.includes(q) || 
+            (log.weekOf || '').includes(q) || 
             getTechnicianName(log.technicianId).toLowerCase().includes(q)
         );
-    }, [weeklyLogs, searchQuery]);
+    }, [weeklyLogs, searchQuery, technicians]);
 
     const filteredInvoices = useMemo(() => {
         const q = searchQuery.toLowerCase();
         return invoices.filter(inv => 
-            inv.invoiceNumber.toLowerCase().includes(q) || 
-            inv.clientName.toLowerCase().includes(q)
+            (inv.invoiceNumber || '').toLowerCase().includes(q) || 
+            (inv.clientName || '').toLowerCase().includes(q)
         );
     }, [invoices, searchQuery]);
 
     const filteredExpenses = useMemo(() => {
         const q = searchQuery.toLowerCase();
         return expenses.filter(exp => 
-            exp.description.toLowerCase().includes(q) || 
-            exp.submittedBy.toLowerCase().includes(q) ||
-            exp.category.toLowerCase().includes(q)
+            (exp.description || '').toLowerCase().includes(q) || 
+            (exp.submittedBy || '').toLowerCase().includes(q) ||
+            (exp.category || '').toLowerCase().includes(q)
         );
     }, [expenses, searchQuery]);
 
@@ -234,7 +257,6 @@ export default function FinancialsPage() {
                     <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
                     <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
                     <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
-                    <TabsTrigger value="reports" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">REPORTS</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="summary" className="mt-6">
@@ -269,7 +291,6 @@ export default function FinancialsPage() {
                             </Card>
                         ))}
                     </div>
-                     <div className="mt-6 empty-state">Further financial summary components can be added here.</div>
                 </TabsContent>
                 <TabsContent value="payroll" className="mt-6">
                     <Card>
@@ -312,7 +333,7 @@ export default function FinancialsPage() {
                 <TabsContent value="invoices" className="mt-6">
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
+                            <div className="text-left">
                                 <CardTitle>Client Invoices</CardTitle>
                                 <CardDescription>Manage and track all client invoices.</CardDescription>
                             </div>
@@ -348,7 +369,7 @@ export default function FinancialsPage() {
                 </TabsContent>
                 <TabsContent value="expenses" className="mt-6">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="text-left">
                             <CardTitle>Expense Submissions</CardTitle>
                             <CardDescription>Review and approve submitted technician expenses.</CardDescription>
                         </CardHeader>
@@ -382,47 +403,6 @@ export default function FinancialsPage() {
                                                         <Button size="sm" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Approved')}>Approve</Button>
                                                     </div>
                                                 )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="reports" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Generated Reports</CardTitle>
-                            <CardDescription>Download previously generated financial and operational reports.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="table-wrap p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Report Name</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Generation Date</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Generated By</TableHead>
-                                        <TableHead className="text-right pr-6"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {reports.map((report) => (
-                                        <TableRow key={report.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                            <TableCell className="font-bold text-text-primary text-xs uppercase pl-6">{report.name}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="gap-1.5 text-[8px] uppercase h-4 bg-bg-primary">
-                                                    {report.type === 'Financial' && <FileText size={10} className="text-brand-red"/>}
-                                                    {report.type === 'Operational' && <BarChart size={10} className="text-accent-gold"/>}
-                                                    {report.type === 'Compliance' && <FileWarning size={10} className="text-text-red"/>}
-                                                    {report.type}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-xs text-text-muted">{report.generationDate}</TableCell>
-                                            <TableCell className="text-xs text-text-muted">{report.generatedBy}</TableCell>
-                                            <TableCell className="text-right pr-6">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8"><Download size={14}/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -530,32 +510,6 @@ export default function FinancialsPage() {
                                         className="h-10 bg-bg-primary border-border-sub text-xs"
                                     />
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Tactical Categories</h3>
-                            <div className="grid grid-cols-1 gap-2">
-                                {[
-                                    { id: 'invoices', label: 'Client Invoices', desc: 'All transmitted and settled financial records.' },
-                                    { id: 'expenses', label: 'Field Expenses', desc: 'Material reimbursements and incidental costs.' },
-                                    { id: 'payroll', label: 'Technician Payroll', desc: 'Verified weekly logs and assignment payouts.' }
-                                ].map(cat => (
-                                    <div 
-                                        key={cat.id} 
-                                        onClick={() => toggleExportType(cat.id)}
-                                        className={cn(
-                                            "flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer",
-                                            exportConfig.types.includes(cat.id) ? "bg-brand-red-dim/10 border-brand-red" : "bg-bg-primary border-border-sub hover:border-text-muted"
-                                        )}
-                                    >
-                                        <div className="space-y-0.5">
-                                            <p className={cn("text-xs font-bold uppercase", exportConfig.types.includes(cat.id) ? "text-text-primary" : "text-text-muted")}>{cat.label}</p>
-                                            <p className="text-[9px] text-text-muted tracking-tight leading-tight">{cat.desc}</p>
-                                        </div>
-                                        <Checkbox checked={exportConfig.types.includes(cat.id)} className="h-4 w-4" />
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>

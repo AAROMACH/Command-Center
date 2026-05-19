@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -55,6 +56,8 @@ import { cn } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 
 type WorkOrdersTableProps = {
   workOrders: WorkOrder[];
@@ -108,7 +111,7 @@ export const WorkOrdersTable = React.memo(({
   }, [workOrders.length, itemsPerPage]);
 
   const sortedWorkOrders = useMemo(() => {
-    return [...workOrders].sort((a, b) => a.scheduleDate.localeCompare(b.scheduleDate));
+    return [...workOrders].sort((a, b) => (a.scheduleDate || '').localeCompare(b.scheduleDate || ''));
   }, [workOrders]);
 
   const totalPages = Math.ceil(sortedWorkOrders.length / itemsPerPage);
@@ -149,11 +152,11 @@ export const WorkOrdersTable = React.memo(({
         },
         availableTechnicians: technicians.map((t) => ({
           id: t.id,
-          name: t.name,
-          currentLocation: t.currentLocation,
-          reliabilityScore: t.reliabilityScore,
-          currentWorkload: t.currentWorkload,
-          skills: t.skills,
+          name: t.name || 'Unknown',
+          currentLocation: t.currentLocation || 'Detroit, MI',
+          reliabilityScore: t.reliabilityScore || 0,
+          currentWorkload: t.currentWorkload || 0,
+          skills: t.skills || [],
         })),
       });
       setRecommendation(result);
@@ -164,19 +167,22 @@ export const WorkOrdersTable = React.memo(({
     }
   };
 
-  const handleAssign = useCallback((technicianId: string) => {
+  const handleAssign = useCallback(async (technicianId: string) => {
     if (!selectedOrder) return;
-    const updated = allWorkOrders.map(order =>
-      order.id === selectedOrder.id
-        ? { ...order, status: 'assigned' as const, assignedTechnicianId: technicianId === 'unassigned' ? undefined : technicianId }
-        : order
-    );
-    onWorkOrdersChange(updated);
-    setIsDialogOpen(false);
-    toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
-  }, [selectedOrder, allWorkOrders, onWorkOrdersChange, toast]);
+    try {
+        const docRef = doc(db, 'workOrders', selectedOrder.id);
+        await updateDoc(docRef, {
+            status: 'assigned',
+            assignedTechnicianId: technicianId === 'unassigned' ? null : technicianId
+        });
+        setIsDialogOpen(false);
+        toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
+    }
+  }, [selectedOrder, toast]);
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
@@ -193,33 +199,40 @@ export const WorkOrdersTable = React.memo(({
         requestedAt: new Date().toISOString()
       };
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
-    } else if (payChanged && payAdmin) {
-      finalUpdate.payChangeRequest = undefined;
-      toast({ title: "Pay Parameters Updated", description: "Financial changes authorized." });
     }
 
-    const updated = allWorkOrders.map(order =>
-      order.id === editedOrder.id ? finalUpdate : order
-    );
-    onWorkOrdersChange(updated);
-    setIsEditDialogOpen(false);
+    try {
+        const docRef = doc(db, 'workOrders', editedOrder.id);
+        await updateDoc(docRef, { ...finalUpdate });
+        setIsEditDialogOpen(false);
+        if (payChanged && payAdmin) {
+            toast({ title: "Pay Parameters Updated", description: "Financial changes authorized." });
+        } else {
+            toast({ title: "Registry Updated", description: "Job entry synchronized." });
+        }
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Save Failed", description: e.message });
+    }
   };
 
-  const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {
-    const updated = allWorkOrders.map(order => 
-        order.id === woId ? { ...order, ...updates } : order
-    );
-    onWorkOrdersChange(updated);
-    if (detailJob?.id === woId) {
-        setDetailJob(prev => prev ? { ...prev, ...updates } : null);
+  const handleJobUpdate = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
+    try {
+        const docRef = doc(db, 'workOrders', woId);
+        await updateDoc(docRef, updates);
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }
-  }, [allWorkOrders, onWorkOrdersChange, detailJob]);
+  }, [toast]);
 
   const filteredTechniciansRegistry = useMemo(() => {
     return technicians
-      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
-      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => b.reliabilityScore - a.reliabilityScore);
+      .filter(t => {
+          const roles = t.roles || [];
+          const role = (t.role || '').toLowerCase();
+          return !roles.includes('client') && !role.includes('client');
+      })
+      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
   }, [technicians, techSearchQuery]);
 
   return (

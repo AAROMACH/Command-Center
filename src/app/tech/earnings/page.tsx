@@ -2,27 +2,18 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, Expense, Technician, WorkOrder } from '@/lib/types';
-import { weeklyLogs, expenses as initialExpenses, technicians, workOrders } from '@/lib/data';
+import type { WeeklyLog, Expense, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Coins, 
-    FileClock, 
     Receipt, 
-    Plus, 
-    Download, 
     Calendar as CalendarIcon, 
-    Check, 
-    X, 
     Search, 
     ArrowUpDown, 
-    Eye, 
-    Clock, 
-    MapPin, 
-    ClipboardList,
-    Settings2,
-    Info
+    ChevronRight,
+    ArrowUpRight,
+    CheckCircle2
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,72 +21,65 @@ import { Button } from '@/components/ui/button';
 import { ReceiptUploadDialog } from '../dashboard/components/receipt-upload-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogDescription, 
-    DialogFooter 
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { DateRange } from 'react-day-picker';
-import { 
     Select, 
     SelectContent, 
     SelectItem, 
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isWithinInterval, startOfDay, isSameDay } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
-type ExpenseSortOption = 'date-desc' | 'amount-desc' | 'status';
 
 export default function TechEarningsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+    const [tech, setTech] = useState<Technician | null>(null);
+    const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [workOrders, setWorkOrders] = useState<any[]>([]);
+    
     const [mounted, setMounted] = useState(false);
-    
-    // UI Dialog States
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-    const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
-    
-    // Filtering/Sorting States
     const [logSearchQuery, setLogSearchQuery] = useState("");
     const [logSortBy, setLogSortBy] = useState<LogSortOption>('date-desc');
-    const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
-    const [expenseSortBy, setExpenseSortBy] = useState<ExpenseSortOption>('date-desc');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-
-    const [exportDates, setExportDates] = useState({
-        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        to: new Date().toISOString().split('T')[0]
-    });
-    
-    const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
+
+        if (userId) {
+            const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
+                if (d.exists()) setTech({ ...d.data(), id: d.id } as Technician);
+            });
+            const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId)), (snap) => {
+                setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+            });
+            const unsubExp = onSnapshot(query(collection(db, 'expenses'), where('technicianId', '==', userId)), (snap) => {
+                setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
+            });
+            const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
+                setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            });
+
+            return () => {
+                unsubTech(); unsubLogs(); unsubExp(); unsubWO();
+            };
+        }
     }, []);
 
-    const tech = useMemo(() => 
-        currentTechId ? technicians.find(t => t.id === currentTechId) : null
-    , [currentTechId]);
-
-    // FILTERED & SORTED LOGS
     const filteredLogs = useMemo(() => {
-        if (!currentTechId) return [];
-        let results = weeklyLogs.filter(wl => wl.technicianId === currentTechId);
+        let results = weeklyLogs;
         
         if (logSearchQuery) {
-            results = results.filter(l => l.weekOf.toLowerCase().includes(logSearchQuery.toLowerCase()));
+            results = results.filter(l => (l.weekOf || '').toLowerCase().includes(logSearchQuery.toLowerCase()));
         }
 
         if (dateRange?.from) {
@@ -112,79 +96,25 @@ export default function TechEarningsPage() {
         }
 
         return results.sort((a, b) => {
-            if (logSortBy === 'date-desc') return b.weekOf.localeCompare(a.weekOf);
-            if (logSortBy === 'date-asc') return a.weekOf.localeCompare(b.weekOf);
+            if (logSortBy === 'date-desc') return (b.weekOf || '').localeCompare(a.weekOf || '');
+            if (logSortBy === 'date-asc') return (a.weekOf || '').localeCompare(b.weekOf || '');
             if (logSortBy === 'payout-desc') return (b.totalPayout || 0) - (a.totalPayout || 0);
-            if (logSortBy === 'status') return a.status.localeCompare(b.status);
             return 0;
         });
-    }, [currentTechId, logSearchQuery, logSortBy, dateRange]);
+    }, [weeklyLogs, logSearchQuery, logSortBy, dateRange]);
 
-    // FILTERED & SORTED EXPENSES
-    const filteredExpenses = useMemo(() => {
-        if (!tech) return [];
-        let results = initialExpenses.filter(e => e.submittedBy === tech.name);
-
-        if (expenseSearchQuery) {
-            const q = expenseSearchQuery.toLowerCase();
-            results = results.filter(e => 
-                e.description.toLowerCase().includes(q) || 
-                e.category.toLowerCase().includes(q)
-            );
-        }
-
-        if (dateRange?.from) {
-            results = results.filter(exp => {
-                try {
-                    const expDate = startOfDay(new Date(exp.date));
-                    if (dateRange.from && dateRange.to) {
-                        return expDate >= startOfDay(dateRange.from) && expDate <= startOfDay(dateRange.to);
-                    }
-                    return isSameDay(expDate, dateRange.from!);
-                } catch(e) { return true; }
-            });
-        }
-
-        return results.sort((a, b) => {
-            if (expenseSortBy === 'date-desc') return b.date.localeCompare(a.date);
-            if (expenseSortBy === 'amount-desc') return b.amount - a.amount;
-            if (expenseSortBy === 'status') return a.status.localeCompare(b.status);
-            return 0;
-        });
-    }, [tech, expenseSearchQuery, expenseSortBy, dateRange]);
-
-    const totalPaid = useMemo(() => 
-        filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0)
-    , [filteredLogs]);
-
-    const pendingPayout = useMemo(() => 
-        filteredLogs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0)
-    , [filteredLogs]);
-
-    const pendingReimbursements = useMemo(() => 
-        filteredExpenses.filter(e => e.status === 'Pending').reduce((acc, exp) => acc + exp.amount, 0)
-    , [filteredExpenses]);
+    const metrics = useMemo(() => {
+        const settled = filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const pending = filteredLogs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const reimb = expenses.filter(e => e.status === 'Pending').reduce((acc, exp) => acc + exp.amount, 0);
+        return { settled, pending, reimb };
+    }, [filteredLogs, expenses]);
 
     const getStatusVariant = (status: string) => {
-        const s = status.toLowerCase();
+        const s = (status || '').toLowerCase();
         if (s === 'approved' || s === 'paid') return 'active';
         if (s === 'pending' || s === 'submitted') return 'onhold';
-        if (s === 'rejected' || s === 'void') return 'destructive';
         return 'outline';
-    };
-
-    const formatDateStr = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
-            }
-            return dateStr;
-        } catch (e) {
-            return dateStr;
-        }
     };
 
     if (!mounted || !currentTechId) {
@@ -195,216 +125,108 @@ export default function TechEarningsPage() {
         <div className="space-y-6">
             <header className="page-header">
                 <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Coins size={12} />
-                        Financial Intelligence
-                    </p>
+                    <p className="page-eyebrow flex items-center gap-2"><Coins size={12} />Financial Intelligence</p>
                     <h1 className="page-title">Billing Terminal</h1>
                     <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
                 </div>
                 <div className="page-header-right">
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
-                        <Receipt size={14} className="mr-2"/>
-                        Submit Receipt
+                        <Receipt size={14} className="mr-2"/> Submit Receipt
                     </Button>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 space-y-6">
-                    <div className="grid grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
-                        <div className="bg-bg-secondary p-6">
-                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Total Settled (YTD)</p>
-                            <p className="text-3xl font-mono font-bold text-text-green">${totalPaid.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-bg-secondary p-6">
-                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Pending Audit</p>
-                            <p className="text-3xl font-mono font-bold text-accent-gold">${pendingPayout.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-bg-secondary p-6">
-                            <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest mb-2">Reimbursements</p>
-                            <p className="text-3xl font-mono font-bold text-text-primary">${pendingReimbursements.toFixed(2)}</p>
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Settled (YTD)</p>
+                        <CheckCircle2 className="h-4 w-4 text-text-green" />
                     </div>
-
-                    <Tabs defaultValue="history" className="w-full">
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
-                            <TabsList className="tabs !mb-0">
-                                <TabsTrigger value="history" className="tab">Billing History</TabsTrigger>
-                                <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
-                            </TabsList>
-
-                            <div className="flex items-center gap-3">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <div className={cn(
-                                            "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
-                                            dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                                        )}>
-                                            <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                            <span className={cn(
-                                                "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                                                dateRange?.from ? "text-text-primary" : "text-text-muted"
-                                            )}>
-                                                {dateRange?.from ? (
-                                                    dateRange.to ? <>{format(dateRange.from, "MM-dd")} – {format(dateRange.to, "MM-dd")}</> : format(dateRange.from, "MM-dd")
-                                                ) : "Pick Period"}
-                                            </span>
-                                            {dateRange?.from && (
-                                                <button 
-                                                    className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
-                                                    onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
-                                                >
-                                                    <X size={10} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                                        <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                                    </PopoverContent>
-                                </Popover>
-
-                                <div className="search-wrap !mb-0 w-[180px]">
-                                    <Search />
-                                    <input 
-                                        className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" 
-                                        placeholder="Filter results..." 
-                                        value={logSearchQuery}
-                                        onChange={(e) => setLogSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <TabsContent value="history" className="mt-0">
-                            <Card>
-                                <CardContent className="p-0">
-                                    <div className="table-wrap border-none rounded-none">
-                                        <table className="tbl">
-                                            <thead>
-                                                <tr>
-                                                    <th className="text-center">Week Period</th>
-                                                    <th className="text-center">Status</th>
-                                                    <th className="text-right pr-12">Settlement</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredLogs.map(log => (
-                                                    <TableRow 
-                                                        key={log.id} 
-                                                        className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
-                                                        onClick={() => setSelectedLog(log)}
-                                                    >
-                                                        <TableCell className="font-bold uppercase text-xs text-center">Week of {log.weekOf}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Badge variant={getStatusVariant(log.status)}>{log.status.toUpperCase()}</Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-right pr-12 font-mono font-bold">${(log.totalPayout || 0).toFixed(2)}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                                {filteredLogs.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={3} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records match your filters.</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="reimbursements" className="mt-0">
-                            <Card>
-                                <CardContent className="p-0">
-                                     <div className="table-wrap border-none rounded-none">
-                                        <table className="tbl">
-                                            <thead>
-                                                <tr>
-                                                    <th className="text-center">Date</th>
-                                                    <th className="text-center">Description</th>
-                                                    <th className="text-center">Status</th>
-                                                    <th className="text-right pr-12">Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredExpenses.map(expense => (
-                                                    <TableRow key={expense.id} className="hover:bg-bg-tertiary transition-colors">
-                                                        <TableCell className="text-xs font-mono text-center">{formatDateStr(expense.date)}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="font-bold text-xs uppercase">{expense.description}</div>
-                                                            <div className="text-[9px] text-text-muted uppercase font-bold">{expense.category}</div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Badge variant={getStatusVariant(expense.status)}>{expense.status.toUpperCase()}</Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-right pr-12 font-mono font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                                {filteredExpenses.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement records match your filters.</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
+                    <p className="text-3xl font-mono font-bold text-text-green">${metrics.settled.toFixed(2)}</p>
                 </div>
-
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings2 size={16} className="text-accent-gold" />
-                                Settlement Protocol
-                            </CardTitle>
-                            <CardDescription>Verified preferences for disbursement routing.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 shadow-sm">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Selected Method</p>
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">
-                                        {tech?.payoutPreferences?.method || 'ACH Bank Transfer'}
-                                    </p>
-                                </div>
-                                
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Notes / Instructions</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed italic">
-                                        {tech?.payoutPreferences?.notes || 'No specific routing instructions logged.'}
-                                    </p>
-                                </div>
-
-                                <div className="pt-2">
-                                    <Badge variant="active" className="text-[9px] h-5 px-3 uppercase tracking-widest">Identity Verified</Badge>
-                                </div>
-                            </div>
-
-                            <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub flex items-start gap-3">
-                                <Info size={16} className="text-text-muted shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-text-muted leading-normal uppercase font-medium">
-                                    Disbursements are cleared within 48 hours of weekly log approval. Changes to preferred methods require administrative sign-off.
-                                </p>
-                            </div>
-
-                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest" onClick={() => router.push('/tech/profile')}>
-                                Update Preferences
-                            </Button>
-                        </CardContent>
-                    </Card>
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Audit</p>
+                        <ArrowUpRight className="h-4 w-4 text-accent-gold" />
+                    </div>
+                    <p className="text-3xl font-mono font-bold text-accent-gold">${metrics.pending.toFixed(2)}</p>
+                </div>
+                <div className="bg-bg-secondary p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Reimbursements</p>
+                        <Receipt className="h-4 w-4 text-text-primary" />
+                    </div>
+                    <p className="text-3xl font-mono font-bold text-text-primary">${metrics.reimb.toFixed(2)}</p>
                 </div>
             </div>
+
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border-sub bg-bg-tertiary/30">
+                    <div className="text-left">
+                        <CardTitle>Billing Registry</CardTitle>
+                        <CardDescription>Historical weekly log audit and settlement tracking.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className={cn(
+                                    "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                                )}>
+                                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                                    <span className={cn("text-[10px] font-bold uppercase tracking-widest", dateRange?.from ? "text-text-primary" : "text-text-muted")}>
+                                        {dateRange?.from ? (dateRange.to ? `${format(dateRange.from, "MM-dd")} – ${format(dateRange.to, "MM-dd")}` : format(dateRange.from, "MM-dd")) : "Pick Period"}
+                                    </span>
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
+                            </PopoverContent>
+                        </Popover>
+                        <div className="search-wrap !mb-0 w-[180px]">
+                            <Search className="h-3.5 w-3.5" />
+                            <input 
+                                className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" 
+                                placeholder="Filter records..." 
+                                value={logSearchQuery}
+                                onChange={(e) => setLogSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent border-border-sub">
+                                <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Week Period</TableHead>
+                                <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Audit Status</TableHead>
+                                <TableHead className="text-right pr-12 text-[10px] uppercase font-bold tracking-widest">Settlement</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredLogs.map(log => (
+                                <TableRow key={log.id} className="hover:bg-bg-tertiary transition-colors cursor-pointer group">
+                                    <TableCell className="font-bold uppercase text-xs text-center">Week of {log.weekOf}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-12 font-mono font-bold text-text-primary">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                                </TableRow>
+                            ))}
+                            {filteredLogs.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records found in current registry window.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
             <ReceiptUploadDialog 
                 isOpen={isReceiptDialogOpen}
                 setIsOpen={setIsReceiptDialogOpen}
-                workOrders={workOrders.filter(wo => wo.assignedTechnicianId === currentTechId)}
+                workOrders={workOrders}
                 projects={[]}
             />
         </div>

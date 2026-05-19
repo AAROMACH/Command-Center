@@ -1,14 +1,15 @@
 
 'use client';
 
-import { projects as initialProjects, technicians } from "@/lib/data";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, doc, addDoc } from 'firebase/firestore';
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity } from "lucide-react";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
-import type { Project } from "@/lib/types";
+import type { Project, Technician } from "@/lib/types";
 import {
   Popover,
   PopoverContent,
@@ -33,7 +34,8 @@ import { format, isSameDay, parseISO } from 'date-fns';
 type SortOption = 'name' | 'date' | 'progress' | 'client';
 
 export default function ProjectsPage() {
-  const [allProjects, setAllProjects] = useState<Project[]>(initialProjects);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   
@@ -42,15 +44,29 @@ export default function ProjectsPage() {
   const [activeClients, setActiveClients] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date');
 
-  const allTechnicians = technicians;
   const { toast } = useToast();
 
-  const handleNewProject = (newProject: Project) => {
-    setAllProjects(prev => [newProject, ...prev]);
-    toast({
-      title: "Project Registry Initialized",
-      description: `${newProject.name} has been staged in the operational registry.`,
+  useEffect(() => {
+    const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+        setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
+    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+    });
+    return () => { unsubProj(); unsubTech(); };
+  }, []);
+
+  const handleNewProject = async (newProject: Project) => {
+    try {
+        const { id, ...data } = newProject;
+        await addDoc(collection(db, 'projects'), data);
+        toast({
+          title: "Project Registry Initialized",
+          description: `${newProject.name} has been staged in the operational registry.`,
+        });
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Creation Failed", description: e.message });
+    }
   };
 
   const clients = useMemo(() => {
@@ -80,7 +96,7 @@ export default function ProjectsPage() {
 
   const filteredProjects = useMemo(() => {
     const getProgressValue = (project: Project) => {
-        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
         if (allTasks.length === 0) return 0;
         const completedTasks = allTasks.filter(task => task.isCompleted).length;
         return (completedTasks / allTasks.length) * 100;
@@ -89,10 +105,10 @@ export default function ProjectsPage() {
     return allProjects
       .filter(p => {
         const matchesSearch = 
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.location.toLowerCase().includes(searchQuery.toLowerCase());
+          (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.client || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.location || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(p.status);
         const matchesClient = activeClients.length === 0 || activeClients.includes(p.client);
@@ -102,14 +118,14 @@ export default function ProjectsPage() {
                 const parts = p.startDate.split('-');
                 let pDate;
                 if (parts[0].length === 4) {
-                    pDate = new Date(p.startDate);
+                    pDate = startOfDay(new Date(p.startDate));
                 } else {
                     const [m, d, y] = parts;
-                    pDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                    pDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
                 }
                 
                 if (dateRange.from && dateRange.to) {
-                    return pDate >= dateRange.from && pDate <= dateRange.to;
+                    return pDate >= startOfDay(dateRange.from) && pDate <= startOfDay(dateRange.to);
                 }
                 if (dateRange.from) {
                     return isSameDay(pDate, dateRange.from);
@@ -122,12 +138,11 @@ export default function ProjectsPage() {
       })
       .sort((a, b) => {
         switch (sortBy) {
-          case 'name': return a.name.localeCompare(b.name);
-          case 'client': return a.client.localeCompare(b.client);
+          case 'name': return (a.name || '').localeCompare(b.name || '');
+          case 'client': return (a.client || '').localeCompare(b.client || '');
           case 'progress': return getProgressValue(b) - getProgressValue(a);
-          case 'date': 
           default:
-            return b.startDate.localeCompare(a.startDate);
+            return (b.startDate || '').localeCompare(a.startDate || '');
         }
       });
   }, [allProjects, searchQuery, activeStatuses, activeClients, dateRange, sortBy]);
@@ -137,7 +152,7 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-6">
       <header className="page-header">
-        <div>
+        <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2">
             <FolderKanban size={12} />
             Infrastructure Deployment Control
@@ -159,10 +174,7 @@ export default function ProjectsPage() {
             <div className="flex items-center gap-2">
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                     <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                        <div className="flex items-center gap-2">
-                            <ArrowUpDown size={14} className="text-text-muted" />
-                            <SelectValue placeholder="Sort By" />
-                        </div>
+                        <SelectValue placeholder="Sort By" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="date" className="text-[10px] uppercase font-bold">Start Date</SelectItem>
@@ -177,11 +189,10 @@ export default function ProjectsPage() {
                     <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
                       <SlidersHorizontal size={14} className="mr-2"/>
                       Filter
-                      {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{(dateRange?.from ? 1 : 0) + activeStatuses.length + activeClients.length}</Badge>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                      <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                      <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                         <div className="flex items-center justify-between">
                           <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
                           {hasActiveFilters && (
@@ -191,7 +202,7 @@ export default function ProjectsPage() {
                           )}
                         </div>
                       </div>
-                      <div className="p-4 space-y-6">
+                      <div className="p-4 space-y-6 text-left">
                         <div className="space-y-3">
                           <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status Audit</p>
                           <div className="space-y-2">
@@ -240,7 +251,7 @@ export default function ProjectsPage() {
       <div className="w-full space-y-6">
         <ProjectsTabs 
           projects={filteredProjects} 
-          technicians={allTechnicians} 
+          technicians={technicians} 
           dateRange={dateRange}
           setDateRange={setDateRange}
           sortBy={sortBy}

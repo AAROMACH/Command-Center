@@ -4,16 +4,16 @@ import { getAuth } from "firebase/auth";
 
 /**
  * @fileOverview Firebase Client SDK Initialization.
- * Connects the Aaromach Command Center to the 'aaromach-command-center' project.
+ * Reverted to neutral placeholders. Connection to a specific Firebase project must be re-established.
  */
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER", // Replace with value from Firebase Console
-  authDomain: "aaromach-command-center.firebaseapp.com",
-  projectId: "aaromach-command-center",
-  storageBucket: "aaromach-command-center.firebasestorage.app",
-  messagingSenderId: "222038994379",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:222038994379:web:PLACEHOLDER", // Replace with value from Firebase Console
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER", 
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "SENDER_ID_PLACEHOLDER",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:SENDER_ID_PLACEHOLDER:web:PLACEHOLDER",
 };
 
 // Initialize Firebase

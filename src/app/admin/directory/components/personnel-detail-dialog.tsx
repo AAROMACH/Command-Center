@@ -133,351 +133,353 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="lg:max-w-4xl bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
-        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-            <div className="flex items-start justify-between">
-                <div className="flex items-center gap-6">
-                    <Avatar className="h-16 w-16 border-2 border-border-sub">
-                        <AvatarImage src={person.avatarUrl} />
-                        <AvatarFallback>{(person.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                            <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{person.name || 'Unnamed Operative'}</DialogTitle>
-                            <Badge variant="active" className="text-[10px] h-5 px-3 uppercase tracking-widest">Active Profile</Badge>
-                        </div>
-                        <p className="text-sm text-text-muted font-bold uppercase tracking-[0.2em]">{person.role || 'Awaiting Allocation'}</p>
-                         <div className="flex items-center gap-3 mt-2">
-                             <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{person.id}</span>
-                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                             <div className="flex gap-1">
-                                {person.roles?.map(r => (
-                                    <Badge key={r} variant="outline" className="text-[8px] uppercase h-4 bg-bg-primary">{r.replace(/_/g, ' ')}</Badge>
-                                ))}
-                             </div>
-                         </div>
-                    </div>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Mail size={14} className="mr-2"/> Email</Button>
-                    <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Phone size={14} className="mr-2"/> Call</Button>
-                </div>
-            </div>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="lg:max-w-4xl bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+              <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-6">
+                      <Avatar className="h-16 w-16 border-2 border-border-sub">
+                          <AvatarImage src={person.avatarUrl} />
+                          <AvatarFallback>{(person.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1">
+                          <div className="flex items-center gap-3">
+                              <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{person.name || 'Unnamed Operative'}</DialogTitle>
+                              <Badge variant="active" className="text-[10px] h-5 px-3 uppercase tracking-widest">Active Profile</Badge>
+                          </div>
+                          <p className="text-sm text-text-muted font-bold uppercase tracking-[0.2em]">{person.role || 'Awaiting Allocation'}</p>
+                           <div className="flex items-center gap-3 mt-2">
+                               <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{person.id}</span>
+                               <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                               <div className="flex gap-1">
+                                  {person.roles?.map(r => (
+                                      <Badge key={r} variant="outline" className="text-[8px] uppercase h-4 bg-bg-primary">{r.replace(/_/g, ' ')}</Badge>
+                                  ))}
+                               </div>
+                           </div>
+                      </div>
+                  </div>
+                   <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Mail size={14} className="mr-2"/> Email</Button>
+                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Phone size={14} className="mr-2"/> Call</Button>
+                  </div>
+              </div>
+          </DialogHeader>
 
-        <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
-            <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
-                <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
-                    <TabsTrigger value="overview" className="tab-trigger-personnel">Overview</TabsTrigger>
-                    {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Operational Reliability</TabsTrigger>}
-                    {(isTechnician || isStaff) && <TabsTrigger value="documents" className="tab-trigger-personnel">Documents</TabsTrigger>}
-                    <TabsTrigger value="schedule" className="tab-trigger-personnel">Schedule</TabsTrigger>
-                    {isTechnician && <TabsTrigger value="assignments" className="tab-trigger-personnel">Assignments</TabsTrigger>}
-                    <TabsTrigger value="financial" className="tab-trigger-personnel">Financial</TabsTrigger>
-                </TabsList>
-            </div>
-            
-            <ScrollArea className="flex-1">
-                <div className="p-6">
-                    <TabsContent value="overview" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <section className="space-y-6">
-                                <div className="space-y-3">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Core Identity</h3>
-                                    <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs">
-                                        <span className="text-text-muted font-bold uppercase">Official Email</span>
-                                        <span className="text-text-primary">{person.email || 'N/A'}</span>
-                                        <span className="text-text-muted font-bold uppercase">Direct Line</span>
-                                        <span className="text-text-primary">{person.phone || 'N/A'}</span>
-                                        <span className="text-text-muted font-bold uppercase">Base Address</span>
-                                        <span className="text-text-primary">{person.address || 'N/A'}</span>
-                                        {isClient && person.clientCompany && (
-                                            <>
-                                                <span className="text-text-muted font-bold uppercase">Organization</span>
-                                                <span className="text-text-primary uppercase font-bold">{person.clientCompany}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
+          <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
+              <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
+                  <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
+                      <TabsTrigger value="overview" className="tab-trigger-personnel">Overview</TabsTrigger>
+                      {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Operational Reliability</TabsTrigger>}
+                      {(isTechnician || isStaff) && <TabsTrigger value="documents" className="tab-trigger-personnel">Documents</TabsTrigger>}
+                      <TabsTrigger value="schedule" className="tab-trigger-personnel">Schedule</TabsTrigger>
+                      {isTechnician && <TabsTrigger value="assignments" className="tab-trigger-personnel">Assignments</TabsTrigger>}
+                      <TabsTrigger value="financial" className="tab-trigger-personnel">Financial</TabsTrigger>
+                  </TabsList>
+              </div>
+              
+              <ScrollArea className="flex-1">
+                  <div className="p-6">
+                      <TabsContent value="overview" className="m-0">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <section className="space-y-6">
+                                  <div className="space-y-3">
+                                      <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Core Identity</h3>
+                                      <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs">
+                                          <span className="text-text-muted font-bold uppercase">Official Email</span>
+                                          <span className="text-text-primary">{person.email || 'N/A'}</span>
+                                          <span className="text-text-muted font-bold uppercase">Direct Line</span>
+                                          <span className="text-text-primary">{person.phone || 'N/A'}</span>
+                                          <span className="text-text-muted font-bold uppercase">Base Address</span>
+                                          <span className="text-text-primary">{person.address || 'N/A'}</span>
+                                          {isClient && person.clientCompany && (
+                                              <>
+                                                  <span className="text-text-muted font-bold uppercase">Organization</span>
+                                                  <span className="text-text-primary uppercase font-bold">{person.clientCompany}</span>
+                                              </>
+                                          )}
+                                      </div>
+                                  </div>
 
-                                {(isTechnician || isStaff) && person.emergencyContact && (
-                                    <div className="space-y-3">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
-                                            <HeartPulse size={14}/> Emergency Protocol
-                                        </h3>
-                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{person.emergencyContact.name}</p>
-                                            <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                                <span>{person.emergencyContact.relation}</span>
-                                                <span>•</span>
-                                                <span>{person.emergencyContact.phone}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </section>
+                                  {(isTechnician || isStaff) && person.emergencyContact && (
+                                      <div className="space-y-3">
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
+                                              <HeartPulse size={14}/> Emergency Protocol
+                                          </h3>
+                                          <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2">
+                                              <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{person.emergencyContact.name}</p>
+                                              <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                  <span>{person.emergencyContact.relation}</span>
+                                                  <span>•</span>
+                                                  <span>{person.emergencyContact.phone}</span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  )}
+                              </section>
 
-                            {isTechnician && (
-                                <section className="space-y-6">
-                                    <div className="space-y-3">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Trust Index</h3>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
-                                                <p className={cn("text-3xl font-mono font-bold", tierColor)}>{person.reliabilityScore || 0}%</p>
-                                                <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase">{tier}</Badge>
-                                            </div>
-                                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Workload</p>
-                                                <p className="text-3xl font-bold text-text-primary">{person.currentWorkload || 0}</p>
-                                                <p className="text-[9px] text-text-muted uppercase">Assignments</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Specializations</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(person.skills || []).map(skill => (
-                                                <Badge key={skill} variant="outline" className="text-[9px] bg-bg-secondary border-border-sub text-text-primary h-6 px-3">{skill}</Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            )}
-                        </div>
-                    </TabsContent>
+                              {isTechnician && (
+                                  <section className="space-y-6">
+                                      <div className="space-y-3">
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Trust Index</h3>
+                                          <div className="grid grid-cols-2 gap-4">
+                                              <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
+                                                  <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
+                                                  <p className={cn("text-3xl font-mono font-bold", tierColor)}>{person.reliabilityScore || 0}%</p>
+                                                  <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase">{tier}</Badge>
+                                              </div>
+                                              <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
+                                                  <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Workload</p>
+                                                  <p className="text-3xl font-bold text-text-primary">{person.currentWorkload || 0}</p>
+                                                  <p className="text-[9px] text-text-muted uppercase">Assignments</p>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <div className="space-y-3">
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Specializations</h3>
+                                          <div className="flex flex-wrap gap-2">
+                                              {(person.skills || []).map(skill => (
+                                                  <Badge key={skill} variant="outline" className="text-[9px] bg-bg-secondary border-border-sub text-text-primary h-6 px-3">{skill}</Badge>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  </section>
+                              )}
+                          </div>
+                      </TabsContent>
 
-                    <TabsContent value="reliability" className="m-0 space-y-6 animate-in fade-in duration-300">
-                        <div className="flex justify-between items-center mb-4 px-1">
-                            <div className="space-y-1">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust Manifest</h3>
-                                <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
-                            </div>
-                            <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={() => setIsLogEventOpen(true)}>
-                                <Plus size={14} className="mr-1.5"/> Log Command Decision
-                            </Button>
-                        </div>
+                      <TabsContent value="reliability" className="m-0 space-y-6 animate-in fade-in duration-300">
+                          <div className="flex justify-between items-center mb-4 px-1">
+                              <div className="space-y-1">
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust Manifest</h3>
+                                  <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
+                              </div>
+                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={() => setIsLogEventOpen(true)}>
+                                  <Plus size={14} className="mr-1.5"/> Log Command Decision
+                              </Button>
+                          </div>
 
-                        <div className="space-y-3">
-                            {reliabilityEvents.map(event => {
-                                const isCritical = event.category === 'critical_failure';
-                                const isRecovery = event.category === 'positive_recovery';
-                                const isAutomatic = event.eventSource === 'automatic';
-                                return (
-                                    <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
-                                        <div className="flex items-center gap-6">
-                                            <div className={cn(
-                                                "p-2.5 rounded-lg border",
-                                                isCritical ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
-                                                isRecovery ? "bg-green-dim text-text-green border-green-border/30" : 
-                                                "bg-bg-primary text-text-muted border-border-sub"
-                                            )}>
-                                                {isCritical ? <ShieldAlert size={20}/> : isRecovery ? <CheckCircle2 size={20}/> : <History size={20}/>}
-                                            </div>
-                                            <div className="text-left space-y-0.5">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{event.eventType.replace(/_/g, ' ')}</p>
-                                                    <Badge variant="outline" className="text-[8px] h-3.5 uppercase bg-bg-tertiary px-1">{event.category.replace(/_/g, ' ')}</Badge>
-                                                    <Badge variant="outline" className={cn(
-                                                        "text-[7px] h-3.5 uppercase tracking-tighter gap-1",
-                                                        isAutomatic ? "bg-accent-gold-dim border-accent-gold/20 text-accent-gold" : "bg-bg-primary border-border-sub text-text-muted"
-                                                    )}>
-                                                        {isAutomatic ? <Settings size={8}/> : <User size={8}/>}
-                                                        {event.eventSource}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{event.reason}&quot;</p>
-                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                                                    {format(parseISO(event.createdAt), 'MMM d, yyyy')} · {isAutomatic ? 'System Generated' : `Decision by ${event.createdBy}`}
-                                                    {event.relatedAssignmentId && ` · Mission: ${event.relatedAssignmentId.toUpperCase()}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right shrink-0 min-w-[80px]">
-                                            <p className={cn(
-                                                "text-lg font-mono font-bold leading-none",
-                                                event.scoreChange > 0 ? "text-text-green" : "text-text-red"
-                                            )}>
-                                                {event.scoreChange > 0 ? `+${event.scoreChange}` : event.scoreChange}
-                                            </p>
-                                            <p className="text-[8px] font-black text-text-muted uppercase mt-1">TRUST PTS</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            {reliabilityEvents.length === 0 && (
-                                <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
-                                    <Shield size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No operational reliability events logged</p>
-                                </div>
-                            )}
-                        </div>
-                    </TabsContent>
+                          <div className="space-y-3">
+                              {reliabilityEvents.map(event => {
+                                  const isCritical = event.category === 'critical_failure';
+                                  const isRecovery = event.category === 'positive_recovery';
+                                  const isAutomatic = event.eventSource === 'automatic';
+                                  return (
+                                      <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                          <div className="flex items-center gap-6">
+                                              <div className={cn(
+                                                  "p-2.5 rounded-lg border",
+                                                  isCritical ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
+                                                  isRecovery ? "bg-green-dim text-text-green border-green-border/30" : 
+                                                  "bg-bg-primary text-text-muted border-border-sub"
+                                              )}>
+                                                  {isCritical ? <ShieldAlert size={20}/> : isRecovery ? <CheckCircle2 size={20}/> : <History size={20}/>}
+                                              </div>
+                                              <div className="text-left space-y-0.5">
+                                                  <div className="flex items-center gap-2">
+                                                      <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{event.eventType.replace(/_/g, ' ')}</p>
+                                                      <Badge variant="outline" className="text-[8px] h-3.5 uppercase bg-bg-tertiary px-1">{event.category.replace(/_/g, ' ')}</Badge>
+                                                      <Badge variant="outline" className={cn(
+                                                          "text-[7px] h-3.5 uppercase tracking-tighter gap-1",
+                                                          isAutomatic ? "bg-accent-gold-dim border-accent-gold/20 text-accent-gold" : "bg-bg-primary border-border-sub text-text-muted"
+                                                      )}>
+                                                          {isAutomatic ? <Settings size={8}/> : <User size={8}/>}
+                                                          {event.eventSource}
+                                                      </Badge>
+                                                  </div>
+                                                  <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{event.reason}&quot;</p>
+                                                  <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                                      {format(parseISO(event.createdAt), 'MMM d, yyyy')} · {isAutomatic ? 'System Generated' : `Decision by ${event.createdBy}`}
+                                                      {event.relatedAssignmentId && ` · Mission: ${event.relatedAssignmentId.toUpperCase()}`}
+                                                  </p>
+                                              </div>
+                                          </div>
+                                          <div className="text-right shrink-0 min-w-[80px]">
+                                              <p className={cn(
+                                                  "text-lg font-mono font-bold leading-none",
+                                                  event.scoreChange > 0 ? "text-text-green" : "text-text-red"
+                                              )}>
+                                                  {event.scoreChange > 0 ? `+${event.scoreChange}` : event.scoreChange}
+                                              </p>
+                                              <p className="text-[8px] font-black text-text-muted uppercase mt-1">TRUST PTS</p>
+                                          </div>
+                                      </div>
+                                  )
+                              })}
+                              {reliabilityEvents.length === 0 && (
+                                  <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                                      <Shield size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No operational reliability events logged</p>
+                                  </div>
+                              )}
+                          </div>
+                      </TabsContent>
 
-                    <TabsContent value="documents" className="m-0 space-y-6 animate-in fade-in duration-300">
-                        <div className="flex justify-between items-center mb-4 px-1">
-                            <div className="space-y-1">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Personnel Folder Registry</h3>
-                                <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Tactical storage for certs, IDs, and field credentials.</p>
-                            </div>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                onChange={handleFileChange}
-                            />
-                            <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={handleUploadClick}>
-                                <Upload size={14} className="mr-1.5"/> Upload Asset
-                            </Button>
-                        </div>
+                      <TabsContent value="documents" className="m-0 space-y-6 animate-in fade-in duration-300">
+                          <div className="flex justify-between items-center mb-4 px-1">
+                              <div className="space-y-1">
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Personnel Folder Registry</h3>
+                                  <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Tactical storage for certs, IDs, and field credentials.</p>
+                              </div>
+                              <input 
+                                  type="file" 
+                                  ref={fileInputRef} 
+                                  className="hidden" 
+                                  onChange={handleFileChange}
+                                />
+                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={handleUploadClick}>
+                                  <Upload size={14} className="mr-1.5"/> Upload Asset
+                              </Button>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {documents.map(doc => (
-                                <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
-                                    <div className="flex items-center gap-4 overflow-hidden">
-                                        <div className={cn(
-                                            "p-2.5 rounded-lg border",
-                                            doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
-                                            doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
-                                            "bg-bg-primary text-text-muted border-border-sub"
-                                        )}>
-                                            {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
-                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
-                                                {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
-                                            <Download size={14}/>
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>
-                                            <Trash2 size={14}/>
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                            {documents.length === 0 && (
-                                <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
-                                    <Folder size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No documents registered in folder</p>
-                                </div>
-                            )}
-                        </div>
-                    </TabsContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {documents.map(doc => (
+                                  <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                      <div className="flex items-center gap-4 overflow-hidden">
+                                          <div className={cn(
+                                              "p-2.5 rounded-lg border",
+                                              doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
+                                              doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
+                                              "bg-bg-primary text-text-muted border-border-sub"
+                                          )}>
+                                              {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
+                                          </div>
+                                          <div className="min-w-0">
+                                              <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
+                                              <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                  {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
+                                              </p>
+                                          </div>
+                                      </div>
+                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                              <Download size={14}/>
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>
+                                              <Trash2 size={14}/>
+                                          </Button>
+                                      </div>
+                                  </div>
+                              ))}
+                              {documents.length === 0 && (
+                                  <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                                      <Folder size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No documents registered in folder</p>
+                                  </div>
+                              )}
+                          </div>
+                      </TabsContent>
 
-                    <TabsContent value="schedule" className="m-0">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Weekly Availability</h3>
-                                <div className="space-y-2">
-                                    {daysOfWeek.map(day => {
-                                        const availability = person.availability?.[day.toLowerCase()];
-                                        return (
-                                            <div key={day} className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                                <span className="text-[11px] font-bold text-text-primary uppercase tracking-widest">{day}</span>
-                                                {availability ? (
-                                                    <span className="font-mono text-[11px] font-bold text-text-green">{availability.start} - {availability.end}</span>
-                                                ) : (
-                                                    <Badge variant="outline" className="text-[8px] uppercase bg-bg-tertiary">Unavailable</Badge>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
-                                    <Calendar size={14}/> Temporal Exceptions
-                                </h3>
-                                <div className="space-y-2">
-                                    {timeOffRequests.map((req) => (
-                                        <div key={req.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between">
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>
-                                                <p className="text-[10px] text-text-muted font-mono">{req.startDate} to {req.endDate}</p>
-                                            </div>
-                                            <Badge variant={req.status === 'approved' ? 'active' : req.status === 'onhold' ? 'onhold' : 'pending'}>{req.status.toUpperCase()}</Badge>
-                                        </div>
-                                    ))}
-                                    {timeOffRequests.length === 0 && (
-                                        <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30 opacity-60">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No exceptions logged</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                         </div>
-                    </TabsContent>
+                      <TabsContent value="schedule" className="m-0">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div className="space-y-4">
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Weekly Availability</h3>
+                                  <div className="space-y-2">
+                                      {daysOfWeek.map(day => {
+                                          const availability = person.availability?.[day.toLowerCase()];
+                                          return (
+                                              <div key={day} className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                                                  <span className="text-[11px] font-bold text-text-primary uppercase tracking-widest">{day}</span>
+                                                  {availability ? (
+                                                      <span className="font-mono text-[11px] font-bold text-text-green">{availability.start} - {availability.end}</span>
+                                                  ) : (
+                                                      <Badge variant="outline" className="text-[8px] uppercase bg-bg-tertiary">Unavailable</Badge>
+                                                  )}
+                                              </div>
+                                          )
+                                      })}
+                                  </div>
+                              </div>
+                              <div className="space-y-4">
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
+                                      <Calendar size={14}/> Temporal Exceptions
+                                  </h3>
+                                  <div className="space-y-2">
+                                      {timeOffRequests.map((req) => (
+                                          <div key={req.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between">
+                                              <div className="space-y-1">
+                                                  <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>
+                                                  <p className="text-[10px] text-text-muted font-mono">{req.startDate} to {req.endDate}</p>
+                                              </div>
+                                              <Badge variant={req.status === 'approved' ? 'active' : req.status === 'onhold' ? 'onhold' : 'pending'}>{req.status.toUpperCase()}</Badge>
+                                          </div>
+                                      ))}
+                                      {timeOffRequests.length === 0 && (
+                                          <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30 opacity-60">
+                                              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No exceptions logged</p>
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                           </div>
+                      </TabsContent>
 
-                    <TabsContent value="assignments" className="m-0 space-y-6">
-                        <div className="flex justify-between items-center px-1">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Assignment Ledger</h3>
-                        </div>
-                        <div className="table-wrap p-0">
-                            <Table>
-                                <TableHeader className="bg-bg-tertiary">
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
-                                        <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
-                                        <TableHead className="text-[10px] tracking-widest">Status</TableHead>
-                                        <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {workOrders.map((wo) => (
-                                        <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                            <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{wo.id.toUpperCase()}</TableCell>
-                                            <TableCell>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[8px] uppercase">
-                                                    {wo.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {workOrders.length === 0 && (
-                                        <TableRow><TableCell colSpan={4} className="h-32 text-center text-text-muted italic text-[10px] uppercase tracking-widest">Assignment registry clear</TableCell></TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="financial" className="m-0 p-12 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 opacity-40">
-                        <DollarSign size={48} className="mx-auto mb-2 text-text-muted" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">Financial settlement hub pending configuration</p>
-                    </TabsContent>
-                </div>
-            </ScrollArea>
-            
-            <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
-                <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
-                    <Pencil size={14} className="mr-2"/> Modify Identity Registry
-                </Button>
-            </DialogFooter>
-        </Dialog>
+                      <TabsContent value="assignments" className="m-0 space-y-6">
+                          <div className="flex justify-between items-center px-1">
+                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Assignment Ledger</h3>
+                          </div>
+                          <div className="table-wrap p-0">
+                              <Table>
+                                  <TableHeader className="bg-bg-tertiary">
+                                      <TableRow className="hover:bg-transparent border-border-sub">
+                                          <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
+                                          <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
+                                          <TableHead className="text-[10px] tracking-widest">Status</TableHead>
+                                          <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {workOrders.map((wo) => (
+                                          <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
+                                              <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{wo.id.toUpperCase()}</TableCell>
+                                              <TableCell>
+                                                  <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                              </TableCell>
+                                              <TableCell>
+                                                  <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[8px] uppercase">
+                                                      {wo.status}
+                                                  </Badge>
+                                              </TableCell>
+                                              <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
+                                          </TableRow>
+                                      ))}
+                                      {workOrders.length === 0 && (
+                                          <TableRow><TableCell colSpan={4} className="h-32 text-center text-text-muted italic text-[10px] uppercase tracking-widest">Assignment registry clear</TableCell></TableRow>
+                                      )}
+                                  </TableBody>
+                              </Table>
+                          </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="financial" className="m-0 p-12 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 opacity-40">
+                          <DollarSign size={48} className="mx-auto mb-2 text-text-muted" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">Financial settlement hub pending configuration</p>
+                      </TabsContent>
+                  </div>
+              </ScrollArea>
+              
+              <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
+                  <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
+                  <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
+                      <Pencil size={14} className="mr-2"/> Modify Identity Registry
+                  </Button>
+              </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* LOG RELIABILITY EVENT DIALOG */}
-        <LogReliabilityEventDialog 
-            isOpen={isLogEventOpen}
-            setIsOpen={setIsLogEventOpen}
-            person={person}
-            onSave={(evt) => {
-                setIsLogEventOpen(false);
-                toast({ title: "Registry Event Logged", description: "Operational reliability index has been updated." });
-            }}
-        />
-      </DialogContent>
+      {/* LOG RELIABILITY EVENT DIALOG */}
+      <LogReliabilityEventDialog 
+          isOpen={isLogEventOpen}
+          setIsOpen={setIsLogEventOpen}
+          person={person}
+          onSave={(evt) => {
+              setIsLogEventOpen(false);
+              toast({ title: "Registry Event Logged", description: "Operational reliability index has been updated." });
+          }}
+      />
+
       <style jsx global>{`
         .tab-trigger-personnel {
             @apply px-0 h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
@@ -486,7 +488,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
             @apply text-text-primary border-brand-red bg-transparent shadow-none;
         }
       `}</style>
-    </Dialog>
+    </>
   );
 }
 

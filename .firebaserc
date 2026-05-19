@@ -1,7 +1,5 @@
 {
   "projects": {
     "default": "aaromach-command-center"
-  },
-  "targets": {},
-  "etags": {}
+  }
 }

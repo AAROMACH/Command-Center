@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { workOrders as initialWorkOrders, technicians, serviceRequests as initialServiceRequests } from "@/lib/data";
+import { db } from "@/lib/firebase";
+import { collection, doc, setDoc, addDoc, onSnapshot, query } from 'firebase/firestore';
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, Clipboar
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
-import type { WorkOrder, Route, ServiceRequest } from "@/lib/types";
+import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,26 +46,21 @@ type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function DispatchPage() {
   const searchParams = useSearchParams();
-  // Master Tab State
   const [activeMasterTab, setActiveMasterTab] = useState(searchParams.get('tab') === 'requests' ? 'requests' : 'dispatch');
   
-  // Work Order / Dispatch State
-  const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
-  const [routes, setRoutes] = useState<Route[]>([
-    { id: 'route-1', name: 'Detroit North AM', workOrderIds: ['wo-101'], technicianName: 'Alex Johnson' }
-  ]);
+  const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
+  
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [dispatchSearchQuery, setDispatchSearchQuery] = useState("");
-  const [dispatchSortBy, setDispatchSortBy] = useState<SortOption>('date');
-
-  // Service Request State
-  const [allRequests, setAllRequests] = useState<ServiceRequest[]>(initialServiceRequests);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [dispatchSearchQuery, setDispatchSearchQuery] = useState("");
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
+  const [dispatchSortBy, setDispatchSortBy] = useState<SortOption>('date');
   const [requestSortBy, setRequestSortBy] = useState<SortOption>('priority');
 
-  // Filter State
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeSources, setActiveSources] = useState<string[]>([]);
@@ -72,88 +68,75 @@ export default function DispatchPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'requests') setActiveMasterTab('requests');
-    else if (tab === 'dispatch') setActiveMasterTab('dispatch');
-  }, [searchParams]);
+    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+      setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    });
+    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+    });
+    const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
+      setAllRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
+    });
+    const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
+      setRoutes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Route)));
+    });
 
-  // Notification Counts
-  const unassignedCount = useMemo(() => allWorkOrders.filter(wo => wo.status === 'unassigned').length, [allWorkOrders]);
-  const newRequestsCount = useMemo(() => allRequests.filter(req => req.status === 'new').length, [allRequests]);
+    return () => {
+      unsubWO();
+      unsubTech();
+      unsubReq();
+      unsubRoutes();
+    };
+  }, []);
 
-  // Handlers - Dispatch
   const handleAddNewOrder = (order: WorkOrder) => {
-    setAllWorkOrders(prev => [{ ...order, source: 'Manual' }, ...prev]);
+    addDoc(collection(db, 'workOrders'), { ...order, source: 'Manual' })
+      .then(() => toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." }))
+      .catch((e) => toast({ variant: "destructive", title: "Write Failed", description: e.message }));
   };
 
   const handleImportOrders = (newOrders: WorkOrder[]) => {
-    setAllWorkOrders(prev => [...newOrders.map(o => ({ ...o, source: 'Imported' as const })), ...prev]);
-  };
-
-  const handleWorkOrdersChange = (updated: WorkOrder[]) => {
-    setAllWorkOrders(updated);
-  };
-
-  const handleRoutesChange = (updated: Route[]) => {
-    setRoutes(updated);
-  };
-
-  // Handlers - Requests
-  const handleAddNewRequest = (request: ServiceRequest) => {
-    setAllRequests(prev => [request, ...prev]);
-    toast({
-        title: "Intake Buffer Updated",
-        description: `Request ${request.id.toUpperCase()} has been added to the job funnel.`,
+    newOrders.forEach(order => {
+        setDoc(doc(db, 'workOrders', order.id), { ...order, source: 'Imported' })
+            .catch(e => console.error("Import error", e));
     });
+    toast({ title: "Import Processed", description: `${newOrders.length} records transmitted to registry.` });
   };
 
-  // Filter Logic
+  const handleAddNewRequest = (request: ServiceRequest) => {
+    addDoc(collection(db, 'clientRequests'), request)
+      .then(() => toast({ title: "Request Logged", description: "Service ticket added to intake funnel." }))
+      .catch((e) => toast({ variant: "destructive", title: "Write Failed", description: e.message }));
+  };
+
   const togglePriority = (priority: string) => {
-    setActivePriorities(prev => 
-      prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]
-    );
+    setActivePriorities(prev => prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]);
   };
 
   const toggleType = (type: string) => {
-    setActiveTypes(prev => 
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
+    setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   };
 
   const toggleSource = (source: string) => {
-    setActiveSources(prev => 
-      prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]
-    );
+    setActiveSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]);
   };
 
-  const resetFilters = () => {
-    setActivePriorities([]);
-    setActiveTypes([]);
-    setActiveSources([]);
-    toast({ title: "Filters Cleared", description: "All search constraints have been removed." });
-  };
-
-  // Filtered Data
   const filteredOrders = useMemo(() => {
     let results = allWorkOrders.filter(order => {
       const matchesSearch = order.id.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
         order.description.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
         order.clientName.toLowerCase().includes(dispatchSearchQuery.toLowerCase());
-      
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
       const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
-      
       return matchesSearch && matchesPriority && matchesType && matchesSource;
     });
-
     return results.sort((a, b) => {
         if (dispatchSortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority] - prio[b.priority];
         }
         if (dispatchSortBy === 'client') return a.clientName.localeCompare(b.clientName);
-        if (dispatchSortBy === 'type') return a.projectType.localeCompare(b.projectType);
         return a.scheduleDate.localeCompare(b.scheduleDate);
     });
   }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, dispatchSortBy]);
@@ -163,53 +146,35 @@ export default function DispatchPage() {
       const matchesSearch = req.id.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
         req.clientName.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
         req.description.toLowerCase().includes(requestSearchQuery.toLowerCase());
-      
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
-      
       return matchesSearch && matchesPriority && matchesType;
     });
-
     return results.sort((a, b) => {
         if (requestSortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority] - prio[b.priority];
         }
-        if (requestSortBy === 'client') return a.clientName.localeCompare(b.clientName);
-        if (requestSortBy === 'type') return a.requestType.localeCompare(b.requestType);
         return a.submittedDate.localeCompare(b.submittedDate);
     });
   }, [allRequests, requestSearchQuery, activePriorities, activeTypes, requestSortBy]);
-
-  const hasActiveFilters = activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0;
 
   return (
     <div className="space-y-6">
         <header className="page-header">
             <div>
-              <p className="page-eyebrow flex items-center gap-2">
-                <Layers size={12} />
-                Operations Control Center
-              </p>
+              <p className="page-eyebrow flex items-center gap-2"><Layers size={12} />Operations Control Center</p>
               <h1 className="page-title">Dispatch & Intake</h1>
               <p className="page-subtitle">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="page-header-right">
                 {activeMasterTab === 'dispatch' ? (
                   <>
-                    <Button variant="outline" size="default" onClick={() => setIsImportDialogOpen(true)}>
-                      <ImportIcon size={14} className="mr-2"/>
-                      Import Jobs
-                    </Button>
-                    <Button variant="default" size="default" onClick={() => setIsNewDispatchOpen(true)}>
-                      + New Dispatch Entry
-                    </Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
+                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)}>+ New Dispatch Entry</Button>
                   </>
                 ) : (
-                  <Button variant="default" size="default" onClick={() => setIsNewRequestOpen(true)}>
-                      <Plus size={14} className="mr-2"/>
-                      New Service Request
-                  </Button>
+                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)}><Plus size={14} className="mr-2"/>New Service Request</Button>
                 )}
             </div>
       </header>
@@ -217,151 +182,18 @@ export default function DispatchPage() {
       <Tabs value={activeMasterTab} onValueChange={setActiveMasterTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <TabsList className="tabs !p-0 !bg-bg-tertiary">
-              <TabsTrigger 
-                value="dispatch" 
-                className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all"
-              >
-                <Layers size={14} />
-                DISPATCH HUB
-                {unassignedCount > 0 && (
-                  <Badge className="ml-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] font-bold bg-brand-red text-white border-none shadow-[0_0_8px_rgba(204,34,0,0.4)]">
-                    {unassignedCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="requests" 
-                className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red flex items-center gap-2 transition-all"
-              >
-                <ClipboardList size={14} />
-                SERVICE REQUESTS
-                {newRequestsCount > 0 && (
-                  <Badge className="ml-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] font-bold bg-brand-red text-white border-none shadow-[0_0_8px_rgba(204,34,0,0.4)]">
-                    {newRequestsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
+              <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">SERVICE REQUESTS</TabsTrigger>
             </TabsList>
-
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="search-wrap flex-1 md:w-[300px]">
-                <Search />
-                <input 
-                  className="search-input !w-full" 
-                  placeholder={activeMasterTab === 'dispatch' ? "Search Job Pool..." : "Search Request Funnel..."}
-                  value={activeMasterTab === 'dispatch' ? dispatchSearchQuery : requestSearchQuery}
-                  onChange={(e) => activeMasterTab === 'dispatch' ? setDispatchSearchQuery(e.target.value) : setRequestSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <Select 
-                value={activeMasterTab === 'dispatch' ? dispatchSortBy : requestSortBy} 
-                onValueChange={(val: any) => activeMasterTab === 'dispatch' ? setDispatchSortBy(val) : setRequestSortBy(val)}
-              >
-                  <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                      <div className="flex items-center gap-2">
-                          <ArrowUpDown size={14} className="text-text-muted" />
-                          <SelectValue placeholder="Sort" />
-                      </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="date" className="text-[10px] uppercase font-bold">{activeMasterTab === 'dispatch' ? 'Schedule' : 'Submission'}</SelectItem>
-                      <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
-                      <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
-                      <SelectItem value="type" className="text-[10px] uppercase font-bold">Category</SelectItem>
-                  </SelectContent>
-              </Select>
-              
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="default" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
-                    <SlidersHorizontal size={14} className="mr-2"/>
-                    Filters
-                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{activePriorities.length + activeTypes.length + activeSources.length}</Badge>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                  <div className="p-4 border-b border-border-sub bg-bg-tertiary">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
-                      {hasActiveFilters && (
-                        <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
-                          <X size={10} /> Reset
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-6">
-                    {/* Source Filter (Only for Dispatch) */}
-                    {activeMasterTab === 'dispatch' && (
-                      <div className="space-y-3">
-                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Assignment Source</p>
-                        <div className="space-y-2">
-                          {ASSIGNMENT_SOURCES.map(source => (
-                            <div key={source} className="flex items-center space-x-2">
-                              <Checkbox 
-                                id={`source-${source}`} 
-                                checked={activeSources.includes(source)}
-                                onCheckedChange={() => toggleSource(source)}
-                              />
-                              <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Priority Filter */}
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Level</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['critical', 'high', 'medium', 'low'].map(priority => (
-                          <div key={priority} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`prio-${priority}`} 
-                              checked={activePriorities.includes(priority)}
-                              onCheckedChange={() => togglePriority(priority)}
-                            />
-                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Category Filter */}
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Service Category</p>
-                      <div className="space-y-2">
-                        {SERVICE_CATEGORIES.map(type => (
-                          <div key={type} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`type-${type}`} 
-                              checked={activeTypes.includes(type)}
-                              onCheckedChange={() => toggleType(type)}
-                            />
-                            <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-bg-tertiary/50 border-t border-border-sub">
-                    <p className="text-[8px] text-text-muted uppercase font-medium leading-tight">
-                      Constraints are applied globally to the {activeMasterTab === 'dispatch' ? 'Job Pool' : 'Mission Funnel'}.
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
         </div>
 
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs 
               workOrders={filteredOrders} 
               technicians={technicians} 
-              onWorkOrdersChange={handleWorkOrdersChange}
+              onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
               routes={routes}
-              onRoutesChange={handleRoutesChange}
+              onRoutesChange={(updated) => updated.forEach(r => setDoc(doc(db, 'routes', r.id), r, { merge: true }))}
            />
         </TabsContent>
 
@@ -370,25 +202,9 @@ export default function DispatchPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIALOGS */}
-      <NewAssignmentDialog 
-          isOpen={isNewDispatchOpen} 
-          setIsOpen={setIsNewDispatchOpen} 
-          onSave={handleAddNewOrder} 
-      />
-
-      <ImportJobsDialog 
-          isOpen={isImportDialogOpen} 
-          setIsOpen={setIsImportDialogOpen} 
-          onImport={handleImportOrders} 
-          existingOrders={allWorkOrders}
-      />
-
-      <NewRequestDialog 
-        isOpen={isNewRequestOpen}
-        setIsOpen={setIsNewRequestOpen}
-        onSave={handleAddNewRequest}
-      />
+      <NewAssignmentDialog isOpen={isNewDispatchOpen} setIsOpen={setIsNewDispatchOpen} onSave={handleAddNewOrder} />
+      <ImportJobsDialog isOpen={isImportDialogOpen} setIsOpen={setIsImportDialogOpen} onImport={handleImportOrders} existingOrders={allWorkOrders} />
+      <NewRequestDialog isOpen={isNewRequestOpen} setIsOpen={setIsNewRequestOpen} onSave={handleAddNewRequest} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { workOrders as initialWorkOrders, technicians } from "@/lib/data";
+import { db } from "@/lib/firebase";
+import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,7 +69,8 @@ const getFieldNationLink = (id: string) => {
 };
 
 export default function AssignmentsHubPage() {
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
@@ -83,20 +85,39 @@ export default function AssignmentsHubPage() {
 
   const { toast } = useToast();
 
+  // 1. Initialize Registry Listeners
+  useEffect(() => {
+    const q = query(collection(db, 'workOrders'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder));
+      setWorkOrders(orders);
+    });
+
+    const techQ = query(collection(db, 'users'));
+    const techUnsub = onSnapshot(techQ, (snapshot) => {
+      const techs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician));
+      setTechnicians(techs);
+    });
+
+    return () => {
+      unsub();
+      techUnsub();
+    };
+  }, []);
+
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        // EXCLUDE UNASSIGNED FROM ACTIVE REGISTRY
         if (wo.status === 'unassigned') return false;
 
         const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || ''));
-        const query = searchQuery.toLowerCase();
+        const queryStr = searchQuery.toLowerCase();
         
         const matchesSearch = (
-          wo.id.toLowerCase().includes(query) ||
-          wo.description.toLowerCase().includes(query) ||
-          wo.clientName.toLowerCase().includes(query) ||
-          (tech && tech.name.toLowerCase().includes(query))
+          wo.id.toLowerCase().includes(queryStr) ||
+          wo.description.toLowerCase().includes(queryStr) ||
+          wo.clientName.toLowerCase().includes(queryStr) ||
+          (tech && tech.name.toLowerCase().includes(queryStr))
         );
 
         const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
@@ -138,42 +159,15 @@ export default function AssignmentsHubPage() {
             return a.scheduleDate.localeCompare(b.scheduleDate);
         }
       });
-  }, [workOrders, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
+  }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => (wo.status === 'assigned' || wo.status === 'in-progress')),
+    filteredWorkOrders.filter(wo => (wo.status === 'assigned' || wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way')),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
     filteredWorkOrders.filter(wo => wo.status === 'completed'),
   [filteredWorkOrders]);
-
-  const groupedByClient = useMemo(() => {
-    if (sortBy !== 'client') return null;
-    const uniqueClientNames = Array.from(new Set(activeWorkOrders.map(wo => wo.clientName)));
-    const registeredClients = technicians.filter(t => t.roles?.includes('client') || t.clientCompany);
-    
-    const regGroups = registeredClients
-        .map(client => {
-            const clientName = client.clientCompany || client.name;
-            const jobs = activeWorkOrders.filter(wo => wo.clientName === clientName);
-            if (jobs.length === 0) return null;
-            return { client, jobs, isRegistered: true };
-        })
-        .filter((group): group is { client: Technician; jobs: WorkOrder[]; isRegistered: boolean } => group !== null);
-
-    const unregNames = uniqueClientNames.filter(name => 
-        !registeredClients.some(c => (c.clientCompany || c.name) === name)
-    );
-
-    const unregGroups = unregNames.map(name => ({
-        client: { name, avatarUrl: '', businessType: 'Unregistered Entity' } as Technician,
-        jobs: activeWorkOrders.filter(wo => wo.clientName === name),
-        isRegistered: false
-    }));
-
-    return [...regGroups, ...unregGroups];
-  }, [activeWorkOrders, sortBy]);
 
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -201,21 +195,27 @@ export default function AssignmentsHubPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!editedOrder) return;
-    setWorkOrders(prev => prev.map(order =>
-      order.id === editedOrder.id ? editedOrder : order
-    ));
-    setIsEditDialogOpen(false);
-    toast({ title: "Registry Updated", description: "Assignment parameters committed." });
+    try {
+        const docRef = doc(db, 'workOrders', editedOrder.id);
+        await updateDoc(docRef, { ...editedOrder });
+        setIsEditDialogOpen(false);
+        toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    }
   };
 
-  const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
-    setWorkOrders(prev => prev.map(order => 
-        order.id === woId ? { ...order, ...updates } : order
-    ));
-    if (selectedJob?.id === woId) {
-        setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
+  const handleJobUpdate = async (woId: string, updates: Partial<WorkOrder>) => {
+    try {
+        const docRef = doc(db, 'workOrders', woId);
+        await updateDoc(docRef, updates);
+        if (selectedJob?.id === woId) {
+            setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
+        }
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Registry Error", description: error.message });
     }
   };
 
@@ -366,56 +366,7 @@ export default function AssignmentsHubPage() {
 
         <div className="space-y-6">
             <TabsContent value="schedule" className="mt-0 space-y-6">
-                {sortBy === 'tech' && (
-                    <div className="grid grid-cols-1 gap-8">
-                        {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => {
-                            const techJobs = activeWorkOrders.filter(wo => wo.assignedTechnicianId === tech.id);
-                            if (techJobs.length === 0) return null;
-                            return (
-                                <div key={tech.id} className="space-y-4">
-                                    <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
-                                        <Avatar className="h-10 w-10 border border-border-sub">
-                                            <AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="text-left">
-                                            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{tech.name}</h3>
-                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{tech.role} • {techJobs.length} Assigned</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {techJobs.map(job => <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />)}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {sortBy === 'client' && groupedByClient && (
-                    <div className="grid grid-cols-1 gap-8">
-                        {groupedByClient.map((group, idx) => (
-                            <div key={group.client.name + idx} className="space-y-4">
-                                <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
-                                    <div className="relative">
-                                        <Avatar className="h-10 w-10 border border-border-sub">
-                                            <AvatarImage src={group.client.avatarUrl} /><AvatarFallback><Building2 size={16} /></AvatarFallback>
-                                        </Avatar>
-                                        <div className="absolute -bottom-1 -right-1 bg-brand-red rounded-full p-1 border-2 border-bg-primary"><Briefcase size={8} className="text-white" /></div>
-                                    </div>
-                                    <div className="text-left">
-                                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{group.client.name}</h3>
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{group.client.businessType || 'Strategic Partner'} • {group.jobs.length} Active Jobs</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {group.jobs.map(job => <AssignmentCard key={job.id} job={job} onCardClick={handleCardClick} />)}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {(sortBy === 'date' || sortBy === 'status' || sortBy === 'pay') && (
+                {(sortBy === 'date' || sortBy === 'status' || sortBy === 'pay' || sortBy === 'tech') && (
                     <div className="table-wrap">
                         <table className="tbl">
                             <thead>
@@ -457,7 +408,8 @@ export default function AssignmentsHubPage() {
                                                     {tech ? (
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
-                                                                <AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                                <AvatarImage src={tech.avatarUrl} />
+                                                                <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
                                                         </div>
@@ -610,6 +562,8 @@ export default function AssignmentsHubPage() {
                               <SelectContent>
                                 <SelectItem value="unassigned">UNASSIGNED</SelectItem>
                                 <SelectItem value="assigned">ASSIGNED</SelectItem>
+                                <SelectItem value="confirmed">CONFIRMED</SelectItem>
+                                <SelectItem value="on-my-way">ON MY WAY</SelectItem>
                                 <SelectItem value="in-progress">IN PROGRESS</SelectItem>
                                 <SelectItem value="completed">COMPLETED</SelectItem>
                               </SelectContent>
@@ -627,49 +581,4 @@ export default function AssignmentsHubPage() {
       </Tabs>
     </div>
   );
-}
-
-function AssignmentCard({ job, onCardClick }: { job: WorkOrder; onCardClick: (wo: WorkOrder) => void }) {
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-          const parts = dateStr.split(/[-/]/);
-          let d;
-          if (parts[0].length === 4) { d = new Date(dateStr); } 
-          else { 
-            const [m, day, y] = parts;
-            d = new Date(`${y}-${m}-${day}T12:00:00`);
-          }
-          return format(d, 'MM-dd-yyyy');
-        } catch (e) {
-          return dateStr;
-        }
-    };
-
-    return (
-        <Card key={job.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group text-left" onClick={() => onCardClick(job)}>
-            <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-[10px] text-brand-red font-bold">{job.id.toUpperCase()}</span>
-                              {job.source === 'Imported' && (
-                                <a href={getFieldNationLink(job.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                  <ExternalLink size={10} />
-                                </a>
-                              )}
-                            </div>
-                            <Badge variant={job.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-4 uppercase text-[7px] tracking-widest mt-1">{job.status}</Badge>
-                        </div>
-                        <div className="flex flex-col min-w-0 text-left"><p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{job.description}</p><p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{job.clientName}</p></div>
-                    </div>
-                </div>
-                <div className="pt-2 border-t border-border-sub space-y-1.5 flex flex-col items-start">
-                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight"><Clock size={12} className="text-brand-red" />{job.scheduleTime} • {formatDateDisplay(job.scheduleDate)}</div>
-                    <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{job.location}</span></div>
-                </div>
-            </CardContent>
-        </Card>
-    );
 }

@@ -1,8 +1,39 @@
-import { technicians, timeOffRequests, workOrders, siteRequests } from "@/lib/data";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { DirectoryClient } from "./components/directory-client";
 import { Users } from "lucide-react";
+import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from "@/lib/types";
 
 export default function DirectoryPage() {
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+
+  useEffect(() => {
+    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+    });
+    const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+      setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+    });
+    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+      setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    });
+    const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
+      setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
+    });
+
+    return () => {
+      unsubTech();
+      unsubTOR();
+      unsubWO();
+      unsubSite();
+    };
+  }, []);
 
   return (
     <div>

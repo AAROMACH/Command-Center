@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, doc, updateDoc, onSnapshot, query, where, addDoc } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
-import { workOrders as initialWorkOrders, technicians, weeklyLogs, projects } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,14 +13,8 @@ import {
   Play,
   ClipboardList,
   Receipt,
-  Eye,
   LogOut,
-  StickyNote,
-  Camera,
-  Coins,
   Navigation,
-  FileCheck,
-  AlertCircle,
   Check
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
@@ -27,7 +22,6 @@ import { isSameDay, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
 import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
-import { PendingPayoutDialog } from './components/pending-payout-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -35,30 +29,15 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
-const getGPSCoordinates = (): Promise<string> => {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      resolve("GPS Unavailable");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
-      () => resolve("GPS Restricted"),
-      { timeout: 5000 }
-    );
-  });
-};
-
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [mounted, setMounted] = useState(false);
-    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+    const [tech, setTech] = useState<Technician | null>(null);
+    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
+    const [unsubmittedLogs, setUnsubmittedLogs] = useState<WeeklyLog[]>([]);
     
-    // UI Dialog States
     const [isLogSelectionOpen, setIsLogSelectionOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-    const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false);
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -66,95 +45,46 @@ export default function TechDashboardPage() {
     const { toast } = useToast();
 
     useEffect(() => {
-        setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
-    }, []);
+        if (!userId) return;
 
-    const tech = useMemo(() => 
-        mounted && currentTechId ? technicians.find(t => t.id === currentTechId) : null, 
-    [currentTechId, mounted]);
+        const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) setTech({ ...d.data(), id: d.id } as Technician);
+        });
 
-    const techWorkOrders = useMemo(() => 
-        mounted && currentTechId ? allWorkOrders.filter(wo => wo.assignedTechnicianId === currentTechId) : [],
-    [allWorkOrders, currentTechId, mounted]);
-    
-    const todaysWorkOrders = useMemo(() => 
-        techWorkOrders.filter(wo => {
-            try {
-                return isSameDay(parseISO(wo.scheduleDate), new Date());
-            } catch (e) {
-                return false;
-            }
-        }),
-    [techWorkOrders]);
+        const q = query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId));
+        const unsubWO = onSnapshot(q, (snap) => {
+            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
 
-    const activeJob = useMemo(() => 
-        todaysWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed'),
-    [todaysWorkOrders]);
+        const logQ = query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId), where('status', '==', 'Draft'));
+        const unsubLogs = onSnapshot(logQ, (snap) => {
+            setUnsubmittedLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+        });
 
-    const nextAction = useMemo(() => {
-        if (activeJob) return null;
-        return todaysWorkOrders
-            .filter(wo => wo.status === 'assigned')
-            .sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime))[0];
-    }, [todaysWorkOrders, activeJob]);
-
-    const unsubmittedLogs = useMemo(() => {
-        if (!currentTechId) return [];
-        return weeklyLogs.filter(l => l.technicianId === currentTechId && l.status === 'Draft');
+        return () => {
+            unsubTech();
+            unsubWO();
+            unsubLogs();
+        };
     }, [currentTechId]);
 
-    const handleLogSelect = (log: WeeklyLog) => {
-        setSelectedLog(log);
-        setIsLogSelectionOpen(false);
-    };
-
-    const handleOpenJobDetail = (wo: WorkOrder) => {
-        setSelectedJob(wo);
-        setIsDetailOpen(true);
-    };
+    const activeJob = useMemo(() => 
+        allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed'),
+    [allWorkOrders]);
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
-        const now = format(new Date(), 'HH:mm');
-        const today = format(new Date(), 'MM-dd-yyyy');
-        const coords = await getGPSCoordinates();
-        
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                let noteDetails = '';
-                if (newStatus === 'confirmed') noteDetails = `Assignment confirmed at ${now}. GPS: [${coords}].`;
-                if (newStatus === 'on-my-way') noteDetails = `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`;
-                if (newStatus === 'in-progress') noteDetails = `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`;
-                if (newStatus === 'completed') noteDetails = `Mission finalized at ${now}. GPS: [${coords}].`;
-
-                return { 
-                    ...wo, 
-                    status: newStatus,
-                    isAcknowledged: newStatus === 'confirmed' ? true : wo.isAcknowledged,
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: today, details: noteDetails, user: tech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-
-        const titles: Record<string, string> = {
-            confirmed: 'Assignment Confirmed',
-            'on-my-way': 'Trip Started',
-            'in-progress': 'Check In Successful',
-            completed: 'Job Finalized'
-        };
-        
-        toast({
-            title: titles[newStatus] || 'Status Updated',
-            description: `Assignment has been transitioned to ${newStatus.replace('-', ' ')}.`,
-        });
+        try {
+            const docRef = doc(db, 'workOrders', woId);
+            await updateDoc(docRef, { status: newStatus });
+            toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
     };
 
-    if (!mounted || !currentTechId || !tech) {
+    if (!currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
     }
 
@@ -166,191 +96,39 @@ export default function TechDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <Button 
-                    variant="outline" 
-                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => setIsCheckInDialogOpen(true)}
-                >
-                    <Play size={16} className="text-text-muted mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Check In</span>
+                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsCheckInDialogOpen(true)}>
+                    <Play size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Check In</span>
                 </Button>
-
-                <Button 
-                    variant="outline" 
-                    className="flex-1 min-w-[200px] h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => setIsReceiptDialogOpen(true)}
-                >
-                    <Receipt size={16} className="text-text-muted mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Upload Receipt</span>
+                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsReceiptDialogOpen(true)}>
+                    <Receipt size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Upload Receipt</span>
                 </Button>
-
-                <Button 
-                    variant="outline" 
-                    className="flex-1 min-w-[200px] relative h-12 bg-bg-secondary border-border-main hover:border-brand-red group"
-                    onClick={() => setIsLogSelectionOpen(true)}
-                >
-                    <ClipboardList size={16} className="text-accent-gold mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Submit weekly log</span>
-                    {unsubmittedLogs.length > 0 && (
-                        <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red border-2 border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)] animate-pulse">
-                            <span className="text-[8px] font-black text-white">{unsubmittedLogs.length}</span>
-                        </div>
-                    )}
+                <Button variant="outline" className="flex-1 h-12 relative bg-bg-secondary" onClick={() => setIsLogSelectionOpen(true)}>
+                    <ClipboardList size={16} className="text-accent-gold mr-2" /><span className="text-[10px] font-bold uppercase">Submit weekly log</span>
+                    {unsubmittedLogs.length > 0 && <Badge className="absolute -top-1 -right-1 bg-brand-red">{unsubmittedLogs.length}</Badge>}
                 </Button>
             </div>
 
-            <div className="space-y-6">
-                {!activeJob && nextAction && (
-                    <Card 
-                        className="border-2 border-brand-red bg-brand-red-dim/5 cursor-pointer hover:bg-brand-red-dim/10 transition-colors"
-                        onClick={() => handleOpenJobDetail(nextAction)}
-                    >
-                        <CardHeader className="pb-2">
-                            <div className="flex items-center justify-between">
-                                <div className="page-eyebrow text-brand-red">Next Low Voltage Job</div>
-                                <Badge variant="high">Priority</Badge>
-                            </div>
-                            <CardTitle className="text-2xl mt-1">{nextAction.description}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-6 text-left">
-                                <div className="flex flex-wrap gap-6">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 bg-bg-primary rounded-md"><Clock size={16} className="text-accent-gold"/></div>
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Schedule Window</p>
-                                            <p className="text-sm font-semibold">{nextAction.scheduleTime}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 bg-bg-primary rounded-md"><MapPin size={16} className="text-brand-red"/></div>
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Address</p>
-                                            <p className="text-sm font-semibold">{nextAction.location}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex gap-3">
-                                    <Button 
-                                      className="flex-1 h-12 gap-2 text-sm bg-accent-gold hover:bg-accent-gold/90" 
-                                      onClick={(e) => { e.stopPropagation(); handleStatusTransition(nextAction.id, 'confirmed'); }}
-                                    >
-                                        <Check size={18} className="mr-2"/> CONFIRM ASSIGNMENT
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {activeJob && (
-                    <Card 
-                        className={cn(
-                            "border-2 cursor-pointer transition-colors",
-                            activeJob.status === 'confirmed' ? "border-accent-gold bg-accent-gold-dim/10 hover:bg-accent-gold-dim/15" :
-                            activeJob.status === 'on-my-way' ? "border-brand-red bg-brand-red-dim/10 hover:bg-brand-red-dim/15" : 
-                            "border-text-green bg-green-dim/10 hover:bg-green-dim/15"
-                        )}
-                        onClick={() => handleOpenJobDetail(activeJob)}
-                    >
-                        <CardHeader className="pb-2">
-                            <div className="flex items-center gap-2">
-                                <div className={cn("h-2 w-2 rounded-full animate-pulse", 
-                                    activeJob.status === 'confirmed' ? "bg-accent-gold" :
-                                    activeJob.status === 'on-my-way' ? "bg-brand-red" : "bg-text-green")
-                                }/>
-                                <span className={cn("text-[10px] font-bold uppercase tracking-widest", 
-                                    activeJob.status === 'confirmed' ? "text-accent-gold" :
-                                    activeJob.status === 'on-my-way' ? "text-brand-red" : "text-text-green")
-                                }>
-                                    {activeJob.status === 'confirmed' ? 'ASSIGNMENT CONFIRMED' :
-                                     activeJob.status === 'on-my-way' ? 'TRIP IN PROGRESS' : 'LIVE ON SITE'}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Badge variant={
-                                    activeJob.status === 'confirmed' ? 'active' :
-                                    activeJob.status === 'on-my-way' ? 'pending' : 'active'
-                                }>
-                                    {activeJob.status.replace('-', ' ')}
-                                </Badge>
-                                <CardTitle className="text-2xl mt-1 text-left">{activeJob.description}</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                <div className="space-y-4">
-                                    <div className="flex gap-8 text-left">
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-text-muted">Start Window</p>
-                                            <p className="text-lg font-mono font-bold text-text-primary">{activeJob.scheduleTime}</p>
-                                        </div>
-                                        {activeJob.status !== 'confirmed' && (
-                                            <div>
-                                                <p className="text-[10px] uppercase font-bold text-text-muted">Active Duration</p>
-                                                <p className="text-lg font-mono">01:42:15</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                {activeJob.status === 'confirmed' && (
-                                    <Button className="h-12 gap-2 text-sm bg-brand-red hover:bg-brand-red-hover" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>
-                                        <Navigation size={18} className="mr-2"/> START TRIP (EN ROUTE)
-                                    </Button>
-                                )}
-                                {activeJob.status === 'on-my-way' && (
-                                    <Button className="h-12 gap-2 text-sm bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                        <Play size={16} fill="currentColor" className="mr-2"/> CHECK IN (ARRIVED)
-                                    </Button>
-                                )}
-                                {activeJob.status === 'in-progress' && (
-                                    <Button variant="destructive" className="h-12 gap-2 text-sm" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                        <LogOut size={16} className="mr-2"/> CHECK OUT / FINALIZE
-                                    </Button>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-
-            <ScheduleBox workOrders={techWorkOrders} />
-
-            <LogSelectionDialog
-                isOpen={isLogSelectionOpen}
-                setIsOpen={setIsLogSelectionOpen}
-                logs={unsubmittedLogs}
-                onSelect={handleLogSelect}
-            />
-
-            <ReceiptUploadDialog
-                isOpen={isReceiptDialogOpen}
-                setIsOpen={setIsReceiptDialogOpen}
-                workOrders={techWorkOrders}
-                projects={[]}
-            />
-
-            <CheckInDialog
-                isOpen={isCheckInDialogOpen}
-                setIsOpen={setIsCheckInDialogOpen}
-                workOrders={techWorkOrders.filter(wo => wo.status === 'on-my-way')}
-                projects={[]}
-            />
-
-            <JobDetailDialog 
-                isOpen={isDetailOpen} 
-                setIsOpen={setIsDetailOpen} 
-                mission={selectedJob} 
-            />
-
-            {selectedLog && (
-                <WeeklyLogDialog 
-                    isOpen={!!selectedLog} 
-                    setIsOpen={() => setSelectedLog(null)} 
-                    log={selectedLog} 
-                    onSubmitted={() => setSelectedLog(null)}
-                />
+            {activeJob && (
+                <Card className="border-2 border-brand-red bg-brand-red-dim/5" onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
+                    <CardHeader className="pb-2 text-left">
+                        <CardTitle className="text-xl uppercase">{activeJob.description}</CardTitle>
+                        <CardDescription className="text-xs uppercase font-bold text-brand-red">{activeJob.status}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-end pt-4">
+                        {activeJob.status === 'confirmed' && <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>Start Trip</Button>}
+                        {activeJob.status === 'on-my-way' && <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>Check In</Button>}
+                        {activeJob.status === 'in-progress' && <Button variant="destructive" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>Check Out</Button>}
+                    </CardContent>
+                </Card>
             )}
+
+            <ScheduleBox workOrders={allWorkOrders} />
+
+            <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
+            <ReceiptUploadDialog isOpen={isReceiptDialogOpen} setIsOpen={setIsReceiptDialogOpen} workOrders={allWorkOrders} projects={[]} />
+            <CheckInDialog isOpen={isCheckInDialogOpen} setIsOpen={setIsCheckInDialogOpen} workOrders={allWorkOrders.filter(w => w.status === 'assigned')} projects={[]} />
+            <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
+            {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
         </div>
     );
 }

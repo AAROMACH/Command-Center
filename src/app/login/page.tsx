@@ -1,7 +1,7 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -109,7 +109,15 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Password</Label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-[10px] font-bold uppercase text-brand-red hover:underline tracking-widest"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <Input 
                 id="password" 
                 type="password" 

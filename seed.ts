@@ -5,20 +5,18 @@
  * HOW TO RUN:
  *   npx tsx seed.ts
  *
- * Requires serviceAccountKey.json in the same directory.
+ * Uses Firebase Studio / Google Cloud Application Default Credentials.
  */
 
 import * as admin from "firebase-admin";
-import { readFileSync } from "fs";
-import path from "path";
 
 // ─── FIREBASE INIT ────────────────────────────────────────────────────────────
 
-const serviceAccount = JSON.parse(
-  readFileSync(path.resolve("./serviceAccountKey.json"), "utf8")
-);
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  projectId: "aaromach-command-center",
+});
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 // ─── REFERENCE IDs ────────────────────────────────────────────────────────────

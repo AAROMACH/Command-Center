@@ -179,7 +179,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                     <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{companyName}</DialogTitle>
                     <Badge variant="active" className="text-[10px] uppercase h-5 tracking-widest">Client Account</Badge>
                 </div>
-                <DialogDescription className="text-xs uppercase font-bold text-text-muted tracking-[0.2em] flex items-center gap-2">
+                <DialogDescription className="text-xs uppercase font-bold text-text-muted tracking-[0.2em] flex items-center gap-2 text-left">
                     {primaryContact?.businessType || 'Enterprise Services'} • {companySites.length} Active Sites
                 </DialogDescription>
             </div>
@@ -217,26 +217,26 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                             <ShieldCheck size={14}/> Operational Identity
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 rounded-lg border border-border-sub bg-bg-secondary/50">
                             <div className="space-y-4">
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Account Structure</p>
                                     <p className="text-sm font-bold text-text-primary uppercase">Tier 1 Strategic Partner</p>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Site</p>
                                     <p className="text-sm text-text-secondary">{companySites[0]?.location || 'N/A'}</p>
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Billing Cycle</p>
                                     <p className="text-sm text-text-secondary">Standard Net-30 Settlement</p>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Service Level Agreement</p>
                                     <Badge variant="active" className="text-[9px]">4-Hour Response Guarantee</Badge>
                                 </div>
@@ -246,7 +246,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                 </TabsContent>
 
                 {/* FINANCIAL */}
-                <TabsContent value="financial" className="m-0 space-y-6">
+                <TabsContent value="financial" className="m-0 space-y-6 text-left">
                     <div className="flex justify-between items-center">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Invoice Ledger</h3>
                         <Button variant="outline" size="sm" className="h-8 !text-[10px]">
@@ -266,9 +266,9 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                             <TableBody>
                                 {companyInvoices.map(inv => (
                                     <TableRow key={inv.id} className="border-border-sub">
-                                        <TableCell className="font-mono text-xs font-bold">INV-{inv.invoiceNumber}</TableCell>
-                                        <TableCell className="text-xs text-text-muted">{inv.issueDate}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="font-mono text-xs font-bold text-left">INV-{inv.invoiceNumber}</TableCell>
+                                        <TableCell className="text-xs text-text-muted text-left">{inv.issueDate}</TableCell>
+                                        <TableCell className="text-left">
                                             <Badge variant={inv.status === 'paid' ? 'active' : 'onhold'} className="text-[8px] uppercase">
                                                 {inv.status}
                                             </Badge>
@@ -300,7 +300,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                                     "p-4 rounded-lg border transition-all flex items-center justify-between group",
                                     active ? "bg-green-dim/10 border-green-border" : "border-border-sub bg-bg-primary hover:border-text-muted"
                                 )}>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 text-left">
                                         <div className={cn(
                                             "p-2 rounded border transition-colors",
                                             active ? "bg-bg-secondary text-text-green border-green-border" : "bg-bg-tertiary border-border-sub group-hover:text-brand-red"
@@ -331,7 +331,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                                 <h4 className="text-[10px] font-black uppercase text-brand-red tracking-widest">New Site Enrollment</h4>
                                 <button onClick={() => setIsAddSiteOpen(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
                              </div>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                                 <div className="space-y-2">
                                     <Label className="text-[9px] uppercase font-bold text-text-muted">Site Identifier</Label>
                                     <Input 
@@ -366,7 +366,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                     <div className="space-y-2">
                         {companyContacts.map(contact => (
                             <div key={contact.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary hover:bg-bg-tertiary transition-colors">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 text-left">
                                     <Avatar className="h-10 w-10 border border-border-sub">
                                         <AvatarImage src={contact.avatarUrl} />
                                         <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
@@ -377,8 +377,12 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="icon" className="h-8 w-8 text-text-muted"><Mail size={14}/></Button>
-                                    <Button variant="outline" size="icon" className="h-8 w-8 text-text-muted"><Phone size={14}/></Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-text-muted" asChild>
+                                        <a href={`mailto:${contact.email}`}><Mail size={14}/></a>
+                                    </Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-text-muted" asChild>
+                                        <a href={`tel:${contact.phone}`}><Phone size={14}/></a>
+                                    </Button>
                                     <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold">Edit Profile</Button>
                                 </div>
                             </div>
@@ -389,7 +393,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                 {/* DOCUMENTS */}
                 <TabsContent value="documents" className="m-0 space-y-6">
                     <div className="flex justify-between items-center px-1">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-left">
                             <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Company Asset Registry</h3>
                             <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Strategic repository for MSAs, Insurance (COI), and Service Agreements.</p>
                         </div>
@@ -407,7 +411,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {companyDocs.map(doc => (
                             <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
-                                <div className="flex items-center gap-4 overflow-hidden">
+                                <div className="flex items-center gap-4 overflow-hidden text-left">
                                     <div className={cn(
                                         "p-2.5 rounded-lg border",
                                         doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
@@ -442,7 +446,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
                 </TabsContent>
 
                 {/* NOTES */}
-                <TabsContent value="notes" className="m-0 space-y-4">
+                <TabsContent value="notes" className="m-0 space-y-4 text-left">
                     <div className="space-y-2">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Internal Account Intelligence</Label>
                         <Textarea 

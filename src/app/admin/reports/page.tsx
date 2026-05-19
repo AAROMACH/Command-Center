@@ -754,7 +754,7 @@ export default function ActivityAuditPage() {
                                                 <AlertTriangle size={20} className="text-accent-gold" />
                                                 <DialogTitle className="text-lg font-bold uppercase tracking-widest">Active Mission Audit</DialogTitle>
                                             </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Live dispatch buffer and intake funnel for site coordinate: {activeSite.name}</DialogDescription>
+                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Live dispatch buffer and intake funnel for site coordinate: {activeSite.name}</DialogDescription>
                                         </DialogHeader>
                                         <ScrollArea className="flex-1">
                                             <div className="p-6 space-y-3">
@@ -811,7 +811,7 @@ export default function ActivityAuditPage() {
                 </div>
                 {siteList.map(site => (
                     <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 text-left">
                             <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
                                 <Building2 size={18} />
                             </div>
@@ -885,7 +885,7 @@ export default function ActivityAuditPage() {
                                         <Card className="bg-bg-secondary border-border-main shadow-2xl">
                                             <CardContent className="p-6 space-y-8">
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-6 text-left">
                                                         <Avatar className="h-16 w-16 border-2 border-border-sub">
                                                             <AvatarImage src={activeTech?.avatarUrl} />
                                                             <AvatarFallback>{activeTech?.name.charAt(0)}</AvatarFallback>
@@ -910,6 +910,14 @@ export default function ActivityAuditPage() {
                                                         <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
                                                         <p className={cn("text-2xl font-bold", techStats && techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats?.reliability}%</p>
                                                     </div>
+                                                </div>
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <Button variant="outline" size="sm" className="h-9 px-8 uppercase font-bold tracking-widest" asChild>
+                                                        <a href={`mailto:${activeTech?.email}`}><Mail size={16} className="mr-2"/> Email</a>
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="h-9 px-8 uppercase font-bold tracking-widest" asChild>
+                                                        <a href={`tel:${activeTech?.phone}`}><Phone size={16} className="mr-2"/> Call</a>
+                                                    </Button>
                                                 </div>
                                             </CardContent>
                                         </Card>

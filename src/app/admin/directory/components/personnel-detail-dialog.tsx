@@ -161,8 +161,12 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       </div>
                   </div>
                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Mail size={14} className="mr-2"/> Email</Button>
-                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest"><Phone size={14} className="mr-2"/> Call</Button>
+                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest" asChild>
+                          <a href={`mailto:${person.email}`}><Mail size={14} className="mr-2"/> Email</a>
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest" asChild>
+                          <a href={`tel:${person.phone}`}><Phone size={14} className="mr-2"/> Call</a>
+                      </Button>
                   </div>
               </div>
           </DialogHeader>
@@ -188,9 +192,13 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Core Identity</h3>
                                       <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs text-left">
                                           <span className="text-text-muted font-bold uppercase">Official Email</span>
-                                          <span className="text-text-primary">{person.email || 'N/A'}</span>
+                                          <span className="text-text-primary">
+                                              {person.email ? <a href={`mailto:${person.email}`} className="hover:underline">{person.email}</a> : 'N/A'}
+                                          </span>
                                           <span className="text-text-muted font-bold uppercase">Direct Line</span>
-                                          <span className="text-text-primary">{person.phone || 'N/A'}</span>
+                                          <span className="text-text-primary">
+                                              {person.phone ? <a href={`tel:${person.phone}`} className="hover:underline">{person.phone}</a> : 'N/A'}
+                                          </span>
                                           <span className="text-text-muted font-bold uppercase">Base Address</span>
                                           <span className="text-text-primary">{person.address || 'N/A'}</span>
                                           {isClient && person.clientCompany && (
@@ -212,7 +220,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                                   <span>{person.emergencyContact.relation}</span>
                                                   <span>•</span>
-                                                  <span>{person.emergencyContact.phone}</span>
+                                                  <a href={`tel:${person.emergencyContact.phone}`} className="hover:underline hover:text-text-primary">{person.emergencyContact.phone}</a>
                                               </div>
                                           </div>
                                       </div>

@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -9,12 +8,12 @@ import { getAuth } from "firebase/auth";
  */
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER", // Fill in from Firebase Console
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy-PLACEHOLDER", // Replace with value from Firebase Console
   authDomain: "aaromach-command-center.firebaseapp.com",
   projectId: "aaromach-command-center",
   storageBucket: "aaromach-command-center.firebasestorage.app",
   messagingSenderId: "222038994379",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:222038994379:web:PLACEHOLDER", // Fill in from Firebase Console
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:222038994379:web:PLACEHOLDER", // Replace with value from Firebase Console
 };
 
 // Initialize Firebase

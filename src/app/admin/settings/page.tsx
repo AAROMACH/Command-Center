@@ -21,7 +21,10 @@ import {
   Lock,
   RefreshCw,
   AlertCircle,
-  Search
+  Search,
+  Clock,
+  Globe,
+  Hammer
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -78,7 +81,7 @@ const integrations: Integration[] = [
     },
     {
         id: 'stripe',
-        name: 'Financial Settlement',
+        name: 'Stripe Settlement',
         icon: CreditCard,
         purpose: 'Automated client invoice processing and payout logic.',
         status: 'Placeholder',
@@ -151,28 +154,84 @@ export default function SettingsPage() {
                     <TabsContent value="general">
                         <Card>
                             <CardHeader>
-                                <CardTitle>General Settings</CardTitle>
-                                <CardDescription>Manage basic application identity and temporal settings.</CardDescription>
+                                <CardTitle>General Operations</CardTitle>
+                                <CardDescription>Manage regional deployment anchors and temporal system parameters.</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="appName" className="text-[10px] uppercase font-bold text-text-muted">Application Name</Label>
-                                    <Input id="appName" defaultValue="Aaromach Command Center" className="bg-bg-primary h-11 text-xs" />
+                            <CardContent className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-2">
+                                                <Globe size={14} className="text-brand-red" />
+                                                Primary Service Region
+                                            </Label>
+                                            <Select defaultValue="detroit">
+                                                <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="detroit">Detroit / SE Michigan (HQ)</SelectItem>
+                                                    <SelectItem value="chicago">Chicago / Great Lakes</SelectItem>
+                                                    <SelectItem value="atlanta">Atlanta / SE Region</SelectItem>
+                                                    <SelectItem value="remote">Global / Remote Dispatch</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-2">
+                                                <Clock size={14} className="text-brand-red" />
+                                                Regional Timezone
+                                            </Label>
+                                            <Select defaultValue="est">
+                                                <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="est">Eastern Standard Time (EST)</SelectItem>
+                                                    <SelectItem value="cst">Central Standard Time (CST)</SelectItem>
+                                                    <SelectItem value="pst">Pacific Standard Time (PST)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Active Dispatch Window</Label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Input type="time" defaultValue="08:00" className="bg-bg-primary h-11 text-xs" />
+                                                <Input type="time" defaultValue="20:00" className="bg-bg-primary h-11 text-xs" />
+                                            </div>
+                                            <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter mt-1">Automatic alert suppression active outside this window.</p>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-brand-red transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:bg-brand-red group-hover:text-white transition-colors">
+                                                    <Hammer size={16} />
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Maintenance Mode</p>
+                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Global Lockout</p>
+                                                </div>
+                                            </div>
+                                            <Switch />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="timezone" className="text-[10px] uppercase font-bold text-text-muted">Regional Timezone</Label>
-                                    <Select defaultValue="est">
-                                        <SelectTrigger id="timezone" className="bg-bg-primary h-11 text-xs"><SelectValue placeholder="Select a timezone" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="est">Eastern Standard Time (EST)</SelectItem>
-                                            <SelectItem value="cst">Central Standard Time (CST)</SelectItem>
-                                            <SelectItem value="pst">Pacific Standard Time (PST)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+
+                                <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub flex items-start gap-4">
+                                    <AlertCircle className="text-accent-gold h-5 w-5 shrink-0 mt-0.5" />
+                                    <p className="text-[10px] text-text-muted uppercase font-bold leading-relaxed tracking-tight">
+                                        Note: Modifying the Primary Service Region will adjust the default site coordinate bias for all AI-assisted technician dispatch recommendations.
+                                    </p>
                                 </div>
                             </CardContent>
                             <CardFooter className="bg-bg-tertiary/30 border-t border-border-default pt-4">
-                                <Button className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Commit Changes</Button>
+                                <Button className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
+                                    Authorize Global Parameter Update
+                                </Button>
                             </CardFooter>
                         </Card>
                     </TabsContent>
@@ -185,14 +244,14 @@ export default function SettingsPage() {
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="flex items-center justify-between rounded-lg border border-border-sub p-4 bg-bg-primary">
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 text-left">
                                         <h4 className="text-xs font-bold uppercase text-text-primary">Registry Lock Rotation</h4>
                                         <p className="text-[10px] text-text-muted">Require users to cycle authentication keys periodically.</p>
                                     </div>
                                     <Switch />
                                 </div>
                                 <div className="flex items-center justify-between rounded-lg border border-border-sub p-4 bg-bg-primary">
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 text-left">
                                         <h4 className="text-xs font-bold uppercase text-text-primary">Enforce Multi-Factor (MFA)</h4>
                                         <p className="text-[10px] text-text-muted uppercase font-bold text-brand-red">High Security Mandatory</p>
                                     </div>
@@ -213,14 +272,14 @@ export default function SettingsPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
-                                    <Label htmlFor="global-email" className="flex flex-col space-y-1">
+                                    <Label htmlFor="global-email" className="flex flex-col space-y-1 text-left">
                                         <span className="text-xs font-bold uppercase text-text-primary">Email Notifications</span>
                                         <span className="text-[10px] text-text-muted">Receive emails for important updates.</span>
                                     </Label>
                                     <Switch id="global-email" defaultChecked />
                                 </div>
                                 <div className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
-                                    <Label htmlFor="global-sms" className="flex flex-col space-y-1">
+                                    <Label htmlFor="global-sms" className="flex flex-col space-y-1 text-left">
                                         <span className="text-xs font-bold uppercase text-text-primary">SMS Notifications</span>
                                         <span className="text-[10px] text-text-muted">Get text messages for urgent news.</span>
                                     </Label>
@@ -236,7 +295,7 @@ export default function SettingsPage() {
                     <TabsContent value="api" className="space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 flex items-start gap-4">
                             <Lock className="text-brand-red h-5 w-5 shrink-0 mt-0.5" />
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-left">
                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Secure Integration Protocol</p>
                                 <p className="text-[10px] text-text-secondary leading-relaxed uppercase">
                                     Raw credentials and API signatures are restricted from the UI to ensure mission-critical security. 
@@ -249,10 +308,10 @@ export default function SettingsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {integrations.map((item) => (
                                 <Card key={item.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-                                    <CardHeader className="pb-3">
+                                    <CardHeader className="pb-3 text-left">
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:text-brand-red transition-colors">
+                                                <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:bg-brand-red group-hover:text-white transition-colors">
                                                     <item.icon size={18} />
                                                 </div>
                                                 <div className="space-y-0.5">
@@ -264,9 +323,9 @@ export default function SettingsPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <p className="text-[11px] text-text-secondary leading-normal">{item.purpose}</p>
+                                        <p className="text-[11px] text-text-secondary leading-normal text-left">{item.purpose}</p>
                                         <div className="grid grid-cols-2 gap-4 p-2.5 rounded bg-bg-primary/50 border border-border-sub/50">
-                                            <div>
+                                            <div className="text-left">
                                                 <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Health Check</p>
                                                 <p className="text-[10px] font-mono font-bold text-text-primary uppercase">{item.lastChecked}</p>
                                             </div>

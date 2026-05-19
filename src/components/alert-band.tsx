@@ -32,6 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
+import { auth } from '@/lib/firebase';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -55,16 +56,20 @@ export function AlertBand() {
 
   useEffect(() => {
     const userId = localStorage.getItem('currentUserId');
-    if (!userId) return;
-
-    const user = technicians.find(t => t.id === userId);
+    const fbUser = auth.currentUser;
+    
+    // Find registry data
+    const user = technicians.find(t => 
+      t.id === userId || t.email.toLowerCase() === fbUser?.email?.toLowerCase()
+    );
+    
     if (!user) return;
     setCurrentUser(user);
 
     const currentAlerts: Alert[] = [];
 
     if (pathname.startsWith('/tech')) {
-      const activeJob = workOrders.find(wo => wo.assignedTechnicianId === userId && wo.status === 'in-progress');
+      const activeJob = workOrders.find(wo => wo.assignedTechnicianId === user.id && wo.status === 'in-progress');
       if (activeJob) {
         currentAlerts.push({
           id: 'tech-active',
@@ -80,7 +85,7 @@ export function AlertBand() {
       const tomorrow = addDays(new Date(), 1);
       const now = new Date();
       const upcomingJobsCount = workOrders.filter(wo =>
-        wo.assignedTechnicianId === userId &&
+        wo.assignedTechnicianId === user.id &&
         new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
         wo.status === 'assigned'
       ).length;
@@ -98,7 +103,7 @@ export function AlertBand() {
       }
 
       const pendingLogsCount = weeklyLogs.filter(log =>
-        log.technicianId === userId && log.status === 'Draft'
+        log.technicianId === user.id && log.status === 'Draft'
       ).length;
 
       if (pendingLogsCount > 0) {
@@ -113,7 +118,7 @@ export function AlertBand() {
         });
       }
 
-      const recentPenalties = penaltyEvents.filter(p => p.technicianId === userId).length;
+      const recentPenalties = penaltyEvents.filter(p => p.technicianId === user.id).length;
        if (recentPenalties > 0) {
         currentAlerts.push({
           id: 'tech-penalties',
@@ -237,8 +242,10 @@ export function AlertBand() {
 
   const isClientPortal = pathname.startsWith('/client');
   
-  const leadAdmin = useMemo(() => technicians.find(t => t.id === 'admin-001'), []);
-  const leadInitials = leadAdmin?.name.split(' ').map(n => n[0]).join('') || 'SC';
+  // Dynamically find lead admin
+  const leadAdmin = useMemo(() => technicians.find(t => t.roles?.includes('super_admin')), []);
+  const leadName = auth.currentUser?.displayName || leadAdmin?.name || 'Administrator';
+  const leadInitials = leadName.split(' ').map(n => n[0]).join('') || 'AD';
 
   return (
     <>
@@ -274,7 +281,7 @@ export function AlertBand() {
           <div className="flex items-center gap-4 border-l border-border-sub/30 pl-4 shrink-0">
             <div className="flex items-center gap-2">
                <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">{leadInitials}</div>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">{leadAdmin?.name || 'Sarah Connor'}</span></p>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">{leadName}</span></p>
             </div>
             <div className="flex items-center gap-3">
               <a 

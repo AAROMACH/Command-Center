@@ -31,29 +31,41 @@ import {
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { isAdmin, isTech, isClient, getAvailablePortals } from '@/lib/permissions';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export function UserNav() {
   const router = useRouter();
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const userId = localStorage.getItem('currentUserId');
-    if (userId) {
-      const user = technicians.find(t => t.id === userId);
-      setCurrentUser(user);
-    }
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        // Attempt to find in registry by email or local storage ID
+        const storedId = localStorage.getItem('currentUserId');
+        const registryUser = technicians.find(t => 
+          t.id === storedId || t.email.toLowerCase() === user.email?.toLowerCase()
+        );
+        setCurrentUser(registryUser);
+      } else {
+        setCurrentUser(undefined);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (!mounted) return <div className="h-8 w-8 rounded-full bg-bg-secondary animate-pulse" />;
 
-  const userAvatarUrl = currentUser?.avatarUrl;
-  const userFallback = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U';
-  
-  const displayIsAdmin = isAdmin(currentUser);
-  const displayIsClient = isClient(currentUser);
+  const displayName = firebaseUser?.displayName || currentUser?.name || 'Authorized User';
+  const userAvatarUrl = firebaseUser?.photoURL || currentUser?.avatarUrl;
+  const userFallback = displayName.split(' ').map(n => n[0]).join('') || 'U';
   
   const availablePortals = getAvailablePortals(currentUser);
   const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
@@ -77,7 +89,7 @@ export function UserNav() {
         <Button variant="ghost" className="relative flex h-auto items-center gap-3 px-2 py-1 hover:bg-bg-tertiary rounded-md group">
           <div className="flex flex-col items-end text-right hidden sm:flex">
              <span className="text-[11px] font-bold uppercase tracking-wider text-white leading-tight">
-                {currentUser?.name || 'Authorized User'}
+                {displayName}
              </span>
              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
                 {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Lead'}
@@ -85,9 +97,9 @@ export function UserNav() {
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
           <Avatar className="h-8 w-8 border border-border-main">
-            {userAvatarUrl && <AvatarImage asChild src={userAvatarUrl} alt={currentUser?.name || 'User'}>
-                <Image src={userAvatarUrl} alt={currentUser?.name || 'User Avatar'} width={32} height={32} />
-            </AvatarImage>}
+            <AvatarImage asChild src={userAvatarUrl || ""} alt={displayName}>
+                <Image src={userAvatarUrl || "https://picsum.photos/seed/user1/40/40"} alt="User Avatar" width={32} height={32} />
+            </AvatarImage>
             <AvatarFallback>{userFallback}</AvatarFallback>
           </Avatar>
         </Button>
@@ -95,9 +107,9 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser?.name || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {currentUser?.email || 'No email'}
+              {firebaseUser?.email || currentUser?.email || 'No email'}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -147,6 +159,7 @@ export function UserNav() {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('currentUserId');
             }
+            auth.signOut();
             router.push('/login');
         }}>
           <LogOut className="mr-2 h-4 w-4" />

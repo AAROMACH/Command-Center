@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
-import { ROLE_DATA, type RoleOption } from '@/lib/constants/roles';
+import { ROLE_DATA } from '@/lib/constants/roles';
 import { 
   User, 
   ChevronRight, 
@@ -140,17 +140,14 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isInternalStaff = formData.roles?.some(r => 
-    [...ROLE_DATA.admin, ...ROLE_DATA.tech].map(role => role.id).includes(r)
-  );
   const isClientRole = formData.roles?.includes('client');
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
       <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="page-title text-xl">Technician Registration Terminal</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="page-title text-xl text-left">Technician Registration Terminal</DialogTitle>
+          <DialogDescription className="text-left">
             Register a new field technician and assign job-specific authorization levels.
           </DialogDescription>
         </DialogHeader>
@@ -162,23 +159,23 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Identity Credentials</h3>
              </div>
              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                     <Label htmlFor="fullName" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Full Legal Name</Label>
-                    <Input id="fullName" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                     <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
-                    <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="email" type="email" value={formData.email || ''} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                     <Label htmlFor="phone" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Phone Number</Label>
-                    <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="phone" type="tel" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                     <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Address</Label>
-                    <Input id="address" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="address" value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>
           </section>
@@ -192,7 +189,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
-                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize">{category}</h4>
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize text-left">{category}</h4>
                         <div className="space-y-2">
                             {ROLE_DATA[category].map(role => {
                                 const isSelected = (formData.roles || []).includes(role.id);
@@ -207,7 +204,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                         <div className={`p-1.5 rounded ${isSelected ? 'bg-brand-red text-white' : 'bg-bg-tertiary text-text-muted'}`}>
                                             <role.icon size={14} />
                                         </div>
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1 min-w-0 text-left">
                                             <p className={`text-[10px] font-bold uppercase tracking-wide ${isSelected ? 'text-white' : 'text-text-primary'}`}>{role.label}</p>
                                         </div>
                                         <Checkbox checked={isSelected} className="h-3 w-3" />
@@ -272,7 +269,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                     />
                                 ) : (
                                     <Select 
-                                        value={formData.clientCompany} 
+                                        value={formData.clientCompany || ''} 
                                         onValueChange={(val) => setFormData({...formData, clientCompany: val})}
                                     >
                                         <SelectTrigger className="bg-bg-primary h-9 text-xs border-border-sub">

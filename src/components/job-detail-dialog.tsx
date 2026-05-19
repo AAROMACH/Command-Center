@@ -90,9 +90,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
 
   const filteredTechs = useMemo(() => {
     return technicians
-      .filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client'))
-      .filter(t => t.name.toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => b.reliabilityScore - a.reliabilityScore);
+      .filter(t => {
+          const roles = t.roles || [];
+          const role = (t.role || '').toLowerCase();
+          return !roles.includes('client') && !role.includes('client');
+      })
+      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
   }, [technicians, techSearchQuery]);
 
   if (!mission) return null;
@@ -119,11 +123,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         },
         availableTechnicians: technicians.map((t) => ({
           id: t.id,
-          name: t.name,
+          name: t.name || 'Unknown',
           currentLocation: t.currentLocation || 'Detroit, MI',
-          reliabilityScore: t.reliabilityScore,
-          currentWorkload: t.currentWorkload,
-          skills: t.skills,
+          reliabilityScore: t.reliabilityScore || 0,
+          currentWorkload: t.currentWorkload || 0,
+          skills: t.skills || [],
         })),
       });
       setRecommendation(result);

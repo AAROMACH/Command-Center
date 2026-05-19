@@ -80,7 +80,7 @@ type PersonnelDetailDialogProps = {
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([
-    { id: 'doc-1', name: 'OSHA_30_Certification.pdf', type: 'pdf', size: '1.2MB', uploadedAt: '2024-05-12T10:00:00Z', uploader: 'Sarah Connor' },
+    { id: 'doc-1', name: 'OSHA_30_Certification.pdf', type: 'pdf', size: '1.2MB', uploadedAt: '2024-05-12T10:00:00Z', uploader: 'System Admin' },
     { id: 'doc-2', name: 'FL_Drivers_License_Verification.jpg', type: 'img', size: '450KB', uploadedAt: '2024-03-20T14:30:00Z', uploader: 'System' }
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +113,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
             type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
             size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
             uploadedAt: new Date().toISOString(),
-            uploader: 'Sarah Connor' // Mock current user
+            uploader: 'System Admin' 
         };
         setDocuments(prev => [newDoc, ...prev]);
         toast({
@@ -465,7 +465,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                     <Pencil size={14} className="mr-2"/> Modify Identity Registry
                 </Button>
             </DialogFooter>
-        </Tabs>
+        </Dialog>
 
         {/* LOG RELIABILITY EVENT DIALOG */}
         <LogReliabilityEventDialog 
@@ -508,7 +508,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
             reason,
             relatedAssignmentId: assignmentId || undefined,
             createdAt: new Date().toISOString(),
-            createdBy: 'Sarah Connor', // Mock current admin
+            createdBy: 'System Admin', 
             eventSource: 'manual',
             category: option.category as any
         };

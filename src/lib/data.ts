@@ -78,7 +78,7 @@ export const technicians: Technician[] = [
   },
   {
     id: 'admin-001',
-    name: 'Sarah Connor',
+    name: 'System Admin',
     role: 'System Administrator',
     roles: ['super_admin'],
     email: 'admin@aaromach.com',
@@ -283,7 +283,7 @@ export const workOrders: WorkOrder[] = [
     isAcknowledged: false,
     source: 'Client',
     history: [
-        { type: 'note', date: '07-27-2024', details: 'Site access confirmed with building manager. Parking permit staged.', user: 'Sarah Connor' }
+        { type: 'note', date: '07-27-2024', details: 'Site access confirmed with building manager. Parking permit staged.', user: 'System Admin' }
     ]
   },
   {
@@ -834,8 +834,8 @@ export const siteRequests: SiteRequest[] = [
 ];
 
 export const penaltyEvents: ReliabilityEvent[] = [
-  { id: 're-1', technicianId: 'tech-001', eventType: 'late_check_in', scoreChange: -8, reason: 'Late check-in to critical job', createdAt: '2024-06-15T12:00:00Z', createdBy: 'Sarah Connor', category: 'operational_friction', eventSource: 'manual' },
-  { id: 're-2', technicianId: 'tech-003', eventType: 'no_show', scoreChange: -25, reason: 'Unnotified absence at Monroe site', createdAt: '2024-07-10T09:00:00Z', createdBy: 'Sarah Connor', category: 'critical_failure', eventSource: 'manual' },
+  { id: 're-1', technicianId: 'tech-001', eventType: 'late_check_in', scoreChange: -8, reason: 'Late check-in to critical job', createdAt: '2024-06-15T12:00:00Z', createdBy: 'System Admin', category: 'operational_friction', eventSource: 'manual' },
+  { id: 're-2', technicianId: 'tech-003', eventType: 'no_show', scoreChange: -25, reason: 'Unnotified absence at Monroe site', createdAt: '2024-07-10T09:00:00Z', createdBy: 'System Admin', category: 'critical_failure', eventSource: 'manual' },
   { id: 're-3', technicianId: 'tech-003', eventType: 'poor_communication', scoreChange: -7, reason: 'Failed to respond to dispatch alerts', createdAt: '2024-07-20T14:00:00Z', createdBy: 'Corey Williams', category: 'operational_friction', eventSource: 'manual' },
   { id: 're-auto-1', technicianId: 'tech-001', eventType: 'missed_acknowledgment', scoreChange: -2, reason: 'System detected missed acknowledgment deadline for WO-102', createdAt: '2024-07-27T10:00:00Z', createdBy: 'system', category: 'operational_friction', eventSource: 'automatic', eventKey: 'tech-001:missed_acknowledgment:wo-102:2024-07-27' },
 ];
@@ -929,7 +929,7 @@ export const adminMessages: AdminMessage[] = [
   {
     id: 'msg-001',
     senderId: 'admin-001',
-    senderName: 'Sarah Connor',
+    senderName: 'System Admin',
     subject: 'System Maintenance Window',
     body: 'The Command Center will undergo scheduled maintenance tonight at 23:00 EST. Please finalize all sessions before the window.',
     timestamp: '2024-07-28T10:00:00Z',
@@ -939,7 +939,7 @@ export const adminMessages: AdminMessage[] = [
   {
     id: 'msg-002',
     senderId: 'admin-001',
-    senderName: 'Sarah Connor',
+    senderName: 'System Admin',
     subject: 'Incomplete Field Log Policy',
     body: 'Friendly reminder to all technicians: field logs must be submitted by Monday 09:00 EST to ensure timely payout processing.',
     timestamp: '2024-07-27T14:30:00Z',

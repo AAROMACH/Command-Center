@@ -280,7 +280,7 @@ export default function ActivityAuditPage() {
         const msg: AdminMessage = {
             id: `msg-${Date.now()}`,
             senderId: currentUser?.id || 'admin-001',
-            senderName: currentUser?.name || 'Sarah Connor',
+            senderName: currentUser?.name || 'System Admin',
             subject: newMessage.subject!,
             body: newMessage.body!,
             timestamp: now.toISOString(),
@@ -762,7 +762,7 @@ export default function ActivityAuditPage() {
                                                     <div 
                                                         key={wo.id} 
                                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-muted transition-all group flex items-center justify-between cursor-pointer"
+                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between cursor-pointer"
                                                     >
                                                         <div className="text-left space-y-1">
                                                             <div className="flex items-center gap-2">
@@ -786,7 +786,7 @@ export default function ActivityAuditPage() {
                                         </ScrollArea>
                                         <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
                                             <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Audit Terminal</Button>
+                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
                                             </DialogClose>
                                         </DialogFooter>
                                     </DialogContent>

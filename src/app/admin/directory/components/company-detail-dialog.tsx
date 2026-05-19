@@ -68,7 +68,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
   const [newSiteData, setNewSiteData] = useState({ name: '', location: '' });
   const [companyDocs, setCompanyDocs] = useState<CompanyDocument[]>([
     { id: 'cd-1', name: 'Master_Service_Agreement_2024.pdf', type: 'pdf', size: '2.4MB', uploadedAt: '2024-01-10T09:00:00Z', uploader: 'System' },
-    { id: 'cd-2', name: 'Site_Safety_Insurance_COI.pdf', type: 'pdf', size: '1.1MB', uploadedAt: '2024-03-15T11:30:00Z', uploader: 'Sarah Connor' }
+    { id: 'cd-2', name: 'Site_Safety_Insurance_COI.pdf', type: 'pdf', size: '1.1MB', uploadedAt: '2024-03-15T11:30:00Z', uploader: 'System Admin' }
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -141,7 +141,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
             type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
             size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
             uploadedAt: new Date().toISOString(),
-            uploader: 'Sarah Connor'
+            uploader: 'System Admin'
         };
         setCompanyDocs(prev => [newDoc, ...prev]);
         toast({

@@ -88,15 +88,15 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   if (!person) return null;
 
-  const isTechnician = person.roles?.some(r => r.includes('tech') || r.includes('lead')) || person.role.toLowerCase().includes('tech');
-  const isStaff = person.roles?.some(r => r.includes('admin') || r.includes('manager')) || person.role.toLowerCase() === 'dispatcher' || person.role.toLowerCase() === 'admin';
-  const isClient = person.roles?.includes('client') || person.role.toLowerCase().includes('client');
+  const isTechnician = person.roles?.some(r => r.includes('tech') || r.includes('lead')) || (person.role || '').toLowerCase().includes('tech');
+  const isStaff = person.roles?.some(r => r.includes('admin') || r.includes('manager')) || (person.role || '').toLowerCase() === 'dispatcher' || (person.role || '').toLowerCase() === 'admin';
+  const isClient = person.roles?.includes('client') || (person.role || '').toLowerCase().includes('client');
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   const reliabilityEvents = penaltyEvents.filter(e => e.technicianId === person.id)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const tier = person.reliabilityTier || getReliabilityTier(person.reliabilityScore);
+  const tier = person.reliabilityTier || getReliabilityTier(person.reliabilityScore || 0);
   const tierColor = getTierColor(tier);
   const badgeVariant = getTierBadgeVariant(tier);
 
@@ -140,14 +140,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                 <div className="flex items-center gap-6">
                     <Avatar className="h-16 w-16 border-2 border-border-sub">
                         <AvatarImage src={person.avatarUrl} />
-                        <AvatarFallback>{person.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        <AvatarFallback>{(person.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-1">
                         <div className="flex items-center gap-3">
-                            <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{person.name}</DialogTitle>
+                            <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{person.name || 'Unnamed Operative'}</DialogTitle>
                             <Badge variant="active" className="text-[10px] h-5 px-3 uppercase tracking-widest">Active Profile</Badge>
                         </div>
-                        <p className="text-sm text-text-muted font-bold uppercase tracking-[0.2em]">{person.role}</p>
+                        <p className="text-sm text-text-muted font-bold uppercase tracking-[0.2em]">{person.role || 'Awaiting Allocation'}</p>
                          <div className="flex items-center gap-3 mt-2">
                              <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{person.id}</span>
                              <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
@@ -187,9 +187,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Core Identity</h3>
                                     <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs">
                                         <span className="text-text-muted font-bold uppercase">Official Email</span>
-                                        <span className="text-text-primary">{person.email}</span>
+                                        <span className="text-text-primary">{person.email || 'N/A'}</span>
                                         <span className="text-text-muted font-bold uppercase">Direct Line</span>
-                                        <span className="text-text-primary">{person.phone}</span>
+                                        <span className="text-text-primary">{person.phone || 'N/A'}</span>
                                         <span className="text-text-muted font-bold uppercase">Base Address</span>
                                         <span className="text-text-primary">{person.address || 'N/A'}</span>
                                         {isClient && person.clientCompany && (
@@ -225,12 +225,12 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
-                                                <p className={cn("text-3xl font-mono font-bold", tierColor)}>{person.reliabilityScore}%</p>
+                                                <p className={cn("text-3xl font-mono font-bold", tierColor)}>{person.reliabilityScore || 0}%</p>
                                                 <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase">{tier}</Badge>
                                             </div>
                                             <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Workload</p>
-                                                <p className="text-3xl font-bold text-text-primary">{person.currentWorkload}</p>
+                                                <p className="text-3xl font-bold text-text-primary">{person.currentWorkload || 0}</p>
                                                 <p className="text-[9px] text-text-muted uppercase">Assignments</p>
                                             </div>
                                         </div>
@@ -238,7 +238,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                     <div className="space-y-3">
                                         <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Specializations</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            {person.skills.map(skill => (
+                                            {(person.skills || []).map(skill => (
                                                 <Badge key={skill} variant="outline" className="text-[9px] bg-bg-secondary border-border-sub text-text-primary h-6 px-3">{skill}</Badge>
                                             ))}
                                         </div>
@@ -528,7 +528,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                         <Activity className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Event Protocol</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name}</span>.</DialogDescription>
+                    <DialogDescription className="text-xs">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name || 'Unnamed'}</span>.</DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4 space-y-6 text-left">
@@ -575,11 +575,11 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                 </div>
 
                 <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
-                    <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Discard</Button>
                     <Button 
                         disabled={!selectedType || !reason}
                         onClick={handleSave} 
-                        className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                        className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
                     >
                         Commit to Ledger
                     </Button>

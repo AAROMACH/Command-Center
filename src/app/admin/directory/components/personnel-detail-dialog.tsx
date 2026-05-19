@@ -17,34 +17,26 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Mail, 
     Phone, 
-    Wrench, 
     Shield, 
-    Building, 
     Calendar, 
-    Briefcase, 
-    DollarSign, 
-    Folder, 
-    StickyNote, 
-    User, 
-    HeartPulse, 
-    MapPin, 
+    Building2,
+    History,
+    Plus,
+    X,
     Pencil, 
     Activity, 
     ShieldAlert, 
-    History,
-    AlertTriangle,
     CheckCircle2,
-    Plus,
-    X,
-    Send,
-    Lock,
+    Check,
     Settings,
     FileText,
     Upload,
     Download,
     Trash2,
-    Paperclip,
-    Image as ImageIcon
+    Image as ImageIcon,
+    HeartPulse,
+    Info,
+    DollarSign
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -54,7 +46,6 @@ import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOptions } from '@/lib/reliability';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -70,7 +61,7 @@ type PersonnelDocument = {
 
 type PersonnelDetailDialogProps = {
   isOpen: boolean;
-  setIsOpen: (setIsOpen: boolean) => void;
+  setIsOpen: (open: boolean) => void;
   person: Technician | null;
   workOrders: WorkOrder[];
   timeOffRequests: TimeOffRequest[];
@@ -86,19 +77,38 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  if (!person) return null;
+  const isTechnician = useMemo(() => {
+    if (!person) return false;
+    return person.roles?.some(r => r.includes('tech') || r.includes('lead')) || (person.role || '').toLowerCase().includes('tech');
+  }, [person]);
 
-  const isTechnician = person.roles?.some(r => r.includes('tech') || r.includes('lead')) || (person.role || '').toLowerCase().includes('tech');
-  const isStaff = person.roles?.some(r => r.includes('admin') || r.includes('manager')) || (person.role || '').toLowerCase() === 'dispatcher' || (person.role || '').toLowerCase() === 'admin';
-  const isClient = person.roles?.includes('client') || (person.role || '').toLowerCase().includes('client');
+  const isStaff = useMemo(() => {
+    if (!person) return false;
+    return person.roles?.some(r => r.includes('admin') || r.includes('manager')) || (person.role || '').toLowerCase() === 'dispatcher' || (person.role || '').toLowerCase() === 'admin';
+  }, [person]);
+
+  const isClient = useMemo(() => {
+    if (!person) return false;
+    return person.roles?.includes('client') || (person.role || '').toLowerCase().includes('client');
+  }, [person]);
+
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const reliabilityEvents = penaltyEvents.filter(e => e.technicianId === person.id)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const reliabilityEvents = useMemo(() => {
+    if (!person) return [];
+    return penaltyEvents.filter(e => e.technicianId === person.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [person]);
 
-  const tier = person.reliabilityTier || getReliabilityTier(person.reliabilityScore || 0);
-  const tierColor = getTierColor(tier);
-  const badgeVariant = getTierBadgeVariant(tier);
+  const tierData = useMemo(() => {
+    if (!person) return { tier: 'Reliable' as const, color: '', variant: 'active' as const };
+    const tier = person.reliabilityTier || getReliabilityTier(person.reliabilityScore || 0);
+    return {
+        tier,
+        color: getTierColor(tier),
+        variant: getTierBadgeVariant(tier)
+    };
+  }, [person]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -106,7 +116,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && person) {
         const newDoc: PersonnelDocument = {
             id: `doc-${Date.now()}`,
             name: file.name,
@@ -131,6 +141,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
         description: "Document has been purged from the personnel registry.",
     });
   };
+
+  if (!person) return null;
 
   return (
     <>
@@ -175,11 +187,10 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
               <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
                   <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                       <TabsTrigger value="overview" className="tab-trigger-personnel">Overview</TabsTrigger>
-                      {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Operational Reliability</TabsTrigger>}
+                      {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Reliability</TabsTrigger>}
                       {(isTechnician || isStaff) && <TabsTrigger value="documents" className="tab-trigger-personnel">Documents</TabsTrigger>}
                       <TabsTrigger value="schedule" className="tab-trigger-personnel">Schedule</TabsTrigger>
                       {isTechnician && <TabsTrigger value="assignments" className="tab-trigger-personnel">Assignments</TabsTrigger>}
-                      <TabsTrigger value="financial" className="tab-trigger-personnel">Financial</TabsTrigger>
                   </TabsList>
               </div>
               
@@ -192,7 +203,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Core Identity</h3>
                                       <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs text-left">
                                           <span className="text-text-muted font-bold uppercase">Official Email</span>
-                                          <span className="text-text-primary">
+                                          <span className="text-text-primary truncate">
                                               {person.email ? <a href={`mailto:${person.email}`} className="hover:underline">{person.email}</a> : 'N/A'}
                                           </span>
                                           <span className="text-text-muted font-bold uppercase">Direct Line</span>
@@ -234,8 +245,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           <div className="grid grid-cols-2 gap-4">
                                               <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
-                                                  <p className={cn("text-3xl font-mono font-bold", tierColor)}>{person.reliabilityScore || 0}%</p>
-                                                  <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase">{tier}</Badge>
+                                                  <p className={cn("text-3xl font-mono font-bold", tierData.color)}>{person.reliabilityScore || 0}%</p>
+                                                  <Badge variant={tierData.variant} className="text-[8px] h-4 uppercase">{tierData.tier}</Badge>
                                               </div>
                                               <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Workload</p>
@@ -299,7 +310,6 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                   <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{event.reason}&quot;</p>
                                                   <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                                       {format(parseISO(event.createdAt), 'MMM d, yyyy')} · {isAutomatic ? 'System Generated' : `Decision by ${event.createdBy}`}
-                                                      {event.relatedAssignmentId && ` · Mission: ${event.relatedAssignmentId.toUpperCase()}`}
                                                   </p>
                                               </div>
                                           </div>
@@ -310,7 +320,6 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               )}>
                                                   {event.scoreChange > 0 ? `+${event.scoreChange}` : event.scoreChange}
                                               </p>
-                                              <p className="text-[8px] font-black text-text-muted uppercase mt-1">TRUST PTS</p>
                                           </div>
                                       </div>
                                   )
@@ -370,12 +379,6 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       </div>
                                   </div>
                               ))}
-                              {documents.length === 0 && (
-                                  <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
-                                      <Folder size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No documents registered in folder</p>
-                                  </div>
-                              )}
                           </div>
                       </TabsContent>
 
@@ -413,20 +416,12 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               <Badge variant={req.status === 'approved' ? 'active' : req.status === 'onhold' ? 'onhold' : 'pending'}>{req.status.toUpperCase()}</Badge>
                                           </div>
                                       ))}
-                                      {timeOffRequests.length === 0 && (
-                                          <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30 opacity-60">
-                                              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No exceptions logged</p>
-                                          </div>
-                                      )}
                                   </div>
                               </div>
                            </div>
                       </TabsContent>
 
                       <TabsContent value="assignments" className="m-0 space-y-6">
-                          <div className="flex justify-between items-center px-1">
-                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Assignment Ledger</h3>
-                          </div>
                           <div className="table-wrap p-0">
                               <Table>
                                   <TableHeader className="bg-bg-tertiary">
@@ -453,17 +448,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
                                           </TableRow>
                                       ))}
-                                      {workOrders.length === 0 && (
-                                          <TableRow><TableCell colSpan={4} className="h-32 text-center text-text-muted italic text-[10px] uppercase tracking-widest">Assignment registry clear</TableCell></TableRow>
-                                      )}
                                   </TableBody>
                               </Table>
                           </div>
-                      </TabsContent>
-                      
-                      <TabsContent value="financial" className="m-0 p-12 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 opacity-40">
-                          <DollarSign size={48} className="mx-auto mb-2 text-text-muted" />
-                          <p className="text-[10px] font-bold uppercase tracking-widest">Financial settlement hub pending configuration</p>
                       </TabsContent>
                   </div>
               </ScrollArea>
@@ -478,12 +465,11 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
         </DialogContent>
       </Dialog>
 
-      {/* LOG RELIABILITY EVENT DIALOG */}
       <LogReliabilityEventDialog 
           isOpen={isLogEventOpen}
           setIsOpen={setIsLogEventOpen}
           person={person}
-          onSave={(evt) => {
+          onSave={() => {
               setIsLogEventOpen(false);
               toast({ title: "Registry Event Logged", description: "Operational reliability index has been updated." });
           }}
@@ -525,7 +511,6 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
         };
 
         onSave(newEvent);
-        // Reset local state
         setSelectedType("");
         setReason("");
         setAssignmentId("");
@@ -586,7 +571,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                 </div>
 
                 <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
-                    <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Discard</Button>
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
                     <Button 
                         disabled={!selectedType || !reason}
                         onClick={handleSave} 

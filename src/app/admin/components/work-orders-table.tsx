@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -27,6 +28,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   Calendar,
@@ -48,7 +59,8 @@ import {
   ExternalLink,
   Activity,
   Gauge,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -57,7 +69,7 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 type WorkOrdersTableProps = {
   workOrders: WorkOrder[];
@@ -86,6 +98,7 @@ export const WorkOrdersTable = React.memo(({
   const [techSearchQuery, setTechSearchQuery] = useState("");
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -211,6 +224,18 @@ export const WorkOrdersTable = React.memo(({
         }
     } catch (e: any) {
         toast({ variant: "destructive", title: "Save Failed", description: e.message });
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!selectedOrder) return;
+    try {
+        await deleteDoc(doc(db, 'workOrders', selectedOrder.id));
+        setIsEditDialogOpen(false);
+        setIsDeleteDialogOpen(false);
+        toast({ title: "Registry Purged", description: `Mission ${selectedOrder.id.toUpperCase()} has been removed from the registry.` });
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Purge Failed", description: e.message });
     }
   };
 
@@ -470,6 +495,161 @@ export const WorkOrdersTable = React.memo(({
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
+            <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
+                        <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
+                    </div>
+                    <Button 
+                        variant="destructive-outline" 
+                        size="sm" 
+                        className="h-8 text-[9px] font-bold uppercase tracking-widest"
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                    >
+                        <Trash2 size={14} className="mr-1.5"/> Purge Registry Entry
+                    </Button>
+                </div>
+            </DialogHeader>
+            {editedOrder && (
+                <div className="px-6 py-4 space-y-6">
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                        <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                            <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                            <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                            <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
+                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Installation">Installation</SelectItem>
+                                    <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                    <SelectItem value="Survey">Survey</SelectItem>
+                                    <SelectItem value="Repair">Repair</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
+                            <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
+                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="low">Low</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="high">High</SelectItem>
+                                    <SelectItem value="critical">Critical</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
+                            <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
+                            <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                            <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                            <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
+                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fixed">Fixed</SelectItem>
+                                    <SelectItem value="hourly">Hourly</SelectItem>
+                                    <SelectItem value="blended">Blended</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <Separator className="bg-border-sub" />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                            <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
+                                    <SelectValue placeholder="Select Technician" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                                    {technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                            <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned" className="text-xs uppercase font-bold">UNASSIGNED</SelectItem>
+                                    <SelectItem value="assigned" className="text-xs uppercase font-bold">ASSIGNED</SelectItem>
+                                    <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
+                                    <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
+                                    <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
+                                    <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    
+                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+                    </DialogFooter>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-bg-elevated border-border-default">
+            <AlertDialogHeader className="text-left">
+                <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
+                    <ShieldCheck className="text-brand-red" size={18}/>
+                    Authorize Registry Purge
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
+                    Critical Action: This will permanently remove assignment <span className="text-text-primary font-bold">{selectedOrder?.id.toUpperCase()}</span> from the operational ledger. This operation cannot be reversed.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-widest">Abort</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteOrder} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest">
+                    Confirm Purge
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });

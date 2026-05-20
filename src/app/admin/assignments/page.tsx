@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -24,7 +23,8 @@ import {
   DollarSign,
   Pencil,
   Eye,
-  ExternalLink
+  ExternalLink,
+  UserPlus
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -426,7 +426,14 @@ export default function AssignmentsHubPage() {
                                                             <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
                                                         </div>
                                                     ) : (
-                                                      <Badge variant="outline" className="text-[9px] border-brand-red text-brand-red uppercase animate-pulse">Awaiting Allocation</Badge>
+                                                      <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest"
+                                                        onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(wo); }}
+                                                      >
+                                                        <UserPlus size={14} className="mr-1.5"/> Assign
+                                                      </Button>
                                                     )}
                                                 </div>
                                             </td>

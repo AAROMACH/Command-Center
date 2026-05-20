@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
-import { getRecommendation } from "../assignments/actions";
+import { getRecommendation } from "../dispatch/actions";
 import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
@@ -186,15 +185,15 @@ export const WorkOrdersTable = React.memo(({
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
-    const payChanged = editedOrder.pay !== selectedOrder.pay || editedOrder.payType !== selectedOrder.payType;
+    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
       finalUpdate.pay = selectedOrder.pay;
       finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
-        pay: editedOrder.pay,
-        payType: editedOrder.payType,
+        pay: editedOrder.pay || 0,
+        payType: editedOrder.payType || 'fixed',
         requestedBy: currentUser?.id || 'unknown',
         requestedAt: new Date().toISOString()
       };
@@ -299,7 +298,16 @@ export const WorkOrdersTable = React.memo(({
                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-tight">{technician.name}</span>
                                 </div>
                             </div>
-                        ) : <Badge variant="outline" className="text-[9px] border-brand-red text-brand-red uppercase animate-pulse">Awaiting Tech</Badge>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest"
+                            onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(order); }}
+                          >
+                            <UserPlus size={14} className="mr-1.5"/> Assign
+                          </Button>
+                        )
                         ) : (
                             <div className="flex items-center gap-1.5 text-text-green">
                                 <DollarSign size={12} className="shrink-0" />

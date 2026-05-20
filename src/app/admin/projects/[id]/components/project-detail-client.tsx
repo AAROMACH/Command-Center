@@ -93,14 +93,16 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
     }, [technicians]);
 
     const progress = useMemo(() => {
-        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        const phases = project.phases || [];
+        const allTasks = phases.flatMap(phase => phase.tasks || []);
         if (allTasks.length === 0) return 0;
         const completedTasks = allTasks.filter(task => task.isCompleted).length;
         return (completedTasks / allTasks.length) * 100;
     }, [project.phases]);
 
     const allTasksDone = useMemo(() => {
-        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        const phases = project.phases || [];
+        const allTasks = phases.flatMap(phase => phase.tasks || []);
         return allTasks.length > 0 && allTasks.every(t => t.isCompleted);
     }, [project.phases]);
 
@@ -158,10 +160,10 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>
                         <div className="pdh-meta">
-                            <div className="pdh-meta-item"><MapPin/>{project.location}</div>
-                            <div className="pdh-meta-item"><Calendar/>Started {formatDateDisplay(project.startDate)}</div>
-                            <div className="pdh-meta-item"><Clock/>Est. {project.estimatedDuration}</div>
-                            <div className="pdh-meta-item"><Users/>{project.team.length} Technician(s)</div>
+                            <div className="pdh-meta-item"><MapPin size={12}/>{project.location}</div>
+                            <div className="pdh-meta-item"><Calendar size={12}/>Started {formatDateDisplay(project.startDate)}</div>
+                            <div className="pdh-meta-item"><Clock size={12}/>Est. {project.estimatedDuration}</div>
+                            <div className="pdh-meta-item"><Users size={12}/>{(project.team || []).length} Technician(s)</div>
                         </div>
                     </div>
                 </div>
@@ -192,11 +194,11 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                 <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[95vh]">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                         <div className="flex items-center justify-between">
-                            <div>
+                            <div className="text-left">
                                 <DialogTitle className="uppercase tracking-widest font-bold text-lg">
                                     {isReadOnly ? 'Audit Project Registry' : 'Modify Project Registry'}
                                 </DialogTitle>
-                                <DialogDescription>Project Identifier: <span className="text-brand-red font-mono">{project.id.toUpperCase()}</span>.</DialogDescription>
+                                <DialogDescription>Project Identifier: <span className="text-brand-red font-mono">{(project.id || '').toUpperCase()}</span>.</DialogDescription>
                             </div>
                             {!isReadOnly && (
                                 <div className="flex items-center gap-3">
@@ -207,7 +209,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent className="bg-bg-elevated border-border-main">
-                                            <AlertDialogHeader>
+                                            <AlertDialogHeader className="text-left">
                                                 <AlertDialogTitle className="uppercase tracking-widest font-bold">Authorize Archival?</AlertDialogTitle>
                                                 <AlertDialogDescription className="text-xs">
                                                     Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>. The folder will move to historical storage.
@@ -251,41 +253,41 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                             {/* Section 1: Identity & Location */}
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Building2 size={12}/> Identity & Coordinates
                                 </h3>
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Project Name</Label>
                                         <Input 
                                             disabled={isReadOnly}
-                                            value={editedProject.name} 
+                                            value={editedProject.name || ''} 
                                             onChange={e => setEditedProject({...editedProject, name: e.target.value})}
                                             className="bg-bg-primary h-10 text-xs font-bold uppercase"
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Client Entity</Label>
                                         <Input 
                                             disabled={isReadOnly}
-                                            value={editedProject.client} 
+                                            value={editedProject.client || ''} 
                                             onChange={e => setEditedProject({...editedProject, client: e.target.value})}
                                             className="bg-bg-primary h-10 text-xs"
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Operational Address</Label>
                                         <div className="relative">
                                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
                                                 disabled={isReadOnly}
-                                                value={editedProject.location} 
+                                                value={editedProject.location || ''} 
                                                 onChange={e => setEditedProject({...editedProject, location: e.target.value})}
                                                 className="bg-bg-primary h-10 text-xs pl-10"
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact</Label>
                                         <div className="relative">
                                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
@@ -303,21 +305,21 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
                             {/* Section 2: Operational Instructions */}
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <ShieldAlert size={12}/> Operational Briefing
                                 </h3>
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
                                         <Textarea 
                                             disabled={isReadOnly}
-                                            value={editedProject.scope} 
+                                            value={editedProject.scope || ''} 
                                             onChange={e => setEditedProject({...editedProject, scope: e.target.value})}
                                             className="bg-bg-primary h-24 text-[11px] leading-relaxed resize-none"
                                             placeholder="Define primary objectives and technical requirements..."
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Access Instructions</Label>
                                         <Textarea 
                                             disabled={isReadOnly}
@@ -332,22 +334,22 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
                             {/* Section 3: Schedule & Duration */}
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Clock size={12}/> Schedule & Duration
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 text-left">
                                             <Label className="text-[10px] font-bold uppercase text-text-muted">Start Date</Label>
                                             <Input 
                                                 disabled={isReadOnly}
                                                 type="date"
-                                                value={editedProject.startDate} 
+                                                value={editedProject.startDate || ''} 
                                                 onChange={e => setEditedProject({...editedProject, startDate: e.target.value})}
                                                 className="bg-bg-primary h-10 text-xs"
                                             />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 text-left">
                                             <Label className="text-[10px] font-bold uppercase text-text-muted">Daily Start Time</Label>
                                             <Input 
                                                 disabled={isReadOnly}
@@ -358,14 +360,14 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Estimated Project Duration</Label>
                                         <div className="relative">
                                             <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
                                                 disabled={isReadOnly}
                                                 placeholder="e.g. 3 weeks"
-                                                value={editedProject.estimatedDuration} 
+                                                value={editedProject.estimatedDuration || ''} 
                                                 onChange={e => setEditedProject({...editedProject, estimatedDuration: e.target.value})}
                                                 className="bg-bg-primary h-10 text-xs pl-10"
                                             />
@@ -376,11 +378,11 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
                             {/* Section 4: Economics */}
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <DollarSign size={12}/> Project Economics
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Project Budget ($)</Label>
                                         <Input 
                                             disabled={isReadOnly}
@@ -390,7 +392,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             className="bg-bg-primary h-10 text-xs font-mono"
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase text-text-muted">Allocated Hours</Label>
                                         <Input 
                                             disabled={isReadOnly}
@@ -414,7 +416,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 <FileCheck size={16} className="mr-2"/> Project Archived
                             </Button>
                         ) : (
-                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
                                 <Check size={16} className="mr-2"/> Commit Registry Updates
                             </Button>
                         )}

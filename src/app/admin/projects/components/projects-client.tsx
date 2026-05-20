@@ -27,18 +27,21 @@ type ProjectsClientProps = {
 };
 
 function getProgress(project: Project): number {
-    const allTasks = project.phases.flatMap(phase => phase.tasks);
+    const phases = project.phases || [];
+    const allTasks = phases.flatMap(phase => phase.tasks || []);
     if (allTasks.length === 0) return 0;
     const completedTasks = allTasks.filter(task => task.isCompleted).length;
     return (completedTasks / allTasks.length) * 100;
 }
 
 function getCompletedTasksCount(project: Project): number {
-    return project.phases.reduce((acc, phase) => acc + phase.tasks.filter(t => t.isCompleted).length, 0);
+    const phases = project.phases || [];
+    return phases.reduce((acc, phase) => acc + (phase.tasks || []).filter(t => t.isCompleted).length, 0);
 }
 
 function getTotalTasksCount(project: Project): number {
-    return project.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
+    const phases = project.phases || [];
+    return phases.reduce((acc, phase) => acc + (phase.tasks || []).length, 0);
 }
 
 export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClientProps) {
@@ -158,14 +161,15 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                         const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
                         const completedTasks = getCompletedTasksCount(project);
                         const totalTasks = getTotalTasksCount(project);
-                        const leadMember = project.team.find(m => m.role === 'Project Lead');
+                        const team = project.team || [];
+                        const leadMember = team.find(m => m.role === 'Project Lead');
                         const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
                                 <td className="pl-0 py-4">
                                     <div className="flex flex-col items-center justify-center gap-1.5">
-                                        <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{project.id.toUpperCase()}</div>
+                                        <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
                                         <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
                                     </div>
                                 </td>
@@ -181,7 +185,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                                     <AvatarImage src={lead.avatarUrl} />
-                                                    <AvatarFallback className="text-[10px]">{lead.name.charAt(0)}</AvatarFallback>
+                                                    <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
                                                 </Avatar>
                                                 <span className="text-[10px] font-bold text-text-primary uppercase">{lead.name}</span>
                                             </div>
@@ -268,7 +272,8 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
     const progress = getProgress(project);
     const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
     
-    const leadMember = project.team.find(m => m.role === 'Project Lead');
+    const team = project.team || [];
+    const leadMember = team.find(m => m.role === 'Project Lead');
     const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
     const formatDateDisplay = (dateStr: string) => {
@@ -296,13 +301,13 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col items-center">
-                            <span className="font-mono text-[10px] text-brand-red font-bold">{project.id.toUpperCase()}</span>
+                            <span className="font-mono text-[10px] text-brand-red font-bold">{(project.id || '').toUpperCase()}</span>
                             <Badge variant={project.status} className="h-4 uppercase text-[7px] tracking-widest mt-1">
                                 {project.status}
                             </Badge>
                         </div>
                         <div className="flex flex-col min-w-0 text-left">
-                            <p className="text-xs font-bold text-text-primary uppercase leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</p>
+                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</p>
                             <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{project.client}</p>
                         </div>
                     </div>
@@ -328,7 +333,7 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                             <div className="flex items-center gap-2 pt-1">
                                 <Avatar className="h-5 w-5 border border-border-sub">
                                     <AvatarImage src={lead.avatarUrl} />
-                                    <AvatarFallback className="text-[7px]">{lead.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-[7px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
                                 </Avatar>
                                 <span className="text-[9px] font-bold text-text-primary uppercase">Lead: {lead.name}</span>
                             </div>

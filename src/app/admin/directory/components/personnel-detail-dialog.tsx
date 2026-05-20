@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
+import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDailyLog, WeeklyLogItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -36,11 +36,14 @@ import {
     Image as ImageIcon,
     HeartPulse,
     Info,
-    DollarSign
+    DollarSign,
+    ChevronRight,
+    Clock,
+    User
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { penaltyEvents } from '@/lib/data';
+import { penaltyEvents, assignmentTimeLogs } from '@/lib/data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOptions } from '@/lib/reliability';
@@ -110,6 +113,39 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     };
   }, [person]);
 
+  // MISSION REGISTRY AUDIT - Filtered by tech, prioritized by active status and recency
+  const personWorkOrders = useMemo(() => {
+    if (!person) return [];
+    
+    // Filter by tech ID (lead or support)
+    const filtered = workOrders.filter(wo => 
+      wo.assignedTechnicianId === person.id || 
+      (wo.additionalTechnicianIds || []).includes(person.id)
+    );
+
+    // Sort: 'in-progress' status at the very top, then newest date
+    return filtered.sort((a, b) => {
+      // 1. Status priority
+      const getStatusRank = (status: string) => {
+        if (status === 'in-progress') return 0;
+        if (status === 'on-my-way') return 1;
+        if (status === 'confirmed') return 2;
+        if (status === 'assigned') return 3;
+        return 4; // completed, cancelled, etc.
+      };
+
+      const rankA = getStatusRank(a.status);
+      const rankB = getStatusRank(b.status);
+
+      if (rankA !== rankB) return rankA - rankB;
+
+      // 2. Date priority (newest first)
+      const dateA = a.scheduleDate || '';
+      const dateB = b.scheduleDate || '';
+      return dateB.localeCompare(dateA);
+    });
+  }, [person, workOrders]);
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -157,7 +193,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       </Avatar>
                       <div className="space-y-1">
                           <div className="flex items-center gap-3">
-                              <DialogTitle className="text-2xl font-bold uppercase tracking-wide">{person.name || 'Unnamed Operative'}</DialogTitle>
+                              <DialogTitle className="text-2xl font-bold uppercase tracking-wide text-text-primary">{person.name || 'Unnamed Operative'}</DialogTitle>
                               <Badge variant="active" className="text-[10px] h-5 px-3 uppercase tracking-widest">Active Profile</Badge>
                           </div>
                           <p className="text-sm text-text-muted font-bold uppercase tracking-[0.2em]">{person.role || 'Awaiting Allocation'}</p>
@@ -291,7 +327,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                   "p-2.5 rounded-lg border",
                                                   isCritical ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                                                   isRecovery ? "bg-green-dim text-text-green border-green-border/30" : 
-                                                  "bg-bg-primary text-text-muted border border-border-sub"
+                                                  "bg-bg-primary text-text-secondary border border-border-sub"
                                               )}>
                                                   {isCritical ? <ShieldAlert size={20}/> : isRecovery ? <CheckCircle2 size={20}/> : <History size={20}/>}
                                               </div>
@@ -422,34 +458,42 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       </TabsContent>
 
                       <TabsContent value="assignments" className="m-0 space-y-6">
-                          <div className="table-wrap p-0">
-                              <Table>
-                                  <TableHeader className="bg-bg-tertiary">
-                                      <TableRow className="hover:bg-transparent border-border-sub">
-                                          <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
-                                          <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
-                                          <TableHead className="text-[10px] tracking-widest text-center">Status</TableHead>
-                                          <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {workOrders.map((wo) => (
-                                          <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                              <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">{wo.id.toUpperCase()}</TableCell>
-                                              <TableCell className="text-left">
-                                                  <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
-                                              </TableCell>
-                                              <TableCell className="text-center">
-                                                  <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[8px] uppercase">
-                                                      {wo.status}
-                                                  </Badge>
-                                              </TableCell>
-                                              <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
+                          <div className="space-y-4">
+                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Recent Mission Registry</h3>
+                              <div className="table-wrap p-0">
+                                  <Table>
+                                      <TableHeader className="bg-bg-tertiary">
+                                          <TableRow className="hover:bg-transparent border-border-sub">
+                                              <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
+                                              <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
+                                              <TableHead className="text-[10px] tracking-widest text-center">Status</TableHead>
+                                              <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
                                           </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
+                                      </TableHeader>
+                                      <TableBody>
+                                          {personWorkOrders.slice(0, 5).map((wo) => (
+                                              <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
+                                                  <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">{wo.id.toUpperCase()}</TableCell>
+                                                  <TableCell className="text-left">
+                                                      <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
+                                                      <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                                  </TableCell>
+                                                  <TableCell className="text-center">
+                                                      <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="text-[8px] uppercase">
+                                                          {wo.status}
+                                                      </Badge>
+                                                  </TableCell>
+                                                  <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
+                                              </TableRow>
+                                          ))}
+                                          {personWorkOrders.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-32 text-center text-text-muted italic uppercase text-[10px] tracking-widest">No assignments on record.</TableCell>
+                                            </TableRow>
+                                          )}
+                                      </TableBody>
+                                  </Table>
+                              </div>
                           </div>
                       </TabsContent>
                   </div>
@@ -524,7 +568,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                         <Activity className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Event Protocol</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name || 'Unnamed'}</span>.</DialogDescription>
+                    <DialogDescription className="text-xs text-text-muted">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name || 'Unnamed'}</span>.</DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4 space-y-6 text-left">
@@ -561,7 +605,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
 
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Operational Intelligence / Reason</Label>
-                        <Input 
+                        <Textarea 
                             placeholder="Provide full context for this audit entry..." 
                             value={reason}
                             onChange={e => setReason(e.target.value)}

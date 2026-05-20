@@ -48,7 +48,8 @@ import {
   ChevronRight,
   ExternalLink,
   Activity,
-  Gauge
+  Gauge,
+  Sparkles
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -70,7 +71,6 @@ type WorkOrdersTableProps = {
 
 /**
  * @fileOverview Unified Tactical Table for Assignment Management.
- * Performance: Uses React.memo for rows and useCallback for mission handlers.
  */
 export const WorkOrdersTable = React.memo(({
   workOrders,
@@ -227,8 +227,9 @@ export const WorkOrdersTable = React.memo(({
   const filteredTechniciansRegistry = useMemo(() => {
     return technicians
       .filter(t => {
-          const roles = t.roles || [];
+          const name = t.name || '';
           const role = (t.role || '').toLowerCase();
+          const roles = t.roles || [];
           return !roles.includes('client') && !role.includes('client');
       })
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
@@ -293,13 +294,13 @@ export const WorkOrdersTable = React.memo(({
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                     <AvatarImage src={technician.avatarUrl} />
-                                    <AvatarFallback className="text-[10px]">{technician.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px]">{technician.name ? technician.name.charAt(0) : 'U'}</AvatarFallback>
                                 </Avatar>
                                 <div className="text-left">
                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-tight">{technician.name}</span>
                                 </div>
                             </div>
-                        ) : <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
+                        ) : <Badge variant="outline" className="text-[9px] border-brand-red text-brand-red uppercase animate-pulse">Awaiting Tech</Badge>
                         ) : (
                             <div className="flex items-center gap-1.5 text-text-green">
                                 <DollarSign size={12} className="shrink-0" />
@@ -394,7 +395,6 @@ export const WorkOrdersTable = React.memo(({
         onUpdate={handleJobUpdate}
       />
 
-      {/* Unified Dialogs Moved inside component */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2 text-left">
@@ -414,12 +414,12 @@ export const WorkOrdersTable = React.memo(({
                 />
             </div>
             <div className="space-y-4">
-                {!recommendation && !isLoading && (
+                {!recommendation && !isAiLoading && (
                     <Button onClick={handleGetAiRecommendation} variant="secondary" className="w-full h-11">
                         <User className="mr-2 h-4 w-4"/> Initialize AI Dispatch Analysis
                     </Button>
                 )}
-                {isLoading && (
+                {isAiLoading && (
                     <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-center gap-3">
                          <div className="h-4 w-4 rounded-full border-2 border-accent-gold border-t-transparent animate-spin" />
                          <span className="text-xs font-bold uppercase tracking-widest text-accent-gold">Calculating optimal operative...</span>
@@ -439,7 +439,7 @@ export const WorkOrdersTable = React.memo(({
                         const tier = getReliabilityTier(tech.reliabilityScore);
                         return (
                             <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 text-left">
                                     <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
                                     <div className="text-left">
                                         <div className="flex items-center gap-2">

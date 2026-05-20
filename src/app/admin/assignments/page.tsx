@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -60,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { isAdmin, isPayAdmin } from "@/lib/permissions";
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -83,6 +85,8 @@ export default function AssignmentsHubPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+
   const { toast } = useToast();
 
   // 1. Initialize Registry Listeners
@@ -105,12 +109,20 @@ export default function AssignmentsHubPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const userId = localStorage.getItem('currentUserId');
+    if (userId) {
+      setCurrentUser(technicians.find(t => t.id === userId) || null);
+    }
+  }, [technicians]);
+
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        if (wo.status === 'unassigned') return false;
+        // Enforce Registry Rule: Assignment terminal requires a technician allocation
+        if (wo.status === 'unassigned' || !wo.assignedTechnicianId) return false;
 
-        const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || ''));
+        const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
         const queryStr = searchQuery.toLowerCase();
         
         const matchesSearch = (
@@ -413,7 +425,9 @@ export default function AssignmentsHubPage() {
                                                             </Avatar>
                                                             <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
                                                         </div>
-                                                    ) : <span className="text-[10px] text-text-muted italic">Unallocated</span>}
+                                                    ) : (
+                                                      <Badge variant="outline" className="text-[9px] border-brand-red text-brand-red uppercase animate-pulse">Awaiting Allocation</Badge>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="py-4 pl-0">
@@ -525,23 +539,23 @@ export default function AssignmentsHubPage() {
               </DialogHeader>
               {editedOrder && (
                   <div className="px-6 py-4 space-y-6">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Job Title / Description</Label>
-                        <Textarea placeholder="Primary objective..." value={editedOrder.description} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                      <div className="space-y-2 text-left">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                        <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Client / Entity</Label>
-                            <Input value={editedOrder.clientName} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                          <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                            <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex">Site Location</Label>
-                            <Input value={editedOrder.location} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                          <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                            <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
                           </div>
                       </div>
                       <Separator className="bg-border-sub" />
                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                          <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
                             <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                               <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red">
@@ -553,7 +567,7 @@ export default function AssignmentsHubPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
                             <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
                               <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -20,8 +21,8 @@ export function DispatchTabs({
   routes, 
   onRoutesChange 
 }: DispatchTabsProps) {
-  const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned');
-  const assignedWorkOrders = workOrders.filter(wo => wo.status === 'assigned');
+  const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId);
+  const assignedWorkOrders = workOrders.filter(wo => wo.status !== 'unassigned' && !!wo.assignedTechnicianId);
   
   return (
     <Tabs defaultValue="unassigned">

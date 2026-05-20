@@ -82,7 +82,7 @@ export const WorkOrdersTable = React.memo(({
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [techSearchQuery, setTechSearchQuery] = useState("");
 
@@ -140,7 +140,7 @@ export const WorkOrdersTable = React.memo(({
 
   const handleGetAiRecommendation = async () => {
     if (!selectedOrder) return;
-    setIsLoading(true);
+    setIsAiLoading(true);
     try {
       const result = await getRecommendation({
         workOrder: {
@@ -163,7 +163,7 @@ export const WorkOrdersTable = React.memo(({
     } catch (error) {
       toast({ variant: "destructive", title: "Recommendation Failed", description: "Could not get an AI recommendation." });
     } finally {
-      setIsLoading(false);
+      setIsAiLoading(false);
     }
   };
 
@@ -227,9 +227,8 @@ export const WorkOrdersTable = React.memo(({
   const filteredTechniciansRegistry = useMemo(() => {
     return technicians
       .filter(t => {
-          const name = t.name || '';
-          const role = (t.role || '').toLowerCase();
           const roles = t.roles || [];
+          const role = (t.role || '').toLowerCase();
           return !roles.includes('client') && !role.includes('client');
       })
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
@@ -436,7 +435,7 @@ export const WorkOrdersTable = React.memo(({
             <ScrollArea className="flex-1 rounded-md border border-border-sub bg-bg-primary">
                 <div className="divide-y divide-border-sub">
                     {filteredTechniciansRegistry.map(tech => {
-                        const tier = getReliabilityTier(tech.reliabilityScore);
+                        const tier = getReliabilityTier(tech.reliabilityScore || 0);
                         return (
                             <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                                 <div className="flex items-center gap-4 text-left">

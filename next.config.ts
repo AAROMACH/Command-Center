@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       ],
     },
   },
+  // Fix for the cross-origin warning reported in logs
+  devIndicators: {
+    appIsrStatus: false,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

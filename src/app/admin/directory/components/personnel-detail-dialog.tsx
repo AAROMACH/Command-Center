@@ -291,7 +291,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                   "p-2.5 rounded-lg border",
                                                   isCritical ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                                                   isRecovery ? "bg-green-dim text-text-green border-green-border/30" : 
-                                                  "bg-bg-primary text-text-muted border-border-sub"
+                                                  "bg-bg-primary text-text-muted border border-border-sub"
                                               )}>
                                                   {isCritical ? <ShieldAlert size={20}/> : isRecovery ? <CheckCircle2 size={20}/> : <History size={20}/>}
                                               </div>
@@ -454,14 +454,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       </TabsContent>
                   </div>
               </ScrollArea>
-
-              <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
-                  <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
-                  <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
-                      <Pencil size={14} className="mr-2"/> Modify Identity Registry
-                  </Button>
-              </DialogFooter>
           </Tabs>
+
+          <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
+              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
+              <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
+                  <Pencil size={14} className="mr-2"/> Modify Identity Registry
+              </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
-import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDailyLog, WeeklyLogItem } from '@/lib/types';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,7 @@ import {
     Mail, 
     Phone, 
     Shield, 
-    Calendar, 
+    Calendar as CalendarIcon, 
     Building2,
     History,
     Plus,
@@ -39,7 +39,9 @@ import {
     DollarSign,
     ChevronRight,
     Clock,
-    User
+    User,
+    ClipboardCheck,
+    Gauge
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -50,6 +52,7 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOp
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -113,25 +116,22 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     };
   }, [person]);
 
-  // MISSION REGISTRY AUDIT - Filtered by tech, prioritized by active status and recency
+  // MISSION REGISTRY AUDIT - Shows most recent job, prioritizing checked-in jobs
   const personWorkOrders = useMemo(() => {
     if (!person) return [];
     
-    // Filter by tech ID (lead or support)
     const filtered = workOrders.filter(wo => 
       wo.assignedTechnicianId === person.id || 
       (wo.additionalTechnicianIds || []).includes(person.id)
     );
 
-    // Sort: 'in-progress' status at the very top, then newest date
     return filtered.sort((a, b) => {
-      // 1. Status priority
       const getStatusRank = (status: string) => {
         if (status === 'in-progress') return 0;
         if (status === 'on-my-way') return 1;
         if (status === 'confirmed') return 2;
         if (status === 'assigned') return 3;
-        return 4; // completed, cancelled, etc.
+        return 4;
       };
 
       const rankA = getStatusRank(a.status);
@@ -139,11 +139,10 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
       if (rankA !== rankB) return rankA - rankB;
 
-      // 2. Date priority (newest first)
       const dateA = a.scheduleDate || '';
       const dateB = b.scheduleDate || '';
       return dateB.localeCompare(dateA);
-    });
+    }).slice(0, 1); // Only show the single most recent/active job
   }, [person, workOrders]);
 
   const handleUploadClick = () => {
@@ -180,6 +179,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   if (!person) return null;
 
+  const initials = (person.name || 'U').split(' ').map(n => n[0]).join('');
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -189,7 +190,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                   <div className="flex items-center gap-6">
                       <Avatar className="h-16 w-16 border-2 border-border-sub">
                           <AvatarImage src={person.avatarUrl} />
-                          <AvatarFallback>{(person.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="space-y-1">
                           <div className="flex items-center gap-3">
@@ -440,7 +441,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                               </div>
                               <div className="space-y-4">
                                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
-                                      <Calendar size={14}/> Temporal Exceptions
+                                      <CalendarIcon size={14}/> Temporal Exceptions
                                   </h3>
                                   <div className="space-y-2">
                                       {timeOffRequests.map((req) => (
@@ -459,7 +460,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
                       <TabsContent value="assignments" className="m-0 space-y-6">
                           <div className="space-y-4">
-                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Recent Mission Registry</h3>
+                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Most Recent Mission Registry</h3>
                               <div className="table-wrap p-0">
                                   <Table>
                                       <TableHeader className="bg-bg-tertiary">
@@ -471,7 +472,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           </TableRow>
                                       </TableHeader>
                                       <TableBody>
-                                          {personWorkOrders.slice(0, 5).map((wo) => (
+                                          {personWorkOrders.map((wo) => (
                                               <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                   <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">{wo.id.toUpperCase()}</TableCell>
                                                   <TableCell className="text-left">
@@ -565,7 +566,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
             <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader className="text-left">
                     <div className="flex items-center gap-2 mb-1">
-                        <Activity className="text-brand-red h-5 w-5" />
+                        <Activity size={14} className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Event Protocol</DialogTitle>
                     </div>
                     <DialogDescription className="text-xs text-text-muted">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name || 'Unnamed'}</span>.</DialogDescription>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -35,7 +34,7 @@ function getProgress(project: Project): number {
     const phases = project.phases || [];
     if (phases.length === 0) return 0;
     
-    const allTasks = phases.flatMap(phase => phase.tasks || []);
+    const allTasks = phases.flatMap(phase => (phase.tasks || [])).filter(Boolean);
     if (allTasks.length === 0) return 0;
     
     const completedTasks = allTasks.filter(task => task && task.isCompleted).length;

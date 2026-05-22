@@ -83,7 +83,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.hoursWorked} HOURS</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.hoursWorked.toFixed(1)} HOURS</span>
                     </div>
                 </div>
 
@@ -271,7 +271,7 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
             {groupedData.length > 0 ? (
                  <Accordion type="multiple" defaultValue={groupedData.map(g => g.id)} className="w-full space-y-3">
                     {groupedData.map((group : any) => (
-                        <AccordionItem key={group.id} value={group.id} className="accordion-item border border-border-sub bg-bg-secondary/40">
+                        <AccordionItem key={group.id} value={group.id} className="accordion-item border border-border-main bg-bg-secondary/40">
                             <AccordionTrigger className="accordion-trigger px-4 py-3 hover:bg-bg-tertiary/50 hover:no-underline border-none">
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center gap-2">

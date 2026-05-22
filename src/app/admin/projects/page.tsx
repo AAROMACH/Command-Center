@@ -95,9 +95,10 @@ export default function ProjectsPage() {
 
   const filteredProjects = useMemo(() => {
     const getProgressValue = (project: Project) => {
-        const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
+        const phases = project.phases || [];
+        const allTasks = phases.flatMap(phase => phase.tasks || []);
         if (allTasks.length === 0) return 0;
-        const completedTasks = allTasks.filter(task => task.isCompleted).length;
+        const completedTasks = allTasks.filter(task => task && task.isCompleted).length;
         return (completedTasks / allTasks.length) * 100;
     };
 

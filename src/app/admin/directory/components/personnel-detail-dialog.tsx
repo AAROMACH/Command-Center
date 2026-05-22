@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
@@ -40,7 +39,8 @@ import {
     Clock,
     User,
     ClipboardCheck,
-    Gauge
+    Gauge,
+    Activity as ActivityIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -448,7 +448,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                   <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>
                                                   <p className="text-[10px] text-text-muted font-mono">{req.startDate} to {req.endDate}</p>
                                               </div>
-                                              <Badge variant={req.status === 'approved' ? 'active' : req.status === 'onhold' ? 'onhold' : 'pending'}>{req.status.toUpperCase()}</Badge>
+                                              <Badge variant={req.status === 'approved' ? 'active' : req.status === 'denied' ? 'missed' : 'pending'}>{req.status.toUpperCase()}</Badge>
                                           </div>
                                       ))}
                                   </div>

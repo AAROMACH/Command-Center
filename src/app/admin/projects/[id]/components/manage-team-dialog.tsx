@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -107,7 +106,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                 if (!tech) return null;
                                 return (
                                     <div key={member.technicianId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary border border-border-sub">
-                                        <Avatar className="h-8 w-8 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback></Avatar>
+                                        <Avatar className="h-8 w-8 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback></Avatar>
                                         <div className="flex-1 font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</div>
                                         <Select value={member.role} onValueChange={(value) => handleRoleChange(member.technicianId, value)}>
                                             <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-8 text-[10px] uppercase font-bold">
@@ -155,7 +154,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                             {filteredTechnicians.length > 0 ? filteredTechnicians.map(tech => (
                                                 <SelectItem key={tech.id} value={tech.id} className="text-[10px] uppercase font-bold">
                                                     <div className="flex items-center gap-2">
-                                                        <Avatar className="h-5 w-5 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback></Avatar>
+                                                        <Avatar className="h-5 w-5 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback></Avatar>
                                                         <span>{tech.name}</span>
                                                     </div>
                                                 </SelectItem>

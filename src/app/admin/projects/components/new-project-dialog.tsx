@@ -20,7 +20,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Building2, MapPin, Calendar, Briefcase, Check } from 'lucide-react';
+import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User } from 'lucide-react';
 import type { Project } from '@/lib/types';
 
 type NewProjectDialogProps = {
@@ -40,6 +40,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     scope: '',
     projectBudget: 0,
     estimatedHours: 0,
+    onsiteContactName: '',
+    onsiteContactPhone: '',
   });
 
   const handleSave = () => {
@@ -68,6 +70,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       scope: '',
       projectBudget: 0,
       estimatedHours: 0,
+      onsiteContactName: '',
+      onsiteContactPhone: '',
     });
   };
 
@@ -82,7 +86,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           <DialogDescription>Create a new high-fidelity project entry in the operational registry.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Project Name</Label>
@@ -114,6 +118,33 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     onChange={e => setFormData({...formData, location: e.target.value})}
                     className="bg-bg-primary pl-10"
                 />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">On-Site Contact Name</Label>
+              <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <Input 
+                    placeholder="Contact Name" 
+                    value={formData.onsiteContactName}
+                    onChange={e => setFormData({...formData, onsiteContactName: e.target.value})}
+                    className="bg-bg-primary pl-10"
+                  />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">On-Site Contact Phone</Label>
+              <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <Input 
+                    placeholder="Phone Number" 
+                    value={formData.onsiteContactPhone}
+                    onChange={e => setFormData({...formData, onsiteContactPhone: e.target.value})}
+                    className="bg-bg-primary pl-10"
+                  />
+              </div>
             </div>
           </div>
 

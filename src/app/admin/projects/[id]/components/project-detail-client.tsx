@@ -96,14 +96,14 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
         const phases = project.phases || [];
         const allTasks = phases.flatMap(phase => phase.tasks || []);
         if (allTasks.length === 0) return 0;
-        const completedTasks = allTasks.filter(task => task.isCompleted).length;
+        const completedTasks = allTasks.filter(task => task && task.isCompleted).length;
         return (completedTasks / allTasks.length) * 100;
     }, [project.phases]);
 
     const allTasksDone = useMemo(() => {
         const phases = project.phases || [];
         const allTasks = phases.flatMap(phase => phase.tasks || []);
-        return allTasks.length > 0 && allTasks.every(t => t.isCompleted);
+        return allTasks.length > 0 && allTasks.every(t => t && t.isCompleted);
     }, [project.phases]);
 
     const isReadOnly = project.status === 'completed';
@@ -154,7 +154,7 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
             <div className="project-detail-header">
                 <div className="pdh-top">
-                    <div>
+                    <div className="text-left">
                         <div className="flex items-center gap-3 mb-1">
                             <h1 className="pdh-title">{project.name} — {project.location}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
@@ -287,17 +287,32 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact</Label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                                            <Input 
-                                                disabled={isReadOnly}
-                                                placeholder="Name and phone number..."
-                                                value={editedProject.onsiteContact || ''} 
-                                                onChange={e => setEditedProject({...editedProject, onsiteContact: e.target.value})}
-                                                className="bg-bg-primary h-10 text-xs pl-10"
-                                            />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact Name</Label>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                                <Input 
+                                                    disabled={isReadOnly}
+                                                    placeholder="Contact Name"
+                                                    value={editedProject.onsiteContactName || ''} 
+                                                    onChange={e => setEditedProject({...editedProject, onsiteContactName: e.target.value})}
+                                                    className="bg-bg-primary h-10 text-xs pl-10"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact Phone</Label>
+                                            <div className="relative">
+                                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                                                <Input 
+                                                    disabled={isReadOnly}
+                                                    placeholder="Phone Number"
+                                                    value={editedProject.onsiteContactPhone || ''} 
+                                                    onChange={e => setEditedProject({...editedProject, onsiteContactPhone: e.target.value})}
+                                                    className="bg-bg-primary h-10 text-xs pl-10"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -47,7 +47,8 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     useEffect(() => {
         setLocalProjectData({
             scope: project.scope,
-            onsiteContact: project.onsiteContact,
+            onsiteContactName: project.onsiteContactName,
+            onsiteContactPhone: project.onsiteContactPhone,
             siteAccessInstructions: project.siteAccessInstructions
         });
     }, [project]);
@@ -173,7 +174,8 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
     const handleCancelChanges = () => {
         setLocalProjectData({
             scope: project.scope,
-            onsiteContact: project.onsiteContact,
+            onsiteContactName: project.onsiteContactName,
+            onsiteContactPhone: project.onsiteContactPhone,
             siteAccessInstructions: project.siteAccessInstructions
         });
         toast({ title: "Changes Discarded", description: "Project briefing remains at last authorized state." });
@@ -183,7 +185,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
         <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Main Content: Briefing & Economics */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2 space-y-4 text-left">
                     <div className="field-group">
                         <h3 className="field-group-title"><FileText/> Site Briefing</h3>
                         
@@ -197,15 +199,27 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                             ></Textarea>
                         </div>
                         
-                        <div className="field-row">
-                            <label className="field-label">Onsite Contact</label>
-                            <Input 
-                                disabled={isReadOnly}
-                                className="field-input" 
-                                placeholder="Name + phone number..." 
-                                value={localProjectData.onsiteContact || ''}
-                                onChange={e => setLocalProjectData({...localProjectData, onsiteContact: e.target.value})}
-                            />
+                        <div className="grid grid-cols-2 gap-4 mb-2">
+                            <div className="field-row">
+                                <label className="field-label">Onsite Contact Name</label>
+                                <Input 
+                                    disabled={isReadOnly}
+                                    className="field-input" 
+                                    placeholder="Full Name" 
+                                    value={localProjectData.onsiteContactName || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                />
+                            </div>
+                            <div className="field-row">
+                                <label className="field-label">Onsite Contact Phone</label>
+                                <Input 
+                                    disabled={isReadOnly}
+                                    className="field-input" 
+                                    placeholder="Phone Number" 
+                                    value={localProjectData.onsiteContactPhone || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                />
+                            </div>
                         </div>
                         
                         <div className="field-row">
@@ -391,7 +405,7 @@ export function OverviewTab({ project, setProject, allTechnicians }: OverviewTab
                                 Manage Team
                             </Button>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-3 text-left">
                             {project.team.map(member => {
                                 const tech = getTechnician(member.technicianId);
                                 if (!tech) return null;

@@ -71,6 +71,8 @@ export type WorkOrder = {
     requestedBy: string;
     requestedAt: string;
   };
+  auditReimbursement?: number;
+  auditOverhead?: number;
 };
 
 export type Route = {
@@ -150,7 +152,8 @@ export type Project = {
   team: ProjectTeamMember[];
   phases: Phase[];
   scope: string;
-  onsiteContact?: string;
+  onsiteContactName?: string;
+  onsiteContactPhone?: string;
   siteAccessInstructions?: string;
   siteHazardNotes: { id: string, text: string, type: 'info' | 'danger' }[];
   projectBudget?: number;

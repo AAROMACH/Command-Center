@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
-import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, WeeklyLogItem } from '@/lib/types';
+import { useState, useMemo, useRef } from 'react';
+import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,7 +19,6 @@ import {
     Phone, 
     Shield, 
     Calendar as CalendarIcon, 
-    Building2,
     History,
     Plus,
     X,
@@ -36,7 +35,6 @@ import {
     Image as ImageIcon,
     HeartPulse,
     Info,
-    DollarSign,
     ChevronRight,
     Clock,
     User,
@@ -178,7 +176,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   if (!person) return null;
 
-  const initials = (person.name || 'U').split(' ').map(n => n[0]).join('');
+  const initials = (person.name || 'U').split(' ').map(n => n[0]).join('') || 'U';
 
   return (
     <>
@@ -400,7 +398,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           </div>
                                           <div className="min-w-0">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
-                                              <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                              <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
                                                   {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
                                               </p>
                                           </div>

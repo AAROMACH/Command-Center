@@ -265,8 +265,8 @@ export const WorkOrdersTable = React.memo(({
           <thead>
             <tr className="bg-bg-tertiary">
               <th className="text-center w-[160px] pl-0">Status & ID</th>
-              <th className="text-left pl-0">Assignment Intelligence</th>
-              <th className="text-left pl-0 w-[160px]">Schedule</th>
+              <th className="text-left pl-0">Assignment Identification</th>
+              <th className="text-center w-[160px]">Schedule</th>
               <th className="text-left pl-0 w-[250px]">Site Coordinates</th>
               <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Settlement Pay'}</th>
               <th className="text-center w-[120px]"></th>
@@ -304,7 +304,7 @@ export const WorkOrdersTable = React.memo(({
                     </div>
                   </td>
                   <td className="py-4">
-                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0">
+                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0 text-left">
                       <MapPin size={11} className="text-brand-red shrink-0" />
                       <span className="truncate max-w-[200px]">{order.location}</span>
                     </div>
@@ -313,7 +313,7 @@ export const WorkOrdersTable = React.memo(({
                     <div className="flex flex-col items-center justify-center">
                         {mode === 'scheduled' || mode === 'assigned' || order.status === 'assigned' || order.status === 'completed' || order.status === 'in-progress' ? (
                         technician ? (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 text-left">
                                 <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                     <AvatarImage src={technician.avatarUrl} />
                                     <AvatarFallback className="text-[10px]">{technician.name ? technician.name.charAt(0) : 'U'}</AvatarFallback>
@@ -333,9 +333,9 @@ export const WorkOrdersTable = React.memo(({
                           </Button>
                         )
                         ) : (
-                            <div className="flex items-center gap-1.5 text-text-green">
+                            <div className="flex items-center gap-1.5 text-text-green text-left">
                                 <DollarSign size={12} className="shrink-0" />
-                                <div className="flex flex-col items-start leading-none">
+                                <div className="flex flex-col items-start leading-none text-left">
                                     <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
                                     <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
                                 </div>
@@ -398,8 +398,8 @@ export const WorkOrdersTable = React.memo(({
               >
                 <ChevronLeft size={14} />
               </Button>
-              <div className="flex items-center gap-1 px-2">
-                <span className="text-[10px] font-bold text-text-primary">Page {currentPage} of {totalPages}</span>
+              <div className="flex items-center gap-1 px-2 text-left">
+                <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
               </div>
               <Button 
                 variant="outline" 
@@ -631,7 +631,7 @@ export const WorkOrdersTable = React.memo(({
       </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-bg-elevated border-border-default">
+        <AlertDialogContent className="bg-bg-elevated border-border-default shadow-2xl">
             <AlertDialogHeader className="text-left">
                 <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
                     <ShieldCheck className="text-brand-red" size={18}/>

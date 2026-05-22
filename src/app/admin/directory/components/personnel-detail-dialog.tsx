@@ -122,6 +122,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
       (wo.additionalTechnicianIds || []).includes(person.id)
     );
 
+    // Rule: Show single most recent mission, prioritizing Checked-In sessions
     return filtered.sort((a, b) => {
       const getStatusRank = (status: string) => {
         if (status === 'in-progress') return 0;
@@ -181,15 +182,15 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="lg:max-w-4xl bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+        <DialogContent className="lg:max-w-4xl bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
           <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
               <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-6 text-left">
                       <Avatar className="h-16 w-16 border-2 border-border-sub">
                           <AvatarImage src={person.avatarUrl} />
                           <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
-                      <div className="space-y-1">
+                      <div className="space-y-1 text-left">
                           <div className="flex items-center gap-3">
                               <DialogTitle className="text-2xl font-bold uppercase tracking-wide text-text-primary">{person.name || 'Unnamed Operative'}</DialogTitle>
                               <Badge variant="active" className="text-[10px] h-5 px-3 uppercase tracking-widest">Active Profile</Badge>
@@ -218,7 +219,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
           </DialogHeader>
 
           <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
+              <div className="px-6 border-b border-border-sub bg-bg-secondary/30 text-left">
                   <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                       <TabsTrigger value="overview" className="tab-trigger-personnel">Overview</TabsTrigger>
                       {(isTechnician || isStaff) && <TabsTrigger value="reliability" className="tab-trigger-personnel">Reliability</TabsTrigger>}
@@ -308,7 +309,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust Manifest</h3>
                                   <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
                               </div>
-                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={() => setIsLogEventOpen(true)}>
+                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red text-white" onClick={() => setIsLogEventOpen(true)}>
                                   <Plus size={14} className="mr-1.5"/> Log Command Decision
                               </Button>
                           </div>
@@ -379,7 +380,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   className="hidden" 
                                   onChange={handleFileChange}
                                 />
-                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red" onClick={handleUploadClick}>
+                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red text-white" onClick={handleUploadClick}>
                                   <Upload size={14} className="mr-1.5"/> Upload Asset
                               </Button>
                           </div>
@@ -392,7 +393,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               "p-2.5 rounded-lg border",
                                               doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                                               doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
-                                              "bg-bg-primary text-text-muted border border-border-sub"
+                                              "bg-bg-primary text-text-secondary border border-border-sub"
                                           )}>
                                               {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
                                           </div>
@@ -437,7 +438,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   </div>
                               </div>
                               <div className="space-y-4">
-                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2 text-left">
                                       <CalendarIcon size={14}/> Temporal Exceptions
                                   </h3>
                                   <div className="space-y-2">
@@ -500,7 +501,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
           <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
               <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
-              <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red">
+              <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red text-white">
                   <Pencil size={14} className="mr-2"/> Modify Identity Registry
               </Button>
           </DialogFooter>
@@ -570,7 +571,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                 </DialogHeader>
 
                 <div className="py-4 space-y-6 text-left">
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Event Identification (Command Decision)</Label>
                         <Select value={selectedType} onValueChange={setSelectedType}>
                             <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
@@ -579,7 +580,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                             <SelectContent className="bg-bg-elevated max-h-[300px]">
                                 {manualOptions.map(opt => (
                                     <SelectItem key={opt.type} value={opt.type} className="text-xs uppercase font-bold">
-                                        <div className="flex justify-between items-center w-full gap-8">
+                                        <div className="flex justify-between items-center w-full gap-8 text-left">
                                             <span>{opt.label}</span>
                                             <span className={cn("font-mono", opt.scoreChange > 0 ? "text-text-green" : "text-text-red")}>
                                                 ({opt.scoreChange > 0 ? `+${opt.scoreChange}` : opt.scoreChange})
@@ -591,7 +592,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Mission Context (Optional)</Label>
                         <Input 
                             placeholder="e.g. WO-18937" 
@@ -601,7 +602,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                         />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Operational Intelligence / Reason</Label>
                         <Textarea 
                             placeholder="Provide full context for this audit entry..." 
@@ -617,7 +618,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
                     <Button 
                         disabled={!selectedType || !reason}
                         onClick={handleSave} 
-                        className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
+                        className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white"
                     >
                         Commit to Ledger
                     </Button>

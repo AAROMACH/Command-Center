@@ -126,7 +126,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                 {groupedByClient.map((group, idx) => (
                     <div key={group.client.name + idx} className="space-y-4">
                         <div className="flex items-center justify-start gap-3 border-b border-border-sub pb-2 px-1">
-                            <div className="relative">
+                            <div className="relative text-left">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={group.client.avatarUrl} /><AvatarFallback><Building2 size={16} /></AvatarFallback>
                                 </Avatar>

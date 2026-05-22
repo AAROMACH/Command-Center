@@ -84,7 +84,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
+            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="page-title text-xl text-left">Manage Project Team</DialogTitle>
                 </DialogHeader>
@@ -164,7 +164,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                                     {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button size="icon" className="h-9 w-9 shrink-0 bg-brand-red hover:bg-brand-red-hover" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
+                            <Button size="icon" className="h-9 w-9 shrink-0 bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
                                 <Plus size={16} />
                             </Button>
                         </div>
@@ -172,7 +172,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                 </div>
                 <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
                     <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="bg-brand-red hover:bg-brand-red-hover px-10">Save Team Updates</Button>
+                    <Button onClick={handleSaveChanges} className="bg-brand-red hover:bg-brand-red-hover px-10 text-white font-bold uppercase text-[10px] tracking-widest">Save Team Updates</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

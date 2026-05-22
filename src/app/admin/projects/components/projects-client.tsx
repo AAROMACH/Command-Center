@@ -94,7 +94,10 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
           const parts = dateStr.split(/[-/]/);
           let d;
           if (parts[0].length === 4) { d = new Date(dateStr); } 
-          else { d = parseISO(dateStr); }
+          else { 
+            const [m, day, y] = parts;
+            d = new Date(`${y}-${m}-${day}T12:00:00`);
+          }
           return format(d, 'MM-dd-yyyy');
         } catch (e) {
           return dateStr;
@@ -198,7 +201,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                                 <td className="py-4 pl-0">
                                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="whitespace-normal">{project.location}</span>
+                                        <span className="whitespace-normal text-left">{project.location}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 pl-0">

@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Clock, Timer, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type ProjectsClientProps = {
     projects: Project[];
@@ -86,7 +88,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                                 <td className="py-4 pl-0">
                                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="whitespace-normal">{project.location}</span>
+                                        <span className="whitespace-normal text-left">{project.location}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 pl-0">

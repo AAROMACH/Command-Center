@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument } from '@/lib/types';
+import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, WeeklyLogItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -117,7 +117,6 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     };
   }, [person]);
 
-  // MISSION REGISTRY AUDIT - Shows most recent job, prioritizing checked-in jobs
   const personWorkOrders = useMemo(() => {
     if (!person) return [];
     
@@ -143,7 +142,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
       const dateA = a.scheduleDate || '';
       const dateB = b.scheduleDate || '';
       return dateB.localeCompare(dateA);
-    }).slice(0, 1); // Only show the single most recent/active job
+    }).slice(0, 1); 
   }, [person, workOrders]);
 
   const handleUploadClick = () => {
@@ -236,10 +235,10 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                   <div className="p-6">
                       <TabsContent value="overview" className="m-0">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <section className="space-y-6">
+                              <section className="space-y-6 text-left">
                                   <div className="space-y-3">
-                                      <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Core Identity</h3>
-                                      <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs text-left">
+                                      <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Core Identity</h3>
+                                      <div className="grid grid-cols-[100px,1fr] gap-y-3 text-xs">
                                           <span className="text-text-muted font-bold uppercase">Official Email</span>
                                           <span className="text-text-primary truncate">
                                               {person.email ? <a href={`mailto:${person.email}`} className="hover:underline">{person.email}</a> : 'N/A'}
@@ -264,7 +263,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 flex items-center gap-2">
                                               <HeartPulse size={14}/> Emergency Protocol
                                           </h3>
-                                          <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
+                                          <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{person.emergencyContact.name}</p>
                                               <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                                   <span>{person.emergencyContact.relation}</span>
@@ -277,9 +276,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                               </section>
 
                               {isTechnician && (
-                                  <section className="space-y-6">
+                                  <section className="space-y-6 text-left">
                                       <div className="space-y-3">
-                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Trust Index</h3>
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Trust Index</h3>
                                           <div className="grid grid-cols-2 gap-4">
                                               <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub text-center space-y-1">
                                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Reliability Score</p>
@@ -294,7 +293,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           </div>
                                       </div>
                                       <div className="space-y-3">
-                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Specializations</h3>
+                                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Specializations</h3>
                                           <div className="flex flex-wrap gap-2">
                                               {(person.skills || []).map(skill => (
                                                   <Badge key={skill} variant="outline" className="text-[9px] bg-bg-secondary border-border-sub text-text-primary h-6 px-3">{skill}</Badge>
@@ -391,16 +390,16 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {documents.map(doc => (
                                   <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
-                                      <div className="flex items-center gap-4 overflow-hidden">
+                                      <div className="flex items-center gap-4 overflow-hidden text-left">
                                           <div className={cn(
                                               "p-2.5 rounded-lg border",
                                               doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                                               doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
-                                              "bg-bg-primary text-text-muted border-border-sub"
+                                              "bg-bg-primary text-text-muted border border-border-sub"
                                           )}>
                                               {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
                                           </div>
-                                          <div className="min-w-0 text-left">
+                                          <div className="min-w-0">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
                                               <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
                                                   {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Plus, Trash2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
@@ -160,7 +161,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-[10px] uppercase font-bold">{role}</SelectItem>)}
+                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <Button size="icon" className="h-9 w-9 shrink-0 bg-brand-red hover:bg-brand-red-hover" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>

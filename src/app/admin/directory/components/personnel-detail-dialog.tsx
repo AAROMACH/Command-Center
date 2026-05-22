@@ -421,7 +421,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       <TabsContent value="schedule" className="m-0">
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="space-y-4">
-                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Weekly Availability</h3>
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-border-sub border-b pb-2 px-1 text-left">Weekly Availability</h3>
                                   <div className="space-y-2">
                                       {daysOfWeek.map(day => {
                                           const availability = person.availability?.[day.toLowerCase()];

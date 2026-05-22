@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,7 +13,7 @@ import { technicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2, ShieldAlert, UserCheck, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, ShieldAlert, UserCheck, ChevronRight, Terminal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 const loginSchema = z.object({
   email: z.string().email({
@@ -211,16 +211,24 @@ export default function LoginPage() {
               )}
             </div>
 
-            {showBypass && (
-              <div className="pt-4 border-t border-border-sub space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="p-3 rounded bg-accent-gold-dim/10 border border-accent-gold/20 flex items-center gap-3">
-                  <ShieldAlert className="text-accent-gold h-5 w-5 shrink-0" />
-                  <p className="text-[10px] text-text-muted uppercase font-bold text-left leading-relaxed">
-                    Auth Error Detected. Use the tactical bypass to log in as a registered operative.
+            <div className="pt-4 border-t border-border-sub space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest text-accent-gold flex items-center gap-2">
+                  <Terminal size={12}/> Dev Portal Bypass
+                </p>
+                <Switch 
+                  id="bypass-toggle" 
+                  checked={showBypass} 
+                  onCheckedChange={setShowBypass}
+                  className="scale-75"
+                />
+              </div>
+              
+              {showBypass && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="text-[9px] text-text-muted uppercase font-bold text-left leading-relaxed">
+                    Select a registered identity to initialize terminal access without Auth credentials.
                   </p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-text-muted text-left block">Demo Identity Bypass</Label>
                   <div className="flex gap-2">
                     <Select value={demoUser} onValueChange={setDemoUser}>
                       <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-[10px] font-bold uppercase">
@@ -245,8 +253,8 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button 

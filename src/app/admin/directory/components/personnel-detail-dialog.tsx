@@ -123,7 +123,6 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
       (wo.additionalTechnicianIds || []).includes(person.id)
     );
 
-    // Rule: Show single most recent mission, prioritizing Checked-In sessions
     return filtered.sort((a, b) => {
       const getStatusRank = (status: string) => {
         if (status === 'in-progress') return 0;

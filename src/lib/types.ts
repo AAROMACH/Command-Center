@@ -188,6 +188,7 @@ export type Task = {
 
 export type ProjectDocument = {
   id: string;
+  projectId: string;
   name: string;
   type: 'pdf' | 'img' | 'doc';
   label: string;

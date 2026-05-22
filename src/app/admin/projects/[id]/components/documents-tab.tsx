@@ -1,8 +1,8 @@
-
 'use client';
 
 import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Milestone, Camera, Paperclip, Plus, User } from 'lucide-react';
 import React, { useRef, useState } from 'react';
@@ -60,7 +60,6 @@ const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDe
 
 const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: Phase, documents: ProjectDocument[], onDelete: (id: string) => void, onUpload: (file: File, phaseId?: string, taskId?: string) => void }) => {
     const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const requiredPhotoTasks = (phase.tasks || []).filter(task => task.requiresPhoto);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { WeeklyLog, FinancialRecord } from '@/lib/types';
+import type { WeeklyLog, FinancialRecord, ProjectDailyLog } from '@/lib/types';
 import { workOrders } from '@/lib/data';
 import { 
   Dialog, 

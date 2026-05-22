@@ -90,7 +90,7 @@ export default function LoginPage() {
       
       let errorMessage = "An unexpected error occurred during the security handshake.";
       
-      if (error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = "Invalid operative credentials. Please verify your access key or use the demo bypass.";
         setShowBypass(true);
       } else if (error.code === 'auth/api-key-not-valid') {

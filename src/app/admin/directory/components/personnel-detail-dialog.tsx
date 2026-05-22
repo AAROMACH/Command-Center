@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
@@ -442,7 +443,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <CalendarIcon size={14}/> Temporal Exceptions
                                   </h3>
                                   <div className="space-y-2">
-                                      {timeOffRequests.map((req) => (
+                                      {(timeOffRequests || []).map((req) => (
                                           <div key={req.id} className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between text-left">
                                               <div className="space-y-1">
                                                   <p className="text-xs font-bold text-text-primary uppercase">{req.type}</p>

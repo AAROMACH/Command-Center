@@ -60,12 +60,10 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
         const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
         const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
 
-        // Note: projectDailyLogs should be passed or fetched in real-time.
-        // For now using empty array or local data as proxy
         const loggedHours = 0; 
 
         let estimatedHours = project.estimatedHours || 0;
-        const taskEstSum = project.phases.reduce((pAcc, phase) => 
+        const taskEstSum = (project.phases || []).reduce((pAcc, phase) => 
             pAcc + (phase.tasks || []).reduce((tAcc, task) => tAcc + (task.estimatedHours || 0), 0)
         , 0);
         if (taskEstSum > 0) estimatedHours = taskEstSum;
@@ -145,7 +143,7 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, {
-                siteHazardNotes: project.siteHazardNotes.filter(n => n.id !== id)
+                siteHazardNotes: (project.siteHazardNotes || []).filter(n => n.id !== id)
             });
             toast({ title: "Note Removed", description: "Site intelligence has been updated." });
         } catch (e: any) {
@@ -184,7 +182,7 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 space-y-4 text-left">
                     <div className="field-group">
-                        <h3 className="field-group-title"><FileText/> Site Briefing</h3>
+                        <h3 className="field-group-title uppercase font-bold tracking-widest"><FileText className="text-brand-red h-4 w-4"/> Site Briefing</h3>
                         
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
@@ -270,7 +268,7 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
 
                      <div className="field-group !pb-2">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="field-group-title !mb-0"><DollarSign/> Project Economics</h3>
+                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><DollarSign className="text-brand-red h-4 w-4"/> Project Economics</h3>
                             <Badge 
                                 variant={
                                     projectEconomics.budgetStatus === 'Over Budget' ? 'missed' : 
@@ -390,12 +388,13 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
                 <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="field-group-title !mb-0"><Users/> Project Team</h3>
+                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><Users className="text-brand-red h-4 w-4"/> Project Team</h3>
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => !isReadOnly && setIsTeamDialogOpen(true)}
                                 disabled={isReadOnly}
+                                className="h-8 !text-[10px] uppercase font-bold tracking-widest"
                             >
                                 Manage Team
                             </Button>
@@ -405,20 +404,20 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
                                 const tech = getTechnician(member.technicianId);
                                 if (!tech) return null;
                                 return (
-                                    <div key={tech.id} className="flex items-center gap-3 p-3 rounded-md bg-bg-primary border border-border-subtle">
-                                        <Avatar className="h-9 w-9">
+                                    <div key={tech.id} className="flex items-center gap-3 p-3 rounded-md bg-bg-primary border border-border-sub">
+                                        <Avatar className="h-9 w-9 border border-border-sub">
                                             <AvatarImage src={tech.avatarUrl} alt={tech.name} />
                                             <AvatarFallback>{tech.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
                                         </Avatar>
-                                        <div className="flex-1 text-left">
-                                            <p className="font-semibold text-sm text-text-primary">{tech.name}</p>
-                                            <p className="text-xs text-text-muted uppercase font-bold text-[9px]">{member.role}</p>
+                                        <div className="flex-1 text-left overflow-hidden">
+                                            <p className="font-bold text-xs text-text-primary uppercase truncate">{tech.name}</p>
+                                            <p className="text-xs text-text-muted uppercase font-bold text-[9px] tracking-widest">{member.role}</p>
                                         </div>
                                     </div>
                                 )
                             })}
                             {(project.team || []).length === 0 && (
-                                <p className="text-[10px] text-text-muted uppercase font-bold text-center py-4 border border-dashed border-border-sub rounded-md">No personnel assigned</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold text-center py-8 border border-dashed border-border-sub rounded-md italic">No personnel assigned</p>
                             )}
                         </div>
                     </div>
@@ -426,9 +425,9 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
             </div>
 
             {!isReadOnly && (
-                <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" size="sm" onClick={handleCancelChanges}>Cancel</Button>
-                    <Button variant="default" size="sm" onClick={handleSaveChanges}>Save Changes</Button>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-sub">
+                    <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={handleCancelChanges}>Discard Changes</Button>
+                    <Button variant="default" className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={handleSaveChanges}>Commit Updates</Button>
                 </div>
             )}
             

@@ -96,7 +96,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle className="page-title text-xl text-left">Manage Project Team</DialogTitle>
+                    <DialogTitle className="page-title text-xl text-left uppercase font-bold tracking-widest">Manage Project Team</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 space-y-6">
                     <div>

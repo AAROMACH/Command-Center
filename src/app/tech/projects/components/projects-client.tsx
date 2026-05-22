@@ -12,10 +12,16 @@ type ProjectsClientProps = {
     technicians: Technician[];
 };
 
+/**
+ * @fileOverview Defensive progress engine for field operatives.
+ */
 function getProgress(project: Project): number {
     const phases = project.phases || [];
+    if (phases.length === 0) return 0;
+
     const allTasks = phases.flatMap(phase => phase.tasks || []);
     if (allTasks.length === 0) return 0;
+    
     const completedTasks = allTasks.filter(task => task.isCompleted).length;
     return (completedTasks / allTasks.length) * 100;
 }

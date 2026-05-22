@@ -1,4 +1,3 @@
-
 'use client';
 import type { Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -34,9 +33,10 @@ import { doc, updateDoc } from 'firebase/firestore';
 type OverviewTabProps = {
     project: Project;
     allTechnicians: Technician[];
+    dailyLogs: ProjectDailyLog[];
 };
 
-export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
+export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabProps) {
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
@@ -60,7 +60,8 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
         const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
         const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
 
-        const loggedHours = 0; 
+        // AGGREGATE TOTAL HOURS FROM LOGS
+        const loggedHours = dailyLogs.reduce((acc, log) => acc + (log.hoursWorked || 0), 0);
 
         let estimatedHours = project.estimatedHours || 0;
         const taskEstSum = (project.phases || []).reduce((pAcc, phase) => 
@@ -68,8 +69,17 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
         , 0);
         if (taskEstSum > 0) estimatedHours = taskEstSum;
 
-        const laborCost = 0;
-        const rateMissing = false;
+        // CALCULATE LABOR COST FROM RATES
+        const laborCost = dailyLogs.reduce((acc, log) => {
+            const tech = allTechnicians.find(t => t.id === log.technicianId);
+            const rate = tech?.hourlyRate || 0;
+            return acc + ((log.hoursWorked || 0) * rate);
+        }, 0);
+
+        const rateMissing = dailyLogs.some(log => {
+             const tech = allTechnicians.find(t => t.id === log.technicianId);
+             return !tech?.hourlyRate;
+        });
 
         const materialCost = projectExpenses
             .filter(e => e.category === 'Materials')
@@ -109,7 +119,7 @@ export function OverviewTab({ project, allTechnicians }: OverviewTabProps) {
             budgetStatus,
             revenue
         };
-    }, [project]);
+    }, [project, dailyLogs, allTechnicians]);
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 

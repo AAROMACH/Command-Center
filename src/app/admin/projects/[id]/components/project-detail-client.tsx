@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -196,7 +195,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             </div>
 
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} />}
+                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} />}
                 {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
                 {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} projectId={project.id} projectStatus={project.status} />}

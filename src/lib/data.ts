@@ -646,9 +646,9 @@ export const projects: Project[] = [
 ];
 
 export const projectDocuments: ProjectDocument[] = [
-  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB', label: 'Technical Layout' },
-  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1'), label: 'Site Photo' },
-  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB', label: 'Hardware Registry' },
+  { id: 'doc-1', name: 'Site_Floor_Plan_Detroit.pdf', type: 'pdf', uploader: 'System Admin', uploadDate: '04-18-2026', size: '2.4 MB', label: 'Technical Layout', projectId: 'proj-001' },
+  { id: 'doc-2', name: 'Existing_Setup_Reference.jpg', type: 'img', uploader: 'Corey Williams', uploadDate: '04-18-2026', size: '1.1 MB', url: getImageUrl('site-photo-1'), label: 'Site Photo', projectId: 'proj-001' },
+  { id: 'doc-3', name: 'Client_Hardware_Spec.docx', type: 'doc', uploader: 'System Admin', uploadDate: '04-17-2026', size: '340 KB', label: 'Hardware Registry', projectId: 'proj-001' },
   { 
     id: 'doc-4', 
     name: 'Deinstallation_Signoff.pdf', 
@@ -657,7 +657,8 @@ export const projectDocuments: ProjectDocument[] = [
     uploadDate: '04-19-2026', 
     size: '800 KB',
     phaseId: 'phase-1',
-    label: 'Mission Signoff'
+    label: 'Mission Signoff',
+    projectId: 'proj-001'
   },
   {
     id: 'doc-5',
@@ -669,7 +670,8 @@ export const projectDocuments: ProjectDocument[] = [
     phaseId: 'phase-1',
     taskId: 't1-1',
     url: getImageUrl('site-photo-2'),
-    label: 'Completion Evidence'
+    label: 'Completion Evidence',
+    projectId: 'proj-001'
   }
 ];
 
@@ -852,6 +854,7 @@ export const projectDailyLogs: ProjectDailyLog[] = [
     technicianId: 'tech-001',
     date: '04-18-2026',
     hoursWorked: 9,
+    totalHours: '9h 0m',
     workSummary: 'Assisted with deinstallation and started running new CAT6A cabling for the refresh. All old patch panels have been removed. Coordinated with David on server room access.',
     taskIdsProgressed: ['t2-2'],
     taskIdsCompleted: ['t1-1', 't1-2', 't1-3'],

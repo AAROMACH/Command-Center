@@ -13,10 +13,10 @@ import { format } from 'date-fns';
 
 type LogAssignmentDialogProps = {
     isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
+    setIsOpen: (open: boolean) => void;
     technicians: Technician[];
     projectId: string;
-    onLogAdded: (newLog: TimesheetLog) => void;
+    onLogAdded: (newLog: any) => void;
 };
 
 const defaultLogState = {
@@ -67,19 +67,21 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
 
-        const newLog: TimesheetLog = {
+        const newLog = {
             assignmentId: `ts-${new Date().getTime()}`,
             projectId,
             technicianId: logData.technicianId,
-            date: format(new Date(`${logData.date}T00:00:00`), 'EEEE, MMMM d, yyyy'),
+            date: logData.date,
             checkInTime: format(checkIn, 'h:mm a'),
             checkOutTime: format(checkOut, 'h:mm a'),
             totalHours: `${hours}h ${minutes}m`,
             totalMinutes,
-            logSummary: logData.logSummary,
-            completedTasks: [], // For simplicity, manual entry can be part of summary.
-            inProgressTasks: [], // For simplicity
-            photos: [],
+            workSummary: logData.logSummary,
+            taskIdsCompleted: [],
+            taskIdsProgressed: [],
+            phaseIdsWorked: [],
+            materialsUsed: [],
+            photoUrls: [],
         };
 
         onLogAdded(newLog);
@@ -94,48 +96,48 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
-                <DialogHeader>
-                    <DialogTitle className="page-title text-xl">Log New Assignment</DialogTitle>
-                    <DialogDescription>Manually log a technician's work for project {projectId.toUpperCase()}.</DialogDescription>
+                <DialogHeader className="text-left">
+                    <DialogTitle className="page-title text-xl uppercase font-bold tracking-widest">Log Manual Assignment</DialogTitle>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Manually log a technician&apos;s work for project {projectId.toUpperCase()}.</DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                             <Label htmlFor="technicianId" className="field-label !mb-0">Technician</Label>
+                        <div className="space-y-2 text-left">
+                             <Label htmlFor="technicianId" className="text-[10px] uppercase font-bold text-text-muted">Technician</Label>
                             <Select value={logData.technicianId} onValueChange={(value) => handleSelectChange('technicianId', value)}>
-                                <SelectTrigger id="technicianId" className="bg-bg-primary border-border-subtle">
-                                    <SelectValue placeholder="Select a technician" />
+                                <SelectTrigger id="technicianId" className="bg-bg-primary h-10">
+                                    <SelectValue placeholder="Select operative" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {technicians.map(tech => (
-                                        <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                                        <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                             <Label htmlFor="date" className="field-label !mb-0">Date</Label>
-                             <Input id="date" name="date" type="date" value={logData.date} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                        <div className="space-y-2 text-left">
+                             <Label htmlFor="date" className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
+                             <Input id="date" name="date" type="date" value={logData.date} onChange={handleInputChange} className="bg-bg-primary h-10" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                             <Label htmlFor="checkInTime" className="field-label !mb-0">Check-In Time</Label>
-                             <Input id="checkInTime" name="checkInTime" type="time" value={logData.checkInTime} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                        <div className="space-y-2 text-left">
+                             <Label htmlFor="checkInTime" className="text-[10px] uppercase font-bold text-text-muted">Check-In</Label>
+                             <Input id="checkInTime" name="checkInTime" type="time" value={logData.checkInTime} onChange={handleInputChange} className="bg-bg-primary h-10" />
                         </div>
-                        <div className="space-y-2">
-                             <Label htmlFor="checkOutTime" className="field-label !mb-0">Check-Out Time</Label>
-                             <Input id="checkOutTime" name="checkOutTime" type="time" value={logData.checkOutTime} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" />
+                        <div className="space-y-2 text-left">
+                             <Label htmlFor="checkOutTime" className="text-[10px] uppercase font-bold text-text-muted">Check-Out</Label>
+                             <Input id="checkOutTime" name="checkOutTime" type="time" value={logData.checkOutTime} onChange={handleInputChange} className="bg-bg-primary h-10" />
                         </div>
                     </div>
-                     <div className="space-y-2">
-                         <Label htmlFor="logSummary" className="field-label !mb-0">Work Log Summary</Label>
-                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary border-border-subtle" placeholder="Summarize the work completed, challenges faced, and next steps..."/>
+                     <div className="space-y-2 text-left">
+                         <Label htmlFor="logSummary" className="text-[10px] uppercase font-bold text-text-muted">Work Summary</Label>
+                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[100px] text-xs uppercase" placeholder="Detailed mission report..."/>
                     </div>
                 </div>
-                <DialogFooter className="pt-4">
+                <DialogFooter className="pt-4 border-t border-border-sub bg-bg-tertiary/30 -mx-6 -mb-6 p-6">
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit}>Log Assignment</Button>
+                    <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover px-8">Authorize Log</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

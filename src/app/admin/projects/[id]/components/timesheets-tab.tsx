@@ -82,7 +82,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{(log.hoursWorked || 0).toFixed(1)} HOURS</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours}</span>
                     </div>
                 </div>
 
@@ -153,12 +153,12 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
             const byTech = filteredTimesheets.reduce((acc, log) => {
                 const techId = log.technicianId;
                 if (!acc[techId]) {
-                    acc[techId] = { logs: [], totalHours: 0 };
+                    acc[techId] = { logs: [], totalHoursNum: 0 };
                 }
                 acc[techId].logs.push(log);
-                acc[techId].totalHours += log.hoursWorked;
+                acc[techId].totalHoursNum += (log.hoursWorked || 0);
                 return acc;
-            }, {} as Record<string, { logs: ProjectDailyLog[]; totalHours: number }>);
+            }, {} as Record<string, { logs: ProjectDailyLog[]; totalHoursNum: number }>);
             
             return Object.entries(byTech).map(([techId, data]) => {
                 const tech = getTechnician(techId);
@@ -167,33 +167,34 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
                     title: tech?.name || 'Unknown',
                     avatarUrl: tech?.avatarUrl,
                     logs: data.logs,
-                    totalTime: `${data.totalHours.toFixed(1)}h`,
+                    totalTime: `${data.totalHoursNum.toFixed(1)}h`,
                 }
             });
         } else {
             const byDate = filteredTimesheets.reduce((acc, log) => {
                  if (!acc[log.date]) {
-                    acc[log.date] = { logs: [], totalHours: 0 };
+                    acc[log.date] = { logs: [], totalHoursNum: 0 };
                 }
                 acc[log.date].logs.push(log);
-                acc[log.date].totalHours += log.hoursWorked;
+                acc[log.date].totalHoursNum += (log.hoursWorked || 0);
                 return acc;
-            }, {} as Record<string, { logs: ProjectDailyLog[], totalHours: number }>);
+            }, {} as Record<string, { logs: ProjectDailyLog[], totalHoursNum: number }>);
 
             return Object.entries(byDate).map(([date, data]) => ({
                 id: date,
                 title: date,
                 logs: data.logs,
-                totalTime: `${data.totalHours.toFixed(1)}h`,
+                totalTime: `${data.totalHoursNum.toFixed(1)}h`,
             })).sort((a,b) => b.id.localeCompare(a.id));
         }
     }, [filteredTimesheets, viewBy, getTechnician]);
 
-    const handleManualLog = async (newLog: ProjectDailyLog) => {
+    const handleManualLog = async (newLog: any) => {
         try {
             await addDoc(collection(db, 'projectDailyLogs'), {
                 ...newLog,
-                projectId
+                projectId,
+                hoursWorked: newLog.totalMinutes / 60
             });
             toast({ title: 'Session Transmitted', description: 'Timesheet log committed to project registry.' });
         } catch (e: any) {

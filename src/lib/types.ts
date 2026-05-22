@@ -310,6 +310,7 @@ export type ProjectDailyLog = {
   technicianId: string;
   date: string;
   hoursWorked: number;
+  totalHours: string;
   workSummary: string;
   taskIdsProgressed: string[];
   taskIdsCompleted: string[];

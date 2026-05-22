@@ -355,7 +355,7 @@ const TimesheetsTab = ({
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{(log.hoursWorked || 0).toFixed(1)} HOURS</Badge>
+                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{log.totalHours}</Badge>
                                         </div>
                                     </div>
                                     <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{log.workSummary}&quot;</p>
@@ -521,13 +521,18 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         if (!activeSession) return;
         const now = new Date();
         const diffMs = now.getTime() - activeSession.startTime.getTime();
-        const hours = (diffMs / (1000 * 60 * 60)).toFixed(1);
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        
+        const hoursWorked = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
 
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
             technicianId: localStorage.getItem('currentUserId') || 'unknown',
             date: format(now, 'yyyy-MM-dd'),
-            hoursWorked: parseFloat(hours),
+            hoursWorked,
+            totalHours: `${h}h ${m}m`,
             workSummary: 'Automated field session closure.',
             taskIdsProgressed: [],
             taskIdsCompleted: [],

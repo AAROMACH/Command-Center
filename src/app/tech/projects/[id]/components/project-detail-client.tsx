@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -356,7 +355,7 @@ const TimesheetsTab = ({
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{log.hoursWorked.toFixed(1)} HOURS</Badge>
+                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{(log.hoursWorked || 0).toFixed(1)} HOURS</Badge>
                                         </div>
                                     </div>
                                     <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{log.workSummary}&quot;</p>

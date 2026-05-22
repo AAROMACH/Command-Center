@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ProjectDailyLog, Technician } from '@/lib/types';
@@ -83,7 +82,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.hoursWorked.toFixed(1)} HOURS</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{(log.hoursWorked || 0).toFixed(1)} HOURS</span>
                     </div>
                 </div>
 

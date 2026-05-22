@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
@@ -8,11 +9,13 @@ import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 type DocumentsTabProps = {
     project: Project;
     documents: ProjectDocument[];
-    setDocuments: React.Dispatch<React.SetStateAction<ProjectDocument[]>>;
 };
 
 const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
@@ -55,11 +58,11 @@ const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDe
     );
 };
 
-const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, documents: ProjectDocument[], onDelete: (id: string) => void }) => {
+const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: Phase, documents: ProjectDocument[], onDelete: (id: string) => void, onUpload: (file: File, phaseId?: string, taskId?: string) => void }) => {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    const requiredPhotoTasks = phase.tasks.filter(task => task.requiresPhoto);
+    const requiredPhotoTasks = (phase.tasks || []).filter(task => task.requiresPhoto);
 
     const findPhotosForTask = (taskId: string) => {
         return documents.filter(doc => doc.taskId === taskId && doc.type === 'img');
@@ -90,9 +93,17 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
                                                 <div className={cn("h-1 w-1 rounded-full", task.isCompleted ? "bg-text-green" : "bg-text-muted")} />
                                                 <span className={cn("text-[9px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
                                             </div>
-                                            <Button variant="outline" size="sm" className="h-5 text-[7px] uppercase font-bold tracking-widest px-1.5" onClick={() => toast({ title: "Upload terminal ready", description: "Select field imagery for verification." })}>
-                                                <Plus size={8} className="mr-0.5"/> Photo
-                                            </Button>
+                                            <label className="cursor-pointer">
+                                                <Input 
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0], phase.id, task.id)}
+                                                    accept="image/*"
+                                                />
+                                                <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[7px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                                                    <Plus size={8} className="mr-0.5"/> Photo
+                                                </div>
+                                            </label>
                                         </div>
                                         
                                         {taskPhotos.length > 0 ? (
@@ -128,9 +139,16 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
                 <div className="pt-1.5 border-t border-border-sub/30">
                     <div className="flex items-center justify-between mb-1.5">
                         <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Phase Assets</label>
-                        <Button variant="ghost" size="sm" className="h-5 text-[7px] uppercase font-bold tracking-widest px-1.5" onClick={() => toast({ title: "Registry Handshake", description: "Select document to append to this phase." })}>
-                            Upload
-                        </Button>
+                        <label className="cursor-pointer">
+                            <Input 
+                                type="file" 
+                                className="hidden" 
+                                onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0], phase.id)}
+                            />
+                            <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[7px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                                Upload
+                            </div>
+                        </label>
                     </div>
                     <div className="space-y-1">
                         {otherPhaseDocs.length > 0 ? otherPhaseDocs.map(doc => (
@@ -164,67 +182,66 @@ const MilestoneDocuments = ({ phase, documents, onDelete }: { phase: Phase, docu
 }
 
 
-export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabProps) {
+export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const preSiteDocs = documents.filter(doc => !doc.phaseId);
 
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
+    const handleUpload = async (file: File, phaseId?: string, taskId?: string) => {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        const type = extension === 'pdf' ? 'pdf' : (['jpg', 'jpeg', 'png'].includes(extension || '') ? 'img' : 'doc');
+        
+        const newDoc: Omit<ProjectDocument, 'id'> = {
+            projectId: project.id,
+            name: file.name,
+            type: type as any,
+            label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
+            uploader: 'System Admin',
+            uploadDate: format(new Date(), 'MM-dd-yyyy'),
+            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            url: URL.createObjectURL(file), // Proxy URL for prototype
+            phaseId,
+            taskId
+        };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const extension = file.name.split('.').pop()?.toLowerCase();
-            const type = extension === 'pdf' ? 'pdf' : (['jpg', 'jpeg', 'png'].includes(extension || '') ? 'img' : 'doc');
-            
-            const newDoc: ProjectDocument = {
-                id: `doc-${Date.now()}`,
-                name: file.name,
-                type,
-                label: 'Field Asset',
-                uploader: 'System Admin',
-                uploadDate: format(new Date(), 'MM-dd-yyyy'),
-                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                url: URL.createObjectURL(file)
-            };
-
-            setDocuments(prev => [newDoc, ...prev]);
+        try {
+            await addDoc(collection(db, 'projectDocuments'), newDoc);
             toast({
-                title: "Asset Synchronized",
-                description: `${file.name} has been added to the pre-site registry.`,
+                title: "Registry Handshake Successful",
+                description: `${file.name} has been synchronized with the project registry.`,
             });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
         }
     };
 
-    const handleDeleteDoc = (id: string) => {
-        setDocuments(prev => prev.filter(d => d.id !== id));
-        toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
+    const handleDeleteDoc = async (id: string) => {
+        try {
+            await deleteDoc(doc(db, 'projectDocuments', id));
+            toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
+        }
     };
 
     return (
         <div className="space-y-6">
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={handleFileChange}
-            />
             <div>
                 <div className="flex items-center justify-between mb-2 px-1">
                     <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
                         <FileText size={14}/>
                         Pre-Site Documents
                     </h3>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 text-[8px] uppercase font-bold tracking-widest px-2" 
-                        onClick={handleUploadClick}
-                    >
-                        <Plus size={10} className="mr-1"/> Add Document
-                    </Button>
+                    <label className="cursor-pointer">
+                        <Input 
+                            type="file" 
+                            className="hidden" 
+                            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                        />
+                        <div className="inline-flex h-6 items-center gap-1 rounded border border-border-sub bg-bg-secondary px-2 text-[8px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                            <Plus size={10} className="mr-1"/> Add Document
+                        </div>
+                    </label>
                 </div>
                 <PreSiteDocumentList docs={preSiteDocs} onDelete={handleDeleteDoc} />
             </div>
@@ -235,8 +252,8 @@ export function DocumentsTab({ project, documents, setDocuments }: DocumentsTabP
                     Phase Verification
                  </h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
-                    {project.phases.map(phase => (
-                        <MilestoneDocuments key={phase.id} phase={phase} documents={documents} onDelete={handleDeleteDoc} />
+                    {(project.phases || []).map(phase => (
+                        <MilestoneDocuments key={phase.id} phase={phase} documents={documents} onDelete={handleDeleteDoc} onUpload={handleUpload} />
                     ))}
                  </div>
             </div>

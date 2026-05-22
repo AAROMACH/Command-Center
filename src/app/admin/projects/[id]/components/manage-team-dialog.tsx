@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -9,12 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Plus, Trash2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
+    setIsOpen: (open: boolean) => void;
     project: Project;
-    setProject: React.Dispatch<React.SetStateAction<Project>>;
     allTechnicians: Technician[];
 };
 
@@ -28,11 +31,12 @@ const ROLES = [
     'Apprentice',
 ];
 
-export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTechnicians }: ManageTeamDialogProps) {
-    const [team, setTeam] = useState(project.team || []);
+export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }: ManageTeamDialogProps) {
+    const [team, setTeam] = useState<ProjectTeamMember[]>(project.team || []);
     const [newTechId, setNewTechId] = useState('');
     const [newTechRole, setNewTechRole] = useState('');
     const [searchQuery, setSearchQuery] = useState("");
+    const { toast } = useToast();
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
@@ -67,9 +71,15 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
         }
     };
 
-    const handleSaveChanges = () => {
-        setProject(currentProject => ({ ...currentProject, team }));
-        setIsOpen(false);
+    const handleSaveChanges = async () => {
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, { team });
+            toast({ title: 'Team Registry Updated', description: 'Personnel changes synchronized with cloud folder.' });
+            setIsOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
     };
     
     const handleOpenChange = (open: boolean) => {
@@ -107,9 +117,9 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                                                 {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleRemoveTech(member.technicianId)}>
+                                        <button onClick={() => handleRemoveTech(member.technicianId)} className="p-1.5 text-text-muted hover:text-text-red transition-colors">
                                             <Trash2 size={16} />
-                                        </Button>
+                                        </button>
                                     </div>
                                 )
                             })}

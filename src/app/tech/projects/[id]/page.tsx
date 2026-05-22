@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { ProjectDetailClient } from './components/project-detail-client';
 import type { Project, Technician, ProjectDailyLog, ProjectDocument } from '@/lib/types';
@@ -17,6 +17,7 @@ export default function TechProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [dailyLogs, setDailyLogs] = useState<ProjectDailyLog[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function TechProjectDetailPage() {
     });
 
     // 2. Timesheet Registry Handshake
-    const logQ = query(collection(db, 'projectDailyLogs'), where('projectId', '==', id));
+    const logQ = query(collection(db, 'projectDailyLogs'), where('projectId', '==', id), orderBy('date', 'desc'));
     const unsubLogs = onSnapshot(logQ, (snap) => {
       setDailyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDailyLog)));
     });
@@ -41,10 +42,17 @@ export default function TechProjectDetailPage() {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
 
+    // 4. Document Registry Handshake
+    const docQ = query(collection(db, 'projectDocuments'), where('projectId', '==', id), orderBy('uploadDate', 'desc'));
+    const unsubDocs = onSnapshot(docQ, (snap) => {
+        setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDocument)));
+    });
+
     return () => {
       unsubProject();
       unsubLogs();
       unsubTech();
+      unsubDocs();
     };
   }, [id]);
 
@@ -62,9 +70,6 @@ export default function TechProjectDetailPage() {
   if (!project) {
     return notFound();
   }
-
-  // In a real app, documents would be filtered by project link
-  const documents: ProjectDocument[] = [];
 
   return (
     <ProjectDetailClient 

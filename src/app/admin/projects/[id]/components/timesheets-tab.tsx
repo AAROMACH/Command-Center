@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { TimesheetLog, Technician } from '@/lib/types';
+import type { ProjectDailyLog, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,23 +17,20 @@ import { format, isWithinInterval, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LogAssignmentDialog } from './log-assignment-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
 
-const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
+const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
       <div className="space-y-1">
         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Field Activity Report</div>
-        <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.logSummary}&quot;</p>
+        <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
       </div>
       
       <div className="flex flex-wrap gap-1">
-        {log.completedTasks.map((task) => (
-          <div key={task} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[9px] font-bold text-text-green uppercase tracking-tighter">
-            <Check size={10} /> {task}
-          </div>
-        ))}
-        {log.inProgressTasks.map((task) => (
-          <div key={task} className="inline-flex items-center gap-1 rounded-full bg-accent-gold-dim border border-border-gold px-2 py-0.5 text-[9px] font-bold text-accent-gold uppercase tracking-tighter">
-            <Circle size={8} fill="currentColor" /> {task}
+        {(log.taskIdsCompleted || []).map((taskId) => (
+          <div key={taskId} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[9px] font-bold text-text-green uppercase tracking-tighter">
+            <Check size={10} /> Task Verified: {taskId.split('-')[1]}
           </div>
         ))}
       </div>
@@ -40,7 +38,7 @@ const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
       <div className="space-y-2">
         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Site Evidence</div>
         <div className="flex flex-wrap gap-2">
-          {log.photos.map((photoUrl, index) => (
+          {(log.photoUrls || []).map((photoUrl, index) => (
             <div key={index} className="relative h-14 w-20 rounded border border-border-sub bg-bg-tertiary overflow-hidden group cursor-pointer hover:border-brand-red transition-colors">
               <Image
                 src={photoUrl}
@@ -59,7 +57,7 @@ const TimesheetLogDetails = ({ log }: { log: TimesheetLog }) => (
 );
 
 
-const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Technician; viewBy: 'tech' | 'date' }) => {
+const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Technician; viewBy: 'tech' | 'date' }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
@@ -71,25 +69,21 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
                             <AvatarImage src={tech.avatarUrl} alt={tech.name}/>
                             <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col text-left">
                             <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight truncate">{tech.name}</span>
                             {viewBy === 'tech' && <span className="text-[8px] text-text-muted font-bold uppercase">{log.date}</span>}
                         </div>
                     </div>
                 )}
                 
-                <div className="flex-1 grid grid-cols-3 gap-6">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Check-In</span>
-                        <span className="text-[11px] font-mono font-bold text-text-green">{log.checkInTime}</span>
+                <div className="flex-1 grid grid-cols-2 gap-6">
+                    <div className="flex flex-col text-left">
+                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Temporal Entry</span>
+                        <span className="text-[11px] font-mono font-bold text-text-green">{log.date}</span>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Check-Out</span>
-                        <span className="text-[11px] font-mono font-bold text-accent-gold">{log.checkOutTime}</span>
-                    </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours}</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.hoursWorked} HOURS</span>
                     </div>
                 </div>
 
@@ -106,7 +100,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
             
             {isExpanded && (
                 <div className="px-4 pb-4 border-t border-border-sub bg-bg-primary/20 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="pt-4">
+                    <div className="pt-4 text-left">
                         <TimesheetLogDetails log={log} />
                     </div>
                 </div>
@@ -116,15 +110,14 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: TimesheetLog; tech?: Techni
 };
 
 type TimesheetsTabProps = {
-    timesheets: TimesheetLog[];
-    setTimesheets: React.Dispatch<React.SetStateAction<TimesheetLog[]>>;
+    timesheets: ProjectDailyLog[];
     technicians: Technician[];
     projectId: string;
     projectStatus?: string;
 };
 
 
-export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectId, projectStatus }: TimesheetsTabProps) {
+export function TimesheetsTab({ timesheets, technicians, projectId, projectStatus }: TimesheetsTabProps) {
     const [viewBy, setViewBy] = useState<'tech' | 'date'>('date');
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
@@ -140,7 +133,7 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
         
         if (date?.from && date?.to) {
             filtered = filtered.filter(log => {
-                const logDate = parse(log.date, 'EEEE, MMMM d, yyyy', new Date());
+                const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
                 return isWithinInterval(logDate, { start: date.from!, end: date.to! });
             });
         }
@@ -157,23 +150,16 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
     }, [timesheets, date, search, getTechnician]);
 
     const groupedData = useMemo(() => {
-        const formatMinutes = (minutes: number) => {
-            if (!minutes) return '0h 0m';
-            const h = Math.floor(minutes / 60);
-            const m = minutes % 60;
-            return `${h}h ${m}m`;
-        };
-
         if (viewBy === 'tech') {
             const byTech = filteredTimesheets.reduce((acc, log) => {
                 const techId = log.technicianId;
                 if (!acc[techId]) {
-                    acc[techId] = { logs: [], totalMinutes: 0 };
+                    acc[techId] = { logs: [], totalHours: 0 };
                 }
                 acc[techId].logs.push(log);
-                acc[techId].totalMinutes += log.totalMinutes;
+                acc[techId].totalHours += log.hoursWorked;
                 return acc;
-            }, {} as Record<string, { logs: TimesheetLog[]; totalMinutes: number }>);
+            }, {} as Record<string, { logs: ProjectDailyLog[]; totalHours: number }>);
             
             return Object.entries(byTech).map(([techId, data]) => {
                 const tech = getTechnician(techId);
@@ -182,27 +168,39 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                     title: tech?.name || 'Unknown',
                     avatarUrl: tech?.avatarUrl,
                     logs: data.logs,
-                    totalTime: formatMinutes(data.totalMinutes),
+                    totalTime: `${data.totalHours.toFixed(1)}h`,
                 }
             });
         } else {
             const byDate = filteredTimesheets.reduce((acc, log) => {
                  if (!acc[log.date]) {
-                    acc[log.date] = { logs: [], totalMinutes: 0 };
+                    acc[log.date] = { logs: [], totalHours: 0 };
                 }
                 acc[log.date].logs.push(log);
-                acc[log.date].totalMinutes += log.totalMinutes;
+                acc[log.date].totalHours += log.hoursWorked;
                 return acc;
-            }, {} as Record<string, { logs: TimesheetLog[], totalMinutes: number }>);
+            }, {} as Record<string, { logs: ProjectDailyLog[], totalHours: number }>);
 
             return Object.entries(byDate).map(([date, data]) => ({
                 id: date,
                 title: date,
                 logs: data.logs,
-                totalTime: formatMinutes(data.totalMinutes),
-            })).sort((a,b) => new Date(b.id).getTime() - new Date(a.id).getTime());
+                totalTime: `${data.totalHours.toFixed(1)}h`,
+            })).sort((a,b) => b.id.localeCompare(a.id));
         }
     }, [filteredTimesheets, viewBy, getTechnician]);
+
+    const handleManualLog = async (newLog: ProjectDailyLog) => {
+        try {
+            await addDoc(collection(db, 'projectDailyLogs'), {
+                ...newLog,
+                projectId
+            });
+            toast({ title: 'Session Transmitted', description: 'Timesheet log committed to project registry.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -289,8 +287,8 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                                 <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Total Time: <span className="text-text-primary font-mono text-xs">{group.totalTime}</span></span>
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
-                                {group.logs.map((log: TimesheetLog) => (
-                                    <TimesheetCard key={log.assignmentId} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
+                                {group.logs.map((log: ProjectDailyLog) => (
+                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
                                 ))}
                             </AccordionContent>
                         </AccordionItem>
@@ -308,7 +306,7 @@ export function TimesheetsTab({ timesheets, setTimesheets, technicians, projectI
                 setIsOpen={setIsLogDialogOpen}
                 technicians={technicians}
                 projectId={projectId}
-                onLogAdded={(newLog) => setTimesheets(currentLogs => [newLog, ...currentLogs])}
+                onLogAdded={handleManualLog}
             />
         </div>
     );

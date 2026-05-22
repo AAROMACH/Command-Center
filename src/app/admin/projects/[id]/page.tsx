@@ -3,10 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { ProjectDetailClient } from './components/project-detail-client';
-import type { Project, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
+import type { Project, Technician, ProjectDocument, ProjectDailyLog } from '@/lib/types';
 
 /**
  * @fileOverview Operational Terminal for Project Detail Audit.
@@ -17,6 +17,8 @@ export default function ProjectDetailPage() {
   const id = params?.id as string;
   const [project, setProject] = useState<Project | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [dailyLogs, setDailyLogs] = useState<ProjectDailyLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,9 +37,23 @@ export default function ProjectDetailPage() {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
 
+    // 3. Establish Document Registry Link
+    const docQ = query(collection(db, 'projectDocuments'), where('projectId', '==', id), orderBy('uploadDate', 'desc'));
+    const unsubDocs = onSnapshot(docQ, (snap) => {
+      setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDocument)));
+    });
+
+    // 4. Establish Timesheet Registry Link
+    const logQ = query(collection(db, 'projectDailyLogs'), where('projectId', '==', id), orderBy('date', 'desc'));
+    const unsubLogs = onSnapshot(logQ, (snap) => {
+      setDailyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDailyLog)));
+    });
+
     return () => {
       unsubProject();
       unsubTech();
+      unsubDocs();
+      unsubLogs();
     };
   }, [id]);
 
@@ -56,16 +72,12 @@ export default function ProjectDetailPage() {
     return notFound();
   }
 
-  // Placeholder arrays for sub-registries - in a real app these would also be Firestore listeners
-  const documentsForProject: ProjectDocument[] = [];
-  const timesheetsForProject: TimesheetLog[] = [];
-
   return (
     <ProjectDetailClient 
         project={project}
         technicians={technicians}
-        documents={documentsForProject}
-        timesheets={timesheetsForProject}
+        documents={documents}
+        timesheets={dailyLogs}
     />
   );
 }

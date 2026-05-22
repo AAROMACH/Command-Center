@@ -1,3 +1,4 @@
+
 'use client';
 import type { Project, Phase, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,10 +20,11 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 type MilestonesTabProps = {
     project: Project;
-    setProject: React.Dispatch<React.SetStateAction<Project>>;
 };
 
 const PhaseBlock = ({ 
@@ -48,8 +50,8 @@ const PhaseBlock = ({
 }) => {
     const [isOpen, setIsOpen] = useState(true);
     const [newTaskName, setNewTaskName] = useState("");
-    const completedTasks = phase.tasks.filter(t => t.isCompleted).length;
-    const totalTasks = phase.tasks.length;
+    const completedTasks = (phase.tasks || []).filter(t => t.isCompleted).length;
+    const totalTasks = (phase.tasks || []).length;
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
     const status = progress === 100 ? 'completed' : progress > 0 ? 'inprogress' : 'pending';
 
@@ -101,7 +103,7 @@ const PhaseBlock = ({
                     </div>
                 </div>
                 <div className="tasks-list">
-                    {phase.tasks.map(task => (
+                    {(phase.tasks || []).map(task => (
                         <div key={task.id} className="task-row group/task">
                             <Checkbox 
                                 id={`task-${task.id}`} 
@@ -110,7 +112,7 @@ const PhaseBlock = ({
                                 className="task-check" 
                                 disabled={!isEditing || isReadOnly} 
                             />
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 text-left">
                                 <label htmlFor={`task-${task.id}`} className={cn("task-name", task.isCompleted && 'done')}>{task.name}</label>
                                 
                                 <div className="flex flex-wrap gap-1 mt-1">
@@ -150,8 +152,8 @@ const PhaseBlock = ({
     )
 }
 
-export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
-    const [editablePhases, setEditablePhases] = useState<Phase[]>(project.phases);
+export function MilestonesTab({ project }: MilestonesTabProps) {
+    const [editablePhases, setEditablePhases] = useState<Phase[]>(project.phases || []);
     const [isEditing, setIsEditing] = useState(false);
     const [taskDialogOpen, setTaskDialogOpen] = useState(false);
     const [editingTaskData, setEditingTaskData] = useState<{ phaseId: string, task: Task } | null>(null);
@@ -160,7 +162,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
     const isReadOnly = project.status === 'completed';
 
     useEffect(() => {
-        setEditablePhases(project.phases);
+        setEditablePhases(project.phases || []);
     }, [project.phases]);
 
     const handleTaskToggle = (phaseId: string, taskId: string) => {
@@ -169,7 +171,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
             if (phase.id === phaseId) {
                 return {
                     ...phase,
-                    tasks: phase.tasks.map(task => 
+                    tasks: (phase.tasks || []).map(task => 
                         task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
                     )
                 };
@@ -192,7 +194,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
         };
 
         const newPhases = [...editablePhases];
-        newPhases[i] = { ...newPhases[i], tasks: [...newPhases[i].tasks, newTask] };
+        newPhases[i] = { ...newPhases[i], tasks: [...(newPhases[i].tasks || []), newTask] };
         setEditablePhases(newPhases);
     };
 
@@ -200,7 +202,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
         if (isReadOnly) return;
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
-                return { ...phase, tasks: phase.tasks.filter(t => t.id !== taskId) };
+                return { ...phase, tasks: (phase.tasks || []).filter(t => t.id !== taskId) };
             }
             return phase;
         });
@@ -220,7 +222,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
             if (phase.id === phaseId) {
                 return {
                     ...phase,
-                    tasks: phase.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
+                    tasks: (phase.tasks || []).map(t => t.id === updatedTask.id ? updatedTask : t)
                 };
             }
             return phase;
@@ -252,20 +254,25 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
         setEditablePhases(editablePhases.map(p => p.id === phaseId ? { ...p, name } : p));
     };
 
-    const handleSaveChanges = () => {
+    const handleSaveChanges = async () => {
         if (isReadOnly) return;
-        setProject(currentProject => ({ ...currentProject, phases: editablePhases }));
-        setIsEditing(false);
-        toast({ title: "Milestones Updated", description: "Project phases and tasks committed to registry." });
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, { phases: editablePhases });
+            setIsEditing(false);
+            toast({ title: "Milestones Updated", description: "Project phases and tasks committed to registry." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
     };
 
     const handleCancel = () => {
-        setEditablePhases(project.phases);
+        setEditablePhases(project.phases || []);
         setIsEditing(false);
     };
 
-    const totalTasks = editablePhases.reduce((acc, p) => acc + p.tasks.length, 0);
-    const completedTasks = editablePhases.reduce((acc, p) => acc + p.tasks.filter(t => t.isCompleted).length, 0);
+    const totalTasks = editablePhases.reduce((acc, p) => acc + (p.tasks || []).length, 0);
+    const completedTasks = editablePhases.reduce((acc, p) => acc + (p.tasks || []).filter(t => t.isCompleted).length, 0);
 
     return (
         <div>
@@ -319,7 +326,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                     {editingTaskData && (
                         <ScrollArea className="flex-1">
                             <div className="p-6 space-y-5">
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Task Identifier / Name</Label>
                                     <Input 
                                         value={editingTaskData.task.name} 
@@ -329,14 +336,13 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h3 className="text-[9px] font-bold text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5">Submission Requirements</h3>
+                                    <h3 className="text-[9px] font-bold text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 text-left">Submission Requirements</h3>
                                     
                                     <div className="grid grid-cols-1 gap-2">
-                                        {/* Photo Toggle */}
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Camera size={14}/></div>
-                                                <div className="space-y-0">
+                                                <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Photo Documentation</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Requires field imagery for sign-off.</p>
                                                 </div>
@@ -348,11 +354,10 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             />
                                         </div>
 
-                                        {/* Text Field Toggle */}
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><FileText size={14}/></div>
-                                                <div className="space-y-0">
+                                                <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Text Feedback</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Requires a textual description or report.</p>
                                                 </div>
@@ -364,11 +369,10 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             />
                                         </div>
 
-                                        {/* Numeric Toggle */}
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Hash size={14}/></div>
-                                                <div className="space-y-0">
+                                                <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Numeric Input</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Requires numeric data entry (e.g. counts).</p>
                                                 </div>
@@ -380,12 +384,11 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             />
                                         </div>
 
-                                        {/* Dropdown Toggle */}
                                         <div className="space-y-2 p-2 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><ListTodo size={14}/></div>
-                                                    <div className="space-y-0">
+                                                    <div className="space-y-0 text-left">
                                                         <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Dropdown Selection</p>
                                                         <p className="text-[9px] text-text-muted leading-tight">Requires selection from a list.</p>
                                                     </div>
@@ -397,7 +400,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                                 />
                                             </div>
                                             <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block">Options (Comma separated)</Label>
+                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block text-left">Options (Comma separated)</Label>
                                                 <Input 
                                                     placeholder="e.g. Pass, Fail, N/A"
                                                     value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
@@ -407,11 +410,10 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             </div>
                                         </div>
 
-                                        {/* Signature Toggle */}
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Signature size={14}/></div>
-                                                <div className="space-y-0">
+                                                <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Signature Capture</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Requires field sign-off signature.</p>
                                                 </div>
@@ -423,11 +425,10 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             />
                                         </div>
 
-                                        {/* File Upload Toggle */}
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Upload size={14}/></div>
-                                                <div className="space-y-0">
+                                                <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">File Upload</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Requires technical document upload.</p>
                                                 </div>
@@ -439,12 +440,11 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                             />
                                         </div>
 
-                                        {/* Other Requirement Toggle */}
                                         <div className="space-y-2 p-2 rounded-lg bg-bg-secondary border border-border-sub">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Plus size={14}/></div>
-                                                    <div className="space-y-0">
+                                                    <div className="space-y-0 text-left">
                                                         <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Other Completion Criteria</p>
                                                         <p className="text-[9px] text-text-muted leading-tight">Custom field requirement.</p>
                                                     </div>
@@ -456,7 +456,7 @@ export function MilestonesTab({ project, setProject }: MilestonesTabProps) {
                                                 />
                                             </div>
                                             <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresOther ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block">Requirement Label</Label>
+                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block text-left">Requirement Label</Label>
                                                 <Input 
                                                     placeholder="e.g. Serial Number, ID Verification"
                                                     value={editingTaskData.task.otherRequirementLabel || ''}

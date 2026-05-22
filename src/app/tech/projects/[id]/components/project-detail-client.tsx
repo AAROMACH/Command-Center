@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
+import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -64,13 +65,15 @@ import {
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO, differenceInMinutes, addDays } from 'date-fns';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 
 // --- HELPERS ---
 function getProgress(project: Project): number {
-    const allTasks = project.phases.flatMap(phase => phase.tasks);
+    const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
     if (allTasks.length === 0) return 0;
     const completedTasks = allTasks.filter(task => task.isCompleted).length;
     return (completedTasks / allTasks.length) * 100;
@@ -98,7 +101,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                 <section className="field-group">
                     <h3 className="field-group-title"><FileText size={14}/> Operational Scope</h3>
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-left">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Objective</p>
                             <p className="text-sm text-text-primary leading-relaxed uppercase font-medium">{project.scope}</p>
                         </div>
@@ -109,21 +112,23 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <h3 className="field-group-title"><MapPin size={14}/> Site Logistics</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Access Instructions</p>
                                 <p className="text-xs text-text-secondary leading-relaxed">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
                             </div>
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">On-Site Contact</p>
-                                <p className="text-xs font-bold text-text-primary uppercase">{project.onsiteContact || 'Contact registry clear.'}</p>
+                                <p className="text-xs font-bold text-text-primary uppercase">
+                                    {project.onsiteContactName} {project.onsiteContactPhone && `(${project.onsiteContactPhone})`}
+                                </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {project.siteHazardNotes.length > 0 && (
+                {(project.siteHazardNotes || []).length > 0 && (
                     <section className="field-group">
                         <h3 className="field-group-title"><ShieldAlert size={14}/> Site Intelligence</h3>
                         <div className="flex flex-wrap gap-2">
@@ -145,7 +150,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                 <section className="field-group">
                     <h3 className="field-group-title"><Users size={14}/> Team Registry</h3>
                     <div className="space-y-2">
-                        {project.team.map(member => {
+                        {(project.team || []).map(member => {
                             const t = technicians.find(tech => tech.id === member.technicianId);
                             return (
                                 <div key={member.technicianId} className="flex items-center gap-3 p-3 rounded-lg bg-bg-primary border border-border-sub">
@@ -153,7 +158,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                                         <AvatarImage src={t?.avatarUrl} />
                                         <AvatarFallback>{t?.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 text-left">
                                         <p className="text-xs font-bold text-text-primary uppercase truncate">{t?.name}</p>
                                         <p className="text-[9px] text-text-muted uppercase tracking-widest">{member.role}</p>
                                     </div>
@@ -170,10 +175,10 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
 const MilestonesTab = ({ project, onTaskToggle, documents }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[] }) => {
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
-            {project.phases.map(phase => (
+            {(project.phases || []).map(phase => (
                 <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} isReadOnly={project.status === 'completed'} />
             ))}
-            {project.phases.length === 0 && (
+            {(project.phases || []).length === 0 && (
                 <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                     <History size={48} className="mx-auto text-text-muted mb-2" />
                     <p className="text-[10px] font-bold uppercase tracking-widest">No milestones defined for this mission registry</p>
@@ -189,9 +194,6 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
         <div className="space-y-4 animate-in fade-in duration-300">
             <div className="flex justify-between items-center mb-4 px-1">
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{documents.length} Site Assets Registry</p>
-                <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold uppercase" onClick={() => toast({ title: "Upload terminal initialized", description: "Select field documents for project registry."})}>
-                    <Plus size={14} className="mr-1.5"/> Add Document
-                </Button>
             </div>
             <div className="space-y-2">
                 {documents.map(doc => (
@@ -206,7 +208,7 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                                 )}>
                                     {doc.type === 'img' ? <ImageIcon size={20}/> : <FileText size={20}/>}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 text-left">
                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[400px]">{doc.name}</p>
                                     <div className="flex items-center gap-4 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest">
                                         <span>{doc.size}</span>
@@ -220,9 +222,6 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                             <div className="flex items-center gap-2">
                                 <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Handshake Initiated", description: `${doc.name} download in progress.`})}>
                                     <Download size={18} />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-red">
-                                    <Trash2 size={18} />
                                 </Button>
                             </div>
                         </CardContent>
@@ -245,7 +244,6 @@ const TimesheetsTab = ({
     onCheckIn, 
     onCheckOut, 
     activeSession, 
-    onManualAdd,
     isReadOnly
 }: { 
     dailyLogs: ProjectDailyLog[], 
@@ -253,12 +251,9 @@ const TimesheetsTab = ({
     onCheckIn: () => void, 
     onCheckOut: () => void, 
     activeSession: any, 
-    onManualAdd: (log: ProjectDailyLog) => void,
     isReadOnly: boolean
 }) => {
-    const [isManualOpen, setIsManualOpen] = useState(false);
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
-    const { toast } = useToast();
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -282,16 +277,10 @@ const TimesheetsTab = ({
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 gap-6">
-                {/* Check-In / Check-Out Shared Console */}
                 <section className={cn("field-group border-2", isReadOnly ? "border-border-sub bg-bg-secondary/50 grayscale" : "border-brand-red/30 bg-brand-red-dim/5")}>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
                         <div className="flex items-center gap-3">
-                            {!isReadOnly && (
-                                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10" onClick={() => setIsManualOpen(true)}>
-                                    <History size={12} className="mr-1.5"/> Manual Entry
-                                </Button>
-                            )}
                             {activeSession ? (
                                 <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
                             ) : isReadOnly ? (
@@ -310,7 +299,7 @@ const TimesheetsTab = ({
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Registry Locked</p>
-                                    <p className="text-xs text-text-muted max-w-xs uppercase">This project has been marked as complete. Check-in protocol is disabled for finalized registries.</p>
+                                    <p className="text-xs text-text-muted max-w-xs uppercase">This project has been marked as complete.</p>
                                 </div>
                             </>
                         ) : !activeSession ? (
@@ -320,7 +309,7 @@ const TimesheetsTab = ({
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Awaiting On-Site Verification</p>
-                                    <p className="text-xs text-text-muted max-w-xs">GPS-verified check-in is required to initiate a billable field session.</p>
+                                    <p className="text-xs text-text-muted max-w-xs">GPS-verified check-in is required to initiate a billable session.</p>
                                 </div>
                                 <Button className="w-full max-w-sm h-12 bg-brand-red hover:bg-brand-red-hover text-sm font-bold uppercase tracking-widest" onClick={onCheckIn}>
                                     <Play size={18} className="mr-2 fill-current" /> Initialize Session
@@ -339,10 +328,6 @@ const TimesheetsTab = ({
                                     </div>
                                 </div>
                                 <div className="w-full space-y-4">
-                                    <div className="space-y-1.5 text-left">
-                                        <label className="text-[10px] font-bold uppercase text-text-muted tracking-widest ml-1">EOD Mission Summary</label>
-                                        <Textarea className="bg-bg-secondary min-h-[100px] text-xs leading-relaxed" placeholder="Document achievements and site conditions..."/>
-                                    </div>
                                     <Button variant="destructive" className="w-full h-12 text-sm font-bold uppercase tracking-widest" onClick={onCheckOut}>
                                         <LogOut size={18} className="mr-2" /> Finalize & Check-Out
                                     </Button>
@@ -353,12 +338,12 @@ const TimesheetsTab = ({
                 </section>
 
                 <section className="space-y-3">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Timesheet Manifest</h3>
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Timesheet Manifest</h3>
                     <div className="space-y-2">
                         {dailyLogs.map(log => {
                             const tech = technicians.find(t => t.id === log.technicianId);
                             return (
-                                <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                                <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3 text-left">
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-7 w-7 border border-border-sub">
@@ -378,106 +363,10 @@ const TimesheetsTab = ({
                                 </div>
                             )
                         })}
-                        {dailyLogs.length === 0 && (
-                            <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                <History size={32} className="mx-auto mb-2 text-text-muted" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">No verified sessions found</p>
-                            </div>
-                        )}
                     </div>
                 </section>
             </div>
-
-            <ManualSessionDialog 
-                isOpen={isManualOpen} 
-                setIsOpen={setIsManualOpen} 
-                onSave={(log) => {
-                    onManualAdd(log);
-                    setIsManualOpen(false);
-                }}
-            />
         </div>
-    );
-};
-
-const ManualSessionDialog = ({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (log: ProjectDailyLog) => void }) => {
-    const [formData, setFormData] = useState({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        startTime: '09:00',
-        endTime: '17:00',
-        summary: ''
-    });
-
-    const handleSave = () => {
-        if (!formData.summary) return;
-
-        const start = new Date(`${formData.date}T${formData.startTime}`);
-        const end = new Date(`${formData.date}T${formData.endTime}`);
-        const durationMinutes = differenceInMinutes(end, start);
-        const hours = (durationMinutes / 60).toFixed(1);
-
-        const newLog: ProjectDailyLog = {
-            id: `pdl-manual-${Date.now()}`,
-            projectId: '', // Parent will set
-            technicianId: localStorage.getItem('currentUserId') || 'unknown',
-            date: formData.date,
-            hoursWorked: parseFloat(hours),
-            workSummary: formData.summary,
-            taskIdsProgressed: [],
-            taskIdsCompleted: [],
-            phaseIdsWorked: [],
-            materialsUsed: [],
-            photoUrls: []
-        };
-
-        onSave(newLog);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
-                <DialogHeader>
-                    <div className="flex items-center gap-2 mb-1">
-                        <History className="text-accent-gold h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Log Manual Session</DialogTitle>
-                    </div>
-                    <DialogDescription className="text-xs">Provide historical work parameters for administrative audit.</DialogDescription>
-                </DialogHeader>
-
-                <div className="py-4 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
-                        <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Start Time</Label>
-                            <Input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">End Time</Label>
-                            <Input type="time" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Mission Summary</Label>
-                        <Textarea 
-                            placeholder="Detailed account of tasks performed..." 
-                            value={formData.summary}
-                            onChange={e => setFormData({...formData, summary: e.target.value})}
-                            className="bg-bg-primary min-h-[100px] text-xs leading-relaxed"
-                        />
-                    </div>
-                </div>
-
-                <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave} className="bg-brand-red hover:bg-brand-red-hover px-8">
-                        <Check size={16} className="mr-2"/> Commit to Registry
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 };
 
@@ -495,8 +384,8 @@ const PhaseBlock = ({
   const [isOpen, setIsOpen] = useState(true);
   const { toast } = useToast();
   
-  const completedTasks = phase.tasks.filter((t) => t.isCompleted).length;
-  const totalTasks = phase.tasks.length;
+  const completedTasks = (phase.tasks || []).filter((t) => t.isCompleted).length;
+  const totalTasks = (phase.tasks || []).length;
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   const status =
     progress === 100 ? 'completed' : progress > 0 ? 'inprogress' : 'pending';
@@ -529,7 +418,7 @@ const PhaseBlock = ({
             </div>
           </div>
           <div className="tasks-list">
-            {phase.tasks.map((task) => {
+            {(phase.tasks || []).map((task) => {
               const taskPhotos = findPhotosForTask(task.id);
               return (
                 <div key={task.id} className="p-3 border-b border-border-sub hover:bg-bg-tertiary/50 transition-colors">
@@ -541,7 +430,7 @@ const PhaseBlock = ({
                       className="mt-1"
                       disabled={isReadOnly}
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-left">
                         <label
                           htmlFor={`task-${task.id}`}
                           className={cn("text-[13px] font-semibold text-text-primary block cursor-pointer", task.isCompleted ? 'text-text-muted line-through' : '')}
@@ -552,11 +441,6 @@ const PhaseBlock = ({
                         <div className="flex flex-wrap gap-1 mt-1.5">
                             {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
                             {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
-                            {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
-                            {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
-                            {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
-                            {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
-                            {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                         </div>
 
                         {taskPhotos.length > 0 && (
@@ -564,21 +448,11 @@ const PhaseBlock = ({
                                 {taskPhotos.map(photo => (
                                     <div key={photo.id} className="relative group aspect-video rounded border border-border-sub overflow-hidden bg-bg-primary">
                                         <Image src={photo.url || ''} alt={photo.name} fill className="object-cover" />
-                                        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                                            <p className="text-[8px] text-white font-bold uppercase truncate">{photo.name}</p>
-                                            <p className="text-[7px] text-text-secondary flex items-center gap-1"><User size={8}/> {photo.uploader}</p>
-                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-                    
-                    {task.requiresPhoto && !isReadOnly && (
-                      <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-widest px-2" onClick={() => toast({ title: "Terminal Initialized", description: "Select site photo for task verification."})}>
-                        <Camera size={13} className="mr-1.5"/> Add Photo
-                      </Button>
-                    )}
                   </div>
                 </div>
               );
@@ -592,21 +466,15 @@ const PhaseBlock = ({
 
 
 // --- MAIN COMPONENT ---
-export function ProjectDetailClient({ project: initialProject, dailyLogs: initialDailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
-    const [project, setProject] = useState(initialProject);
-    const [dailyLogs, setDailyLogs] = useState(initialDailyLogs);
+export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [activeTab, setActiveTab] = useState('overview');
     const [activeSession, setActiveSession] = useState<any>(null);
     const { toast } = useToast();
 
     const isReadOnly = project.status === 'completed';
 
-    useEffect(() => {
-        setProject(initialProject);
-    }, [initialProject]);
-
     const progress = useMemo(() => {
-        const allTasks = project.phases.flatMap(phase => phase.tasks);
+        const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
         if (allTasks.length === 0) return 0;
         const completedTasks = allTasks.filter(task => task.isCompleted).length;
         return (completedTasks / allTasks.length) * 100;
@@ -614,26 +482,31 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
 
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
-    const handleTaskToggle = (phaseId: string, taskId: string) => {
+    const handleTaskToggle = async (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
-        setProject(currentProject => ({
-            ...currentProject,
-            phases: currentProject.phases.map(phase => {
-                if (phase.id === phaseId) {
-                    return {
-                        ...phase,
-                        tasks: phase.tasks.map(task => 
-                            task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
-                        )
-                    };
-                }
-                return phase;
-            })
-        }));
-        toast({
-            title: "Task Registry Updated",
-            description: "Mission status has been synchronized with the Command Center."
+        
+        const updatedPhases = (project.phases || []).map(phase => {
+            if (phase.id === phaseId) {
+                return {
+                    ...phase,
+                    tasks: (phase.tasks || []).map(task => 
+                        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
+                    )
+                };
+            }
+            return phase;
         });
+
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, { phases: updatedPhases });
+            toast({
+                title: "Task Registry Updated",
+                description: "Mission status has been synchronized with the Command Center."
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
     };
 
     const handleCheckIn = () => {
@@ -645,14 +518,32 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
         toast({ title: 'Checked In', description: 'GPS verified. Project session initialized.' });
     };
 
-    const handleCheckOut = () => {
-        setActiveSession(null);
-        toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
-    };
+    const handleCheckOut = async () => {
+        if (!activeSession) return;
+        const now = new Date();
+        const diffMs = now.getTime() - activeSession.startTime.getTime();
+        const hours = (diffMs / (1000 * 60 * 60)).toFixed(1);
 
-    const handleManualAdd = (log: ProjectDailyLog) => {
-        setDailyLogs(prev => [log, ...prev]);
-        toast({ title: 'Manual Entry Recorded', description: 'Timesheet record appended to mission manifest.' });
+        const newLog: Omit<ProjectDailyLog, 'id'> = {
+            projectId: project.id,
+            technicianId: localStorage.getItem('currentUserId') || 'unknown',
+            date: format(now, 'yyyy-MM-dd'),
+            hoursWorked: parseFloat(hours),
+            workSummary: 'Automated field session closure.',
+            taskIdsProgressed: [],
+            taskIdsCompleted: [],
+            phaseIdsWorked: [],
+            materialsUsed: [],
+            photoUrls: []
+        };
+
+        try {
+            await addDoc(collection(db, 'projectDailyLogs'), newLog);
+            setActiveSession(null);
+            toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        }
     };
 
     return (
@@ -667,7 +558,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
 
             <div className="project-detail-header">
                 <div className="pdh-top">
-                    <div>
+                    <div className="text-left">
                         <div className="flex items-center gap-3 mb-1">
                             <h1 className="pdh-title">{project.name}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
@@ -675,7 +566,7 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
                         <div className="pdh-meta">
                             <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
                             <div className="pdh-meta-item"><Calendar size={12}/> Started {formatDateDisplay(project.startDate)}</div>
-                            <div className="pdh-meta-item"><Users size={12}/> {project.team.length} Team Members</div>
+                            <div className="pdh-meta-item"><Users size={12}/> {(project.team || []).length} Team Members</div>
                         </div>
                     </div>
                 </div>
@@ -715,7 +606,6 @@ export function ProjectDetailClient({ project: initialProject, dailyLogs: initia
                             onCheckIn={handleCheckIn} 
                             onCheckOut={handleCheckOut} 
                             activeSession={activeSession}
-                            onManualAdd={handleManualAdd}
                             isReadOnly={isReadOnly}
                         />
                     </TabsContent>

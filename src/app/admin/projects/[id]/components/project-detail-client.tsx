@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Project, Technician, ProjectDocument, TimesheetLog } from '@/lib/types';
+import type { Project, Technician, ProjectDocument, ProjectDailyLog } from '@/lib/types';
 import Link from 'next/link';
 import { 
   ChevronLeft, 
@@ -64,22 +65,20 @@ import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 import { isAdmin, isSuperAdmin } from '@/lib/permissions';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 type ProjectDetailClientProps = {
     project: Project;
     technicians: Technician[];
     documents: ProjectDocument[];
-    timesheets: TimesheetLog[];
+    timesheets: ProjectDailyLog[];
 };
 
-export function ProjectDetailClient({ project: initialProject, technicians, documents: initialDocuments, timesheets: initialTimesheets }: ProjectDetailClientProps) {
-    const [project, setProject] = useState(initialProject);
-    const [documents, setDocuments] = useState(initialDocuments);
-    const [timesheets, setTimesheets] = useState(initialTimesheets);
+export function ProjectDetailClient({ project, technicians, documents, timesheets }: ProjectDetailClientProps) {
     const [activeTab, setActiveTab] = useState('overview');
-    
     const [isEditOpen, setIsEditOpen] = useState(false);
-    const [editedProject, setEditedProject] = useState<Project>(initialProject);
+    const [editedProject, setEditedProject] = useState<Project>(project);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     const { toast } = useToast();
@@ -117,23 +116,36 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
         }
     };
 
-    const handleSaveEdit = () => {
-        setProject(editedProject);
-        setIsEditOpen(false);
-        toast({
-            title: "Project Registry Updated",
-            description: "New parameters have been committed to the project folder.",
-        });
+    const handleSaveEdit = async () => {
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, {
+                ...editedProject
+            });
+            setIsEditOpen(false);
+            toast({
+                title: "Project Registry Updated",
+                description: "New parameters have been committed to the project folder.",
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
     };
 
-    const handleArchive = () => {
-        setIsEditOpen(false);
-        toast({
-            variant: "destructive",
-            title: "Project Archived",
-            description: `${project.name} has been moved to the historical archive.`,
-        });
-        router.push('/admin/projects');
+    const handleArchive = async () => {
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, { status: 'completed' });
+            setIsEditOpen(false);
+            toast({
+                variant: "destructive",
+                title: "Project Archived",
+                description: `${project.name} has been moved to the historical archive.`,
+            });
+            router.push('/admin/projects');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+        }
     };
 
     return (
@@ -184,10 +196,10 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
             </div>
 
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} setProject={setProject} allTechnicians={technicians} />}
-                {activeTab === 'milestones' && <MilestonesTab project={project} setProject={setProject} />}
-                {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} setDocuments={setDocuments} />}
-                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} setTimesheets={setTimesheets} technicians={technicians} projectId={project.id} projectStatus={project.status} />}
+                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} />}
+                {activeTab === 'milestones' && <MilestonesTab project={project} />}
+                {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
+                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} projectId={project.id} projectStatus={project.status} />}
             </div>
 
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -251,7 +263,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
 
                     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                            {/* Section 1: Identity & Location */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Building2 size={12}/> Identity & Coordinates
@@ -318,7 +329,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 2: Operational Instructions */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <ShieldAlert size={12}/> Operational Briefing
@@ -347,7 +357,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 3: Schedule & Duration */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Clock size={12}/> Schedule & Duration
@@ -391,7 +400,6 @@ export function ProjectDetailClient({ project: initialProject, technicians, docu
                                 </div>
                             </div>
 
-                            {/* Section 4: Economics */}
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <DollarSign size={12}/> Project Economics

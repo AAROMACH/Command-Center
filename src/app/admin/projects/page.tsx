@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db } from "@/lib/firebase";
@@ -29,7 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { format, isSameDay, parseISO } from 'date-fns';
+import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 
 type SortOption = 'name' | 'date' | 'progress' | 'client';
 

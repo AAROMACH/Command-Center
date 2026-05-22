@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Plus, Trash2, Search } from 'lucide-react';
-import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 
 type ManageTeamDialogProps = {
@@ -29,7 +28,7 @@ const ROLES = [
 ];
 
 export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTechnicians }: ManageTeamDialogProps) {
-    const [team, setTeam] = useState(project.team);
+    const [team, setTeam] = useState(project.team || []);
     const [newTechId, setNewTechId] = useState('');
     const [newTechRole, setNewTechRole] = useState('');
     const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +40,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
     );
 
     const filteredTechnicians = availableTechnicians.filter((tech) =>
-        tech.name.toLowerCase().includes(searchQuery.toLowerCase())
+        (tech.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleRoleChange = (technicianId: string, newRole: string) => {
@@ -74,8 +73,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
     
     const handleOpenChange = (open: boolean) => {
         if (!open) {
-            // Reset state on close to avoid showing stale data
-            setTeam(project.team);
+            setTeam(project.team || []);
             setSearchQuery('');
             setNewTechId('');
             setNewTechRole('');
@@ -87,25 +85,25 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
                 <DialogHeader>
-                    <DialogTitle className="page-title text-xl">Manage Project Team</DialogTitle>
+                    <DialogTitle className="page-title text-xl text-left">Manage Project Team</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 space-y-6">
                     <div>
-                        <h3 className="field-label mb-2">Current Team</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2 text-left">Current Team</h3>
                         <div className="space-y-2">
                             {team.map(member => {
                                 const tech = getTechnician(member.technicianId);
                                 if (!tech) return null;
                                 return (
-                                    <div key={member.technicianId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary">
-                                        <Avatar className="h-8 w-8"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback></Avatar>
-                                        <div className="flex-1 font-semibold text-sm text-text-primary">{tech.name}</div>
+                                    <div key={member.technicianId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary border border-border-sub">
+                                        <Avatar className="h-8 w-8 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="flex-1 font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</div>
                                         <Select value={member.role} onValueChange={(value) => handleRoleChange(member.technicianId, value)}>
-                                            <SelectTrigger className="w-[150px] bg-bg-secondary border-border-subtle h-8 text-xs">
+                                            <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-8 text-[10px] uppercase font-bold">
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs">{role}</SelectItem>)}
+                                                {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleRemoveTech(member.technicianId)}>
@@ -114,59 +112,66 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, setProject, allTe
                                     </div>
                                 )
                             })}
+                            {team.length === 0 && (
+                                <div className="p-8 text-center border border-dashed border-border-sub rounded-md">
+                                    <p className="text-[10px] uppercase font-bold text-text-muted italic">No personnel assigned</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                      <div>
-                        <h3 className="field-label mb-2">Add Technician</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2 text-left">Add Technician</h3>
                         <div className="flex items-center gap-2">
                              <Select value={newTechId} onValueChange={setNewTechId}>
-                                <SelectTrigger className="flex-1 bg-bg-secondary border-border-subtle h-9">
-                                    <SelectValue placeholder="Select a technician..." />
+                                <SelectTrigger className="flex-1 bg-bg-secondary border-border-sub h-9 text-[10px] uppercase font-bold">
+                                    <SelectValue placeholder="Select operative..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                      <div className="p-2">
                                         <div className="relative">
-                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
-                                                placeholder="Search technicians..."
-                                                className="w-full h-9 pl-8 bg-bg-primary border-border-subtle"
+                                                placeholder="Search registry..."
+                                                className="w-full h-8 pl-8 bg-bg-primary border-border-sub text-[10px] uppercase font-bold"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
                                         </div>
                                     </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                    {filteredTechnicians.length > 0 ? filteredTechnicians.map(tech => (
-                                        <SelectItem key={tech.id} value={tech.id}>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-6 w-6"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name.charAt(0)}</AvatarFallback></Avatar>
-                                                <span>{tech.name}</span>
-                                            </div>
-                                        </SelectItem>
-                                    )) : (
-                                        <div className="text-center text-xs text-text-muted p-2">No technicians found.</div>
-                                    )}
-                                    </div>
+                                    <ScrollArea className="h-[150px]">
+                                        <div className="p-1">
+                                            {filteredTechnicians.length > 0 ? filteredTechnicians.map(tech => (
+                                                <SelectItem key={tech.id} value={tech.id} className="text-[10px] uppercase font-bold">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-5 w-5 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback></Avatar>
+                                                        <span>{tech.name}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            )) : (
+                                                <div className="text-center text-[10px] uppercase font-bold text-text-muted p-4">No operatives found</div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
                                 </SelectContent>
                             </Select>
                              <Select value={newTechRole} onValueChange={setNewTechRole}>
-                                <SelectTrigger className="w-[150px] bg-bg-secondary border-border-subtle h-9 text-sm">
+                                <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-9 text-[10px] uppercase font-bold">
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-sm">{role}</SelectItem>)}
+                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-[10px] uppercase font-bold">{role}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button size="icon" className="h-9 w-9 shrink-0" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
+                            <Button size="icon" className="h-9 w-9 shrink-0 bg-brand-red hover:bg-brand-red-hover" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
                                 <Plus size={16} />
                             </Button>
                         </div>
                     </div>
                 </div>
-                <DialogFooter className="pt-4">
+                <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
                     <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSaveChanges}>Save Changes</Button>
+                    <Button onClick={handleSaveChanges} className="bg-brand-red hover:bg-brand-red-hover px-10">Save Team Updates</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

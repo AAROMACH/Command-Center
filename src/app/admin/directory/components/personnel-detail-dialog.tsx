@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { penaltyEvents, assignmentTimeLogs } from '@/lib/data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -51,7 +52,6 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOp
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -324,7 +324,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
                                           <div className="flex items-center gap-6">
                                               <div className={cn(
-                                                  "p-2.5 rounded-lg border",
+                                                  "p-2 rounded-lg border",
                                                   isCritical ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                                                   isRecovery ? "bg-green-dim text-text-green border-green-border/30" : 
                                                   "bg-bg-primary text-text-secondary border border-border-sub"

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight, User, Briefcase, Building2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
   Select,

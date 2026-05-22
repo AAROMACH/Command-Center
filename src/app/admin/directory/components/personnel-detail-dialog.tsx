@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument } from '@/lib/types';
+import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, ProjectDailyLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -320,7 +320,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   const isRecovery = event.category === 'positive_recovery';
                                   const isAutomatic = event.eventSource === 'automatic';
                                   return (
-                                      <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                      <div key={event.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all text-left">
                                           <div className="flex items-center gap-6">
                                               <div className={cn(
                                                   "p-2 rounded-lg border",
@@ -464,7 +464,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <TableHeader className="bg-bg-tertiary">
                                           <TableRow className="hover:bg-transparent border-border-sub">
                                               <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
-                                              <TableHead className="text-[10px] tracking-widest">Scope & Client</TableHead>
+                                              <TableHead className="text-[10px] tracking-widest text-left">Scope & Client</TableHead>
                                               <TableHead className="text-[10px] tracking-widest text-center">Status</TableHead>
                                               <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
                                           </TableRow>
@@ -564,7 +564,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
             <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader className="text-left">
                     <div className="flex items-center gap-2 mb-1">
-                        <Activity size={14} className="text-brand-red h-5 w-5" />
+                        <ActivityIcon size={14} className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Event Protocol</DialogTitle>
                     </div>
                     <DialogDescription className="text-xs text-text-muted">Append an operational reliability event to technician <span className="text-text-primary font-bold">{person.name || 'Unnamed'}</span>.</DialogDescription>

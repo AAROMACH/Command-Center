@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Clock, ChevronLeft, ChevronRight, User, Briefcase, Building2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -113,7 +114,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
     if (projects.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest">
+                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest border-none">
                     No projects found in this category.
                 </div>
             </div>
@@ -257,9 +258,8 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                   >
                     <ChevronLeft size={14} />
                   </Button>
-                  <div className="flex items-center gap-1 px-2">
-                    <span className="text-[10px] font-bold text-text-primary">Page {currentPage}</span>
-                    <span className="text-[10px] font-bold text-text-muted">of {totalPages}</span>
+                  <div className="flex items-center gap-1 px-2 text-left">
+                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
                   </div>
                   <Button 
                     variant="outline" 
@@ -329,7 +329,7 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                         <div className={cn("progress-pct font-mono font-bold ml-2", `text-${progressColor}`)}>{Math.round(progress)}%</div>
                     </div>
                     
-                    <div className="pt-2 border-t border-border-sub space-y-2 flex flex-col items-start">
+                    <div className="pt-2 border-t border-border-sub space-y-2 flex flex-col items-start text-left">
                         <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
                             <Calendar size={12} className="text-brand-red" />
                             Start: {formatDateDisplay(project.startDate)}

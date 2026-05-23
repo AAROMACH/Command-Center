@@ -123,9 +123,9 @@ export default function DispatchPage() {
 
   const filteredOrders = useMemo(() => {
     let results = allWorkOrders.filter(order => {
-      const matchesSearch = order.id.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-        order.description.toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-        order.clientName.toLowerCase().includes(dispatchSearchQuery.toLowerCase());
+      const matchesSearch = (order.id || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
+        (order.description || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
+        (order.clientName || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase());
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
       const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
@@ -136,16 +136,16 @@ export default function DispatchPage() {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority] - prio[b.priority];
         }
-        if (dispatchSortBy === 'client') return a.clientName.localeCompare(b.clientName);
-        return a.scheduleDate.localeCompare(b.scheduleDate);
+        if (dispatchSortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
+        return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
     });
   }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, dispatchSortBy]);
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
-      const matchesSearch = req.id.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-        req.clientName.toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-        req.description.toLowerCase().includes(requestSearchQuery.toLowerCase());
+      const matchesSearch = (req.id || '').toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
+        (req.clientName || '').toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
+        (req.description || '').toLowerCase().includes(requestSearchQuery.toLowerCase());
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
       return matchesSearch && matchesPriority && matchesType;
@@ -155,7 +155,7 @@ export default function DispatchPage() {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority] - prio[b.priority];
         }
-        return a.submittedDate.localeCompare(b.submittedDate);
+        return (a.submittedDate || '').localeCompare(b.submittedDate || '');
     });
   }, [allRequests, requestSearchQuery, activePriorities, activeTypes, requestSortBy]);
 

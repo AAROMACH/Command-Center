@@ -80,6 +80,8 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
+type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
+
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -137,10 +139,10 @@ export default function AssignmentsHubPage() {
         const queryStr = searchQuery.toLowerCase();
         
         const matchesSearch = (
-          wo.id.toLowerCase().includes(queryStr) ||
-          wo.description.toLowerCase().includes(queryStr) ||
-          wo.clientName.toLowerCase().includes(queryStr) ||
-          (tech && tech.name.toLowerCase().includes(queryStr))
+          (wo.id || '').toLowerCase().includes(queryStr) ||
+          (wo.description || '').toLowerCase().includes(queryStr) ||
+          (wo.clientName || '').toLowerCase().includes(queryStr) ||
+          (tech && (tech.name || '').toLowerCase().includes(queryStr))
         );
 
         const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
@@ -170,16 +172,16 @@ export default function AssignmentsHubPage() {
       })
       .sort((a, b) => {
         switch (sortBy) {
-          case 'client': return a.clientName.localeCompare(b.clientName);
-          case 'status': return a.status.localeCompare(b.status);
-          case 'pay': return b.pay - a.pay;
+          case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
+          case 'status': return (a.status || '').localeCompare(b.status || '');
+          case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
             const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
             const techB = technicians.find(t => t.id === b.assignedTechnicianId)?.name || 'Unassigned';
             return techA.localeCompare(techB);
           case 'date':
           default:
-            return a.scheduleDate.localeCompare(b.scheduleDate);
+            return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
         }
       });
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
@@ -444,7 +446,7 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-6 py-4">
                                             <div className="flex flex-col items-start gap-1.5">
                                                 <div className="flex items-center gap-1.5">
-                                                    <div className="cell-id font-mono text-brand-red font-bold">{wo.id.toUpperCase()}</div>
+                                                    <div className="cell-id font-mono text-brand-red font-bold">{(wo.id || '').toUpperCase()}</div>
                                                     {wo.source === 'Imported' && (
                                                     <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                         <ExternalLink size={10} />
@@ -466,7 +468,7 @@ export default function AssignmentsHubPage() {
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                                             <AvatarImage src={tech.avatarUrl} />
-                                                            <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                            <AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback>
                                                         </Avatar>
                                                         <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
                                                     </div>
@@ -494,7 +496,7 @@ export default function AssignmentsHubPage() {
                                             </div>
                                         </td>
                                         <td className="text-right pr-6 py-4">
-                                            <div className="flex flex-col items-end"><span className="text-sm font-mono font-bold text-text-green">${wo.pay.toFixed(2)}</span><span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span></div>
+                                            <div className="flex flex-col items-end"><span className="text-sm font-mono font-bold text-text-green">${wo.pay?.toFixed(2)}</span><span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span></div>
                                         </td>
                                     </tr>
                                 );
@@ -532,7 +534,7 @@ export default function AssignmentsHubPage() {
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-center">
                                                     <div className="flex items-center gap-1.5">
-                                                      <div className="cell-id font-mono text-brand-red">{wo.id.toUpperCase()}</div>
+                                                      <div className="cell-id font-mono text-brand-red">{(wo.id || '').toUpperCase()}</div>
                                                       {wo.source === 'Imported' && (
                                                         <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                           <ExternalLink size={10} />
@@ -588,7 +590,7 @@ export default function AssignmentsHubPage() {
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                        <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedJob?.id.toUpperCase()}</span></p>
+                        <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
                     </div>
                     <Button 
                         variant="destructive-outline" 
@@ -768,7 +770,7 @@ export default function AssignmentsHubPage() {
                         Authorize Registry Purge
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
-                        Critical Action: This will permanently remove assignment <span className="text-text-primary font-bold">{selectedJob?.id.toUpperCase()}</span> from the operational ledger. This operation cannot be reversed.
+                        Critical Action: This will permanently remove assignment <span className="text-text-primary font-bold">{(selectedJob?.id || '').toUpperCase()}</span> from the operational ledger. This operation cannot be reversed.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -33,7 +33,8 @@ import {
   Circle,
   ArrowUpRight,
   MessageSquare,
-  SquarePlus
+  SquarePlus,
+  Plus
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -138,7 +139,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         try {
             if (status === 'rejected') {
                 if (!rejectionReason.trim()) {
-                    toast({ variant: 'destructive', title: 'Note Required', description: 'Please provide a reason for the client before rejecting.' });
+                    toast({ variant: 'destructive', title: 'Note Required', description: 'Please provide a reason for the client before rejection.' });
                     return;
                 }
                 await updateDoc(docRef, { 

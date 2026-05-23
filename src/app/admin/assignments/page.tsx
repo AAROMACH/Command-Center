@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,7 +26,6 @@ import {
   Eye,
   ExternalLink,
   UserPlus,
-  Trash2,
   ShieldCheck,
   StickyNote,
   Type,
@@ -55,16 +54,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -100,7 +89,6 @@ export default function AssignmentsHubPage() {
   const [activeSources, setActiveSources] = useState<string[]>([]);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -279,23 +267,6 @@ export default function AssignmentsHubPage() {
     setSelectedJob(null);
     setEditedOrder(null);
     toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
-  };
-
-  const handleDeleteOrder = () => {
-    if (!selectedJob) return;
-    const orderId = selectedJob.id;
-    const docRef = doc(db, 'workOrders', orderId);
-
-    deleteDoc(docRef).catch((e: any) => {
-        console.error("Registry Purge Error:", e);
-        toast({ variant: "destructive", title: "Purge Failed", description: e.message });
-    });
-
-    setIsEditDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-    setSelectedJob(null);
-    setEditedOrder(null);
-    toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
   };
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
@@ -644,14 +615,6 @@ export default function AssignmentsHubPage() {
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
                         <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
                     </div>
-                    <Button 
-                        variant="destructive-outline" 
-                        size="sm" 
-                        className="h-8 text-[9px] font-bold uppercase tracking-widest"
-                        onClick={() => setIsDeleteDialogOpen(true)}
-                    >
-                        <Trash2 size={14} className="mr-1.5"/> Purge Registry Entry
-                    </Button>
                 </div>
               </DialogHeader>
               {editedOrder && (
@@ -823,26 +786,6 @@ export default function AssignmentsHubPage() {
               </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent className="bg-bg-elevated border-border-default shadow-2xl">
-                <AlertDialogHeader className="text-left">
-                    <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
-                        <ShieldCheck className="text-brand-red" size={18}/>
-                        Authorize Registry Purge
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
-                        Critical Action: This will permanently remove assignment <span className="text-text-primary font-bold">{(selectedJob?.id || '').toUpperCase()}</span> from the operational ledger. This operation cannot be reversed.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-widest">Abort</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteOrder} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest">
-                        Confirm Purge
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
       </Tabs>
     </div>
   );

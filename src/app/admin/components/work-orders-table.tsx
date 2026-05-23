@@ -28,16 +28,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 import {
   Calendar,
@@ -60,7 +50,6 @@ import {
   Activity,
   Gauge,
   Sparkles,
-  Trash2,
   Type,
   FileText,
   RefreshCw
@@ -72,7 +61,7 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type WorkOrdersTableProps = {
@@ -102,7 +91,6 @@ export const WorkOrdersTable = React.memo(({
   const [techSearchQuery, setTechSearchQuery] = useState("");
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -166,16 +154,16 @@ export const WorkOrdersTable = React.memo(({
   }, [technicians, techSearchQuery]);
 
   const handleGetAiRecommendation = async () => {
-    if (!mission) return;
+    if (!selectedOrder) return;
     setIsAiLoading(true);
     try {
       const result = await getRecommendation({
         workOrder: {
-          id: selectedOrder?.id || "",
-          description: selectedOrder?.description || "",
-          location: selectedOrder?.location || "",
-          requiredSkills: selectedOrder?.requiredSkills || [],
-          priority: selectedOrder?.priority || 'medium',
+          id: selectedOrder.id,
+          description: selectedOrder.description,
+          location: selectedOrder.location,
+          requiredSkills: selectedOrder.requiredSkills || [],
+          priority: selectedOrder.priority || 'medium',
         },
         availableTechnicians: technicians.map((t) => ({
           id: t.id,
@@ -240,23 +228,6 @@ export const WorkOrdersTable = React.memo(({
     setSelectedOrder(null);
     setEditedOrder(null);
     toast({ title: "Registry Updated", description: "Job entry synchronized." });
-  };
-
-  const handleDeleteOrder = () => {
-    if (!selectedOrder) return;
-    const orderId = selectedOrder.id;
-    const docRef = doc(db, 'workOrders', orderId);
-
-    deleteDoc(docRef).catch((e: any) => {
-        console.error("Registry Purge Error:", e);
-        toast({ variant: "destructive", title: "Purge Failed", description: e.message });
-    });
-
-    setIsEditDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-    setSelectedOrder(null);
-    setEditedOrder(null);
-    toast({ title: "Registry Purged", description: `Mission ${orderId.toUpperCase()} has been removed from the registry.` });
   };
 
   const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {
@@ -527,14 +498,6 @@ export const WorkOrdersTable = React.memo(({
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
                         <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
-                    <Button 
-                        variant="destructive-outline" 
-                        size="sm" 
-                        className="h-8 text-[9px] font-bold uppercase tracking-widest"
-                        onClick={() => setIsDeleteDialogOpen(true)}
-                    >
-                        <Trash2 size={14} className="mr-1.5"/> Purge Registry Entry
-                    </Button>
                 </div>
             </DialogHeader>
             {editedOrder && (
@@ -708,26 +671,6 @@ export const WorkOrdersTable = React.memo(({
             </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-bg-elevated border-border-default shadow-2xl">
-            <AlertDialogHeader className="text-left">
-                <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
-                    <ShieldCheck className="text-brand-red" size={18}/>
-                    Authorize Registry Purge
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
-                    Critical Action: This will permanently remove assignment <span className="text-text-primary font-bold">{selectedOrder?.id.toUpperCase()}</span> from the operational ledger. This operation cannot be reversed.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-widest">Abort</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteOrder} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest">
-                    Confirm Purge
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 });

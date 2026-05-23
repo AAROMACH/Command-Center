@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +22,10 @@ import {
   Lock, 
   Info,
   CircleCheck,
-  Users
+  Users,
+  Search,
+  MapPin,
+  SearchCode
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { technicians } from '@/lib/data';
@@ -33,6 +36,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+declare global {
+  interface Window {
+    google: any;
+    gm_authFailure?: () => void;
+  }
+}
+
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type AddPersonnelDialogProps = {
   isOpen: boolean;
@@ -62,6 +74,86 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
   });
 
   const [isNewCompany, setIsNewCompany] = useState(false);
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [registrySearch, setRegistrySearch] = useState("");
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.gm_authFailure = () => {
+      console.warn("Google Maps API Handshake Restricted.");
+      toast({
+        variant: "destructive",
+        title: "Registry Security Error",
+        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
+      });
+    };
+
+    const scriptId = 'google-maps-places-script';
+    
+    const initAutocomplete = () => {
+      if (!addressInputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          componentRestrictions: { country: "us" },
+          fields: ["formatted_address", "geometry"],
+          types: ["address"],
+        });
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (place.formatted_address) {
+            setFormData(prev => ({ ...prev, address: place.formatted_address }));
+          }
+        });
+      } catch (e) {
+        console.warn("Places Autocomplete Terminal Restricted.");
+      }
+    };
+
+    if (MAPS_API_KEY && !window.google && !document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.onload = initAutocomplete;
+      document.head.appendChild(script);
+    } else if (window.google) {
+      initAutocomplete();
+    }
+  }, [isOpen, toast]);
+
+  const resolveAddress = () => {
+    if (!formData.address || !window.google || !window.google.maps || !window.google.maps.places) return;
+    
+    try {
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: formData.address,
+        fields: ['formatted_address', 'geometry'],
+      };
+
+      service.findPlaceFromQuery(request, (results: any, status: any) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+          const place = results[0];
+          setFormData(prev => ({ ...prev, address: place.formatted_address }));
+          toast({
+            title: "Identity Coordinate Verified",
+            description: `Personnel registry updated to verified address: ${place.formatted_address}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Resolution Failed",
+            description: "No verified coordinates found. Verify referer permissions in console.",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Places Service Protocol Error:", e);
+    }
+  };
 
   const existingCompanies = useMemo(() => {
     const companies = new Set<string>();
@@ -70,8 +162,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     });
     return Array.from(companies).sort();
   }, []);
-
-  const { toast } = useToast();
 
   const handleSave = () => {
     if (!formData.name || !formData.email || (formData.roles || []).length === 0) {
@@ -144,7 +234,14 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-[900px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          if (e.target instanceof Element && e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="page-title text-xl text-left">Technician Registration Terminal</DialogTitle>
           <DialogDescription className="text-left">
@@ -161,7 +258,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
                     <Label htmlFor="fullName" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Full Legal Name</Label>
-                    <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs font-bold uppercase" />
                 </div>
                 <div className="space-y-2 text-left">
                     <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
@@ -174,8 +271,28 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <Input id="phone" type="tel" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
                 <div className="space-y-2 text-left">
-                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Address</Label>
-                    <Input id="address" value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-bg-primary h-9 text-xs" />
+                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Home Base Address</Label>
+                    <div className="relative group">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                        <Input 
+                            ref={addressInputRef}
+                            id="address" 
+                            placeholder="Full address or coordinates..."
+                            value={formData.address || ''} 
+                            onChange={(e) => setFormData({...formData, address: e.target.value})} 
+                            className="bg-bg-primary pl-9 pr-10 h-9 text-xs focus:border-brand-red transition-all" 
+                        />
+                        {formData.address && (
+                            <button 
+                                onClick={resolveAddress}
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                                title="Verify Coordinates"
+                            >
+                                <SearchCode size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
              </div>
           </section>

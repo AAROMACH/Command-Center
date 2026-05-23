@@ -30,7 +30,8 @@ import {
   ArrowUpRight,
   ShieldAlert,
   Type,
-  DollarSign
+  DollarSign,
+  Lock
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -306,9 +307,9 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                             <th style={{ width: "140px" }} className="text-center pl-0">Intake ID</th>
                             <th style={{ width: "120px" }} className="text-center">Status</th>
                             <th className="text-left pl-0">Title & Briefing</th>
-                            <th className="text-left pl-0">Scope / Scope summary</th>
-                            <th style={{ width: "180px" }} className="text-left pl-0">Creation time</th>
-                            <th style={{ width: "180px" }} className="text-left pl-0">{isHistory ? 'Closure time' : 'Audit Timeline'}</th>
+                            <th className="text-left pl-0">Scope Summary</th>
+                            <th style={{ width: "180px" }} className="text-left pl-0">Creation Time</th>
+                            <th style={{ width: "180px" }} className="text-left pl-0">{isHistory ? 'Closure Time' : 'Audit Timeline'}</th>
                         </tr>
                     </thead>
                     <tbody>

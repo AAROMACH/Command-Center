@@ -40,6 +40,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -189,7 +196,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
         try {
             let newId = '';
             if (conversionType === 'assignment') {
-                const newWO: Omit<WorkOrder, 'id'> = {
+                const newWO: any = {
                     title: conversionTitle.trim(),
                     description: selectedRequest.description,
                     location: selectedRequest.location,
@@ -210,7 +217,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                 const createdRef = await addDoc(collection(db, 'workOrders'), newWO);
                 newId = createdRef.id;
             } else {
-                const newProject: Omit<Project, 'id'> = {
+                const newProject: any = {
                     name: conversionTitle.trim(),
                     client: selectedRequest.clientName,
                     location: selectedRequest.location,

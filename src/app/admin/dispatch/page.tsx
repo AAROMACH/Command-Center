@@ -68,16 +68,16 @@ export default function DispatchPage() {
 
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-      setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+      setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
     });
     const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+      setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician)));
     });
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
-      setAllRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
+      setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest));
     });
     const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
-      setRoutes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Route)));
+      setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
     });
 
     return () => {
@@ -303,7 +303,7 @@ export default function DispatchPage() {
         </div>
 
         <TabsContent value="requests" className="mt-0">
-           <RequestsTabs serviceRequests={filteredRequests} />
+           <RequestsTabs serviceRequests={filteredRequests} workOrders={allWorkOrders} />
         </TabsContent>
 
         <TabsContent value="dispatch" className="mt-0">

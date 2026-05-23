@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -68,7 +67,7 @@ type RequestsClientProps = {
     isHistory?: boolean;
 };
 
-export function RequestsClient({ requests, workOrders, isHistory = false }: RequestsClientProps) {
+export function RequestsClient({ requests, workOrders = [], isHistory = false }: RequestsClientProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);

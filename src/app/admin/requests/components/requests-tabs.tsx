@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -14,10 +13,10 @@ const priorityOrder: Record<ServiceRequest['priority'], number> = {
 
 type RequestsTabsProps = {
     serviceRequests: ServiceRequest[];
-    workOrders: WorkOrder[];
+    workOrders?: WorkOrder[];
 };
 
-export function RequestsTabs({ serviceRequests, workOrders }: RequestsTabsProps) {
+export function RequestsTabs({ serviceRequests, workOrders = [] }: RequestsTabsProps) {
   // ORGANIZATIONAL LOGIC: Always sort New requests by Critical Priority first
   const newRequests = serviceRequests
     .filter(p => p.status === 'new')

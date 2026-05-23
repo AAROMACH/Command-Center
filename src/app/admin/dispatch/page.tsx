@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -47,7 +46,7 @@ type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function DispatchPage() {
   const searchParams = useSearchParams();
-  const [activeMasterTab, setActiveMasterTab] = useState(searchParams.get('tab') === 'requests' ? 'requests' : 'dispatch');
+  const [activeMasterTab, setActiveMasterTab] = useState(searchParams.get('tab') === 'dispatch' ? 'dispatch' : 'requests');
   
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -183,10 +182,14 @@ export default function DispatchPage() {
       <Tabs value={activeMasterTab} onValueChange={setActiveMasterTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <TabsList className="tabs !p-0 !bg-bg-tertiary">
-              <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
               <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">SERVICE REQUESTS</TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
             </TabsList>
         </div>
+
+        <TabsContent value="requests" className="mt-0">
+           <RequestsTabs serviceRequests={filteredRequests} />
+        </TabsContent>
 
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs 
@@ -196,10 +199,6 @@ export default function DispatchPage() {
               routes={routes}
               onRoutesChange={(updated) => updated.forEach(r => setDoc(doc(db, 'routes', r.id), r, { merge: true }))}
            />
-        </TabsContent>
-
-        <TabsContent value="requests" className="mt-0">
-           <RequestsTabs serviceRequests={filteredRequests} />
         </TabsContent>
       </Tabs>
 

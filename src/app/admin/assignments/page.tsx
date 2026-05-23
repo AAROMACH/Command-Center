@@ -177,9 +177,12 @@ export default function AssignmentsHubPage() {
         return matchesSearch && matchesDate && matchesPriority && matchesSource;
       })
       .sort((a, b) => {
+        const safeA = { date: a.scheduleDate || '', client: a.clientName || '', status: a.status || '' };
+        const safeB = { date: b.scheduleDate || '', client: b.clientName || '', status: b.status || '' };
+
         switch (sortBy) {
-          case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
-          case 'status': return (a.status || '').localeCompare(b.status || '');
+          case 'client': return safeA.client.localeCompare(safeB.client);
+          case 'status': return safeA.status.localeCompare(safeB.status);
           case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
             const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
@@ -187,7 +190,7 @@ export default function AssignmentsHubPage() {
             return techA.localeCompare(techB);
           case 'date':
           default:
-            return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
+            return safeA.date.localeCompare(safeB.date);
         }
       });
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
@@ -306,7 +309,7 @@ export default function AssignmentsHubPage() {
             <div className="search-wrap">
               <Search className="h-4 w-4" />
               <input 
-                placeholder="Search Tech, ID, or Description..." 
+                placeholder="Search Tech, ID, or Title..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input !w-full md:!w-[300px] bg-bg-secondary border-border-main h-10"
@@ -325,7 +328,7 @@ export default function AssignmentsHubPage() {
                     <SelectItem value="tech" className="text-[10px] uppercase font-bold">By Technician</SelectItem>
                     <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
                     <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
-                    <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
+                    <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Labor Rate</SelectItem>
                 </SelectContent>
             </Select>
 

@@ -198,7 +198,7 @@ export const WorkOrdersTable = React.memo(({
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
-    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
+    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedJob.payType;
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {

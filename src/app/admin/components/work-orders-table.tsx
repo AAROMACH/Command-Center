@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -546,7 +545,7 @@ export const WorkOrdersTable = React.memo(({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-                                <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
+                                <Select value={editedProject.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Installation">Installation</SelectItem>
@@ -682,11 +681,13 @@ export const WorkOrdersTable = React.memo(({
             <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between">
                 <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
-                    Purge Registry Entry
+                    Delete
                 </Button>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                        Commit Registry Updates
+                    </Button>
                 </div>
             </DialogFooter>
         </DialogContent>

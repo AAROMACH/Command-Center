@@ -3,8 +3,19 @@
 import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Milestone, Camera, Paperclip, Plus, User, FileSpreadsheet } from 'lucide-react';
+import { 
+  Upload, 
+  FileText, 
+  Image as ImageIcon, 
+  Download, 
+  Trash2, 
+  Milestone, 
+  Plus, 
+  User, 
+  FileSpreadsheet,
+  ShieldCheck,
+  Check
+} from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -12,6 +23,16 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type DocumentsTabProps = {
     project: Project;
@@ -26,42 +47,194 @@ const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
     return <FileText className="text-text-muted"/>;
 };
 
-const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDelete: (id: string) => void }) => {
+export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [pendingDownload, setPendingDownload] = useState<ProjectDocument | null>(null);
+    const [isConfirmDownloadOpen, setIsConfirmDownloadOpen] = useState(false);
+
+    const preSiteDocs = documents.filter(doc => !doc.phaseId);
+
+    const handleUpload = async (file: File, phaseId?: string, taskId?: string) => {
+        if (file.size > 10 * 1024 * 1024) {
+            toast({
+                variant: 'destructive',
+                title: 'Payload Error',
+                description: 'File size exceeds the 10MB security threshold.',
+            });
+            return;
+        }
+
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        let type: ProjectDocument['type'] = 'other';
+        if (extension === 'pdf') type = 'pdf';
+        else if (['jpg', 'jpeg', 'png', 'webp'].includes(extension || '')) type = 'img';
+        else if (['doc', 'docx', 'txt'].includes(extension || '')) type = 'doc';
+        else if (extension === 'csv') type = 'csv';
+        
+        const docData: any = {
+            projectId: project.id,
+            name: file.name,
+            type: type,
+            label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
+            uploader: 'System Admin',
+            uploadDate: format(new Date(), 'MM-dd-yyyy'),
+            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            url: URL.createObjectURL(file), 
+        };
+
+        if (phaseId) docData.phaseId = phaseId;
+        if (taskId) docData.taskId = taskId;
+
+        try {
+            await addDoc(collection(db, 'projectDocuments'), docData);
+            toast({
+                title: "Registry Handshake Successful",
+                description: `${file.name} has been synchronized with the project registry.`,
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
+        }
+    };
+
+    const handleDeleteDoc = async (id: string) => {
+        try {
+            await deleteDoc(doc(db, 'projectDocuments', id));
+            toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
+        }
+    };
+
+    const initiateDownload = (doc: ProjectDocument) => {
+        setPendingDownload(doc);
+        setIsConfirmDownloadOpen(true);
+    };
+
+    const executeDownload = () => {
+        if (!pendingDownload) return;
+        
+        const link = document.createElement('a');
+        link.href = pendingDownload.url || '';
+        link.download = pendingDownload.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+            title: "Download Executed",
+            description: `${pendingDownload.name} successfully transmitted to device.`,
+        });
+        
+        setIsConfirmDownloadOpen(false);
+        setPendingDownload(null);
+    };
+
     return (
-        <div className="doc-list small border border-border-sub rounded-md bg-bg-secondary/30">
-            {docs.length > 0 ? docs.map(doc => (
-                <div key={doc.id} className="doc-row small !py-1 !px-2 border-b border-border-sub last:border-none flex items-center justify-between">
-                    <div className="flex items-center gap-2 overflow-hidden flex-1 text-left">
-                        <div className="doc-icon small !h-5 !w-5 !bg-bg-tertiary flex items-center justify-center rounded border border-border-sub">
-                            <DocIcon type={doc.type} />
+        <div className="space-y-6">
+            <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
+                        <FileText size={14}/>
+                        Pre-Site Documents
+                    </h3>
+                    <label className="cursor-pointer">
+                        <Input 
+                            type="file" 
+                            className="hidden" 
+                            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                        />
+                        <div className="inline-flex h-6 items-center gap-1 rounded border border-border-sub bg-bg-secondary px-2 text-[8px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                            <Plus size={10} className="mr-1"/> Add Document
                         </div>
-                        <div className="min-w-0 text-left">
-                            <div className="text-[10px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
-                            <div className="flex items-center gap-2 text-[7px] text-text-muted font-bold uppercase tracking-widest">
-                                <span>{doc.size}</span>
-                                <span className="flex items-center gap-0.5"><User size={7}/> {doc.uploader}</span>
-                                <span>{doc.uploadDate}</span>
+                    </label>
+                </div>
+                
+                <div className="doc-list small border border-border-sub rounded-md bg-bg-secondary/30">
+                    {preSiteDocs.length > 0 ? preSiteDocs.map(doc => (
+                        <div key={doc.id} className="doc-row small !py-1 !px-2 border-b border-border-sub last:border-none flex items-center justify-between">
+                            <div className="flex items-center gap-2 overflow-hidden flex-1 text-left">
+                                <div className="doc-icon small !h-5 !w-5 !bg-bg-tertiary flex items-center justify-center rounded border border-border-sub">
+                                    <DocIcon type={doc.type} />
+                                </div>
+                                <div className="min-w-0 text-left">
+                                    <div className="text-[10px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
+                                    <div className="flex items-center gap-2 text-[7px] text-text-muted font-bold uppercase tracking-widest">
+                                        <span>{doc.size}</span>
+                                        <span className="flex items-center gap-0.5"><User size={7}/> {doc.uploader}</span>
+                                        <span>{doc.uploadDate}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-0.5">
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-text-muted hover:text-text-primary" onClick={() => initiateDownload(doc)}><Download size={10} /></Button>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}><Trash2 size={10} /></Button>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-5 w-5 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Download Initiated", description: `${doc.name} transfer handshake complete.` })}><Download size={10} /></Button>
-                        <Button variant="ghost" size="icon" className="h-5 w-5 text-text-muted hover:text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={10} /></Button>
-                    </div>
+                    )) : (
+                        <div className="p-3 text-center">
+                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-[0.2em] italic">Registry Clear: No pre-site documents</p>
+                        </div>
+                    )}
                 </div>
-            )) : (
-                <div className="p-3 text-center">
-                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-[0.2em] italic">Registry Clear: No pre-site documents</p>
-                </div>
-            )}
+            </div>
+
+            <div className="space-y-3">
+                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 px-1">
+                    <Milestone size={14}/>
+                    Phase Verification
+                 </h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
+                    {(project.phases || []).map(phase => (
+                        <MilestoneDocuments 
+                            key={phase.id} 
+                            phase={phase} 
+                            documents={documents} 
+                            onDelete={handleDeleteDoc} 
+                            onUpload={handleUpload} 
+                            onDownload={initiateDownload}
+                        />
+                    ))}
+                 </div>
+            </div>
+
+            {/* DOWNLOAD CONFIRMATION TERMINAL */}
+            <AlertDialog open={isConfirmDownloadOpen} onOpenChange={setIsConfirmDownloadOpen}>
+                <AlertDialogContent className="bg-bg-elevated border-border-default shadow-2xl">
+                    <AlertDialogHeader className="text-left">
+                        <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
+                            <ShieldCheck className="text-text-green" size={18}/>
+                            Authorize Asset Transfer
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
+                            Operational Action: This will transmit <span className="text-text-primary font-bold">{pendingDownload?.name}</span> from the project registry to your local device storage.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-3">
+                        <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-widest h-10 px-6">Abort</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDownload} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest h-10 px-8 text-white">
+                            <Download size={14} className="mr-2"/> Confirm Download
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
-};
+}
 
-const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: Phase, documents: ProjectDocument[], onDelete: (id: string) => void, onUpload: (file: File, phaseId?: string, taskId?: string) => void }) => {
-    const { toast } = useToast();
-    
+function MilestoneDocuments({ 
+    phase, 
+    documents, 
+    onDelete, 
+    onUpload,
+    onDownload
+}: { 
+    phase: Phase, 
+    documents: ProjectDocument[], 
+    onDelete: (id: string) => void, 
+    onUpload: (file: File, phaseId?: string, taskId?: string) => void,
+    onDownload: (doc: ProjectDocument) => void
+}) {
     const requiredPhotoTasks = (phase.tasks || []).filter(task => task.requiresPhoto);
 
     const findPhotosForTask = (taskId: string) => {
@@ -115,7 +288,7 @@ const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: P
                                                             <p className="text-[6px] text-white font-bold uppercase truncate">{photo.name}</p>
                                                             <p className="text-[5px] text-text-muted flex items-center gap-0.5"><User size={6}/> {photo.uploader}</p>
                                                             <div className="flex gap-1 mt-0.5">
-                                                                <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => toast({ title: "Transferring...", description: "Visual asset download initiated." })}><Download size={6}/></button>
+                                                                <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => onDownload(photo)}><Download size={6}/></button>
                                                                 <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => onDelete(photo.id)}><Trash2 size={6}/></button>
                                                             </div>
                                                         </div>
@@ -153,7 +326,7 @@ const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: P
                     <div className="space-y-1">
                         {otherPhaseDocs.length > 0 ? otherPhaseDocs.map(doc => (
                              <div key={doc.id} className="flex items-center justify-between p-1 rounded bg-bg-primary border border-border-sub hover:border-text-muted transition-colors">
-                                <div className="flex items-center gap-1.5 overflow-hidden flex-1">
+                                <div className="flex items-center gap-1.5 overflow-hidden flex-1 text-left">
                                     <div className="h-5 w-5 flex-shrink-0 flex items-center justify-center text-text-muted">
                                         <DocIcon type={doc.type} />
                                     </div>
@@ -167,7 +340,7 @@ const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: P
                                     </div>
                                 </div>
                                 <div className="flex gap-0.5">
-                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => toast({ title: "Transferring...", description: "Phase asset download initiated." })}><Download size={8} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onDownload(doc)}><Download size={8} /></Button>
                                     <Button variant="ghost" size="icon" className="h-5 w-5 text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={8} /></Button>
                                 </div>
                             </div>
@@ -179,100 +352,4 @@ const MilestoneDocuments = ({ phase, documents, onDelete, onUpload }: { phase: P
              </div>
         </div>
     )
-}
-
-
-export function DocumentsTab({ project, documents }: DocumentsTabProps) {
-    const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const preSiteDocs = documents.filter(doc => !doc.phaseId);
-
-    const handleUpload = async (file: File, phaseId?: string, taskId?: string) => {
-        // Size Check: 10MB Security Threshold
-        if (file.size > 10 * 1024 * 1024) {
-            toast({
-                variant: 'destructive',
-                title: 'Payload Error',
-                description: 'File size exceeds the 10MB security threshold.',
-            });
-            return;
-        }
-
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        let type: ProjectDocument['type'] = 'other';
-        if (extension === 'pdf') type = 'pdf';
-        else if (['jpg', 'jpeg', 'png', 'webp'].includes(extension || '')) type = 'img';
-        else if (['doc', 'docx', 'txt'].includes(extension || '')) type = 'doc';
-        else if (extension === 'csv') type = 'csv';
-        
-        const docData: any = {
-            projectId: project.id,
-            name: file.name,
-            type: type,
-            label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
-            uploader: 'System Admin',
-            uploadDate: format(new Date(), 'MM-dd-yyyy'),
-            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-            url: URL.createObjectURL(file), // Proxy URL for prototype
-        };
-
-        // Mission Registry Logic: Only include optional identifiers if defined
-        if (phaseId) docData.phaseId = phaseId;
-        if (taskId) docData.taskId = taskId;
-
-        try {
-            await addDoc(collection(db, 'projectDocuments'), docData);
-            toast({
-                title: "Registry Handshake Successful",
-                description: `${file.name} has been synchronized with the project registry.`,
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
-        }
-    };
-
-    const handleDeleteDoc = async (id: string) => {
-        try {
-            await deleteDoc(doc(db, 'projectDocuments', id));
-            toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <div>
-                <div className="flex items-center justify-between mb-2 px-1">
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
-                        <FileText size={14}/>
-                        Pre-Site Documents
-                    </h3>
-                    <label className="cursor-pointer">
-                        <Input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
-                        />
-                        <div className="inline-flex h-6 items-center gap-1 rounded border border-border-sub bg-bg-secondary px-2 text-[8px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
-                            <Plus size={10} className="mr-1"/> Add Document
-                        </div>
-                    </label>
-                </div>
-                <PreSiteDocumentList docs={preSiteDocs} onDelete={handleDeleteDoc} />
-            </div>
-
-            <div className="space-y-3">
-                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 px-1">
-                    <Milestone size={14}/>
-                    Phase Verification
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
-                    {(project.phases || []).map(phase => (
-                        <MilestoneDocuments key={phase.id} phase={phase} documents={documents} onDelete={handleDeleteDoc} onUpload={handleUpload} />
-                    ))}
-                 </div>
-            </div>
-        </div>
-    );
 }

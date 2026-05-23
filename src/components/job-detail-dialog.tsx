@@ -217,15 +217,43 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 
                 {isAssigning ? (
                     <div className="p-4 rounded-xl bg-bg-secondary border border-brand-red/30 space-y-4">
+                        <div className="flex items-center justify-between">
+                             <p className="text-[10px] font-black uppercase text-brand-red tracking-widest">Select Operative</p>
+                             <button onClick={() => setIsAssigning(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                        </div>
                         <Input placeholder="Search technicians..." value={techSearchQuery} onChange={e => setTechSearchQuery(e.target.value)} className="h-10 bg-bg-primary text-xs uppercase" />
-                        <div className="divide-y divide-border-sub max-h-[200px] overflow-y-auto border rounded-md">
+                        
+                        <div className="space-y-4">
+                            {!recommendation && !isAiLoading && (
+                                <Button onClick={handleGetAiRecommendation} variant="secondary" className="w-full h-10 text-[9px] font-bold uppercase tracking-widest">
+                                    <Sparkles className="mr-2 h-4 w-4"/> Initialize AI Dispatch Analysis
+                                </Button>
+                            )}
+                            {isAiLoading && (
+                                <div className="p-3 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center gap-3">
+                                     <div className="h-3 w-3 rounded-full border-2 border-accent-gold border-t-transparent animate-spin" />
+                                     <span className="text-[9px] font-bold uppercase tracking-widest text-accent-gold">Calculating optimal operative...</span>
+                                </div>
+                            )}
+                            {recommendation && (
+                                <div className="rounded-lg border border-accent-gold bg-accent-gold-dim/10 p-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                                    <p className="text-[9px] text-accent-gold font-black uppercase tracking-widest mb-1 text-left">AI Dispatch Intelligence</p>
+                                    <p className="text-[10px] text-text-primary leading-relaxed uppercase font-bold text-left">{recommendation.reasoning}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="divide-y divide-border-sub max-h-[250px] overflow-y-auto border rounded-md bg-bg-primary">
                             {filteredTechs.map(t => (
-                                <div key={t.id} className="p-3 flex items-center justify-between hover:bg-bg-tertiary cursor-pointer" onClick={() => handleAssign(t.id)}>
+                                <div key={t.id} className="p-3 flex items-center justify-between hover:bg-bg-tertiary cursor-pointer transition-colors group" onClick={() => handleAssign(t.id)}>
                                     <div className="flex items-center gap-3">
                                         <Avatar className="h-8 w-8"><AvatarImage src={t.avatarUrl}/></Avatar>
-                                        <span className="text-xs font-bold uppercase">{t.name}</span>
+                                        <div className="text-left">
+                                            <p className="text-xs font-bold uppercase group-hover:text-brand-red transition-colors">{t.name}</p>
+                                            <p className="text-[9px] text-text-muted uppercase font-bold">{t.role}</p>
+                                        </div>
                                     </div>
-                                    <ChevronRight size={14} />
+                                    <ChevronRight size={14} className="text-text-muted" />
                                 </div>
                             ))}
                         </div>
@@ -240,7 +268,40 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                     <p className="text-[10px] text-text-muted uppercase">{leadTech?.role || 'Awaiting Action'}</p>
                                 </div>
                             </div>
+                            {userIsAdmin && !isCompleted && (
+                                <Button 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    className="h-8 bg-accent-gold hover:bg-accent-gold/90 text-white border-none text-[9px] font-bold uppercase tracking-widest"
+                                    onClick={() => { setAssignMode('lead'); setIsAssigning(true); }}
+                                >
+                                    <RefreshCw size={14} className="mr-2"/>
+                                    Swap Tech
+                                </Button>
+                            )}
                         </div>
+                        
+                        {supportTechs.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest ml-1 text-left">Support Registry</p>
+                                {supportTechs.map(tech => (
+                                    <div key={tech.id} className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                            <div className="text-left">
+                                                <p className="text-xs font-bold text-text-primary uppercase">{tech.name}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">Support operative</p>
+                                            </div>
+                                        </div>
+                                        {userIsAdmin && !isCompleted && (
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red">
+                                                <X size={14}/>
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

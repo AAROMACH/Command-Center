@@ -31,7 +31,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 type NewProjectDialogProps = {
   isOpen: boolean;

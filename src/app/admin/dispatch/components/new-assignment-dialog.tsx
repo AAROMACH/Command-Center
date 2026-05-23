@@ -34,13 +34,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
-
-type NewAssignmentDialogProps = {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  onSave: (order: WorkOrder) => void;
-};
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignmentDialogProps) {
   const [formData, setFormData] = useState<Partial<WorkOrder>>({

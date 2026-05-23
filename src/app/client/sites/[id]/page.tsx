@@ -48,7 +48,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 
-const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 export default function SiteDetailPage() {
     const params = useParams();
@@ -441,7 +441,7 @@ export default function SiteDetailPage() {
                         <TabsContent value="documents" className="space-y-4 mt-0">
                             <div className="space-y-2">
                                 {siteData.documents.map(doc => (
-                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
+                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
                                                 <FileText size={18} />

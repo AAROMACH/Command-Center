@@ -34,6 +34,8 @@ declare global {
   }
 }
 
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+
 type NewAssignmentDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -99,7 +101,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     if (!window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
       document.head.appendChild(script);
@@ -348,7 +350,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 placeholder="0.00"
                                 value={formData.blendedHourlyRate || ''}
                                 onChange={(e) => setFormData({...formData, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
                             />
                         </div>
                     </div>

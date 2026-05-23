@@ -32,6 +32,8 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+
 type ReceiptUploadDialogProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
@@ -43,7 +45,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     const [step, setStep] = useState<'upload' | 'extracting' | 'review'>('upload');
     const [extractionProgress, setExtractionProgress] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    fileInputRef = useRef<HTMLInputElement>(null);
     const [receiptImage, setReceiptImage] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState({
         merchant: '',

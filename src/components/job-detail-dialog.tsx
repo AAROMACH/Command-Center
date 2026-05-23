@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -34,7 +35,8 @@ import {
   Trash2,
   X,
   UserPlus,
-  Sparkles
+  Sparkles,
+  DollarSign
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -106,9 +108,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
   const supportTechs = (mission.additionalTechnicianIds || []).map(id => technicians.find(t => t.id === id)).filter(Boolean) as Technician[];
   const isCompleted = mission.status === 'completed';
 
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-
   const handleGetAiRecommendation = async () => {
     if (!mission) return;
     setIsAiLoading(true);
@@ -142,7 +141,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
     const docRef = doc(db, 'workOrders', mission.id);
     const targetTech = technicians.find(t => t.id === technicianId);
     const today = format(new Date(), 'MM-dd-yyyy');
-    const now = format(new Date(), 'HH:mm');
 
     let updates: Partial<WorkOrder> = {};
 
@@ -203,6 +201,38 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                     {mission.notes?.[0] || mission.description}
                 </div>
             </div>
+
+            {userIsAdmin && (
+              <div className="space-y-4 text-left">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                  <Coins size={14} className="text-text-green shrink-0"/>
+                  <span>Financial Parameters</span>
+                </h3>
+                <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex justify-between items-center">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Settlement Model</p>
+                    <p className="text-xs font-bold text-text-primary uppercase">{mission.payType} Logic</p>
+                  </div>
+                  <div className="text-right">
+                    {mission.payType === 'blended' ? (
+                      <>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Base + Hourly</p>
+                        <p className="text-sm font-mono font-bold text-text-green">
+                          ${(mission.blendedFixedPay || 0).toFixed(2)} + ${(mission.blendedHourlyRate || 0).toFixed(2)}/hr
+                        </p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase">Incl. {mission.blendedIncludedHours}h</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Settlement Amount</p>
+                        <p className="text-lg font-mono font-bold text-text-green">${mission.pay.toFixed(2)}</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase">{mission.payType} Payout</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
                 <div className="flex items-center justify-between">

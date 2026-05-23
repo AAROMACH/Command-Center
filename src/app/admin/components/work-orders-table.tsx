@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -202,8 +203,8 @@ export const WorkOrdersTable = React.memo(({
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedOrder.pay;
-      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.pay = selectedJob.pay;
+      finalUpdate.payType = selectedJob.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -342,8 +343,21 @@ export const WorkOrdersTable = React.memo(({
                             <div className="flex items-center gap-1.5 text-text-green text-left">
                                 <DollarSign size={12} className="shrink-0" />
                                 <div className="flex flex-col items-start leading-none text-left">
-                                    <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
-                                    <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
+                                    {order.payType === 'blended' ? (
+                                        <>
+                                            <span className="font-mono text-xs font-bold">
+                                                {(order.blendedFixedPay || 0).toFixed(2)} + {(order.blendedHourlyRate || 0).toFixed(2)}/hr
+                                            </span>
+                                            <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
+                                                BLENDED · INCL {order.blendedIncludedHours || 0}H
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
+                                            <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}

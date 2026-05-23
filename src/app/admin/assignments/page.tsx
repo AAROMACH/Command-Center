@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -152,7 +153,11 @@ export default function AssignmentsHubPage() {
                 if (parts[0].length === 4) { woDate = new Date(wo.scheduleDate); } 
                 else { 
                   const [m, d, y] = parts;
-                  woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                  if (y && m && d) {
+                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                  } else {
+                      return true; // Safe fallback for invalid dates
+                  }
                 }
                 
                 if (dateRange.from && dateRange.to) {
@@ -202,7 +207,11 @@ export default function AssignmentsHubPage() {
       if (parts[0].length === 4) { d = new Date(dateStr); } 
       else { 
         const [m, day, y] = parts;
-        d = new Date(`${y}-${m}-${day}T12:00:00`);
+        if (y && m && day) {
+            d = new Date(`${y}-${m}-${day}T12:00:00`);
+        } else {
+            return dateStr;
+        }
       }
       return format(d, 'MM-dd-yyyy');
     } catch (e) {
@@ -496,7 +505,23 @@ export default function AssignmentsHubPage() {
                                             </div>
                                         </td>
                                         <td className="text-right pr-6 py-4">
-                                            <div className="flex flex-col items-end"><span className="text-sm font-mono font-bold text-text-green">${wo.pay?.toFixed(2)}</span><span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span></div>
+                                            <div className="flex flex-col items-end">
+                                                {wo.payType === 'blended' ? (
+                                                    <>
+                                                        <span className="text-sm font-mono font-bold text-text-green">
+                                                            ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
+                                                        </span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">
+                                                            BLENDED · INCL {wo.blendedIncludedHours || 0}H
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-sm font-mono font-bold text-text-green">${wo.pay?.toFixed(2)}</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );

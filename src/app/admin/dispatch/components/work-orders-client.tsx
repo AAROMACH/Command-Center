@@ -8,6 +8,7 @@ import { cn, formatCityState } from "@/lib/utils";
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { WorkOrdersTable } from "../../components/work-orders-table";
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -67,10 +68,8 @@ function PayDisplay({ wo }: { wo: WorkOrder }) {
   );
 }
 
-export function WorkOrdersClient({ 
-  workOrders, 
-  technicians, 
-}: WorkOrdersClientProps) {
+export function WorkOrdersClient(props: WorkOrdersClientProps) {
+  const { workOrders, technicians } = props;
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -81,7 +80,13 @@ export function WorkOrdersClient({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Desktop view: Tactical Table */}
+      <div className="hidden md:block">
+        <WorkOrdersTable {...props} />
+      </div>
+
+      {/* Mobile view: Tactical Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
         {workOrders.map((wo) => {
           const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
           
@@ -100,11 +105,9 @@ export function WorkOrdersClient({
                     {wo.title || wo.description}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[7px] h-3 px-1 uppercase tracking-tighter shrink-0">
-                      {wo.priority}
-                  </Badge>
-                </div>
+                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[7px] h-3 px-1 uppercase tracking-tighter shrink-0">
+                    {wo.priority}
+                </Badge>
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
@@ -144,13 +147,12 @@ export function WorkOrdersClient({
             </div>
           )
         })}
+        {workOrders.length === 0 && (
+          <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No missions found in this terminal category.</p>
+          </div>
+        )}
       </div>
-
-      {workOrders.length === 0 && (
-        <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No missions found in this terminal category.</p>
-        </div>
-      )}
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 

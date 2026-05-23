@@ -33,7 +33,8 @@ import {
   DollarSign,
   Lock,
   Search,
-  ArrowUpDown
+  ArrowUpDown,
+  Info
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -216,10 +217,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
             router.push(`/admin/projects/${req.convertedId}`);
         } else {
             const wo = workOrders.find(w => w.id === req.convertedId);
-            if (!wo || wo.status === 'unassigned' || !wo.assignedTechnicianId) {
+            if (!wo || wo.status === 'unassigned') {
                 router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
             } else {
-                router.push('/admin/assignments');
+                router.push('/admin/dispatch?tab=dispatch&subtab=assigned');
             }
         }
     };
@@ -712,12 +713,12 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             <CheckCircle2 className="text-text-green h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Registry Linkage</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Converted Mission Identifier</DialogDescription>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Converted Mission Identifier</DialogDescription>
                     </DialogHeader>
                     <div className="py-6 px-6 space-y-6">
                         <div className="p-6 rounded-2xl bg-bg-secondary border border-border-sub flex flex-col items-center gap-3 shadow-inner">
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Target Operational ID</p>
-                            <p className="text-3xl font-mono font-bold text-brand-red tracking-tighter">
+                            <p className="text-3xl font-mono font-bold text-brand-red tracking-tighter text-center">
                                 {selectedRequest?.convertedId?.toUpperCase()}
                             </p>
                             <Badge variant="outline" className="text-[9px] h-5 px-3 uppercase bg-bg-primary border-border-sub font-black tracking-widest">
@@ -725,7 +726,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             </Badge>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4">
+                        <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4 text-left">
                             <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
                             <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
                                 This intake has been successfully archived. The target mission registry is now active in the {selectedRequest?.conversionType === 'project' ? 'Projects' : 'Dispatch'} hub.
@@ -895,7 +896,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             </div>
                         )}
 
-                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner text-left">
                             <div className="space-y-1 text-left">
                                 <p className="text-[8px] font-black text-text-muted uppercase">Inherited Context</p>
                                 <div className="flex items-center gap-2">

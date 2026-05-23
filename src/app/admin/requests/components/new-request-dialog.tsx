@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase, SearchCode, Search, Users, Building2 } from 'lucide-react';
+import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase, SearchCode, Search, Users, Building2, Navigation } from 'lucide-react';
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -55,6 +55,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   const [images, setImages] = useState<string[]>([]);
   const [docs, setDocs] = useState<string[]>([]);
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -99,9 +100,6 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
-      script.onerror = () => {
-        console.error("Registry script load failure.");
-      };
       document.head.appendChild(script);
     } else if (window.google) {
       initAutocomplete();
@@ -147,6 +145,10 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     );
   }, []);
 
+  const selectedClient = useMemo(() => {
+    return clients.find(c => (c.clientCompany || c.name) === formData.clientName);
+  }, [formData.clientName, clients]);
+
   const filteredRegistry = useMemo(() => {
     return clients.filter(c => 
         (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
@@ -166,6 +168,15 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     toast({
         title: "Registry Match Selected",
         description: `${name} has been linked to this service request.`,
+    });
+  };
+
+  const selectSiteFromRegistry = (site: { name: string, location: string }) => {
+    setFormData(prev => ({ ...prev, location: site.location }));
+    setIsSiteRegistryOpen(false);
+    toast({
+        title: "Site Coordinates Applied",
+        description: `Deployment target set to ${site.name}.`,
     });
   };
 
@@ -274,25 +285,42 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                <div className="relative group">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                  <Input 
-                      ref={addressInputRef}
-                      placeholder="Full Address"
-                      value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
-                      className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub"
-                  />
-                  {formData.location && (
-                      <button 
-                          onClick={resolveAddress}
-                          type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
-                          title="Verify Coordinates"
-                      >
-                          <SearchCode size={14} />
-                      </button>
-                  )}
+                <div className="space-y-1.5">
+                    <div className="relative group">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                    <Input 
+                        ref={addressInputRef}
+                        placeholder="Full Address"
+                        value={formData.location}
+                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                        className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub focus:border-brand-red transition-all"
+                    />
+                    {formData.location && (
+                        <button 
+                            onClick={resolveAddress}
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                            title="Verify Coordinates"
+                        >
+                            <SearchCode size={14} />
+                        </button>
+                    )}
+                    </div>
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
+                        className={cn(
+                            "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                            (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
+                                ? "text-text-muted opacity-50 cursor-not-allowed" 
+                                : "text-accent-gold hover:bg-accent-gold/10"
+                        )}
+                        onClick={() => setIsSiteRegistryOpen(true)}
+                    >
+                        <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
+                    </Button>
                 </div>
               </div>
             </div>
@@ -477,6 +505,50 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               </ScrollArea>
               <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
                   <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* SITE REGISTRY POPUP */}
+      <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2 text-left">
+                  <div className="flex items-center gap-2 mb-1">
+                      <Navigation className="text-accent-gold h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs text-left">Select verified coordinates for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {selectedClient?.managedSites?.map(site => (
+                          <button
+                              key={site.id}
+                              type="button"
+                              onClick={() => selectSiteFromRegistry(site)}
+                              className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="flex justify-between items-start gap-3">
+                                  <div className="space-y-0.5 text-left">
+                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                      <p className="text-[10px] text-text-muted flex items-center gap-1.5">
+                                          <MapPin size={10} className="text-brand-red shrink-0" />
+                                          <span className="truncate">{site.location}</span>
+                                      </p>
+                                  </div>
+                                  <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                              </div>
+                          </button>
+                      ))}
+                      {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>

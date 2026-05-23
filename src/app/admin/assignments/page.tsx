@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   StickyNote,
   Type,
-  FileText
+  FileText,
+  Trash2
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -267,6 +268,19 @@ export default function AssignmentsHubPage() {
     setSelectedJob(null);
     setEditedOrder(null);
     toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
+  };
+
+  const handleDeleteOrder = () => {
+    if (!selectedJob) return;
+    const docRef = doc(db, 'workOrders', selectedJob.id);
+    deleteDoc(docRef).catch((e: any) => {
+      console.error("Purge Error:", e);
+      toast({ variant: "destructive", title: "Purge Failed", description: e.message });
+    });
+    setIsEditDialogOpen(false);
+    setSelectedJob(null);
+    setEditedOrder(null);
+    toast({ title: "Registry Purged", description: "Assignment removed from operational ledger." });
   };
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
@@ -780,9 +794,15 @@ export default function AssignmentsHubPage() {
                     </div>
                   </ScrollArea>
               )}
-              <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0">
-                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+              <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between">
+                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
+                    <Trash2 size={16} className="mr-2" />
+                    Purge Registry Entry
+                </Button>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+                </div>
               </DialogFooter>
           </DialogContent>
         </Dialog>

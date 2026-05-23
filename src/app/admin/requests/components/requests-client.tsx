@@ -222,14 +222,19 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                     scheduleTime: '09:00 AM EST',
                     pay: conversionPay,
                     payType: conversionPayType,
-                    blendedFixedPay: conversionPayType === 'blended' ? blendedFixed : undefined,
-                    blendedIncludedHours: conversionPayType === 'blended' ? blendedHours : undefined,
-                    blendedHourlyRate: conversionPayType === 'blended' ? blendedHourly : undefined,
                     source: 'Client',
                     history: [
                         { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
                     ]
                 };
+
+                // Defensively add blended fields to avoid 'undefined' values in Firestore
+                if (conversionPayType === 'blended') {
+                    newWO.blendedFixedPay = blendedFixed;
+                    newWO.blendedIncludedHours = blendedHours;
+                    newWO.blendedHourlyRate = blendedHourly;
+                }
+
                 const createdRef = await addDoc(collection(db, 'workOrders'), newWO);
                 newId = createdRef.id;
             } else {
@@ -394,7 +399,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
 
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
                 <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1 text-left">
                                 <div className="flex items-center gap-2 mb-1 text-left">

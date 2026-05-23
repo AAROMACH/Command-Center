@@ -22,7 +22,9 @@ import {
   Clock,
   History,
   Building2,
-  LayoutDashboard
+  LayoutDashboard,
+  FileCheck,
+  SearchCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -44,6 +46,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -74,36 +78,44 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         setIsReviewOpen(true);
     };
 
-    const handleAction = (status: ServiceRequest['status'], destination?: string) => {
+    const handleAction = async (status: ServiceRequest['status'], destination?: string) => {
         if (!selectedRequest) return;
         
-        const isProject = destination === '/admin/projects';
-        const isDispatch = destination === '/admin/dispatch';
-        
-        const generatedId = isProject 
-            ? `PROJ-${Math.floor(1000 + Math.random() * 9000)}` 
-            : isDispatch 
-                ? `WO-${Math.floor(100000 + Math.random() * 900000)}`
-                : null;
+        const docRef = doc(db, 'clientRequests', selectedRequest.id);
 
-        if (status === 'rejected') {
+        try {
+            if (status === 'rejected') {
+                await updateDoc(docRef, { status: 'rejected' });
+                toast({
+                    variant: "destructive",
+                    title: "Intake Terminated",
+                    description: `Request ${selectedRequest.id.toUpperCase()} has been rejected and archived.`,
+                });
+            } else if (status === 'reviewed') {
+                await updateDoc(docRef, { status: 'reviewed' });
+                toast({
+                    title: "Review Finalized",
+                    description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Deployment paths authorized.`,
+                });
+            } else if (status === 'approved') {
+                await updateDoc(docRef, { status: 'approved' });
+                const isProject = destination === '/admin/projects';
+                toast({
+                    title: isProject ? "Project Path Authorized" : "Dispatch Path Authorized",
+                    description: "Transitioning to deployment terminal.",
+                });
+            }
+
+            setIsReviewOpen(false);
+            if (destination) {
+                router.push(destination);
+            }
+        } catch (e: any) {
             toast({
                 variant: "destructive",
-                title: "Intake Terminated",
-                description: `Request ${selectedRequest.id.toUpperCase()} has been rejected and archived.`,
+                title: "Registry Error",
+                description: e.message || "Failed to update intake status.",
             });
-        } else {
-            toast({
-                title: isProject ? "Project Registry Initialized" : "Job Pool Dispatched",
-                description: isProject 
-                    ? `Registry entry created with Project ID: ${generatedId}`
-                    : `Dispatched to unassigned pool with ID: ${generatedId}`,
-            });
-        }
-
-        setIsReviewOpen(false);
-        if (destination) {
-            router.push(destination);
         }
     };
 
@@ -249,7 +261,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             {/* SECTION 1: ENTITY & COORDINATES */}
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-4">
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 text-left">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <Building2 size={12}/> Client Entity
                                         </p>
@@ -257,7 +269,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 text-left">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <MapPin size={12}/> Site Coordinates
                                         </p>
@@ -268,7 +280,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 text-left">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <LayoutDashboard size={12}/> Technical Category
                                         </p>
@@ -276,7 +288,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <Badge variant="outline" className="text-[10px] uppercase bg-bg-secondary">{selectedRequest.requestType}</Badge>
                                         </div>
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 text-left">
                                         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                             <AlertTriangle size={12}/> Deployment Priority
                                         </p>
@@ -291,8 +303,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
 
                             {/* SECTION 2: SCOPE BRIEFING */}
                             <div className="space-y-3">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Scope Briefing</p>
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Scope Briefing</p>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium text-left">
                                     &quot;{selectedRequest.description}&quot;
                                 </div>
                             </div>
@@ -337,15 +349,26 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             Reject Intake
                         </Button>
                         <div className="flex-1 w-full">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Authorize Deployment Path:</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                                    <Wrench size={16} className="mr-2" /> Dispatch as assignment
-                                </Button>
-                                <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                                    <Briefcase size={16} className="mr-2" /> Convert to project
-                                </Button>
-                            </div>
+                            {selectedRequest?.status === 'new' ? (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Audit Options:</p>
+                                    <Button onClick={() => handleAction('reviewed')} className="w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                                        <SearchCheck size={16} className="mr-2" /> Mark as Reviewed
+                                    </Button>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Authorize Deployment Path:</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                                            <Wrench size={16} className="mr-2" /> Dispatch as assignment
+                                        </Button>
+                                        <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                                            <Briefcase size={16} className="mr-2" /> Convert to project
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </DialogFooter>
                 </DialogContent>
@@ -353,3 +376,4 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </div>
     );
 }
+

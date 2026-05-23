@@ -61,15 +61,16 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     if (!isOpen) return;
 
     window.gm_authFailure = () => {
-      console.warn("Google Maps API authentication failed.");
+      console.warn("Google Maps API activation failure detected.");
       toast({
         variant: "destructive",
-        title: "Maps API Access Conflict",
-        description: "Places Autocomplete is restricted. Manual site address entry remains active.",
+        title: "Google Maps Activation Error",
+        description: "Places API is not enabled in the Cloud Console. Please ensure 'Maps JavaScript API' and 'Places API' are toggled to ENABLED for this project key.",
       });
     };
 
     const scriptId = 'google-maps-places-script';
+    
     const initAutocomplete = () => {
       if (!addressInputRef.current || !window.google) return;
       try {
@@ -85,7 +86,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete initialization prevented. Manual coordinate entry active.");
+        console.warn("Places Autocomplete restricted by API policy. Manual entry remains active.");
       }
     };
 
@@ -95,6 +96,13 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
+      script.onerror = () => {
+        toast({
+          variant: "destructive",
+          title: "Registry Handshake Error",
+          description: "Google Maps script could not be loaded. Please check your network and API activation status.",
+        });
+      };
       document.head.appendChild(script);
     } else if (window.google) {
       initAutocomplete();
@@ -123,12 +131,12 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           toast({
             variant: "destructive",
             title: "Resolution Failed",
-            description: "No verified coordinates found for this identifier.",
+            description: "No verified coordinates found for this identifier. Verify API activation status.",
           });
         }
       });
     } catch (e) {
-      console.error("Places Service Error:", e);
+      console.error("Places Service Protocol Error:", e);
     }
   };
 
@@ -198,7 +206,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
           <div className="space-y-2">
             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Site Address</Label>
-            <div className="relative">
+            <div className="relative group">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 <Input 
                     ref={addressInputRef}

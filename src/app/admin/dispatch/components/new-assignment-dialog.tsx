@@ -72,15 +72,16 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     if (!isOpen) return;
 
     window.gm_authFailure = () => {
-      console.warn("Google Maps API authentication failed.");
+      console.warn("Google Maps API activation failure detected.");
       toast({
         variant: "destructive",
-        title: "Maps API Access Conflict",
-        description: "Places Autocomplete is restricted. Standard manual address entry protocol remains active.",
+        title: "Google Maps Activation Error",
+        description: "Places API is not enabled in the Cloud Console. Please ensure 'Maps JavaScript API' and 'Places API' are toggled to ENABLED for this project key.",
       });
     };
 
     const scriptId = 'google-maps-places-script';
+    
     const initAutocomplete = () => {
       if (!addressInputRef.current || !window.google) return;
       try {
@@ -96,7 +97,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete initialization prevented. Manual coordinate entry active.");
+        console.warn("Places Autocomplete restricted by API policy. Manual entry remains active.");
       }
     };
 
@@ -106,6 +107,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
+      script.onerror = () => {
+        toast({
+          variant: "destructive",
+          title: "Registry Handshake Error",
+          description: "Google Maps script could not be loaded. Please check your network and API activation status.",
+        });
+      };
       document.head.appendChild(script);
     } else if (window.google) {
       initAutocomplete();
@@ -134,12 +142,12 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           toast({
             variant: "destructive",
             title: "Resolution Failed",
-            description: "No verified coordinates found for this identifier.",
+            description: "No verified coordinates found for this identifier. Verify API activation status.",
           });
         }
       });
     } catch (e) {
-      console.error("Places Service Error:", e);
+      console.error("Places Service Protocol Error:", e);
     }
   };
 
@@ -423,7 +431,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
                   <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                    <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
@@ -435,7 +443,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
                   <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
-                    <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Installation">Installation</SelectItem>
                       <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>

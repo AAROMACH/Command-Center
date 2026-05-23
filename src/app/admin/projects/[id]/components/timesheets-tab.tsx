@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save } from 'lucide-react';
+import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save, X } from 'lucide-react';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -439,8 +439,8 @@ function EditLogDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
-                <DialogHeader className="text-left">
+            <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden flex flex-col">
+                <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Pencil className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Edit Timesheet Log</DialogTitle>
@@ -448,7 +448,7 @@ function EditLogDialog({
                     <DialogDescription className="text-xs uppercase font-bold text-text-muted">Modify mission duration and reporting details.</DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4 space-y-6 text-left">
+                <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase text-text-muted">Operative</Label>
@@ -496,13 +496,13 @@ function EditLogDialog({
                     </div>
                 </div>
 
-                <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex justify-between gap-3">
-                    <Button variant="destructive-outline" className="h-11 px-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => onDelete(log.id)}>
+                <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex flex-row items-center justify-between gap-3">
+                    <Button variant="destructive-outline" className="h-10 px-4 uppercase font-bold text-[10px] tracking-widest shrink-0" onClick={() => onDelete(log.id)}>
                         <Trash2 size={16} className="mr-2"/> Purge Record
                     </Button>
                     <div className="flex gap-3">
-                        <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Discard</Button>
-                        <Button onClick={handleSave} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
+                        <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-6 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
+                        <Button onClick={handleSave} className="h-10 px-8 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
                             <Save size={16} className="mr-2"/> Save Changes
                         </Button>
                     </div>

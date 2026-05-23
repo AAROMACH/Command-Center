@@ -91,12 +91,12 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default shadow-2xl">
-                <DialogHeader className="text-left border-b border-border-sub bg-bg-tertiary/30 p-6 -mx-6 -mt-6 rounded-t-lg">
+            <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden flex flex-col">
+                <DialogHeader className="text-left border-b border-border-sub bg-bg-tertiary/30 p-6">
                     <DialogTitle className="page-title text-xl uppercase font-bold tracking-widest">Manual Session Registry</DialogTitle>
                     <DialogDescription className="text-xs uppercase font-bold text-text-muted">Initialize a field session entry for project <span className="text-text-primary">{projectId.toUpperCase()}</span>.</DialogDescription>
                 </DialogHeader>
-                <div className="py-6 space-y-6">
+                <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 text-left">
                              <Label htmlFor="technicianId" className="text-[10px] uppercase font-bold text-text-muted">Operative Identity</Label>
@@ -131,7 +131,7 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
                         <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[120px] text-xs uppercase font-medium leading-relaxed" placeholder="Document site activity, terminal outcomes, and field obstacles..."/>
                     </div>
                 </div>
-                <DialogFooter className="pt-4 border-t border-border-sub bg-bg-tertiary/30 -mx-6 -mb-6 p-6">
+                <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
                     <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-8 font-bold uppercase text-[10px] tracking-widest">Discard</Button>
                     <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover h-11 px-10 font-bold uppercase text-[10px] tracking-widest text-white">Authorize Registry Log</Button>
                 </DialogFooter>

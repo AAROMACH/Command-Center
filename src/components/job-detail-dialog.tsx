@@ -216,7 +216,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                   <div className="text-right">
                     {mission.payType === 'blended' ? (
                       <>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Base + Hourly</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">fixed - hourly</p>
                         <p className="text-sm font-mono font-bold text-text-green">
                           ${(mission.blendedFixedPay || 0).toFixed(2)} + ${(mission.blendedHourlyRate || 0).toFixed(2)}/hr
                         </p>
@@ -298,17 +298,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                     <p className="text-[10px] text-text-muted uppercase">{leadTech?.role || 'Awaiting Action'}</p>
                                 </div>
                             </div>
-                            {userIsAdmin && !isCompleted && (
-                                <Button 
-                                    variant="secondary" 
-                                    size="sm" 
-                                    className="h-8 bg-accent-gold hover:bg-accent-gold/90 text-white border-none text-[9px] font-bold uppercase tracking-widest"
-                                    onClick={() => { setAssignMode('lead'); setIsAssigning(true); }}
-                                >
-                                    <RefreshCw size={14} className="mr-2"/>
-                                    Swap Tech
-                                </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {userIsAdmin && !isCompleted && (
+                                    <Button 
+                                        variant="secondary" 
+                                        size="sm" 
+                                        className="h-8 bg-accent-gold hover:bg-accent-gold/90 text-white border-none text-[9px] font-bold uppercase tracking-widest"
+                                        onClick={() => { setAssignMode('lead'); setIsAssigning(true); }}
+                                    >
+                                        <RefreshCw size={14} className="mr-2"/>
+                                        Swap Tech
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         
                         {supportTechs.length > 0 && (

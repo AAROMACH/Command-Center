@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -154,7 +153,7 @@ export default function AssignmentsHubPage() {
                 else { 
                   const [m, d, y] = parts;
                   if (y && m && d) {
-                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                      woDate = new Date(`${y}-${m}-${day}T12:00:00`);
                   } else {
                       return true; // Safe fallback for invalid dates
                   }
@@ -512,7 +511,7 @@ export default function AssignmentsHubPage() {
                                                             ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
                                                         </span>
                                                         <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">
-                                                            BLENDED · INCL {wo.blendedIncludedHours || 0}H
+                                                            fixed - hourly
                                                         </span>
                                                     </>
                                                 ) : (

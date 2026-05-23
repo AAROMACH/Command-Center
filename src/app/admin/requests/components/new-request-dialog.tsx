@@ -193,7 +193,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0">
+      <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <ClipboardList className="text-brand-red h-5 w-5" />
@@ -202,7 +202,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           <DialogDescription>Initialize a new client request in the intake funnel.</DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-4 space-y-6">
+        <div className="px-6 py-4 space-y-6 text-left">
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
@@ -210,7 +210,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                 placeholder="Name or Organization"
                 value={formData.clientName}
                 onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                className="bg-bg-primary h-10 text-xs"
+                className="bg-bg-primary border-border-sub h-10 text-xs"
               />
             </div>
             <div className="space-y-2">
@@ -222,7 +222,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                     placeholder="Full Address"
                     value={formData.location}
                     onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    className="bg-bg-primary h-10 text-xs pl-10 pr-10"
+                    className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub"
                 />
                 {formData.location && (
                     <button 
@@ -242,7 +242,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
               <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Installation">Installation</SelectItem>
                   <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
@@ -256,7 +256,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
               <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low (Standard)</SelectItem>
                   <SelectItem value="medium">Medium (Nominal)</SelectItem>
@@ -291,6 +291,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                   <div key={i} className="relative aspect-video rounded border border-border-sub overflow-hidden group bg-bg-primary">
                     <img src={img} alt={`Upload ${i}`} className="w-full h-full object-cover" />
                     <button 
+                      type="button"
                       onClick={() => removeAttachment('image', i)}
                       className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
                     >
@@ -300,6 +301,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                 ))}
                 {images.length < 3 && (
                   <button 
+                    type="button"
                     onClick={() => simulateUpload('image')}
                     className="aspect-video rounded border-2 border-dashed border-border-sub hover:border-brand-red hover:bg-brand-red-dim/5 transition-all flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red"
                   >
@@ -325,13 +327,14 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                       <FileText size={12} className="text-text-muted" />
                       <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{doc}</span>
                     </div>
-                    <button onClick={() => removeAttachment('doc', i)} className="text-text-muted hover:text-text-red">
+                    <button type="button" onClick={() => removeAttachment('doc', i)} className="text-text-muted hover:text-text-red">
                       <Trash2 size={12} />
                     </button>
                   </div>
                 ))}
                 {docs.length < 2 && (
                   <button 
+                    type="button"
                     onClick={() => simulateUpload('doc')}
                     className="w-full py-3 rounded border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
                   >
@@ -345,16 +348,16 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
         </div>
 
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-row items-end gap-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
+          <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
             <X size={14} className="mr-2"/> Cancel Intake
           </Button>
           <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">Convert to a(n):</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Convert to a(n):</p>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
+              <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
                 <Wrench size={14} className="mr-2" /> Assignment
               </Button>
-              <Button onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+              <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
                 <Briefcase size={14} className="mr-2" /> Project
               </Button>
             </div>

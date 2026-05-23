@@ -20,7 +20,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User, SearchCode } from 'lucide-react';
+import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User, SearchCode, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -165,8 +165,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl text-left">
+        <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <Building2 className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Initialize Project Folder</DialogTitle>
@@ -174,7 +174,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           <DialogDescription>Create a new high-fidelity project entry in the operational registry.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4 text-left">
+        <div className="space-y-6 px-6 py-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Project Name</Label>
@@ -182,7 +182,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 placeholder="e.g., Downtown Fiber Overhaul" 
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
-                className="bg-bg-primary"
+                className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase"
               />
             </div>
             <div className="space-y-2">
@@ -191,7 +191,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 placeholder="Organization Name" 
                 value={formData.client}
                 onChange={e => setFormData({...formData, client: e.target.value})}
-                className="bg-bg-primary"
+                className="bg-bg-primary border-border-sub h-10 text-xs"
               />
             </div>
           </div>
@@ -205,7 +205,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     placeholder="Full Address" 
                     value={formData.location}
                     onChange={e => setFormData({...formData, location: e.target.value})}
-                    className="bg-bg-primary pl-10 pr-10"
+                    className="bg-bg-primary pl-10 pr-10 h-10 text-xs"
                 />
                 {formData.location && (
                     <button 
@@ -229,7 +229,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     placeholder="Contact Name" 
                     value={formData.onsiteContactName}
                     onChange={e => setFormData({...formData, onsiteContactName: e.target.value})}
-                    className="bg-bg-primary pl-10"
+                    className="bg-bg-primary pl-10 h-10 text-xs"
                   />
               </div>
             </div>
@@ -241,7 +241,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     placeholder="Phone Number" 
                     value={formData.onsiteContactPhone}
                     onChange={e => setFormData({...formData, onsiteContactPhone: e.target.value})}
-                    className="bg-bg-primary pl-10"
+                    className="bg-bg-primary pl-10 h-10 text-xs"
                   />
               </div>
             </div>
@@ -254,7 +254,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 type="date"
                 value={formData.startDate}
                 onChange={e => setFormData({...formData, startDate: e.target.value})}
-                className="bg-bg-primary"
+                className="bg-bg-primary h-10 text-xs"
               />
             </div>
             <div className="space-y-2">
@@ -263,7 +263,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 placeholder="e.g., 6 months" 
                 value={formData.estimatedDuration}
                 onChange={e => setFormData({...formData, estimatedDuration: e.target.value})}
-                className="bg-bg-primary"
+                className="bg-bg-primary h-10 text-xs"
               />
             </div>
           </div>
@@ -274,7 +274,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 placeholder="Define primary objectives and technical requirements..." 
                 value={formData.scope}
                 onChange={e => setFormData({...formData, scope: e.target.value})}
-                className="bg-bg-primary h-24"
+                className="bg-bg-primary h-24 text-xs"
             />
           </div>
 
@@ -285,7 +285,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 type="number"
                 value={formData.projectBudget}
                 onChange={e => setFormData({...formData, projectBudget: parseFloat(e.target.value) || 0})}
-                className="bg-bg-primary font-mono"
+                className="bg-bg-primary font-mono h-10 text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -294,15 +294,15 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 type="number"
                 value={formData.estimatedHours}
                 onChange={e => setFormData({...formData, estimatedHours: parseFloat(e.target.value) || 0})}
-                className="bg-bg-primary font-mono"
+                className="bg-bg-primary font-mono h-10 text-sm"
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} className="bg-brand-red hover:bg-brand-red-hover px-10">
+        <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+          <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
             <Check size={16} className="mr-2" />
             Initialize Registry
           </Button>

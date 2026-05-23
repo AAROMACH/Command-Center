@@ -58,17 +58,21 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     const scriptId = 'google-maps-places-script';
     const initAutocomplete = () => {
       if (!addressInputRef.current || !window.google) return;
-      const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-        componentRestrictions: { country: "us" },
-        fields: ["formatted_address", "geometry"],
-        types: ["address"],
-      });
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (place.formatted_address) {
-          setFormData(prev => ({ ...prev, location: place.formatted_address }));
-        }
-      });
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          componentRestrictions: { country: "us" },
+          fields: ["formatted_address", "geometry"],
+          types: ["address"],
+        });
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (place.formatted_address) {
+            setFormData(prev => ({ ...prev, location: place.formatted_address }));
+          }
+        });
+      } catch (e) {
+        console.warn("Places Autocomplete terminal restricted or API not activated.");
+      }
     };
 
     if (!window.google && !document.getElementById(scriptId)) {

@@ -223,7 +223,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                       </>
                     ) : (
                       <>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Settlement Amount</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Labor Rate</p>
                         <p className="text-lg font-mono font-bold text-text-green">${mission.pay.toFixed(2)}</p>
                         <p className="text-[9px] text-text-muted font-bold uppercase">{mission.payType} Payout</p>
                       </>

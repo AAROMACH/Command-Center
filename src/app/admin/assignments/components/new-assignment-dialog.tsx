@@ -235,7 +235,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
                 {formData.payType !== 'blended' && (
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Labor Rate ($)</Label>
                     <Input 
                       type="number"
                       placeholder="0.00"

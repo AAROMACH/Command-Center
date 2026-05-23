@@ -274,7 +274,7 @@ export const WorkOrdersTable = React.memo(({
               <th className="text-left pl-0">Assignment Identification</th>
               <th className="text-center w-[160px]">Schedule</th>
               <th className="text-left pl-0 w-[250px]">Site Coordinates</th>
-              <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Settlement Pay'}</th>
+              <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Labor Rate'}</th>
               <th className="text-center w-[120px]"></th>
             </tr>
           </thead>
@@ -346,7 +346,7 @@ export const WorkOrdersTable = React.memo(({
                                             ${(order.blendedFixedPay || 0).toFixed(0)} + ${(order.blendedHourlyRate || 0).toFixed(0)}/hr
                                         </span>
                                         <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
-                                            after {order.blendedIncludedHours || 0}hrs
+                                            after {order.blendedIncludedHours}hrs
                                         </span>
                                     </>
                                 ) : (
@@ -601,7 +601,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                             {editedOrder.payType !== 'blended' && (
                                 <div className="space-y-2 text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Labor Rate ($)</Label>
                                   <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
                                 </div>
                             )}

@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, SquarePlus, Building2, Navigation, Upload, Search, Users } from 'lucide-react';
+import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, SquarePlus, Building2, Navigation, Upload, Search, Users, SearchCode } from 'lucide-react';
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -411,7 +411,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                       <button 
                         type="button"
                         onClick={() => imageInputRef.current?.click()}
-                        className="aspect-video rounded border-2 border-dashed border-border-sub hover:border-brand-red hover:bg-brand-red-dim/5 transition-all flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red"
+                        className="aspect-video rounded border-2 border-dashed border-border-sub flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red transition-all"
                       >
                         <Plus size={16} />
                         <span className="text-[8px] font-bold uppercase">Add Photo</span>
@@ -470,12 +470,9 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             </Button>
             <div className="flex-1">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1">
                 <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover shadow-lg">
                   <SquarePlus size={14} className="mr-2" /> Create Assignment
-                </Button>
-                <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                  <ClipboardList size={14} className="mr-2" /> Create request
                 </Button>
               </div>
             </div>

@@ -14,6 +14,7 @@ import {
   Calendar,
   ChevronRight,
   CheckCircle2,
+  Activity,
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -39,6 +40,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 // Performance: Code-splitting heavy chart library
@@ -159,7 +161,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
                 <Link href="/admin/dispatch?subtab=unassigned">
                     <StatCard 
                         label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
@@ -187,15 +189,6 @@ export default function DashboardPage() {
                         icon="Clock"
                     />
                 </div>
-                <Link href="/admin/reports?tab=flags">
-                    <StatCard 
-                        label="System Anomalies" 
-                        value="2"
-                        delta="Requires Attention" 
-                        deltaType="negative"
-                        icon="Clock"
-                    />
-                </Link>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -229,7 +222,7 @@ export default function DashboardPage() {
                                                 <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch?subtab=unassigned')} className="h-7 text-[10px]">Assign</Button>
+                                                <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch?tab=unassigned')} className="h-7 text-[10px]">Assign</Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save, X, History, Info } from 'lucide-react';
+import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save, X, History, Info, ClipboardCheck } from 'lucide-react';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
@@ -56,7 +57,6 @@ const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
       </div>
     </div>
 );
-
 
 const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; tech?: Technician; viewBy: 'tech' | 'date'; onEdit: (log: ProjectDailyLog) => void }) => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -116,14 +116,7 @@ const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; te
     )
 };
 
-type TimesheetsTabProps = {
-    timesheets: ProjectDailyLog[];
-    technicians: Technician[];
-    project: Project;
-};
-
-
-export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTabProps) {
+export function TimesheetsTab({ timesheets, technicians, project }: { timesheets: ProjectDailyLog[]; technicians: Technician[]; project: Project }) {
     const [viewBy, setViewBy] = useState<'tech' | 'date'>('date');
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
@@ -416,13 +409,15 @@ function EditLogDialog({
     onSave: (l: ProjectDailyLog) => void,
     onDelete: (id: string) => void
 }) {
-    // Normalization logic for Input type="date" (yyyy-MM-dd)
     const normalizeDate = useCallback((dateStr: string) => {
         if (!dateStr) return '';
         const parts = dateStr.split(/[-/]/);
-        if (parts[0].length === 4) return dateStr; // Already yyyy-MM-dd
-        const [m, d, y] = parts;
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        if (parts.length === 3) {
+            if (parts[0].length === 4) return dateStr; // Already yyyy-MM-dd
+            const [m, d, y] = parts;
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+        return dateStr;
     }, []);
 
     const [formData, setFormData] = useState<ProjectDailyLog>({ 
@@ -439,7 +434,6 @@ function EditLogDialog({
 
     const handleSave = () => {
         try {
-            // Calculate duration and decimal hours from boundaries
             const checkIn = parse(`${formData.date}T${formData.checkInTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
             const checkOut = parse(`${formData.date}T${formData.checkOutTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
             const diffMs = checkOut.getTime() - checkIn.getTime();
@@ -473,7 +467,6 @@ function EditLogDialog({
                 </DialogHeader>
 
                 <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
-                    {/* TECHNICIAN ORIGINAL REFERENCE */}
                     <div className="space-y-3">
                         <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2">
                             <History size={12}/> Technician&apos;s Original Log
@@ -491,14 +484,13 @@ function EditLogDialog({
                             </div>
                         </div>
                         <div className="flex items-center gap-2 px-2">
-                            <Info size={12} className="text-text-muted" />
+                            <span className="text-text-muted"><Info size={12} /></span>
                             <p className="text-[9px] text-text-muted font-bold uppercase">Reference values shown for audit integrity.</p>
                         </div>
                     </div>
 
                     <Separator className="bg-border-sub" />
 
-                    {/* EDITABLE FIELDS */}
                     <div className="space-y-6">
                         <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] px-1">Current Log Parameters</h3>
                         
@@ -552,7 +544,7 @@ function EditLogDialog({
                 </div>
 
                 <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex flex-row items-center justify-between gap-3">
-                    <Button variant="destructive-outline" className="h-10 px-4 uppercase font-bold text-[10px] tracking-widest shrink-0" onClick={() => onDelete(log.id)}>
+                    <Button variant="outline" className="h-10 px-4 uppercase font-bold text-[10px] tracking-widest shrink-0 border-brand-red text-text-red hover:bg-brand-red-dim" onClick={() => onDelete(log.id)}>
                         <Trash2 size={16} className="mr-2"/> Purge Record
                     </Button>
                     <div className="flex gap-3">

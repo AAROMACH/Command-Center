@@ -49,32 +49,52 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
         const lines = block.split('\n').map(l => l.trim());
         if (lines.length < 5) return null;
 
-        const id = lines[0];
+        const id = lines[0]; // 8 digit identifier
         const title = lines[1];
-        const timeRaw = lines[2]; 
+        const serviceDateTime = lines[2]; // e.g. 5/26/2026 at 11:00 AM(EDT)
         const location = lines[3];
         const company = lines[4];
-        
-        let pay = 0;
-        let payType: 'fixed' | 'hourly' | 'blended' = 'fixed';
+        const payModelRaw = lines[6] || ''; // e.g. blendedPayment Terms
+        const laborRateRaw = lines[7] || ''; // e.g. 2 hrs @ $110 and then up to 1 hr @ $55/hr
 
-        const payLine = lines.find(l => l.includes('$') && /\d/.test(l));
-        if (payLine) {
-          const match = payLine.match(/\$\s*(\d+(?:\.\d+)?)/);
-          if (match) pay = parseFloat(match[1]);
+        let payType: 'fixed' | 'hourly' | 'blended' = 'fixed';
+        if (payModelRaw.toLowerCase().includes('blended')) payType = 'blended';
+        else if (payModelRaw.toLowerCase().includes('hourly')) payType = 'hourly';
+
+        let pay = 0;
+        let blendedFixedPay = 0;
+        let blendedIncludedHours = 0;
+        let blendedHourlyRate = 0;
+
+        if (payType === 'blended') {
+          const fixedMatch = laborRateRaw.match(/(\d+)\s*hrs?\s*@\s*\$(\d+)/);
+          const hourlyMatch = laborRateRaw.match(/@\s*\$(\d+)\/hr/);
+          
+          if (fixedMatch) {
+            blendedIncludedHours = parseInt(fixedMatch[1]);
+            blendedFixedPay = parseFloat(fixedMatch[2]);
+            pay = blendedFixedPay;
+          }
+          if (hourlyMatch) {
+            blendedHourlyRate = parseFloat(hourlyMatch[1]);
+          }
+        } else {
+          const payMatch = laborRateRaw.match(/\$(\d+(?:\.\d+)?)/);
+          if (payMatch) pay = parseFloat(payMatch[1]);
         }
 
         let scheduleDate = format(new Date(), 'yyyy-MM-dd');
-        let scheduleTime = '09:00 AM EST';
+        let scheduleTime = '09:00 AM';
         
-        if (timeRaw.includes('at')) {
-           const [d, t] = timeRaw.split(' at ');
-           try { scheduleDate = format(new Date(d), 'yyyy-MM-dd'); } catch(e) {}
-           scheduleTime = t;
-        } else if (timeRaw.includes(',')) {
-           const [d, t] = timeRaw.split(', ');
-           try { scheduleDate = format(new Date(d), 'yyyy-MM-dd'); } catch(e) {}
-           scheduleTime = t.split(' → ')[0];
+        if (serviceDateTime.includes('at')) {
+           const [d, t] = serviceDateTime.split(' at ');
+           try { 
+             const dateParts = d.split('/');
+             if (dateParts.length === 3) {
+                scheduleDate = `${dateParts[2]}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`;
+             }
+           } catch(e) {}
+           scheduleTime = t.split('(')[0].trim();
         }
 
         return {
@@ -85,11 +105,14 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           clientName: company,
           pay: pay,
           payType,
+          blendedFixedPay,
+          blendedIncludedHours,
+          blendedHourlyRate,
           scheduleDate,
           scheduleTime,
           status: 'unassigned' as const,
           priority: 'medium' as const,
-          projectType: 'Low Voltage Service',
+          projectType: 'Installation',
           requiredSkills: [],
           isAcknowledged: false,
           source: 'Imported',
@@ -187,7 +210,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-3 flex-1 min-w-0">
                                         <div className="flex items-center gap-3">
-                                            {/* EDITABLE ID */}
                                             <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'id' })}>
                                                 {editingField?.id === job.id && editingField.field === 'id' ? (
                                                     <Input 
@@ -211,7 +233,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                         </div>
 
                                         <div className="space-y-2">
-                                            {/* EDITABLE TITLE */}
                                             <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'title' })}>
                                                 {editingField?.id === job.id && editingField.field === 'title' ? (
                                                     <Input 
@@ -231,7 +252,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
-                                                {/* EDITABLE CLIENT */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'clientName' })}>
                                                     {editingField?.id === job.id && editingField.field === 'clientName' ? (
                                                         <Input 
@@ -250,7 +270,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                     )}
                                                 </div>
 
-                                                {/* EDITABLE LOCATION */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'location' })}>
                                                     {editingField?.id === job.id && editingField.field === 'location' ? (
                                                         <Input 
@@ -271,7 +290,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                             </div>
 
                                             <div className="grid grid-cols-3 gap-4">
-                                                {/* EDITABLE DATE */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'scheduleDate' })}>
                                                     {editingField?.id === job.id && editingField.field === 'scheduleDate' ? (
                                                         <Input 
@@ -291,7 +309,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                     )}
                                                 </div>
 
-                                                {/* EDITABLE TIME */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'scheduleTime' })}>
                                                     {editingField?.id === job.id && editingField.field === 'scheduleTime' ? (
                                                         <Input 
@@ -310,7 +327,6 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                     )}
                                                 </div>
 
-                                                {/* EDITABLE LABOR RATE */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'pay' })}>
                                                     {editingField?.id === job.id && editingField.field === 'pay' ? (
                                                         <Input 

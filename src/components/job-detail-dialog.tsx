@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician, Recommendation } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, onSnapshot, query } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { TERMINOLOGY } from '@/lib/constants';
 import { 
   Dialog, 
@@ -45,7 +46,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { isAdmin } from '@/lib/permissions';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { getRecommendation } from '@/app/admin/dispatch/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -142,7 +143,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
     }
   };
 
-  const handleAssign = async (technicianId: string) => {
+  const handleAssign = (technicianId: string) => {
     const docRef = doc(db, 'workOrders', mission.id);
     const targetTech = technicians.find(t => t.id === technicianId);
     const today = format(new Date(), 'MM-dd-yyyy');
@@ -170,13 +171,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         };
     }
 
-    try {
-        await updateDoc(docRef, updates);
-        setIsAssigning(false);
-        toast({ title: "Registry Updated", description: "Allocation committed to Firestore." });
-    } catch (e: any) {
+    updateDoc(docRef, updates).catch((e: any) => {
+        console.error("Assign Update Error:", e);
         toast({ variant: "destructive", title: "Registry Error", description: e.message });
-    }
+    });
+
+    setIsAssigning(false);
+    toast({ title: "Registry Updated", description: "Allocation committed to Firestore." });
   };
 
   return (

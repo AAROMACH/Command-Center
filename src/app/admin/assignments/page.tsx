@@ -159,7 +159,7 @@ export default function AssignmentsHubPage() {
                 else { 
                   const [m, d, y] = parts;
                   if (y && m && d) {
-                      woDate = new Date(`${y}-${m}-${day}T12:00:00`);
+                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
                   } else {
                       return true; // Safe fallback for invalid dates
                   }
@@ -250,7 +250,7 @@ export default function AssignmentsHubPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = () => {
     if (!editedOrder || !selectedJob) return;
     
     let finalUpdate = { ...editedOrder };
@@ -269,42 +269,44 @@ export default function AssignmentsHubPage() {
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
 
-    try {
-        const docRef = doc(db, 'workOrders', editedOrder.id);
-        await updateDoc(docRef, { ...finalUpdate });
-        setIsEditDialogOpen(false);
-        setSelectedJob(null);
-        setEditedOrder(null);
-        toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
-    } catch (error: any) {
+    const docRef = doc(db, 'workOrders', editedOrder.id);
+    updateDoc(docRef, { ...finalUpdate }).catch((error: any) => {
+        console.error("Registry Update Error:", error);
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    }
+    });
+
+    setIsEditDialogOpen(false);
+    setSelectedJob(null);
+    setEditedOrder(null);
+    toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
   };
 
-  const handleDeleteOrder = async () => {
+  const handleDeleteOrder = () => {
     if (!selectedJob) return;
-    try {
-        const orderId = selectedJob.id;
-        await deleteDoc(doc(db, 'workOrders', orderId));
-        setIsEditDialogOpen(false);
-        setIsDeleteDialogOpen(false);
-        setSelectedJob(null);
-        setEditedOrder(null);
-        toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
-    } catch (e: any) {
+    const orderId = selectedJob.id;
+    const docRef = doc(db, 'workOrders', orderId);
+
+    deleteDoc(docRef).catch((e: any) => {
+        console.error("Registry Purge Error:", e);
         toast({ variant: "destructive", title: "Purge Failed", description: e.message });
-    }
+    });
+
+    setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+    setSelectedJob(null);
+    setEditedOrder(null);
+    toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
   };
 
-  const handleJobUpdate = async (woId: string, updates: Partial<WorkOrder>) => {
-    try {
-        const docRef = doc(db, 'workOrders', woId);
-        await updateDoc(docRef, updates);
-        if (selectedJob?.id === woId) {
-            setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
-        }
-    } catch (error: any) {
+  const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
+    const docRef = doc(db, 'workOrders', woId);
+    updateDoc(docRef, updates).catch((error: any) => {
+        console.error("Field Update Error:", error);
         toast({ variant: "destructive", title: "Registry Error", description: error.message });
+    });
+    
+    if (selectedJob?.id === woId) {
+        setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 

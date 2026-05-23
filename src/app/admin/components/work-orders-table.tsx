@@ -182,23 +182,24 @@ export const WorkOrdersTable = React.memo(({
     }
   };
 
-  const handleAssign = useCallback(async (technicianId: string) => {
+  const handleAssign = useCallback((technicianId: string) => {
     if (!selectedOrder) return;
-    try {
-        const docRef = doc(db, 'workOrders', selectedOrder.id);
-        await updateDoc(docRef, {
-            status: 'assigned',
-            assignedTechnicianId: technicianId === 'unassigned' ? null : technicianId
-        });
-        setIsDialogOpen(false);
-        setSelectedOrder(null);
-        toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
-    } catch (e: any) {
+    const docRef = doc(db, 'workOrders', selectedOrder.id);
+    
+    updateDoc(docRef, {
+        status: 'assigned',
+        assignedTechnicianId: technicianId === 'unassigned' ? null : technicianId
+    }).catch((e: any) => {
+        console.error("Assign Update Error:", e);
         toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
-    }
+    });
+
+    setIsDialogOpen(false);
+    setSelectedOrder(null);
+    toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
   }, [selectedOrder, toast]);
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = () => {
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
@@ -217,56 +218,42 @@ export const WorkOrdersTable = React.memo(({
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
 
-    try {
-        const docRef = doc(db, 'workOrders', editedOrder.id);
-        await updateDoc(docRef, { ...finalUpdate });
-        setIsEditDialogOpen(false);
-        setSelectedOrder(null);
-        setEditedOrder(null);
-        if (payChanged && payAdmin) {
-            toast({ title: "Pay Parameters Updated", description: "Financial changes authorized." });
-        } else {
-            toast({ title: "Registry Updated", description: "Job entry synchronized." });
-        }
-    } catch (e: any) {
+    const docRef = doc(db, 'workOrders', editedOrder.id);
+    updateDoc(docRef, { ...finalUpdate }).catch((e: any) => {
+        console.error("Save Changes Error:", e);
         toast({ variant: "destructive", title: "Save Failed", description: e.message });
-    }
+    });
+
+    setIsEditDialogOpen(false);
+    setSelectedOrder(null);
+    setEditedOrder(null);
+    toast({ title: "Registry Updated", description: "Job entry synchronized." });
   };
 
-  const handleDeleteOrder = async () => {
+  const handleDeleteOrder = () => {
     if (!selectedOrder) return;
-    try {
-        const orderId = selectedOrder.id;
-        await deleteDoc(doc(db, 'workOrders', orderId));
-        setIsEditDialogOpen(false);
-        setIsDeleteDialogOpen(false);
-        setSelectedOrder(null);
-        setEditedOrder(null);
-        toast({ title: "Registry Purged", description: `Mission ${orderId.toUpperCase()} has been removed from the registry.` });
-    } catch (e: any) {
+    const orderId = selectedOrder.id;
+    const docRef = doc(db, 'workOrders', orderId);
+
+    deleteDoc(docRef).catch((e: any) => {
+        console.error("Registry Purge Error:", e);
         toast({ variant: "destructive", title: "Purge Failed", description: e.message });
-    }
+    });
+
+    setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+    setSelectedOrder(null);
+    setEditedOrder(null);
+    toast({ title: "Registry Purged", description: `Mission ${orderId.toUpperCase()} has been removed from the registry.` });
   };
 
-  const handleJobUpdate = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
-    try {
-        const docRef = doc(db, 'workOrders', woId);
-        await updateDoc(docRef, updates);
-    } catch (e: any) {
+  const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {
+    const docRef = doc(db, 'workOrders', woId);
+    updateDoc(docRef, updates).catch((e: any) => {
+        console.error("Job Update Error:", e);
         toast({ variant: "destructive", title: "Update Failed", description: e.message });
-    }
+    });
   }, [toast]);
-
-  const filteredTechniciansRegistry = useMemo(() => {
-    return technicians
-      .filter(t => {
-          const roles = t.roles || [];
-          const role = (t.role || '').toLowerCase();
-          return !roles.includes('client') && !role.includes('client');
-      })
-      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
-  }, [technicians, techSearchQuery]);
 
   return (
     <>

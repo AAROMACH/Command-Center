@@ -124,6 +124,12 @@ export function isSuperAdmin(user: Technician | null | undefined): boolean {
   return userRoles.includes('super_admin') || user.role.toLowerCase() === 'admin';
 }
 
+export function isDispatchAdmin(user: Technician | null | undefined): boolean {
+  if (!user) return false;
+  const userRoles: AppRole[] = user.roles || [];
+  return userRoles.includes('dispatch_admin') || user.role.toLowerCase() === 'dispatcher';
+}
+
 export function isPayAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   return hasPermission(user, 'approve_pay_changes');

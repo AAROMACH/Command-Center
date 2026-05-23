@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { ServiceRequest } from '@/lib/types';
+import type { ServiceRequest, Technician } from '@/lib/types';
+import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -24,7 +25,9 @@ import {
   Building2,
   LayoutDashboard,
   FileCheck,
-  SearchCheck
+  SearchCheck,
+  ShieldCheck,
+  Search
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -48,6 +51,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -58,10 +62,19 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    useEffect(() => {
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            const user = technicians.find(t => t.id === userId);
+            setCurrentUser(user || null);
+        }
+    }, []);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -78,9 +91,22 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         setIsReviewOpen(true);
     };
 
+    const userIsSuper = isSuperAdmin(currentUser);
+    const userIsDispatch = isDispatchAdmin(currentUser);
+
     const handleAction = async (status: ServiceRequest['status'], destination?: string) => {
         if (!selectedRequest) return;
         
+        // REGISTRY GUARD: Enforce role-based operational paths
+        if (status === 'rejected' && !userIsSuper) {
+            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'Intake termination requires Super Admin credentials.' });
+            return;
+        }
+        if (status === 'approved' && !userIsSuper) {
+            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'Deployment path authorization requires Super Admin credentials.' });
+            return;
+        }
+
         const docRef = doc(db, 'clientRequests', selectedRequest.id);
 
         try {
@@ -95,7 +121,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                 await updateDoc(docRef, { status: 'reviewed' });
                 toast({
                     title: "Review Finalized",
-                    description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Deployment paths authorized.`,
+                    description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Deployment paths authorized for Super Admin.`,
                 });
             } else if (status === 'approved') {
                 await updateDoc(docRef, { status: 'approved' });
@@ -124,7 +150,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             <div className="table-wrap">
                 <div className="empty-state !py-24 text-center border-none">
                     <ClipboardList size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No missions match current intake filters.</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No missions match current intake filters.</p>
                 </div>
             </div>
         )
@@ -345,28 +371,48 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     )}
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-col md:flex-row items-end gap-6">
-                        <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 px-8 uppercase font-bold text-[10px] tracking-[0.2em] shrink-0">
-                            Reject Intake
-                        </Button>
+                        {userIsSuper && (
+                            <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 px-8 uppercase font-bold text-[10px] tracking-[0.2em] shrink-0">
+                                Reject Intake
+                            </Button>
+                        )}
+                        
                         <div className="flex-1 w-full">
                             {selectedRequest?.status === 'new' ? (
                                 <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Audit Options:</p>
-                                    <Button onClick={() => handleAction('reviewed')} className="w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                                        <SearchCheck size={16} className="mr-2" /> Mark as Reviewed
-                                    </Button>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Audit Action:</p>
+                                    {(userIsSuper || userIsDispatch) ? (
+                                        <Button onClick={() => handleAction('reviewed')} className="w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                                            <SearchCheck size={16} className="mr-2" /> Mark as Reviewed & Confirmed
+                                        </Button>
+                                    ) : (
+                                        <div className="p-3 rounded bg-bg-secondary border border-border-sub flex items-center justify-center gap-2">
+                                            <Lock size={12} className="text-text-muted" />
+                                            <p className="text-[9px] font-bold uppercase text-text-muted">Awaiting Authorization Access</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <>
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3 text-center md:text-left">Authorize Deployment Path:</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                                            <Wrench size={16} className="mr-2" /> Dispatch as assignment
-                                        </Button>
-                                        <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                                            <Briefcase size={16} className="mr-2" /> Convert to project
-                                        </Button>
-                                    </div>
+                                    {userIsSuper ? (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                                                <Wrench size={16} className="mr-2" /> Dispatch as assignment
+                                            </Button>
+                                            <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                                                <Briefcase size={16} className="mr-2" /> Convert to project
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-center gap-3">
+                                            <ShieldCheck size={16} className="text-text-green" />
+                                            <div className="text-left">
+                                                <p className="text-[10px] font-bold uppercase text-text-primary">Audit Verified</p>
+                                                <p className="text-[9px] text-text-muted uppercase">Awaiting Super Admin deployment authorization.</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -376,4 +422,3 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </div>
     );
 }
-

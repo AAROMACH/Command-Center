@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -25,6 +25,12 @@ import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench
 import type { ServiceRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 type NewRequestDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -43,6 +49,38 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
   const [images, setImages] = useState<string[]>([]);
   const [docs, setDocs] = useState<string[]>([]);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const scriptId = 'google-maps-places-script';
+    const initAutocomplete = () => {
+      if (!addressInputRef.current || !window.google) return;
+      const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+        componentRestrictions: { country: "us" },
+        fields: ["formatted_address", "geometry"],
+        types: ["address"],
+      });
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (place.formatted_address) {
+          setFormData(prev => ({ ...prev, location: place.formatted_address }));
+        }
+      });
+    };
+
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0&libraries=places`;
+      script.async = true;
+      script.onload = initAutocomplete;
+      document.head.appendChild(script);
+    } else {
+      initAutocomplete();
+    }
+  }, [isOpen]);
 
   const { toast } = useToast();
 
@@ -134,6 +172,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 <Input 
+                    ref={addressInputRef}
                     placeholder="Full Address"
                     value={formData.location}
                     onChange={(e) => setFormData({...formData, location: e.target.value})}

@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { ServiceRequest, Technician, WorkOrder, Project } from '@/lib/types';
+import type { ServiceRequest, Technician, WorkOrder } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,8 @@ import {
   ShieldAlert,
   Type,
   DollarSign,
-  Lock
+  Lock,
+  Search
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -205,12 +205,16 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
         if (!req.convertedId) return;
         
         if (req.conversionType === 'project') {
+            // Direct navigation to high-fidelity Project Registry
             router.push(`/admin/projects/${req.convertedId}`);
         } else {
             const wo = workOrders.find(w => w.id === req.convertedId);
+            // Contextual routing based on assignment status
             if (!wo || wo.status === 'unassigned') {
+                // Route to Dispatch Hub for unassigned jobs
                 router.push('/admin/dispatch?tab=dispatch');
             } else {
+                // Route to Assignments Hub for assigned/completed jobs
                 router.push('/admin/assignments');
             }
         }
@@ -287,7 +291,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
             
-            // Refined navigation based on conversion result
+            // Execute contextual navigation handshake
             if (conversionType === 'project') {
                 router.push(`/admin/projects/${newId}`);
             } else {
@@ -333,9 +337,20 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                         <tr className="bg-bg-tertiary">
                             <th style={{ width: "140px" }} className="text-center pl-0">Intake ID</th>
                             <th style={{ width: "120px" }} className="text-center">Status</th>
-                            <th className="text-left pl-0">Title & Briefing</th>
-                            <th className="text-left pl-0">Scope Summary</th>
-                            <th style={{ width: "180px" }} className="text-left pl-0">Audit Timeline</th>
+                            {!isHistory ? (
+                                <>
+                                    <th className="text-left pl-0">Client Entity</th>
+                                    <th className="text-left pl-0">Technical Category</th>
+                                    <th className="text-left pl-0">Location Coordinates</th>
+                                    <th className="text-center">Priority</th>
+                                </>
+                            ) : (
+                                <>
+                                    <th className="text-left pl-0">Mission Title</th>
+                                    <th className="text-left pl-0">Scope Briefing</th>
+                                    <th style={{ width: "180px" }} className="text-left pl-0">Audit Timeline</th>
+                                </>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
@@ -351,26 +366,62 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                         </Badge>
                                     </div>
                                 </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[200px] text-left">
-                                        {req.title || 'No Title Provided'}
-                                    </p>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <p className="text-[10px] text-text-secondary leading-snug line-clamp-1 text-left">{req.description}</p>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2">
-                                        <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
-                                            <Plus size={8} /> Created: {req.submittedDate}
-                                        </p>
-                                        <p className="text-[8px] text-brand-red uppercase font-bold flex items-center gap-1">
-                                            <CheckCircle2 size={8} className="text-text-green" /> Audit Final: {formatDateStr(req.closedAt || req.reviewedAt)}
-                                        </p>
-                                    </div>
-                                </td>
+                                {!isHistory ? (
+                                    <>
+                                        <td className="!py-4 text-left pl-0">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 size={12} className="text-text-muted" />
+                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.clientName}</span>
+                                            </div>
+                                        </td>
+                                        <td className="!py-4 text-left pl-0">
+                                            <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub">{req.requestType}</Badge>
+                                        </td>
+                                        <td className="!py-4 text-left pl-0">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase font-bold tracking-tighter truncate max-w-[150px]">
+                                                <MapPin size={10} className="text-brand-red shrink-0" />
+                                                <span className="truncate">{req.location}</span>
+                                            </div>
+                                        </td>
+                                        <td className="!py-4">
+                                            <div className="flex justify-center">
+                                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1.5 uppercase">
+                                                    {req.priority}
+                                                </Badge>
+                                            </div>
+                                        </td>
+                                    </>
+                                ) : (
+                                    <>
+                                        <td className="!py-4 text-left pl-0">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[200px] text-left">
+                                                {req.title || 'No Title Provided'}
+                                            </p>
+                                        </td>
+                                        <td className="!py-4 text-left pl-0">
+                                            <p className="text-[10px] text-text-secondary leading-snug line-clamp-1 text-left">{req.description}</p>
+                                        </td>
+                                        <td className="!py-4 text-left pl-0">
+                                            <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2">
+                                                <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
+                                                    <Plus size={8} /> Created: {req.submittedDate}
+                                                </p>
+                                                <p className="text-[8px] text-brand-red uppercase font-bold flex items-center gap-1">
+                                                    <CheckCircle2 size={8} className="text-text-green" /> Audit Final: {formatDateStr(req.closedAt || req.reviewedAt)}
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </>
+                                )}
                             </tr>
                         ))}
+                        {paginatedRequests.length === 0 && (
+                            <tr>
+                                <td colSpan={isHistory ? 5 : 6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">
+                                    Funnel Clear: No intake records matching registry criteria.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
 
@@ -448,7 +499,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                         </div>
                                         <div className="text-left">
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Registry Linkage</p>
-                                            <p className="text-xs font-bold text-text-primary uppercase">
+                                            <p className="text-xs font-bold text-text-primary uppercase text-left">
                                                 {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'} Created: <span className="text-brand-red font-mono">{selectedRequest.convertedId.toUpperCase()}</span>
                                             </p>
                                         </div>
@@ -485,7 +536,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             <VerifyToggle field="client" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{selectedRequest.clientName}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2 text-left">
@@ -496,7 +547,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             <VerifyToggle field="location" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                                            <span className="text-xs font-bold text-text-primary uppercase">{selectedRequest.location}</span>
+                                            <span className="text-xs font-bold text-text-primary uppercase text-left">{selectedRequest.location}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -509,7 +560,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             </p>
                                             <VerifyToggle field="category" label="verify" />
                                         </div>
-                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
                                             <Badge variant="outline" className="text-[10px] uppercase bg-bg-secondary">{selectedRequest.requestType}</Badge>
                                         </div>
                                     </div>
@@ -520,7 +571,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             </p>
                                             <VerifyToggle field="priority" label="verify" />
                                         </div>
-                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
                                             <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="h-5 px-3 uppercase text-[10px]">
                                                 {selectedRequest.priority}
                                             </Badge>
@@ -541,7 +592,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                         </div>
                     )}
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
                         {selectedRequest?.status === 'new' && (
                             <div className="flex flex-col items-center gap-4 w-full">
                                 <div className="flex items-center justify-between w-full">
@@ -702,7 +753,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
 
                         {conversionType === 'assignment' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4 items-end">
+                                <div className="grid grid-cols-2 gap-4 items-start">
                                     <div className="space-y-2 text-left">
                                         <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
@@ -711,8 +762,8 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
-                                                <SelectItem value="hourly" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
-                                                <SelectItem value="blended" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
+                                                <SelectItem value="hourly" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                                                <SelectItem value="blended" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.blended}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -721,13 +772,16 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             <DollarSign size={12} className="text-text-green" />
                                             Labor Rate ($)
                                         </Label>
-                                        <Input 
-                                            type="number"
-                                            placeholder="0.00" 
-                                            value={conversionPay || ''}
-                                            onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
-                                            className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
-                                        />
+                                        <div className="relative">
+                                            <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
+                                            <Input 
+                                                type="number"
+                                                placeholder="0.00" 
+                                                value={conversionPay || ''}
+                                                onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
+                                                className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold pl-8"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -776,7 +830,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                             </div>
                         )}
 
-                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3">
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
                             <div className="space-y-1 text-left">
                                 <p className="text-[8px] font-black text-text-muted uppercase">Inherited Context</p>
                                 <div className="flex items-center gap-2">

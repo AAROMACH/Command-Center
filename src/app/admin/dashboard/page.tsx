@@ -15,7 +15,6 @@ import {
   ChevronRight,
   CheckCircle2,
   Activity,
-  Separator
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -29,7 +28,6 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc } from 'firebase/firestore';
-import type { WorkOrder, Technician, Project, SiteRequest, ServiceRequest, TimeOffRequest, WeeklyLog } from '@/lib/types';
 import { 
     Dialog, 
     DialogContent, 
@@ -41,6 +39,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 // Performance: Code-splitting heavy chart library
@@ -144,7 +143,7 @@ export default function DashboardPage() {
     }, [router, techPortal]);
 
     return (
-        <div className="animate-in fade-in duration-500">
+        <div className="animate-in fade-in duration-500 text-left">
             <header className="page-header">
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
@@ -207,7 +206,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 space-y-6">
                     <Card>
                         <CardHeader className="text-left">
                             <CardTitle>High Priority Queue</CardTitle>
@@ -252,17 +251,6 @@ export default function DashboardPage() {
                             </Table>
                         </CardContent>
                     </Card>
-                </div>
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
-                            <CardDescription>Top 5 operatives by active assignment density.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <WorkloadChart data={workloadData} />
-                        </CardContent>
-                    </Card>
 
                     <Card>
                         <CardHeader className="pb-3 text-left">
@@ -292,6 +280,17 @@ export default function DashboardPage() {
                         </CardFooter>
                     </Card>
                 </div>
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
+                            <CardDescription>Top 5 operatives by active assignment density.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <WorkloadChart data={workloadData} />
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
             {/* GLOBAL REQUESTS AUDIT TERMINAL */}
@@ -300,7 +299,7 @@ export default function DashboardPage() {
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-3">
                             <Clock className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Global Requests</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Global Requests</DialogTitle>
                         </div>
                         <DialogDescription className="text-xs uppercase font-bold text-text-muted">Consolidated audit terminal for unverified field signals and intake data.</DialogDescription>
                     </DialogHeader>
@@ -349,7 +348,7 @@ export default function DashboardPage() {
                                                         <AvatarImage src={tech?.avatarUrl} />
                                                         <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
                                                     </Avatar>
-                                                    <div>
+                                                    <div className="text-left">
                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
                                                         <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{req.type} Request</p>
                                                         <div className="flex items-center gap-2 mt-1">

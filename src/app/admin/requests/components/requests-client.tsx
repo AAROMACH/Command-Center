@@ -29,7 +29,8 @@ import {
   Plus,
   ArrowUpRight,
   ShieldAlert,
-  Type
+  Type,
+  DollarSign
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -72,6 +73,8 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
     const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
     const [conversionType, setConversionType] = useState<'assignment' | 'project' | null>(null);
     const [conversionTitle, setConversionTitle] = useState("");
+    const [conversionPay, setConversionPay] = useState<number>(0);
+    const [conversionPayType, setConversionPayType] = useState<'fixed' | 'hourly' | 'blended'>('fixed');
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
@@ -131,6 +134,8 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                 ? `${selectedRequest.clientName} - ${selectedRequest.requestType} Initiative`
                 : `${selectedRequest.clientName} - ${selectedRequest.requestType}`
         );
+        setConversionPay(0);
+        setConversionPayType('fixed');
         setIsConversionDialogOpen(true);
     };
 
@@ -207,8 +212,8 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                     projectType: selectedRequest.requestType,
                     scheduleDate: today,
                     scheduleTime: '09:00 AM EST',
-                    pay: 0,
-                    payType: 'fixed',
+                    pay: conversionPay,
+                    payType: conversionPayType,
                     source: 'Client',
                     history: [
                         { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
@@ -424,7 +429,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
 
                             {selectedRequest.status === 'rejected' && (
                                 <div className="p-4 rounded-xl bg-brand-red-dim/5 border border-brand-red/30 space-y-2 mb-6">
-                                    <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2">
+                                    <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2 text-left">
                                         <ShieldAlert size={12}/> Rejection Justification
                                     </p>
                                     <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic text-left">
@@ -656,8 +661,37 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                 className="h-11 bg-bg-primary border-border-sub text-xs font-bold uppercase tracking-wide"
                                 autoFocus
                             />
-                            <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-tighter">This title will be used in the master operational ledger.</p>
                         </div>
+
+                        {conversionType === 'assignment' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                        <DollarSign size={12} className="text-text-green" />
+                                        Labor Rate ($)
+                                    </Label>
+                                    <Input 
+                                        type="number"
+                                        placeholder="0.00" 
+                                        value={conversionPay}
+                                        onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
+                                        className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
+                                    />
+                                </div>
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Pay Model</Label>
+                                    <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
+                                        <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="fixed" className="text-xs uppercase font-bold">Fixed Rate</SelectItem>
+                                            <SelectItem value="hourly" className="text-xs uppercase font-bold">Hourly Rate</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3">
                             <div className="space-y-1 text-left">

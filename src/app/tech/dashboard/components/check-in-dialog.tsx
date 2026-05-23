@@ -31,7 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type CheckInDialogProps = {
     isOpen: boolean;
@@ -142,7 +142,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0">
+            <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Navigation className="text-brand-red h-5 w-5" />
@@ -241,7 +241,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         </ScrollArea>
                     </div>
 
-                    {selectedItem && (
+                    {selectedItem && MAPS_API_KEY && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                              <div className={cn(
                                  "p-3 rounded-lg border flex items-center justify-between transition-colors",

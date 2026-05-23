@@ -30,7 +30,8 @@ import {
     Info,
     ArrowUpRight,
     ExternalLink,
-    Check
+    Check,
+    X
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -49,7 +50,13 @@ import { format, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
+
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 export default function SiteDetailPage() {
     const params = useParams();
@@ -66,12 +73,13 @@ export default function SiteDetailPage() {
         setMounted(true);
         setCurrentUserId(localStorage.getItem('currentUserId'));
 
+        // Defensive Protocol: Catch RefererNotAllowedMapError or other auth failures
         window.gm_authFailure = () => {
             console.warn("Google Maps API Handshake Restricted.");
             toast({
               variant: "destructive",
               title: "Registry Security Error",
-              description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
+              description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
             });
           };
     }, [toast]);
@@ -166,15 +174,21 @@ export default function SiteDetailPage() {
                 <div className="space-y-6">
                     <Card className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
-                             <iframe 
-                                src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(siteData.location)}`} 
-                                width="100%" 
-                                height="100%" 
-                                style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 
-                                allowFullScreen={true} 
-                                loading="lazy"
-                                className="absolute top-0 left-0"
-                            ></iframe>
+                             {MAPS_API_KEY ? (
+                                <iframe 
+                                    src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(siteData.location)}`} 
+                                    width="100%" 
+                                    height="100%" 
+                                    style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 
+                                    allowFullScreen={true} 
+                                    loading="lazy"
+                                    className="absolute top-0 left-0"
+                                ></iframe>
+                             ) : (
+                                <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
+                                </div>
+                             )}
                             <div className="absolute top-2 left-2 z-10">
                                 <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
                                     <Navigation size={10} className="text-brand-red" /> Live Site Feed

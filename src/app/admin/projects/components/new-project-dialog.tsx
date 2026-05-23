@@ -31,7 +31,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type NewProjectDialogProps = {
   isOpen: boolean;
@@ -60,19 +60,20 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   useEffect(() => {
     if (!isOpen) return;
 
+    // Defensive Protocol: Handle referer or activation failures from Google Maps
     window.gm_authFailure = () => {
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
         title: "Registry Security Error",
-        description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
+        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
 
     const scriptId = 'google-maps-places-script';
     
     const initAutocomplete = () => {
-      if (!addressInputRef.current || !window.google) return;
+      if (!addressInputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
       try {
         const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
           componentRestrictions: { country: "us" },
@@ -90,7 +91,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       }
     };
 
-    if (!window.google && !document.getElementById(scriptId)) {
+    if (MAPS_API_KEY && !window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
@@ -106,7 +107,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   }, [isOpen, toast]);
 
   const resolveAddress = () => {
-    if (!formData.location || !window.google) return;
+    if (!formData.location || !window.google || !window.google.maps || !window.google.maps.places) return;
     
     try {
       const service = new window.google.maps.places.PlacesService(document.createElement('div'));
@@ -209,7 +210,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     placeholder="Full Address" 
                     value={formData.location}
                     onChange={e => setFormData({...formData, location: e.target.value})}
-                    className="bg-bg-primary pl-10 pr-10 h-10 text-xs"
+                    className="bg-bg-primary pl-10 pr-10 h-10 text-xs border-border-sub"
                 />
                 {formData.location && (
                     <button 

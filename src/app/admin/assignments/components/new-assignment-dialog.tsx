@@ -35,7 +35,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type NewAssignmentDialogProps = {
   isOpen: boolean;
@@ -80,18 +80,20 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   useEffect(() => {
     if (!isOpen) return;
 
+    // Defensive Protocol: Handle referer or activation failures from Google Maps
     window.gm_authFailure = () => {
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
         title: "Registry Security Error",
-        description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
+        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
 
     const scriptId = 'google-maps-places-script';
+    
     const initAutocomplete = () => {
-      if (!addressInputRef.current || !window.google) return;
+      if (!addressInputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
       try {
         const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
           componentRestrictions: { country: "us" },
@@ -109,7 +111,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       }
     };
 
-    if (!window.google && !document.getElementById(scriptId)) {
+    if (MAPS_API_KEY && !window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
@@ -122,7 +124,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   }, [isOpen, toast]);
   
   const resolveAddress = () => {
-    if (!formData.location || !window.google) return;
+    if (!formData.location || !window.google || !window.google.maps || !window.google.maps.places) return;
     
     try {
       const service = new window.google.maps.places.PlacesService(document.createElement('div'));
@@ -242,7 +244,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     <>
         <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
           <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
-            <DialogHeader className="p-6 pb-2">
+            <DialogHeader className="p-6 pb-2 text-left">
               <div className="flex items-center gap-2 mb-1 text-left">
                 <Wrench className="text-brand-red h-5 w-5" />
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
@@ -546,7 +548,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 className="w-full p-4 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
                             >
                                 <div className="flex justify-between items-start gap-3">
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-0.5 text-left">
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
                                         <p className="text-[10px] text-text-muted flex items-center gap-1.5 text-left">
                                             <MapPin size={10} className="text-brand-red shrink-0" />

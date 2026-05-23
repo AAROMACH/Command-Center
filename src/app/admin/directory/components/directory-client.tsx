@@ -1,4 +1,3 @@
-
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -64,6 +63,14 @@ import { assignmentTimeLogs } from '@/lib/data';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
+
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
 type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
@@ -100,6 +107,18 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         const tab = searchParams.get('tab');
         if (tab) setActiveTab(tab);
     }, [searchParams]);
+
+    useEffect(() => {
+        // Defensive Protocol: Catch RefererNotAllowedMapError or other auth failures
+        window.gm_authFailure = () => {
+            console.warn("Google Maps API Handshake Restricted.");
+            toast({
+              variant: "destructive",
+              title: "Registry Security Error",
+              description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
+            });
+          };
+    }, [toast]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -666,18 +685,24 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[650px] mt-4">
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
-                                     <iframe 
-                                        src={selectedMapAddress 
-                                            ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
-                                            : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1500000!2d-84.5!3d44.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
-                                        } 
-                                        width="100%" 
-                                        height="100%" 
-                                        style={{ border: 0 }} 
-                                        allowFullScreen={true} 
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                    ></iframe>
+                                     {MAPS_API_KEY ? (
+                                         <iframe 
+                                            src={selectedMapAddress 
+                                                ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+                                                : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1500000!2d-84.5!3d44.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
+                                            } 
+                                            width="100%" 
+                                            height="100%" 
+                                            style={{ border: 0 }} 
+                                            allowFullScreen={true} 
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer-when-downgrade"
+                                        ></iframe>
+                                     ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
+                                        </div>
+                                     )}
 
                                     {/* INFO CARD OVERLAY */}
                                     {selectedMapEntity && (

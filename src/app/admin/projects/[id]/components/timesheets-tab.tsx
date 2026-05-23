@@ -7,18 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock } from 'lucide-react';
+import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save } from 'lucide-react';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parse } from 'date-fns';
+import { format, isWithinInterval, parse, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LogAssignmentDialog } from './log-assignment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
@@ -54,7 +58,7 @@ const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
 );
 
 
-const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Technician; viewBy: 'tech' | 'date' }) => {
+const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; tech?: Technician; viewBy: 'tech' | 'date'; onEdit: (log: ProjectDailyLog) => void }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
@@ -87,6 +91,12 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                 <div className="flex items-center gap-2">
                     <Badge variant="active" className="h-5 text-[8px] uppercase tracking-widest px-2">Verified</Badge>
                     <button 
+                        onClick={(e) => { e.stopPropagation(); onEdit(log); }}
+                        className="p-1 hover:bg-bg-tertiary rounded transition-colors text-text-muted hover:text-brand-red"
+                    >
+                        <Pencil size={14}/>
+                    </button>
+                    <button 
                         onClick={() => setIsExpanded(!isExpanded)}
                         className="p-1 hover:bg-bg-tertiary rounded transition-colors text-text-muted hover:text-text-primary"
                     >
@@ -118,6 +128,8 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+    const [isEditLogOpen, setIsEditLogOpen] = useState(false);
+    const [editingLog, setEditingLog] = useState<ProjectDailyLog | null>(null);
     const { toast } = useToast();
 
     const isReadOnly = project.status === 'completed';
@@ -203,6 +215,56 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
             toast({ title: 'Session Transmitted', description: 'Timesheet log committed to project registry.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        }
+    };
+
+    const handleOpenEdit = (log: ProjectDailyLog) => {
+        if (isReadOnly) return;
+        setEditingLog(log);
+        setIsEditLogOpen(true);
+    };
+
+    const handleUpdateLog = async (updatedLog: ProjectDailyLog) => {
+        if (!editingLog) return;
+        try {
+            const logRef = doc(db, 'projectDailyLogs', updatedLog.id);
+            const oldHours = editingLog.hoursWorked || 0;
+            const newHours = updatedLog.hoursWorked || 0;
+            
+            await updateDoc(logRef, {
+                ...updatedLog
+            });
+
+            if (oldHours !== newHours) {
+                const projectRef = doc(db, 'projects', project.id);
+                await updateDoc(projectRef, {
+                    actualHours: (project.actualHours || 0) - oldHours + newHours
+                });
+            }
+
+            toast({ title: 'Registry Synchronized', description: 'Timesheet parameters have been updated.' });
+            setIsEditLogOpen(false);
+            setEditingLog(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
+    };
+
+    const handleDeleteLog = async (logId: string) => {
+        const logToDelete = timesheets.find(l => l.id === logId);
+        if (!logToDelete) return;
+        
+        try {
+            await deleteDoc(doc(db, 'projectDailyLogs', logId));
+            const projectRef = doc(db, 'projects', project.id);
+            await updateDoc(projectRef, {
+                actualHours: Math.max(0, (project.actualHours || 0) - (logToDelete.hoursWorked || 0))
+            });
+            toast({ title: 'Record Purged', description: 'Timesheet entry removed from operational ledger.' });
+            setIsEditLogOpen(false);
+            setEditingLog(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
         }
     };
 
@@ -304,7 +366,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: ProjectDailyLog) => (
-                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} />
+                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} onEdit={handleOpenEdit} />
                                 ))}
                             </AccordionContent>
                         </AccordionItem>
@@ -324,6 +386,114 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
                 projectId={project.id}
                 onLogAdded={handleManualLog}
             />
+
+            {editingLog && (
+                <EditLogDialog 
+                    isOpen={isEditLogOpen}
+                    setIsOpen={setIsEditLogOpen}
+                    log={editingLog}
+                    technicians={technicians}
+                    onSave={handleUpdateLog}
+                    onDelete={handleDeleteLog}
+                />
+            )}
         </div>
     );
 }
+
+function EditLogDialog({ 
+    isOpen, 
+    setIsOpen, 
+    log, 
+    technicians, 
+    onSave,
+    onDelete
+}: { 
+    isOpen: boolean, 
+    setIsOpen: (o: boolean) => void, 
+    log: ProjectDailyLog, 
+    technicians: Technician[], 
+    onSave: (l: ProjectDailyLog) => void,
+    onDelete: (id: string) => void
+}) {
+    const [formData, setFormData] = useState<ProjectDailyLog>({ ...log });
+
+    const handleSave = () => {
+        onSave(formData);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
+                <DialogHeader className="text-left">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Pencil className="text-brand-red h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Edit Timesheet Log</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Modify mission duration and reporting details.</DialogDescription>
+                </DialogHeader>
+
+                <div className="py-4 space-y-6 text-left">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Operative</Label>
+                            <Select value={formData.technicianId} onValueChange={(val) => setFormData({...formData, technicianId: val})}>
+                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Work Date</Label>
+                            <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-10 bg-bg-primary text-xs" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Billable Hours</Label>
+                            <Input 
+                                type="number" 
+                                value={formData.hoursWorked || 0} 
+                                onChange={e => setFormData({...formData, hoursWorked: parseFloat(e.target.value) || 0})} 
+                                className="h-10 bg-bg-primary text-sm font-mono font-bold"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Display Duration</Label>
+                            <Input 
+                                placeholder="e.g. 4h 30m" 
+                                value={formData.totalHours || ''} 
+                                onChange={e => setFormData({...formData, totalHours: e.target.value})} 
+                                className="h-10 bg-bg-primary text-xs font-mono"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-text-muted">Field Summary</Label>
+                        <Textarea 
+                            value={formData.workSummary} 
+                            onChange={e => setFormData({...formData, workSummary: e.target.value})} 
+                            className="bg-bg-primary text-xs min-h-[100px] leading-relaxed uppercase font-medium"
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex justify-between gap-3">
+                    <Button variant="destructive-outline" className="h-11 px-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => onDelete(log.id)}>
+                        <Trash2 size={16} className="mr-2"/> Purge Record
+                    </Button>
+                    <div className="flex gap-3">
+                        <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Discard</Button>
+                        <Button onClick={handleSave} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
+                            <Save size={16} className="mr-2"/> Save Changes
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+

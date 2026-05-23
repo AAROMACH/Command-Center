@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -22,8 +23,8 @@ type LogAssignmentDialogProps = {
 const defaultLogState = {
     technicianId: '',
     date: format(new Date(), 'yyyy-MM-dd'),
-    checkInTime: '',
-    checkOutTime: '',
+    checkInTime: '09:00',
+    checkOutTime: '17:00',
     logSummary: '',
 };
 
@@ -44,8 +45,8 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         if (!logData.technicianId || !logData.date || !logData.checkInTime || !logData.checkOutTime) {
             toast({
                 variant: 'destructive',
-                title: 'Missing Information',
-                description: 'Please fill out all required fields (Technician, Date, Check-In/Out).',
+                title: 'Incomplete Parameters',
+                description: 'Identity, Date, and Duration windows are mandatory for registry logs.',
             });
             return;
         }
@@ -57,8 +58,8 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         if (diffMs < 0) {
             toast({
                 variant: 'destructive',
-                title: 'Invalid Times',
-                description: 'Check-out time must be after check-in time.',
+                title: 'Temporal Discrepancy',
+                description: 'Check-out time must follow check-in time.',
             });
             return;
         }
@@ -76,7 +77,7 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
             checkOutTime: format(checkOut, 'h:mm a'),
             totalHours: `${hours}h ${minutes}m`,
             totalMinutes,
-            workSummary: logData.logSummary,
+            workSummary: logData.logSummary || 'MANUAL REGISTRY ENTRY',
             taskIdsCompleted: [],
             taskIdsProgressed: [],
             phaseIdsWorked: [],
@@ -85,27 +86,23 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         };
 
         onLogAdded(newLog);
-        toast({
-            title: 'Assignment Logged',
-            description: `New log for ${technicians.find(t => t.id === logData.technicianId)?.name} has been added.`,
-        });
         setIsOpen(false);
         setLogData(defaultLogState);
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default">
-                <DialogHeader className="text-left">
-                    <DialogTitle className="page-title text-xl uppercase font-bold tracking-widest">Log Manual Assignment</DialogTitle>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Manually log a technician&apos;s work for project {projectId.toUpperCase()}.</DialogDescription>
+            <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default shadow-2xl">
+                <DialogHeader className="text-left border-b border-border-sub bg-bg-tertiary/30 p-6 -mx-6 -mt-6 rounded-t-lg">
+                    <DialogTitle className="page-title text-xl uppercase font-bold tracking-widest">Manual Session Registry</DialogTitle>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Initialize a field session entry for project <span className="text-text-primary">{projectId.toUpperCase()}</span>.</DialogDescription>
                 </DialogHeader>
-                <div className="py-4 space-y-4">
+                <div className="py-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 text-left">
-                             <Label htmlFor="technicianId" className="text-[10px] uppercase font-bold text-text-muted">Technician</Label>
+                             <Label htmlFor="technicianId" className="text-[10px] uppercase font-bold text-text-muted">Operative Identity</Label>
                             <Select value={logData.technicianId} onValueChange={(value) => handleSelectChange('technicianId', value)}>
-                                <SelectTrigger id="technicianId" className="bg-bg-primary h-10">
+                                <SelectTrigger id="technicianId" className="bg-bg-primary h-10 text-xs font-bold uppercase">
                                     <SelectValue placeholder="Select operative" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -116,30 +113,31 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
                             </Select>
                         </div>
                         <div className="space-y-2 text-left">
-                             <Label htmlFor="date" className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
-                             <Input id="date" name="date" type="date" value={logData.date} onChange={handleInputChange} className="bg-bg-primary h-10" />
+                             <Label htmlFor="date" className="text-[10px] uppercase font-bold text-text-muted">Mission Date</Label>
+                             <Input id="date" name="date" type="date" value={logData.date} onChange={handleInputChange} className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 text-left">
-                             <Label htmlFor="checkInTime" className="text-[10px] uppercase font-bold text-text-muted">Check-In</Label>
-                             <Input id="checkInTime" name="checkInTime" type="time" value={logData.checkInTime} onChange={handleInputChange} className="bg-bg-primary h-10" />
+                             <Label htmlFor="checkInTime" className="text-[10px] uppercase font-bold text-text-muted">Initial Check-In</Label>
+                             <Input id="checkInTime" name="checkInTime" type="time" value={logData.checkInTime} onChange={handleInputChange} className="bg-bg-primary h-10 text-xs" />
                         </div>
                         <div className="space-y-2 text-left">
-                             <Label htmlFor="checkOutTime" className="text-[10px] uppercase font-bold text-text-muted">Check-Out</Label>
-                             <Input id="checkOutTime" name="checkOutTime" type="time" value={logData.checkOutTime} onChange={handleInputChange} className="bg-bg-primary h-10" />
+                             <Label htmlFor="checkOutTime" className="text-[10px] uppercase font-bold text-text-muted">Final Check-Out</Label>
+                             <Input id="checkOutTime" name="checkOutTime" type="time" value={logData.checkOutTime} onChange={handleInputChange} className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                      <div className="space-y-2 text-left">
-                         <Label htmlFor="logSummary" className="text-[10px] uppercase font-bold text-text-muted">Work Summary</Label>
-                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[100px] text-xs uppercase" placeholder="Detailed mission report..."/>
+                         <Label htmlFor="logSummary" className="text-[10px] uppercase font-bold text-text-muted">Mission Narrative</Label>
+                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[120px] text-xs uppercase font-medium leading-relaxed" placeholder="Document site activity, terminal outcomes, and field obstacles..."/>
                     </div>
                 </div>
                 <DialogFooter className="pt-4 border-t border-border-sub bg-bg-tertiary/30 -mx-6 -mb-6 p-6">
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover px-8">Authorize Log</Button>
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-8 font-bold uppercase text-[10px] tracking-widest">Discard</Button>
+                    <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover h-11 px-10 font-bold uppercase text-[10px] tracking-widest text-white">Authorize Registry Log</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
+

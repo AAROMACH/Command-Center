@@ -1,10 +1,11 @@
-
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrdersClient } from "./work-orders-client";
 import { RoutesView } from "./routes-view";
 import type { WorkOrder, Technician, Route } from "@/lib/types";
+import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 type DispatchTabsProps = {
   workOrders: WorkOrder[];
@@ -21,11 +22,21 @@ export function DispatchTabs({
   routes, 
   onRoutesChange 
 }: DispatchTabsProps) {
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('subtab') || 'unassigned');
+  
+  useEffect(() => {
+    const subtab = searchParams.get('subtab');
+    if (subtab && (subtab === 'unassigned' || subtab === 'routes' || subtab === 'assigned')) {
+      setActiveTab(subtab);
+    }
+  }, [searchParams]);
+
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId);
   const assignedWorkOrders = workOrders.filter(wo => wo.status !== 'unassigned' && !!wo.assignedTechnicianId);
   
   return (
-    <Tabs defaultValue="unassigned">
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList className="tabs">
         <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>

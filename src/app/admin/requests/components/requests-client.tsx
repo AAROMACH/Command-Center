@@ -210,12 +210,11 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
         } else {
             const wo = workOrders.find(w => w.id === req.convertedId);
             // Contextual routing based on assignment status
-            if (!wo || wo.status === 'unassigned') {
-                // Route to Dispatch Hub for unassigned jobs
-                router.push('/admin/dispatch?tab=dispatch');
+            // Logic: stay in Dispatch Hub, route to Unassigned or Assigned sub-tab
+            if (!wo || wo.status === 'unassigned' || !wo.assignedTechnicianId) {
+                router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
             } else {
-                // Route to Assignments Hub for assigned/completed jobs
-                router.push('/admin/assignments');
+                router.push('/admin/dispatch?tab=dispatch&subtab=assigned');
             }
         }
     };
@@ -295,7 +294,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
             if (conversionType === 'project') {
                 router.push(`/admin/projects/${newId}`);
             } else {
-                router.push('/admin/dispatch?tab=dispatch');
+                router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
             }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Conversion Failed', description: e.message });

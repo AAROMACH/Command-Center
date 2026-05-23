@@ -1,5 +1,4 @@
 import { Navbar } from '@/components/navbar';
-import { AlertBand } from '@/components/alert-band';
 
 export default function ClientLayout({
   children,
@@ -10,7 +9,6 @@ export default function ClientLayout({
     <>
       <Navbar />
       <div className="page-wrapper pt-[52px]">
-        <AlertBand />
         <div className="page-content">{children}</div>
       </div>
     </>

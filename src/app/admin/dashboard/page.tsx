@@ -8,9 +8,15 @@ import {
   Wrench,
   FolderKanban,
   Clock,
+  ClipboardList,
+  Users,
+  MapPin,
+  Calendar,
+  ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +26,20 @@ import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query } from 'firebase/firestore';
-import type { WorkOrder, Technician, Project, SiteRequest } from '@/lib/types';
+import { collection, onSnapshot, query, doc } from 'firebase/firestore';
+import type { WorkOrder, Technician, Project, SiteRequest, ServiceRequest, TimeOffRequest } from '@/lib/types';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription, 
+    DialogFooter 
+} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 // Performance: Code-splitting heavy chart library
 const WorkloadChart = dynamic(() => import('./components/workload-chart').then(mod => mod.WorkloadChart), {
@@ -34,7 +52,10 @@ export default function DashboardPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+    const [clientRequests, setClientRequests] = useState<ServiceRequest[]>([]);
+    const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
     const router = useRouter();
 
     // 1. Initialize Real-time Registry Listeners
@@ -61,11 +82,21 @@ export default function DashboardPage() {
             setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
         });
 
+        const unsubClientReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
+            setClientRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
+        });
+
+        const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+            setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+        });
+
         return () => {
             unsubWO();
             unsubTech();
             unsubProj();
             unsubSite();
+            unsubClientReq();
+            unsubTOR();
         };
     }, []);
 
@@ -85,9 +116,17 @@ export default function DashboardPage() {
             .slice(0, 5)
     , [technicians, workOrders]);
 
-    const pendingSitesCount = useMemo(() => 
-        siteRequests.filter(sr => sr.status === 'pending').length
-    , [siteRequests]);
+    const pendingRequests = useMemo(() => {
+        const tickets = clientRequests.filter(r => r.status === 'new');
+        const sites = siteRequests.filter(s => s.status === 'pending');
+        const timeOff = timeOffRequests.filter(t => t.status === 'pending');
+        return {
+            tickets,
+            sites,
+            timeOff,
+            total: tickets.length + sites.length + timeOff.length
+        };
+    }, [clientRequests, siteRequests, timeOffRequests]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
@@ -139,15 +178,15 @@ export default function DashboardPage() {
                         icon="FolderKanban"
                     />
                 </Link>
-                <Link href="/admin/directory?tab=requests&subtab=client">
+                <div className="cursor-pointer" onClick={() => setIsPendingDialogOpen(true)}>
                     <StatCard 
-                        label="Pending Site Registry" 
-                        value={pendingSitesCount.toString()}
-                        delta="Awaiting Audit" 
+                        label="Global Requests" 
+                        value={pendingRequests.total.toString()}
+                        delta="Awaiting Action" 
                         deltaType="warning"
                         icon="Clock"
                     />
-                </Link>
+                </div>
                 <Link href="/admin/reports?tab=flags">
                     <StatCard 
                         label="System Anomalies" 
@@ -206,8 +245,8 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
-                <div>
-                    <Card className="h-full">
+                <div className="space-y-6">
+                    <Card>
                         <CardHeader className="text-left">
                             <CardTitle>{TERMINOLOGY.ENTITIES.OPERATIVE} Workload</CardTitle>
                             <CardDescription>Top 5 operatives by active assignment density.</CardDescription>
@@ -216,8 +255,151 @@ export default function DashboardPage() {
                             <WorkloadChart data={workloadData} />
                         </CardContent>
                     </Card>
+
+                    <Card>
+                        <CardHeader className="pb-3 text-left">
+                            <CardTitle>Urgent Service Requests</CardTitle>
+                            <CardDescription>Newest client intake tickets awaiting review.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {pendingRequests.tickets.slice(0, 3).map(req => (
+                                <div key={req.id} className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between hover:border-brand-red transition-all cursor-pointer group" onClick={() => router.push('/admin/dispatch?tab=requests')}>
+                                    <div className="text-left space-y-0.5">
+                                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red">{req.clientName}</p>
+                                        <p className="text-[9px] text-text-muted uppercase truncate max-w-[150px]">{req.description}</p>
+                                    </div>
+                                    <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{req.priority}</Badge>
+                                </div>
+                            ))}
+                            {pendingRequests.tickets.length === 0 && (
+                                <div className="py-8 text-center border border-dashed border-border-sub rounded-lg opacity-40">
+                                    <p className="text-[10px] font-bold uppercase text-text-muted">Funnel Clear</p>
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="pt-0 border-t border-border-sub bg-bg-tertiary/20 p-4">
+                            <Button variant="ghost" className="w-full text-[10px] uppercase font-bold tracking-widest h-8" onClick={() => router.push('/admin/dispatch?tab=requests')}>
+                                View Full Intake Registry <ChevronRight size={12} className="ml-2" />
+                            </Button>
+                        </CardFooter>
+                    </Card>
                 </div>
             </div>
+
+            {/* GLOBAL REQUESTS AUDIT TERMINAL */}
+            <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
+                <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
+                    <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-3">
+                            <Clock className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Global Requests</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Consolidated audit terminal for unverified field signals and intake data.</DialogDescription>
+                    </DialogHeader>
+
+                    <Tabs defaultValue="tickets" className="flex-1 overflow-hidden flex flex-col">
+                        <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
+                            <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
+                                <TabsTrigger value="tickets" className="tab-trigger-dashboard flex items-center gap-2">
+                                    <ClipboardList size={14} /> Service Tickets <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.tickets.length}</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger value="timeoff" className="tab-trigger-dashboard flex items-center gap-2">
+                                    <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.timeOff.length}</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger value="sites" className="tab-trigger-dashboard flex items-center gap-2">
+                                    <MapPin size={14} /> Site Registry <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.sites.length}</Badge>
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
+
+                        <ScrollArea className="flex-1">
+                            <div className="p-6">
+                                <TabsContent value="tickets" className="m-0 space-y-3">
+                                    {pendingRequests.tickets.map(req => (
+                                        <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                            <div className="text-left space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-mono font-bold text-brand-red uppercase">{req.id}</span>
+                                                    <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{req.priority}</Badge>
+                                                </div>
+                                                <p className="text-xs font-bold text-text-primary uppercase truncate max-w-[400px]">{req.clientName} — {req.requestType}</p>
+                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{req.location.split(',')[0]}</p>
+                                            </div>
+                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/dispatch?tab=requests'); }}>Audit detail</Button>
+                                        </div>
+                                    ))}
+                                    {pendingRequests.tickets.length === 0 && <EmptyState icon={ClipboardList} label="Service funnel clear" />}
+                                </TabsContent>
+
+                                <TabsContent value="timeoff" className="m-0 space-y-3">
+                                    {pendingRequests.timeOff.map(req => {
+                                        const tech = technicians.find(t => t.id === req.technicianId);
+                                        return (
+                                            <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
+                                                <div className="flex items-center gap-4 text-left">
+                                                    <Avatar className="h-10 w-10 border border-border-sub">
+                                                        <AvatarImage src={tech?.avatarUrl} />
+                                                        <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
+                                                        <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{req.type} Request</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <Calendar className="h-3 w-3 text-brand-red" />
+                                                            <span className="text-[10px] font-mono font-bold">{req.startDate} — {req.endDate}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=personnel'); }}>Review Log</Button>
+                                            </div>
+                                        )
+                                    })}
+                                    {pendingRequests.timeOff.length === 0 && <EmptyState icon={Users} label="Personnel registry nominal" />}
+                                </TabsContent>
+
+                                <TabsContent value="sites" className="m-0 space-y-3">
+                                    {pendingRequests.sites.map(req => (
+                                        <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
+                                            <div className="text-left space-y-1">
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
+                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{req.clientName}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <MapPin className="h-3 w-3 text-brand-red" />
+                                                    <span className="text-[10px] text-text-secondary truncate max-w-[300px] uppercase font-medium">{req.location}</span>
+                                                </div>
+                                            </div>
+                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=client'); }}>Verify Site</Button>
+                                        </div>
+                                    ))}
+                                    {pendingRequests.sites.length === 0 && <EmptyState icon={MapPin} label="Site verifications complete" />}
+                                </TabsContent>
+                            </div>
+                        </ScrollArea>
+                    </Tabs>
+
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
+                        <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsPendingDialogOpen(false)}>Close Buffer</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <style jsx global>{`
+                .tab-trigger-dashboard {
+                    @apply px-0 h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
+                }
+                .tab-trigger-dashboard[data-state="active"] {
+                    @apply text-text-primary border-brand-red bg-transparent shadow-none;
+                }
+            `}</style>
+        </div>
+    );
+}
+
+function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
+    return (
+        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+            <Icon size={48} className="mx-auto text-text-muted mb-2" />
+            <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
         </div>
     );
 }

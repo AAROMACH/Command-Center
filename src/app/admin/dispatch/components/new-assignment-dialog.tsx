@@ -239,7 +239,14 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   return (
     <>
         <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-          <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl text-left">
+          <DialogContent 
+            className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl text-left"
+            onPointerDownOutside={(e) => {
+              if (e.target instanceof Element && e.target.closest('.pac-container')) {
+                e.preventDefault();
+              }
+            }}
+          >
             <DialogHeader className="p-6 pb-2 text-left">
               <div className="flex items-center gap-2 mb-1">
                 <Wrench className="text-brand-red h-5 w-5" />

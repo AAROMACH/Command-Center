@@ -198,7 +198,14 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left">
+      <DialogContent 
+        className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left"
+        onPointerDownOutside={(e) => {
+          if (e.target instanceof Element && e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader className="p-6 pb-2 text-left">
           <div className="flex items-center gap-2 mb-1">
             <ClipboardList className="text-brand-red h-5 w-5" />
@@ -357,7 +364,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <X size={14} className="mr-2"/> Cancel Intake
           </Button>
           <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Convert to a(n):</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
                 <Wrench size={14} className="mr-2" /> Assignment

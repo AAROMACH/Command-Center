@@ -156,7 +156,7 @@
 
   /* ShadCN Component Overrides */
   .card {
-    @apply rounded-lg border border-border-main bg-bg-secondary shadow-none;
+    @apply rounded-lg border border-border-default bg-bg-secondary shadow-none;
   }
 
   /* Assignments Page Styles */
@@ -492,6 +492,12 @@
     @apply border border-dashed border-border-main rounded-lg p-6 text-center;
   }
   .empty-state-text { @apply mt-1.5 text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+}
+
+/* Fix for Google Places Autocomplete in Modals */
+.pac-container {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
 }
 
 @keyframes shimmer {

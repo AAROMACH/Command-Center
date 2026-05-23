@@ -388,8 +388,8 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {images.map((img, i) => (
-                    <div key={i} className="relative aspect-video rounded border border-border-sub overflow-hidden group bg-bg-primary">
-                      <img src={img} alt={`Upload ${i}`} className="w-full h-full object-cover" />
+                    <div key={i} className="relative aspect-video rounded-lg border border-border-sub overflow-hidden group bg-bg-primary">
+                      <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
                       <button 
                         type="button"
                         onClick={() => removeAttachment('image', i)}
@@ -472,7 +472,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
               <div className="grid grid-cols-1">
                 <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                  <SquarePlus size={14} className="mr-2" /> Create Assignment
+                  <SquarePlus size={14} className="mr-2" /> Create request
                 </Button>
               </div>
             </div>

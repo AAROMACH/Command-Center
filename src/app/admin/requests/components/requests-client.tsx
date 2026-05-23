@@ -34,7 +34,8 @@ import {
   ArrowUpRight,
   MessageSquare,
   SquarePlus,
-  Plus
+  Plus,
+  ArrowLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -75,6 +76,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
+    const [isRejecting, setIsRejecting] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -96,6 +98,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         if (!isReviewOpen) {
             setVerifiedFields(new Set());
             setRejectionReason("");
+            setIsRejecting(false);
         }
     }, [isReviewOpen]);
 
@@ -127,7 +130,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const handleAction = async (status: ServiceRequest['status'], destination?: string) => {
         if (!selectedRequest) return;
         
-        // REGISTRY GUARD: Enforce role-based operational paths
         const requiresSuper = status === 'rejected' || status === 'approved' || destination !== undefined;
         if (requiresSuper && !userIsSuper) {
             toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'This authorization path requires Super Admin credentials.' });
@@ -167,13 +169,11 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     description: `Request ${selectedRequest.id.toUpperCase()} approved. Awaiting tactical deployment selection.`,
                 });
             } else if (destination) {
-                // Conversion case
                 const isProject = destination === '/admin/projects';
                 const today = format(new Date(), 'yyyy-MM-dd');
                 const now = new Date().toISOString();
                 
                 if (destination === '/admin/dispatch') {
-                  // CREATE WORK ORDER (Assignment)
                   const newWO: Omit<WorkOrder, 'id'> = {
                     title: `${selectedRequest.clientName} - ${selectedRequest.requestType}`,
                     description: selectedRequest.description,
@@ -195,7 +195,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                   await addDoc(collection(db, 'workOrders'), newWO);
                   await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment', closedAt: now });
                 } else if (destination === '/admin/projects') {
-                  // CREATE PROJECT
                   const newProject: Omit<Project, 'id'> = {
                     name: `${selectedRequest.clientName} - ${selectedRequest.requestType} Initiative`,
                     client: selectedRequest.clientName,
@@ -476,7 +475,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
                             </div>
 
-                            {selectedRequest.status === 'reviewed' && (
+                            {isRejecting && (
                                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 px-1">
                                         <MessageSquare size={12}/> Rejection Briefing
@@ -560,21 +559,43 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                     <Badge variant="active" className="text-[8px] h-4">AUDIT PASSED</Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 w-full">
-                                    <Button 
-                                        variant="destructive-outline" 
-                                        disabled={!userIsSuper}
-                                        onClick={() => handleAction('rejected')} 
-                                        className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
-                                    >
-                                        <X size={16} className="mr-2" /> Reject Intake
-                                    </Button>
-                                    <Button 
-                                        disabled={!userIsSuper}
-                                        onClick={() => handleAction('approved')} 
-                                        className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
-                                    >
-                                        <Check size={16} className="mr-2" /> Approve for Deployment
-                                    </Button>
+                                    {isRejecting ? (
+                                        <>
+                                            <Button 
+                                                variant="outline" 
+                                                onClick={() => setIsRejecting(false)} 
+                                                className="h-11 uppercase font-bold text-[10px] tracking-widest"
+                                            >
+                                                <ArrowLeft size={16} className="mr-2" /> Back
+                                            </Button>
+                                            <Button 
+                                                variant="destructive" 
+                                                disabled={!userIsSuper || !rejectionReason.trim()}
+                                                onClick={() => handleAction('rejected')} 
+                                                className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                            >
+                                                <X size={16} className="mr-2" /> Confirm & Reject
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button 
+                                                variant="destructive-outline" 
+                                                disabled={!userIsSuper}
+                                                onClick={() => setIsRejecting(true)} 
+                                                className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                            >
+                                                <X size={16} className="mr-2" /> Reject Intake
+                                            </Button>
+                                            <Button 
+                                                disabled={!userIsSuper}
+                                                onClick={() => handleAction('approved')} 
+                                                className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                            >
+                                                <Check size={16} className="mr-2" /> Approve for Deployment
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                                 {!userIsSuper && (
                                     <p className="text-[8px] text-text-muted uppercase text-center font-bold italic">Hierarchical Lock: Super Admin authorization required for deployment.</p>

@@ -122,8 +122,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
           id: mission.id,
           description: mission.description,
           location: mission.location,
-          requiredSkills: mission.requiredSkills,
-          priority: mission.priority,
+          requiredSkills: mission.requiredSkills || [],
+          priority: mission.priority || 'medium',
         },
         availableTechnicians: technicians.map((t) => ({
           id: t.id,

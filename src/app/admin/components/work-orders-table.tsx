@@ -340,7 +340,6 @@ export const WorkOrdersTable = React.memo(({
                         )
                         ) : (
                             <div className="flex items-center gap-1.5 text-text-green text-left">
-                                <DollarSign size={12} className="shrink-0" />
                                 <div className="flex flex-col items-start leading-none text-left">
                                     {order.payType === 'blended' ? (
                                         <>

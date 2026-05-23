@@ -108,7 +108,7 @@ export function WorkOrdersClient({
                 </span>
               </div>
 
-              <div className="flex flex-col gap-y-2 mb-3">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
                   <Calendar className="w-3.5 h-3.5 text-text-muted" />
                   {wo.scheduleDate} · {wo.scheduleTime}

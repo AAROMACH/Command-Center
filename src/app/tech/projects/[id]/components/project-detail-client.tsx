@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -304,7 +305,7 @@ const TimesheetsTab = ({
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-                <section className={cn("field-group border-2", isReadOnly ? "border-border-sub bg-bg-secondary/50 grayscale" : "border-brand-red/30 bg-brand-red-dim/5")}>
+                <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
                         <div className="flex items-center gap-3">
@@ -376,7 +377,7 @@ const TimesheetsTab = ({
                                             <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.date}</span>
                                             <Badge variant="outline" className="text-[8px] bg-bg-tertiary h-4">{group.logs.length} LOGS</Badge>
                                         </div>
-                                        <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Day Total: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
+                                        <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Daily Hours: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
                                     </AccordionTrigger>
                                     <AccordionContent className="p-2 space-y-1 bg-bg-primary/20">
                                         {group.logs.map(log => {

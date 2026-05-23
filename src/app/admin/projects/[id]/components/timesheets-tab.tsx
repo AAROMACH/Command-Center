@@ -84,7 +84,7 @@ const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; te
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)} HOURS`}</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours}</span>
                     </div>
                 </div>
 
@@ -355,7 +355,9 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                                     </div>
                                     <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
-                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Group Time: <span className="text-text-primary font-mono text-xs">{group.totalTime}</span></span>
+                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">
+                                    {viewBy === 'date' ? 'Daily Hours:' : 'Tech Total Hours:'} <span className="text-text-primary font-mono text-xs">{group.totalTime}</span>
+                                </span>
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: ProjectDailyLog) => (

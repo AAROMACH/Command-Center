@@ -224,8 +224,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setLinkedMission(wo);
                 setIsMissionCardOpen(true);
             } else {
-                // Fallback if not in current local cache, go to hub
-                router.push('/admin/dispatch?tab=dispatch');
+                toast({ variant: 'destructive', title: 'Registry Discrepancy', description: 'Linked assignment record could not be located in current terminal buffer.' });
             }
         }
     };
@@ -375,14 +374,14 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         <td className="!py-4 text-left pl-0">
                                             <div className="flex items-center gap-2">
                                                 <Building2 size={12} className="text-text-muted" />
-                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{req.clientName}</span>
+                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px] text-left">{req.clientName}</span>
                                             </div>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
                                             <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub">{req.requestType}</Badge>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase font-bold tracking-tighter truncate max-w-[150px]">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase font-bold tracking-tighter truncate max-w-[150px] text-left">
                                                 <MapPin size={10} className="text-brand-red shrink-0" />
                                                 <span className="truncate">{req.location}</span>
                                             </div>
@@ -406,7 +405,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             <p className="text-[10px] text-text-secondary leading-snug line-clamp-1 text-left">{req.description}</p>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
-                                            <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2">
+                                            <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2 text-left">
                                                 <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
                                                     <Plus size={8} /> Created: {req.submittedDate}
                                                 </p>
@@ -456,7 +455,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Audit and verification terminal for client service requests.</DialogDescription>
                             </div>
                             <div className="text-right space-y-1">
-                                <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{selectedRequest?.id.toUpperCase()}</p>
+                                <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{(selectedRequest?.id || '').toUpperCase()}</p>
                                 <Badge variant={selectedRequest?.status === 'closed' ? 'active' : selectedRequest?.status === 'rejected' ? 'missed' : 'pending'} className="text-[7px] uppercase h-4 tracking-tighter">
                                     {selectedRequest?.status}
                                 </Badge>
@@ -475,7 +474,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         <div className="text-left">
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Registry Linkage Active</p>
                                             <p className="text-xs font-bold text-text-primary uppercase text-left">
-                                                Converted to {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'}: <span className="text-brand-red font-mono">{selectedRequest.convertedId.toUpperCase()}</span>
+                                                Converted to {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'}: <span className="text-brand-red font-mono">{(selectedRequest.convertedId || '').toUpperCase()}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -485,7 +484,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         className="h-8 text-[9px] font-bold uppercase"
                                         onClick={() => handleViewMissionCard(selectedRequest)}
                                     >
-                                        View Mission Card <ChevronRight size={12} className="ml-1.5" />
+                                        View Mission Terminal <ChevronRight size={12} className="ml-1.5" />
                                     </Button>
                                 </div>
                             )}
@@ -538,7 +537,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             </p>
                                             <VerifyToggle field="client" label="verify" />
                                         </div>
-                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{selectedRequest.clientName}</p>
                                         </div>
                                     </div>
@@ -690,18 +689,26 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         )}
                         
                         {(selectedRequest?.status === 'closed' || selectedRequest?.status === 'rejected') && (
-                            <div className="flex gap-3 w-full">
-                                <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
-                                    Exit Terminal
-                                </Button>
-                                {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
-                                    <Button 
-                                        className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
-                                        onClick={() => handleViewMissionCard(selectedRequest)}
-                                    >
-                                        View Converted Mission <ArrowUpRight size={14} className="ml-2" />
+                            <div className="flex flex-col gap-4 w-full">
+                                <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4">
+                                    <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
+                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium text-left">
+                                        This intake has been finalized. Audit trail preserved in the historical registry. Converted missions are active in their respective logistical hubs.
+                                    </p>
+                                </div>
+                                <div className="flex gap-3 w-full">
+                                    <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
+                                        Exit Terminal
                                     </Button>
-                                )}
+                                    {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
+                                        <Button 
+                                            className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                                            onClick={() => handleViewMissionCard(selectedRequest)}
+                                        >
+                                            View Mission Card <ArrowUpRight size={14} className="ml-2" />
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </DialogFooter>
@@ -893,7 +900,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setIsOpen={setIsMissionCardOpen}
                 mission={linkedMission}
                 onUpdate={(id, updates) => {
-                    // Update in local mission if needed
+                    // Update in local mission buffer if needed
                     if (linkedMission?.id === id) {
                         setLinkedMission({ ...linkedMission, ...updates });
                     }

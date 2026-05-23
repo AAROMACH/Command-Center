@@ -238,19 +238,17 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
         toast({ variant: "destructive", title: "Buffer Full", description: "Maximum 2 technical documents authorized." });
         return;
       }
-      // For a prototype, we store the name to represent the link. In production, this would be an upload.
       setDocs([...docs, file.name]);
       toast({ title: "Technical Asset Buffered", description: `${file.name} ready for intake.` });
     }
     
-    // Reset input so the same file can be chosen again if needed (e.g. after deletion)
     e.target.value = "";
   };
 
   const removeAttachment = (type: 'image' | 'doc', index: number) => {
     if (type === 'image') {
       const urlToRemove = images[index];
-      URL.revokeObjectURL(urlToRemove); // Registry cleanup
+      URL.revokeObjectURL(urlToRemove);
       setImages(images.filter((_, i) => i !== index));
     } else {
       setDocs(docs.filter((_, i) => i !== index));
@@ -477,7 +475,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                   <Wrench size={14} className="mr-2" /> Assignment
                 </Button>
                 <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                  <Briefcase size={14} className="mr-2" /> Convert to project
+                  <ClipboardList size={14} className="mr-2" /> Create request
                 </Button>
               </div>
             </div>
@@ -569,7 +567,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                                       </p>
                                   </div>
                                   <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-                              </div>
+                               </div>
                           </button>
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (

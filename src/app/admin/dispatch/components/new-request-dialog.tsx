@@ -475,7 +475,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                   <Wrench size={14} className="mr-2" /> Assignment
                 </Button>
                 <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                  <Briefcase size={14} className="mr-2" /> Convert to project
+                  <ClipboardList size={14} className="mr-2" /> Create request
                 </Button>
               </div>
             </div>
@@ -567,7 +567,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                                       </p>
                                   </div>
                                   <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-                              </div>
+                               </div>
                           </button>
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (

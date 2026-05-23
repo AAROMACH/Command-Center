@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -44,7 +43,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { isAdmin } from '@/lib/permissions';
 import { format } from 'date-fns';
 import { getRecommendation } from '@/app/admin/dispatch/actions';
@@ -188,14 +187,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         <DialogHeader className="p-6 pb-2 text-left">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {mission.id.toUpperCase()}</span>
+                <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono text-left">ID: {mission.id.toUpperCase()}</span>
                 <Badge variant={mission.status === 'completed' ? 'active' : mission.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
                     {mission.status}
                 </Badge>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold uppercase tracking-wide text-text-primary leading-tight">{mission.title || mission.description}</DialogTitle>
-          <div className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
+          <DialogTitle className="text-xl font-bold uppercase tracking-wide text-text-primary leading-tight text-left">{mission.title || mission.description}</DialogTitle>
+          <div className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1 text-left">
              <a 
                 href={mapsUrl}
                 target="_blank"
@@ -216,7 +215,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
           <div className="space-y-8">
             <div className="space-y-4 text-left">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                     <StickyNote size={14} className="text-accent-gold shrink-0"/>
                     <span>Scope of Work</span>
                   </h3>
@@ -232,21 +231,21 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                     </a>
                   )}
                 </div>
-                <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
+                <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase text-left">
                     {mission.description}
                 </div>
             </div>
 
             {userIsAdmin && (
               <div className="space-y-4 text-left">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                   <Coins size={14} className="text-text-green shrink-0"/>
                   <span>Labor Rate</span>
                 </h3>
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex justify-between items-center">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Pricing Model</p>
-                    <p className="text-xs font-bold text-text-primary uppercase">{(mission.payType || 'fixed').replace(/_/g, ' ')} labor rate</p>
+                  <div className="space-y-1 text-left">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Pricing Model</p>
+                    <p className="text-xs font-bold text-text-primary uppercase text-left">{(mission.payType || 'fixed').replace(/_/g, ' ')} labor rate</p>
                   </div>
                   <div className="text-right">
                     {mission.payType === 'blended' ? (
@@ -275,7 +274,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
 
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><User size={14} className="text-brand-red shrink-0"/><span>Assigned Techs</span></h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left"><User size={14} className="text-brand-red shrink-0"/><span>Assigned Techs</span></h3>
                     {userIsAdmin && !isCompleted && !isAssigning && (
                         <div className="flex gap-2">
                             <Button variant="ghost" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={() => { setAssignMode('lead'); setIsAssigning(true); }}><RefreshCw size={12} className="mr-1.5"/> Swap Lead</Button>
@@ -315,11 +314,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                         <div className="divide-y divide-border-sub max-h-[250px] overflow-y-auto border rounded-md bg-bg-primary">
                             {filteredTechs.map(t => (
                                 <div key={t.id} className="p-3 flex items-center justify-between hover:bg-bg-tertiary cursor-pointer transition-colors group" onClick={() => handleAssign(t.id)}>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 text-left">
                                         <Avatar className="h-8 w-8"><AvatarImage src={t.avatarUrl}/></Avatar>
                                         <div className="text-left">
-                                            <p className="text-xs font-bold uppercase group-hover:text-brand-red transition-colors">{t.name}</p>
-                                            <p className="text-[9px] text-text-muted uppercase font-bold">{t.role}</p>
+                                            <p className="text-xs font-bold uppercase group-hover:text-brand-red transition-colors text-left">{t.name}</p>
+                                            <p className="text-[9px] text-text-muted uppercase font-bold text-left">{t.role}</p>
                                         </div>
                                     </div>
                                     <ChevronRight size={14} className="text-text-muted" />
@@ -331,10 +330,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                     <div className="space-y-3">
                         <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between">
                             <div className="flex items-center gap-4 text-left">
-                                <Avatar className="h-12 w-12 border-2 border-border-sub"><AvatarImage src={leadTech?.avatarUrl} /><AvatarFallback>U</AvatarFallback></Avatar>
+                                <Avatar className="h-12 w-12 border-2 border-border-sub">
+                                  <AvatarImage src={leadTech?.avatarUrl} />
+                                  <AvatarFallback>{(leadTech?.name || 'U').charAt(0)}</AvatarFallback>
+                                </Avatar>
                                 <div className="text-left">
-                                    <p className="text-sm font-bold text-text-primary uppercase">{leadTech?.name || 'Unallocated'}</p>
-                                    <p className="text-[10px] text-text-muted uppercase">{leadTech?.role || 'Awaiting Action'}</p>
+                                    <p className="text-sm font-bold text-text-primary uppercase text-left">{leadTech?.name || 'Unallocated'}</p>
+                                    <p className="text-[10px] text-text-muted uppercase text-left">{leadTech?.role || 'Awaiting Action'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -357,11 +359,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-widest ml-1 text-left">Support Registry</p>
                                 {supportTechs.map(tech => (
                                     <div key={tech.id} className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                        <div className="flex items-center gap-3 text-left">
+                                            <Avatar className="h-8 w-8">
+                                              <AvatarImage src={tech.avatarUrl} />
+                                              <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
+                                            </Avatar>
                                             <div className="text-left">
-                                                <p className="text-xs font-bold text-text-primary uppercase">{tech.name}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">Support operative</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase text-left">{tech.name}</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest text-left">Support operative</p>
                                             </div>
                                         </div>
                                         {userIsAdmin && !isCompleted && (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -183,7 +182,7 @@ export function GlobalScheduleCalendar({
                                       onClick={() => handleDayClick(day)}
                                     >
                                         <span className="day-name !text-[7px] !mb-0">{format(day, 'EEE')}</span>
-                                        <span className="day-num !text-xs !leading-none">{format(day, 'd')}</span>
+                                        <span className="day-name !text-xs !leading-none">{format(day, 'd')}</span>
                                         {hasEvents && <div className="day-dot !h-0.5 !w-0.5 !mt-0.5" />}
                                     </div>
                                 )
@@ -223,11 +222,11 @@ export function GlobalScheduleCalendar({
                 {!hideManifest && (
                   <div className="flex-1 flex flex-col gap-4">
                       <div className="p-4 rounded-lg bg-bg-secondary border border-border-main flex items-center justify-between shadow-sm">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 text-left">
                               <div className="p-2 bg-brand-red-dim rounded border border-brand-red/20">
                                   <CalendarIcon size={18} className="text-brand-red" />
                               </div>
-                              <div>
+                              <div className="text-left">
                                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Schedule Manifest</p>
                                   <p className="text-sm font-bold text-text-primary uppercase">
                                     {selectedDates.length > 0 
@@ -269,7 +268,7 @@ export function GlobalScheduleCalendar({
                                                               {wo.status}
                                                           </Badge>
                                                       </div>
-                                                      <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide mb-3 leading-snug">{wo.description}</h4>
+                                                      <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide mb-3 leading-snug text-left">{wo.description}</h4>
                                                       <div className="job-meta !gap-4 !mb-4">
                                                           <div className="job-meta-item !text-[11px]"><Clock size={12} className="text-brand-red"/> {wo.scheduleTime}</div>
                                                           <div className="job-meta-item !text-[11px]"><MapPin size={12} className="text-brand-red"/> {wo.location}</div>
@@ -279,9 +278,9 @@ export function GlobalScheduleCalendar({
                                                               <div className="flex items-center gap-2">
                                                                   <Avatar className="h-6 w-6 border border-border-sub">
                                                                       <AvatarImage src={tech.avatarUrl} />
-                                                                      <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                                                                      <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
                                                                   </Avatar>
-                                                                  <div className="flex flex-col">
+                                                                  <div className="flex flex-col text-left">
                                                                       <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-none">{tech.name}</span>
                                                                       <span className="text-[8px] text-text-muted uppercase tracking-widest mt-0.5">{tech.role}</span>
                                                                   </div>

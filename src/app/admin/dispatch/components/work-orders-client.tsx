@@ -60,7 +60,7 @@ function PayDisplay({ wo }: { wo: WorkOrder }) {
       <span className="text-[13px] font-medium text-text-primary">
         ${wo.blendedFixedPay}
       </span>
-      <span className="text-xs text-text-muted">
+      <span className="text-xs text-text-muted text-left">
         · {wo.blendedIncludedHours} hrs fixed
         {wo.blendedHourlyRate ? `, then $${wo.blendedHourlyRate}/hr` : ""}
       </span>
@@ -132,7 +132,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6 border border-border-sub">
                       <AvatarImage src={tech.avatarUrl} />
-                      <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="text-[8px]">{(tech.name || 'U').charAt(0)}</AvatarFallback>
                     </Avatar>
                     <span className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[80px]">
                       {tech.name}

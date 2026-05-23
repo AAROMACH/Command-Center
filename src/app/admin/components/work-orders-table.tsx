@@ -276,9 +276,9 @@ export const WorkOrdersTable = React.memo(({
                     </div>
                   </td>
                   <td className="!py-4 text-left pl-0">
-                    <div className="flex flex-col min-w-0">
-                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{order.title || order.description}</div>
-                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
+                    <div className="flex flex-col min-w-0 text-left">
+                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal text-left">{order.title || order.description}</div>
+                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1 text-left">{order.clientName}</div>
                     </div>
                   </td>
                   <td className="py-4">
@@ -296,7 +296,7 @@ export const WorkOrdersTable = React.memo(({
                   <td className="py-4">
                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0 text-left">
                       <MapPin size={11} className="text-brand-red shrink-0" />
-                      <span className="truncate max-w-[200px]">{formatCityState(order.location)}</span>
+                      <span className="truncate max-w-[200px] text-left">{formatCityState(order.location)}</span>
                     </div>
                   </td>
                   <td className="py-4">
@@ -306,7 +306,7 @@ export const WorkOrdersTable = React.memo(({
                             <div className="flex items-center gap-3 text-left">
                                 <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                     <AvatarImage src={technician.avatarUrl} />
-                                    <AvatarFallback className="text-[10px]">{technician.name ? technician.name.charAt(0) : 'U'}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px]">{(technician.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="text-left">
                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-tight">{technician.name}</span>
@@ -326,22 +326,22 @@ export const WorkOrdersTable = React.memo(({
                             <div className="flex flex-col items-start leading-none text-left">
                                 {order.payType === 'blended' ? (
                                     <>
-                                        <span className="font-mono text-xs font-bold text-text-green">
+                                        <span className="font-mono text-xs font-bold text-text-green text-left">
                                             ${(order.blendedFixedPay || 0).toFixed(2)} + ${(order.blendedHourlyRate || 0).toFixed(2)}/hr
                                         </span>
-                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5 text-left">
                                             after {order.blendedIncludedHours} hrs
                                         </span>
                                     </>
                                 ) : order.payType === 'hourly' ? (
                                     <>
-                                        <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}/hr</span>
-                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">hourly labor rate</span>
+                                        <span className="font-mono text-xs font-bold text-text-green text-left">${order.pay.toFixed(2)}/hr</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5 text-left">hourly labor rate</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}</span>
-                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">fixed labor rate</span>
+                                        <span className="font-mono text-xs font-bold text-text-green text-left">${order.pay.toFixed(2)}</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5 text-left">fixed labor rate</span>
                                     </>
                                 )}
                             </div>
@@ -377,7 +377,7 @@ export const WorkOrdersTable = React.memo(({
 
         {sortedWorkOrders.length > 0 && (
           <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-left">
               <div className="flex items-center gap-1.5">
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Show</p>
                 <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
@@ -438,7 +438,7 @@ export const WorkOrdersTable = React.memo(({
               <UserPlus className="text-brand-red" size={20} />
               Dispatch Terminal
             </DialogTitle>
-            <p className="text-xs text-text-muted uppercase font-bold tracking-widest">Individual job deployment: <span className="text-text-primary font-bold">{selectedOrder?.id}</span></p>
+            <p className="text-xs text-text-muted uppercase font-bold tracking-widest text-left">Individual job deployment: <span className="text-text-primary font-bold">{selectedOrder?.id}</span></p>
           </DialogHeader>
           <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6 mt-4">
              <div className="relative">
@@ -476,7 +476,10 @@ export const WorkOrdersTable = React.memo(({
                         return (
                             <div key={tech.id} className="p-4 flex items-center justify-between group hover:bg-bg-tertiary transition-colors">
                                 <div className="flex items-center gap-4 text-left">
-                                    <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors"><AvatarImage src={tech.avatarUrl} /></Avatar>
+                                    <Avatar className="h-10 w-10 border border-border-sub group-hover:border-brand-red transition-colors">
+                                      <AvatarImage src={tech.avatarUrl} />
+                                      <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
+                                    </Avatar>
                                     <div className="text-left">
                                         <div className="flex items-center gap-2">
                                             <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
@@ -500,13 +503,13 @@ export const WorkOrdersTable = React.memo(({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedOrder(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between">
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                        <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
+                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
                 </div>
             </DialogHeader>
@@ -599,7 +602,7 @@ export const WorkOrdersTable = React.memo(({
                         </div>
 
                         {editedOrder.payType === 'blended' && (
-                            <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                            <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                                 <div className="space-y-2 text-left">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
                                     <div className="relative">

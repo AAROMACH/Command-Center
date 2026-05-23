@@ -147,10 +147,10 @@ export function NotificationBell() {
                                             </div>
                                             <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'HH:mm')}</span>
                                         </div>
-                                        <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2">{msg.body}</p>
+                                        <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2 text-left">{msg.body}</p>
                                         <div className="flex items-center gap-1.5 pt-1.5 opacity-60">
                                             <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
-                                                {msg.senderName.charAt(0)}
+                                                {(msg.senderName || 'A').charAt(0)}
                                             </div>
                                             <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Admin: {msg.senderName}</span>
                                         </div>

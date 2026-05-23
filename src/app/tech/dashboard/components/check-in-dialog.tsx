@@ -143,12 +143,12 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0">
-                <DialogHeader className="p-6 pb-2">
+                <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Navigation className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Check In Terminal</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">GPS-verified on-site reporting for assignments and projects.</DialogDescription>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">GPS-verified on-site reporting for assignments and projects.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
@@ -173,7 +173,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                             )}
                         </div>
                         {userLocation ? (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 text-left">
                                 <div className="space-y-0.5">
                                     <p className="text-[9px] uppercase font-bold text-text-muted">Latitude</p>
                                     <p className="text-xs font-mono font-bold text-text-primary">{userLocation.lat.toFixed(6)}</p>
@@ -184,13 +184,13 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-[10px] text-text-red uppercase font-bold tracking-widest italic py-1">
+                            <div className="text-[10px] text-text-red uppercase font-bold tracking-widest italic py-1 text-left">
                                 Awaiting location sensor input...
                             </div>
                         )}
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select job Registry</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -198,7 +198,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                 placeholder="Search by ID, Title, or Location..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
+                                className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
                             />
                         </div>
                     </div>
@@ -249,7 +249,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     ? "bg-brand-red-dim/10 border-brand-red/30" 
                                     : "bg-bg-secondary/50 border-border-sub"
                              )}>
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] uppercase font-bold text-text-muted">Verification Status</p>
                                     {isOutOfRange ? (
                                         <p className="text-[10px] font-bold text-text-red uppercase flex items-center gap-1.5">

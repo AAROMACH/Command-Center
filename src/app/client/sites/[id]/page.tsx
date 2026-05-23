@@ -47,12 +47,14 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 export default function SiteDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { toast } = useToast();
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     
@@ -63,7 +65,16 @@ export default function SiteDetailPage() {
     useEffect(() => {
         setMounted(true);
         setCurrentUserId(localStorage.getItem('currentUserId'));
-    }, []);
+
+        window.gm_authFailure = () => {
+            console.warn("Google Maps API Handshake Restricted.");
+            toast({
+              variant: "destructive",
+              title: "Registry Security Error",
+              description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
+            });
+          };
+    }, [toast]);
 
     const id = params.id as string;
 
@@ -141,7 +152,7 @@ export default function SiteDetailPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.push('/client/sites')} className="h-10 w-10">
                     <ChevronLeft size={24} />
                 </Button>
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <MapPin size={12} />
                         Managed Coordinate
@@ -171,9 +182,9 @@ export default function SiteDetailPage() {
                             </div>
                         </div>
                         <CardContent className="p-5 space-y-4">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Address</p>
-                                <p className="text-sm font-bold text-text-primary text-left">{siteData.location}</p>
+                            <div className="space-y-1 text-left">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
+                                <p className="text-sm font-bold text-text-primary">{siteData.location}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">
                                 <div className="space-y-1 text-left">
@@ -318,7 +329,7 @@ export default function SiteDetailPage() {
                                             </div>
                                             <DialogDescription className="text-xs uppercase font-bold text-text-muted">Real-time uptime verification and performance tracking.</DialogDescription>
                                         </DialogHeader>
-                                        <div className="p-8 space-y-8">
+                                        <div className="p-8 space-y-8 text-left">
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-end">
                                                     <div className="space-y-1">
@@ -364,9 +375,9 @@ export default function SiteDetailPage() {
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="activity" className="w-full">
                         <TabsList className="tabs !p-0 !bg-bg-tertiary mb-6">
-                            <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Active Activity</TabsTrigger>
-                            <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Job History</TabsTrigger>
-                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">Documents</TabsTrigger>
+                            <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Active Activity</TabsTrigger>
+                            <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Job History</TabsTrigger>
+                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Documents</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
@@ -396,7 +407,7 @@ export default function SiteDetailPage() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase">
+                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase h-5 text-[8px] tracking-widest">
                                                     {wo.status}
                                                 </Badge>
                                             </CardContent>
@@ -415,7 +426,7 @@ export default function SiteDetailPage() {
                                 {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
                                     <div 
                                         key={wo.id} 
-                                        className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:bg-bg-tertiary transition-colors cursor-pointer"
+                                        className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors cursor-pointer"
                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
                                     >
                                         <div className="flex items-center gap-4 text-left">
@@ -442,7 +453,7 @@ export default function SiteDetailPage() {
                             <div className="space-y-2">
                                 {siteData.documents.map(doc => (
                                     <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors">
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 text-left">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
                                                 <FileText size={18} />
                                             </div>
@@ -488,7 +499,7 @@ export default function SiteDetailPage() {
                         </div>
                         <div className="h-8 w-px bg-white/10 mx-1" />
                         <button 
-                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-text-muted hover:text-white"
+                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-text-muted hover:white"
                             title="Audit Session Details"
                         >
                             <ChevronRight size={18} />

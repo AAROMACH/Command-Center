@@ -61,11 +61,11 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     if (!isOpen) return;
 
     window.gm_authFailure = () => {
-      console.warn("Google Maps API activation failure detected.");
+      console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Google Maps Activation Error",
-        description: "Places API is not enabled in the Cloud Console. Please ensure 'Maps JavaScript API' and 'Places API' are toggled to ENABLED for this project key.",
+        title: "Registry Security Error",
+        description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
 
@@ -86,7 +86,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete restricted by API policy. Manual entry remains active.");
+        console.warn("Places Autocomplete Terminal Restricted.");
       }
     };
 
@@ -97,11 +97,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       script.async = true;
       script.onload = initAutocomplete;
       script.onerror = () => {
-        toast({
-          variant: "destructive",
-          title: "Registry Handshake Error",
-          description: "Google Maps script could not be loaded. Please check your network and API activation status.",
-        });
+        console.error("Registry script load failure.");
       };
       document.head.appendChild(script);
     } else if (window.google) {
@@ -131,7 +127,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           toast({
             variant: "destructive",
             title: "Resolution Failed",
-            description: "No verified coordinates found for this identifier. Verify API activation status.",
+            description: "No verified coordinates found. Verify referer permissions in console.",
           });
         }
       });
@@ -174,12 +170,12 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl text-left">
-        <DialogHeader className="p-6 pb-2">
+        <DialogHeader className="p-6 pb-2 text-left">
           <div className="flex items-center gap-2 mb-1">
             <Building2 className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Initialize Project Folder</DialogTitle>
           </div>
-          <DialogDescription>Create a new high-fidelity project entry in the operational registry.</DialogDescription>
+          <DialogDescription className="text-xs uppercase font-bold text-text-muted">Create a new high-fidelity project entry in the operational registry.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 px-6 py-4 text-left">
@@ -282,7 +278,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 placeholder="Define primary objectives and technical requirements..." 
                 value={formData.scope}
                 onChange={e => setFormData({...formData, scope: e.target.value})}
-                className="bg-bg-primary h-24 text-xs"
+                className="bg-bg-primary h-24 text-xs font-medium uppercase"
             />
           </div>
 

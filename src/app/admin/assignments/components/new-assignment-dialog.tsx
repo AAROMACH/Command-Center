@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign, Type, FileText } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, Search, Users, Navigation, DollarSign, Type, FileText, SearchCode } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +31,7 @@ import { PAY_TYPE_LABELS } from '@/lib/constants';
 declare global {
   interface Window {
     google: any;
+    gm_authFailure?: () => void;
   }
 }
 
@@ -65,6 +66,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
       if (isOpen && !formData.scheduleDate) {
@@ -77,6 +79,15 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
   useEffect(() => {
     if (!isOpen) return;
+
+    window.gm_authFailure = () => {
+      console.warn("Google Maps API Handshake Restricted.");
+      toast({
+        variant: "destructive",
+        title: "Registry Security Error",
+        description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
+      });
+    };
 
     const scriptId = 'google-maps-places-script';
     const initAutocomplete = () => {
@@ -94,7 +105,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete terminal restricted or API not activated.");
+        console.warn("Places Autocomplete Terminal Restricted.");
       }
     };
 
@@ -108,9 +119,38 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     } else if (window.google) {
       initAutocomplete();
     }
-  }, [isOpen]);
+  }, [isOpen, toast]);
   
-  const { toast } = useToast();
+  const resolveAddress = () => {
+    if (!formData.location || !window.google) return;
+    
+    try {
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: formData.location,
+        fields: ['formatted_address', 'geometry'],
+      };
+
+      service.findPlaceFromQuery(request, (results: any, status: any) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+          const place = results[0];
+          setFormData(prev => ({ ...prev, location: place.formatted_address }));
+          toast({
+            title: "Coordinate Match Verified",
+            description: `Registry updated to verified site: ${place.formatted_address}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Resolution Failed",
+            description: "No verified coordinates found. Verify referer permissions in console.",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Places Service Protocol Error:", e);
+    }
+  };
 
   const clients = useMemo(() => {
     return technicians.filter(t => 
@@ -203,11 +243,11 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
           <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 text-left">
                 <Wrench className="text-brand-red h-5 w-5" />
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
               </div>
-              <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
+              <DialogDescription className="text-left">Manual entry of a new low voltage field job.</DialogDescription>
             </DialogHeader>
 
             <div className="px-6 py-4 space-y-6 text-left">
@@ -231,7 +271,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                     placeholder="Primary objective and detailed requirements..." 
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="bg-bg-primary border-border-sub h-24 text-xs"
+                    className="bg-bg-primary border-border-sub h-24 text-xs uppercase font-medium"
                   />
                 </div>
               </div>
@@ -261,13 +301,25 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
                     <div className="space-y-1.5">
-                        <Input 
-                            ref={addressInputRef}
-                            placeholder="Full address or coordinates..." 
-                            value={formData.location}
-                            onChange={(e) => setFormData({...formData, location: e.target.value})}
-                            className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
-                        />
+                        <div className="relative group">
+                            <Input 
+                                ref={addressInputRef}
+                                placeholder="Full address or coordinates..." 
+                                value={formData.location}
+                                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all pr-10"
+                            />
+                            {formData.location && (
+                                <button 
+                                    onClick={resolveAddress}
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                                    title="Verify Coordinates"
+                                >
+                                    <SearchCode size={14} />
+                                </button>
+                            )}
+                        </div>
                         <Button 
                             type="button" 
                             variant="ghost" 
@@ -293,9 +345,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
-                      <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
-                      <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
+                      <SelectItem value="fixed" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                      <SelectItem value="hourly" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                      <SelectItem value="blended" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.blended}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -385,10 +437,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
+                      <SelectItem value="low" className="text-xs font-bold uppercase">Low</SelectItem>
+                      <SelectItem value="medium" className="text-xs font-bold uppercase">Medium</SelectItem>
+                      <SelectItem value="high" className="text-xs font-bold uppercase">High</SelectItem>
+                      <SelectItem value="critical" className="text-xs font-bold uppercase">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -397,12 +449,12 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Installation">Installation</SelectItem>
-                      <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
-                      <SelectItem value="Maintenance">Maintenance</SelectItem>
-                      <SelectItem value="Survey">Survey</SelectItem>
-                      <SelectItem value="Repair">Repair</SelectItem>
-                      <SelectItem value="Decommission">Decommission</SelectItem>
+                      <SelectItem value="Installation" className="text-xs font-bold uppercase">Installation</SelectItem>
+                      <SelectItem value="Troubleshooting" className="text-xs font-bold uppercase">Troubleshooting</SelectItem>
+                      <SelectItem value="Maintenance" className="text-xs font-bold uppercase">Maintenance</SelectItem>
+                      <SelectItem value="Survey" className="text-xs font-bold uppercase">Survey</SelectItem>
+                      <SelectItem value="Repair" className="text-xs font-bold uppercase">Repair</SelectItem>
+                      <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -421,7 +473,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         {/* CLIENT REGISTRY POPUP */}
         <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
             <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-                <DialogHeader className="p-6 pb-2">
+                <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Users className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
@@ -477,7 +529,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         {/* SITE REGISTRY POPUP */}
         <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
             <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
-                <DialogHeader className="p-6 pb-2">
+                <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Navigation className="text-accent-gold h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
@@ -496,9 +548,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 <div className="flex justify-between items-start gap-3">
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                        <p className="text-[10px] text-text-muted flex items-center gap-1.5">
-                                            <MapPin size={10} className="text-brand-red" />
-                                            {site.location}
+                                        <p className="text-[10px] text-text-muted flex items-center gap-1.5 text-left">
+                                            <MapPin size={10} className="text-brand-red shrink-0" />
+                                            <span className="truncate">{site.location}</span>
                                         </p>
                                     </div>
                                     <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity mt-1" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import type { WorkOrder, Project } from '@/lib/types';
 import { 
@@ -32,8 +32,6 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
-
 type ReceiptUploadDialogProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
@@ -45,7 +43,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     const [step, setStep] = useState<'upload' | 'extracting' | 'review'>('upload');
     const [extractionProgress, setExtractionProgress] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
-    fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [receiptImage, setReceiptImage] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState({
         merchant: '',
@@ -148,13 +146,13 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0">
-                <DialogHeader className="p-6 pb-2">
+            <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
+                <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Receipt className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest">Receipt Console</DialogTitle>
                     </div>
-                    <DialogDescription>Photo identification required for all field expense records.</DialogDescription>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Photo identification required for all field expense records.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -177,7 +175,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                     </div>
                                 </div>
                                 <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Identify Receipt Photo</p>
-                                <p className="text-xs text-text-muted">Digital capture required to initiate terminal entry</p>
+                                <p className="text-xs text-text-muted uppercase font-medium">Digital capture required to initiate terminal entry</p>
                             </div>
                             
                             <div className="p-4 rounded-lg bg-bg-secondary/50 border border-border-sub text-center">
@@ -198,7 +196,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                     <Sparkles size={18} />
                                     <p className="text-sm font-bold uppercase tracking-widest">AI Vision Processing</p>
                                 </div>
-                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto">Parsing high-fidelity merchant metadata and financial signatures...</p>
+                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto uppercase">Parsing high-fidelity merchant metadata and financial signatures...</p>
                             </div>
                             <div className="px-12">
                                 <Progress value={extractionProgress} className="h-1 bg-bg-secondary" />
@@ -226,27 +224,27 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
+                                <div className="space-y-1.5 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Merchant / Vendor</Label>
                                     <Input 
                                         placeholder="e.g. Home Depot"
                                         value={extractedData.merchant} 
                                         onChange={(e) => setExtractedData({...extractedData, merchant: e.target.value})}
-                                        className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
+                                        className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
+                                <div className="space-y-1.5 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Amount ($)</Label>
                                     <Input 
                                         placeholder="0.00"
                                         value={extractedData.amount} 
                                         onChange={(e) => setExtractedData({...extractedData, amount: e.target.value})}
-                                        className="h-10 text-xs bg-bg-primary border-border-sub font-mono focus:border-brand-red text-text-green"
+                                        className="h-10 text-xs bg-bg-primary border-border-sub font-mono focus:border-brand-red text-text-green font-bold"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Transaction Date</Label>
                                 <Input 
                                     type="date"
@@ -256,7 +254,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Search Assignment or Project</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -264,7 +262,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                         placeholder="Search across your assignments..." 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
+                                        className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
                                     />
                                 </div>
                                 
@@ -285,8 +283,8 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                                         <div className="flex items-center gap-3">
                                                             <item.icon size={14} className={isSelected ? "text-white" : "text-text-muted"} />
                                                             <div>
-                                                                <p className={cn("text-[11px] font-bold uppercase", isSelected ? "text-white" : "text-text-primary")}>{item.name}</p>
-                                                                <p className={cn("text-[9px] uppercase tracking-widest", isSelected ? "text-white/80" : "text-text-muted")}>{item.type}</p>
+                                                                <p className={cn("text-[10px] font-bold uppercase", isSelected ? "text-white" : "text-text-primary")}>{item.name}</p>
+                                                                <p className={cn("text-[8px] uppercase tracking-widest", isSelected ? "text-white/80" : "text-text-muted")}>{item.type}</p>
                                                             </div>
                                                         </div>
                                                         {isSelected && <Check size={14} />}
@@ -304,13 +302,13 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                 </div>
 
                 <DialogFooter className="border-t border-border-default p-6 bg-bg-secondary/30">
-                    <Button variant="outline" onClick={resetAndClose} className="h-10 flex-1">
+                    <Button variant="outline" onClick={resetAndClose} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
                         <X size={16} className="mr-2" /> Cancel
                     </Button>
                     {step === 'review' && (
                         <Button 
                             onClick={handleSave} 
-                            className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1"
+                            className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1 uppercase font-bold text-[10px] tracking-widest"
                             disabled={!extractedData.relatedId}
                         >
                             <Upload size={16} className="mr-2" /> Sync Record

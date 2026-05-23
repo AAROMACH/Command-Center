@@ -59,11 +59,11 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     if (!isOpen) return;
 
     window.gm_authFailure = () => {
-      console.warn("Google Maps API activation failure detected.");
+      console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Google Maps Activation Error",
-        description: "Places API is not enabled in the Cloud Console. Please ensure 'Maps JavaScript API' and 'Places API' are toggled to ENABLED for this project key.",
+        title: "Registry Security Error",
+        description: "Google Maps API referer restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
 
@@ -84,7 +84,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete restricted by API policy. Manual entry remains active.");
+        console.warn("Places Autocomplete Terminal Restricted.");
       }
     };
 
@@ -95,11 +95,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       script.async = true;
       script.onload = initAutocomplete;
       script.onerror = () => {
-        toast({
-          variant: "destructive",
-          title: "Registry Handshake Error",
-          description: "Google Maps script could not be loaded. Please check your network and API activation status.",
-        });
+        console.error("Registry script load failure.");
       };
       document.head.appendChild(script);
     } else if (window.google) {
@@ -129,7 +125,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           toast({
             variant: "destructive",
             title: "Resolution Failed",
-            description: "No verified coordinates found for this identifier. Verify API activation status.",
+            description: "No verified coordinates found. Verify referer permissions in console.",
           });
         }
       });
@@ -202,12 +198,12 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
       <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left">
-        <DialogHeader className="p-6 pb-2">
+        <DialogHeader className="p-6 pb-2 text-left">
           <div className="flex items-center gap-2 mb-1">
             <ClipboardList className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
           </div>
-          <DialogDescription>Initialize a new client request in the intake funnel.</DialogDescription>
+          <DialogDescription className="text-xs uppercase font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
         </DialogHeader>
 
         <div className="px-6 py-4 space-y-6 text-left">
@@ -252,12 +248,12 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
                 <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Installation">Installation</SelectItem>
-                  <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Survey">Survey</SelectItem>
-                  <SelectItem value="Repair">Repair</SelectItem>
-                  <SelectItem value="Decommission">Decommission</SelectItem>
+                  <SelectItem value="Installation" className="text-xs font-bold uppercase">Installation</SelectItem>
+                  <SelectItem value="Troubleshooting" className="text-xs font-bold uppercase">Troubleshooting</SelectItem>
+                  <SelectItem value="Maintenance" className="text-xs font-bold uppercase">Maintenance</SelectItem>
+                  <SelectItem value="Survey" className="text-xs font-bold uppercase">Survey</SelectItem>
+                  <SelectItem value="Repair" className="text-xs font-bold uppercase">Repair</SelectItem>
+                  <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -266,10 +262,10 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
                 <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low (Standard)</SelectItem>
-                  <SelectItem value="medium">Medium (Nominal)</SelectItem>
-                  <SelectItem value="high">High (4h Target)</SelectItem>
-                  <SelectItem value="critical">Critical (Emergency)</SelectItem>
+                  <SelectItem value="low" className="text-xs font-bold uppercase">Low (Standard)</SelectItem>
+                  <SelectItem value="medium" className="text-xs font-bold uppercase">Medium (Nominal)</SelectItem>
+                  <SelectItem value="high" className="text-xs font-bold uppercase">High (4h Target)</SelectItem>
+                  <SelectItem value="critical" className="text-xs font-bold uppercase">Critical (Emergency)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -281,7 +277,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               placeholder="Provide detailed job parameters and client requirements..." 
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="bg-bg-primary border-border-sub h-24 text-xs"
+              className="bg-bg-primary border-border-sub h-24 text-xs font-medium uppercase"
             />
           </div>
 

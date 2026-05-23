@@ -8,7 +8,7 @@ import { RequestsTabs } from "./components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Plus, Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
 import { NewRequestDialog } from "./components/new-request-dialog";
-import type { ServiceRequest } from "@/lib/types";
+import type { ServiceRequest, WorkOrder, Technician } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Badge } from '@/components/ui/badge';
+import { useSearchParams } from 'next/navigation';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -29,7 +30,9 @@ const SERVICE_CATEGORIES = [
 type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function RequestsPage() {
+  const searchParams = useSearchParams();
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
+  const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>('priority');
@@ -40,7 +43,7 @@ export default function RequestsPage() {
   
   const { toast } = useToast();
 
-  // 1. Initialize Registry Listener
+  // 1. Initialize Registry Listeners
   useEffect(() => {
     const q = query(collection(db, 'clientRequests'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -48,7 +51,14 @@ export default function RequestsPage() {
       setAllRequests(requests);
     });
 
-    return () => unsub();
+    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snapshot) => {
+      setAllWorkOrders(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+    });
+
+    return () => {
+      unsub();
+      unsubWO();
+    };
   }, []);
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
@@ -214,7 +224,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <RequestsTabs serviceRequests={filteredRequests} />
+      <RequestsTabs serviceRequests={filteredRequests} workOrders={allWorkOrders} />
 
       <NewRequestDialog 
         isOpen={isNewDialogOpen}

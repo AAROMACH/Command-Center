@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -63,10 +64,11 @@ import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
+    workOrders: WorkOrder[];
     isHistory?: boolean;
 };
 
-export function RequestsClient({ requests, isHistory = false }: RequestsClientProps) {
+export function RequestsClient({ requests, workOrders, isHistory = false }: RequestsClientProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
@@ -199,6 +201,21 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
         }
     };
 
+    const handleViewRecord = (req: ServiceRequest) => {
+        if (!req.convertedId) return;
+        
+        if (req.conversionType === 'project') {
+            router.push(`/admin/projects/${req.convertedId}`);
+        } else {
+            const wo = workOrders.find(w => w.id === req.convertedId);
+            if (!wo || wo.status === 'unassigned') {
+                router.push('/admin/dispatch?tab=dispatch');
+            } else {
+                router.push('/admin/assignments');
+            }
+        }
+    };
+
     const executeConversion = async () => {
         if (!selectedRequest || !conversionType || !conversionTitle.trim()) return;
 
@@ -228,7 +245,6 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                     ]
                 };
 
-                // Defensively add blended fields to avoid 'undefined' values in Firestore
                 if (conversionPayType === 'blended') {
                     newWO.blendedFixedPay = blendedFixed;
                     newWO.blendedIncludedHours = blendedHours;
@@ -270,7 +286,13 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
             toast({ title: "Registry Synced", description: "Mission data has been transferred from intake." });
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
-            router.push(conversionType === 'project' ? '/admin/projects' : '/admin/dispatch');
+            
+            // Refined navigation based on conversion result
+            if (conversionType === 'project') {
+                router.push(`/admin/projects/${newId}`);
+            } else {
+                router.push('/admin/dispatch?tab=dispatch');
+            }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Conversion Failed', description: e.message });
         }
@@ -313,8 +335,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                             <th style={{ width: "120px" }} className="text-center">Status</th>
                             <th className="text-left pl-0">Title & Briefing</th>
                             <th className="text-left pl-0">Scope Summary</th>
-                            <th style={{ width: "180px" }} className="text-left pl-0">Creation Time</th>
-                            <th style={{ width: "180px" }} className="text-left pl-0">{isHistory ? 'Closure Time' : 'Audit Timeline'}</th>
+                            <th style={{ width: "180px" }} className="text-left pl-0">Audit Timeline</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -339,14 +360,14 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                     <p className="text-[10px] text-text-secondary leading-snug line-clamp-1 text-left">{req.description}</p>
                                 </td>
                                 <td className="!py-4 text-left pl-0">
-                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                        <Plus size={10} className="text-text-muted"/> {req.submittedDate}
-                                    </p>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <p className="text-[10px] text-brand-red font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                        <CheckCircle2 size={10} className="text-text-green"/> {formatDateStr(req.closedAt || req.reviewedAt)}
-                                    </p>
+                                    <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2">
+                                        <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
+                                            <Plus size={8} /> Created: {req.submittedDate}
+                                        </p>
+                                        <p className="text-[8px] text-brand-red uppercase font-bold flex items-center gap-1">
+                                            <CheckCircle2 size={8} className="text-text-green" /> Audit Final: {formatDateStr(req.closedAt || req.reviewedAt)}
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -436,7 +457,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                         variant="outline" 
                                         size="sm" 
                                         className="h-8 text-[9px] font-bold uppercase"
-                                        onClick={() => router.push(selectedRequest.conversionType === 'project' ? `/admin/projects/${selectedRequest.convertedId}` : `/admin/dispatch`)}
+                                        onClick={() => handleViewRecord(selectedRequest)}
                                     >
                                         View Record <ExternalLink size={12} className="ml-1.5" />
                                     </Button>
@@ -681,7 +702,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
 
                         {conversionType === 'assignment' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 items-end">
                                     <div className="space-y-2 text-left">
                                         <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
@@ -703,7 +724,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                         <Input 
                                             type="number"
                                             placeholder="0.00" 
-                                            value={conversionPay}
+                                            value={conversionPay || ''}
                                             onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
                                             className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
                                         />

@@ -1,8 +1,9 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequestsClient } from "./requests-client";
-import type { ServiceRequest } from '@/lib/types';
+import type { ServiceRequest, WorkOrder } from '@/lib/types';
 
 const priorityOrder: Record<ServiceRequest['priority'], number> = {
   critical: 4,
@@ -13,9 +14,10 @@ const priorityOrder: Record<ServiceRequest['priority'], number> = {
 
 type RequestsTabsProps = {
     serviceRequests: ServiceRequest[];
+    workOrders: WorkOrder[];
 };
 
-export function RequestsTabs({ serviceRequests }: RequestsTabsProps) {
+export function RequestsTabs({ serviceRequests, workOrders }: RequestsTabsProps) {
   // ORGANIZATIONAL LOGIC: Always sort New requests by Critical Priority first
   const newRequests = serviceRequests
     .filter(p => p.status === 'new')
@@ -43,16 +45,16 @@ export function RequestsTabs({ serviceRequests }: RequestsTabsProps) {
         </TabsList>
         
         <TabsContent value="new" className="mt-0">
-          <RequestsClient requests={newRequests} />
+          <RequestsClient requests={newRequests} workOrders={workOrders} />
         </TabsContent>
         <TabsContent value="reviewed" className="mt-0">
-          <RequestsClient requests={reviewedRequests} />
+          <RequestsClient requests={reviewedRequests} workOrders={workOrders} />
         </TabsContent>
         <TabsContent value="approved" className="mt-0">
-          <RequestsClient requests={approvedRequests} />
+          <RequestsClient requests={approvedRequests} workOrders={workOrders} />
         </TabsContent>
         <TabsContent value="closed" className="mt-0">
-          <RequestsClient requests={closedRequests} isHistory />
+          <RequestsClient requests={closedRequests} workOrders={workOrders} isHistory />
         </TabsContent>
       </Tabs>
   );

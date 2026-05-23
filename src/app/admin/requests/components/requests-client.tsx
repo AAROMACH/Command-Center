@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import type { ServiceRequest, Technician } from '@/lib/types';
+import type { ServiceRequest, Technician, WorkOrder, Project } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,9 @@ import {
   CheckCircle2,
   Lock,
   Circle,
-  ArrowUpRight
+  ArrowUpRight,
+  MessageSquare,
+  SquarePlus
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -52,10 +54,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
+import { format } from 'date-fns';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -68,6 +73,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
+    const [rejectionReason, setRejectionReason] = useState("");
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -88,6 +94,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     useEffect(() => {
         if (!isReviewOpen) {
             setVerifiedFields(new Set());
+            setRejectionReason("");
         }
     }, [isReviewOpen]);
 
@@ -130,11 +137,20 @@ export function RequestsClient({ requests }: RequestsClientProps) {
 
         try {
             if (status === 'rejected') {
-                await updateDoc(docRef, { status: 'rejected' });
+                if (!rejectionReason.trim()) {
+                    toast({ variant: 'destructive', title: 'Note Required', description: 'Please provide a reason for the client before rejecting.' });
+                    return;
+                }
+                await updateDoc(docRef, { 
+                  status: 'rejected', 
+                  rejectionReason: rejectionReason.trim(),
+                  reviewedAt: new Date().toISOString(),
+                  reviewedBy: currentUser?.name || 'Admin'
+                });
                 toast({
                     variant: "destructive",
                     title: "Intake Terminated",
-                    description: `Request ${selectedRequest.id.toUpperCase()} has been rejected and archived.`,
+                    description: `Request ${selectedRequest.id.toUpperCase()} has been rejected. Note logged for client.`,
                 });
             } else if (status === 'reviewed') {
                 await updateDoc(docRef, { status: 'reviewed' });
@@ -151,9 +167,56 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             } else if (destination) {
                 // Conversion case
                 const isProject = destination === '/admin/projects';
+                const today = format(new Date(), 'yyyy-MM-dd');
+                
+                if (destination === '/admin/dispatch') {
+                  // CREATE WORK ORDER (Assignment)
+                  const newWO: Omit<WorkOrder, 'id'> = {
+                    title: `${selectedRequest.clientName} - ${selectedRequest.requestType}`,
+                    description: selectedRequest.description,
+                    location: selectedRequest.location,
+                    requiredSkills: [],
+                    priority: selectedRequest.priority,
+                    status: 'unassigned',
+                    clientName: selectedRequest.clientName,
+                    projectType: selectedRequest.requestType,
+                    scheduleDate: today,
+                    scheduleTime: '09:00 AM EST',
+                    pay: 0,
+                    payType: 'fixed',
+                    source: 'Client',
+                    history: [
+                      { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
+                    ]
+                  };
+                  await addDoc(collection(db, 'workOrders'), newWO);
+                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment' });
+                } else if (destination === '/admin/projects') {
+                  // CREATE PROJECT
+                  const newProject: Omit<Project, 'id'> = {
+                    name: `${selectedRequest.clientName} - ${selectedRequest.requestType} Initiative`,
+                    client: selectedRequest.clientName,
+                    location: selectedRequest.location,
+                    status: 'active',
+                    startDate: today,
+                    estimatedDuration: '4 weeks',
+                    scope: selectedRequest.description,
+                    assignedTechnicianIds: [],
+                    team: [],
+                    phases: [
+                      { id: 'ph-1', phaseNumber: 1, name: 'Site Audit & Prep', tasks: [] }
+                    ],
+                    siteHazardNotes: [],
+                    actualBudget: 0,
+                    actualHours: 0
+                  };
+                  await addDoc(collection(db, 'projects'), newProject);
+                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'project' });
+                }
+
                 toast({
-                    title: isProject ? "Project Path Initialized" : "Assignment Path Initialized",
-                    description: "Transitioning to deployment terminal.",
+                    title: isProject ? "Project Folder Initialized" : "Assignment Staged",
+                    description: "Mission data has been transferred from intake to the operational registry.",
                 });
                 router.push(destination);
             }
@@ -165,7 +228,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
             toast({
                 variant: "destructive",
                 title: "Registry Error",
-                description: e.message || "Failed to update intake status.",
+                description: e.message || "Failed to execute registry update.",
             });
         }
     };
@@ -379,6 +442,23 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                     &quot;{selectedRequest.description}&quot;
                                 </div>
                             </div>
+
+                            {selectedRequest.status === 'reviewed' && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                                        <MessageSquare size={12}/> Rejection Briefing
+                                    </h3>
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Manual note to give reason to client (Required for Reject)</Label>
+                                        <Textarea 
+                                            placeholder="Provide clear tactical justification for intake termination..." 
+                                            value={rejectionReason}
+                                            onChange={e => setRejectionReason(e.target.value)}
+                                            className="bg-bg-primary border-border-sub min-h-[100px] text-xs leading-relaxed uppercase font-medium"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-3">

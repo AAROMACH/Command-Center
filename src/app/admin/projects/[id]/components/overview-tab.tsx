@@ -1,3 +1,4 @@
+
 'use client';
 import type { Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -60,8 +61,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
         const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
         const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
 
-        // AGGREGATE TOTAL HOURS FROM LOGS
-        const loggedHours = dailyLogs.reduce((acc, log) => acc + (log.hoursWorked || 0), 0);
+        // Master tally from project schema
+        const loggedHours = project.actualHours || 0;
 
         let estimatedHours = project.estimatedHours || 0;
         const taskEstSum = (project.phases || []).reduce((pAcc, phase) => 

@@ -102,10 +102,6 @@ export function WorkOrdersClient({
                     {wo.title || wo.description}
                   </p>
                 </div>
-                <span className="shrink-0 flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-bg-secondary text-text-muted border border-border-sub h-fit">
-                  <Clock className="w-3 h-3" />
-                  Start time set
-                </span>
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">

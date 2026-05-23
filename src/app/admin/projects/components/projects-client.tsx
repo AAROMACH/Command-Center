@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -16,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { useMemo, useState, useEffect } from 'react';
 
 type SortOption = 'name' | 'date' | 'progress' | 'client';
@@ -208,7 +207,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                                 <td className="py-4 pl-0">
                                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="whitespace-normal text-left">{project.location}</span>
+                                        <span className="whitespace-normal text-left">{formatCityState(project.location)}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 pl-0">
@@ -336,7 +335,7 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
                             <MapPin size={12} className="text-brand-red shrink-0" />
-                            <span className="whitespace-normal">{project.location}</span>
+                            <span className="whitespace-normal">{formatCityState(project.location)}</span>
                         </div>
                         
                         {lead && (

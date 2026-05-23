@@ -28,7 +28,7 @@ import {
   Clock, 
   CircleCheck
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -270,7 +270,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                                             </div>
                                             <div className="job-meta !gap-3">
                                                 <div className="job-meta-item !text-[10px]"><Clock size={11}/> {wo.scheduleTime}</div>
-                                                <div className="job-meta-item !text-[10px]"><MapPin size={11}/> {wo.location}</div>
+                                                <div className="job-meta-item !text-[10px]"><MapPin size={11}/> {formatCityState(wo.location)}</div>
                                             </div>
                                         </div>
                                         <div className="job-right">

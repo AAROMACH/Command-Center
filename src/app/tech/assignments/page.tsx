@@ -41,7 +41,7 @@ import { DateRange } from "react-day-picker";
 import { useSearchParams } from 'next/navigation';
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -415,7 +415,7 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex items-center justify-center gap-1.5 text-xs text-text-secondary text-center">
                                                 <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
-                                                <span className="max-w-[150px]">{wo.location}</span>
+                                                <span className="max-w-[150px]">{formatCityState(wo.location)}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -511,7 +511,7 @@ export default function TechAssignmentsPage() {
                                             <td>
                                                 <div className="flex items-center justify-center gap-1.5 text-[10px] text-text-secondary text-center">
                                                     <MapPin className="h-3 w-3 text-text-muted shrink-0" />
-                                                    <span className="max-w-[150px] truncate">{wo.location}</span>
+                                                    <span className="max-w-[150px] truncate">{formatCityState(wo.location)}</span>
                                                 </div>
                                             </td>
                                             <td>

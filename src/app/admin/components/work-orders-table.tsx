@@ -54,7 +54,7 @@ import {
   RefreshCw,
   Trash2
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCityState } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";

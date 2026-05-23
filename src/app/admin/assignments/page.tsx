@@ -62,7 +62,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -501,7 +501,7 @@ export default function AssignmentsHubPage() {
                                         </td>
                                         <td className="py-4 pl-0">
                                             <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                                <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal text-left">{wo.location}</span>
+                                                <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal text-left">{formatCityState(wo.location)}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 pl-0">
@@ -589,7 +589,7 @@ export default function AssignmentsHubPage() {
                                             </div>
                                         </td>
                                         <td className="py-4">
-                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{wo.location}</span></div>
+                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{formatCityState(wo.location)}</span></div>
                                         </td>
                                         <td className="py-4 text-center">
                                             <div className="flex flex-col items-center justify-center">

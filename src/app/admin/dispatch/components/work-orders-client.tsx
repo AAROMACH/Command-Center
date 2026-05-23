@@ -2,13 +2,12 @@
 
 import React, { useState } from 'react';
 import type { WorkOrder, Technician, Route } from "@/lib/types";
-import { MapPin, Building2, Calendar, Clock, UserPlus, ChevronRight } from "lucide-react";
+import { MapPin, Building2, Calendar, Clock, ChevronRight } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, formatCityState } from "@/lib/utils";
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 type WorkOrdersClientProps = {
   workOrders: WorkOrder[];
@@ -71,7 +70,6 @@ function PayDisplay({ wo }: { wo: WorkOrder }) {
 export function WorkOrdersClient({ 
   workOrders, 
   technicians, 
-  mode 
 }: WorkOrdersClientProps) {
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -95,12 +93,17 @@ export function WorkOrdersClient({
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] text-text-muted tracking-wide mb-0.5">
+                  <p className="text-[11px] text-text-muted tracking-wide mb-0.5 font-mono">
                     #{wo.id.toUpperCase()}
                   </p>
-                  <p className="text-[13px] font-medium text-text-primary leading-snug truncate">
+                  <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide truncate">
                     {wo.title || wo.description}
                   </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[7px] h-3 px-1 uppercase tracking-tighter shrink-0">
+                      {wo.priority}
+                  </Badge>
                 </div>
               </div>
 
@@ -111,7 +114,7 @@ export function WorkOrdersClient({
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
                   <MapPin className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span className="truncate">{wo.location}</span>
+                  <span className="truncate">{formatCityState(wo.location)}</span>
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
                   <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
@@ -137,12 +140,6 @@ export function WorkOrdersClient({
                      Awaiting Operative <ChevronRight size={10} />
                   </div>
                 )}
-              </div>
-              
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[7px] h-3 px-1 uppercase tracking-tighter">
-                    {wo.priority}
-                </Badge>
               </div>
             </div>
           )

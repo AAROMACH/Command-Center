@@ -54,9 +54,9 @@ import {
   RefreshCw,
   Trash2
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatCityState } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
@@ -78,10 +78,7 @@ type WorkOrdersTableProps = {
  */
 export const WorkOrdersTable = React.memo(({
   workOrders,
-  allWorkOrders,
   technicians,
-  onWorkOrdersChange,
-  routes,
   mode
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
@@ -299,7 +296,7 @@ export const WorkOrdersTable = React.memo(({
                   <td className="py-4">
                     <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase pl-0 text-left">
                       <MapPin size={11} className="text-brand-red shrink-0" />
-                      <span className="truncate max-w-[200px]">{order.location}</span>
+                      <span className="truncate max-w-[200px]">{formatCityState(order.location)}</span>
                     </div>
                   </td>
                   <td className="py-4">
@@ -577,7 +574,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-                                <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                                <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                         </div>
 

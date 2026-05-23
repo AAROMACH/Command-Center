@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -34,7 +35,10 @@ import {
   Lock,
   Search,
   ArrowUpDown,
-  Info
+  Info,
+  Calendar,
+  User,
+  History
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -64,6 +68,7 @@ import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -76,7 +81,6 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
-    const [isLinkageOpen, setIsLinkageOpen] = useState(false);
     const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
     const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
     const [conversionType, setConversionType] = useState<'assignment' | 'project' | null>(null);
@@ -89,6 +93,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
+    
+    // Assignment Card Popup State
+    const [isMissionCardOpen, setIsMissionCardOpen] = useState(false);
+    const [linkedMission, setLinkedMission] = useState<WorkOrder | null>(null);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -121,11 +129,6 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
     const handleOpenReview = (req: ServiceRequest) => {
         setSelectedRequest(req);
         setIsReviewOpen(true);
-    };
-
-    const handleOpenLinkage = (req: ServiceRequest) => {
-        setSelectedRequest(req);
-        setIsLinkageOpen(true);
     };
 
     const toggleVerify = (field: string) => {
@@ -210,17 +213,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
         }
     };
 
-    const handleViewRecord = (req: ServiceRequest) => {
+    const handleViewMissionCard = (req: ServiceRequest) => {
         if (!req.convertedId) return;
         
         if (req.conversionType === 'project') {
             router.push(`/admin/projects/${req.convertedId}`);
         } else {
             const wo = workOrders.find(w => w.id === req.convertedId);
-            if (!wo || wo.status === 'unassigned') {
-                router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
+            if (wo) {
+                setLinkedMission(wo);
+                setIsMissionCardOpen(true);
             } else {
-                router.push('/admin/dispatch?tab=dispatch&subtab=assigned');
+                // Fallback if not in current local cache, go to hub
+                router.push('/admin/dispatch?tab=dispatch');
             }
         }
     };
@@ -255,9 +260,9 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 };
 
                 if (conversionPayType === 'blended') {
-                    newWO.blendedFixedPay = blendedFixed;
-                    newWO.blendedIncludedHours = blendedHours;
-                    newWO.blendedHourlyRate = blendedHourly;
+                    if (blendedFixed) newWO.blendedFixedPay = blendedFixed;
+                    if (blendedHours) newWO.blendedIncludedHours = blendedHours;
+                    if (blendedHourly) newWO.blendedHourlyRate = blendedHourly;
                 }
 
                 const createdRef = await addDoc(collection(db, 'workOrders'), newWO);
@@ -295,12 +300,6 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
             toast({ title: "Registry Synced", description: "Mission data has been transferred from intake." });
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
-            
-            if (conversionType === 'project') {
-                router.push(`/admin/projects/${newId}`);
-            } else {
-                router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
-            }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Conversion Failed', description: e.message });
         }
@@ -422,9 +421,9 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                                     variant="outline" 
                                                     size="sm" 
                                                     className="h-7 text-[8px] uppercase font-bold border-brand-red text-brand-red hover:bg-brand-red hover:text-white"
-                                                    onClick={(e) => { e.stopPropagation(); handleOpenLinkage(req); }}
+                                                    onClick={(e) => { e.stopPropagation(); handleViewMissionCard(req); }}
                                                 >
-                                                    View Linkage
+                                                    View Mission
                                                 </Button>
                                             ) : (
                                                 <Button 
@@ -433,7 +432,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                                     className="h-7 text-[8px] uppercase font-bold text-text-muted"
                                                     onClick={(e) => { e.stopPropagation(); handleOpenReview(req); }}
                                                 >
-                                                    View Details
+                                                    Audit Detail
                                                 </Button>
                                             )}
                                         </td>
@@ -441,70 +440,20 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 )}
                             </tr>
                         ))}
-                        {paginatedRequests.length === 0 && (
-                            <tr>
-                                <td colSpan={isHistory ? 6 : 6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">
-                                    Funnel Clear: No intake records matching registry criteria.
-                                </td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
-
-                <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
-                    <div className="flex items-center gap-4 text-left">
-                        <div className="flex items-center gap-1.5 text-left">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Show</p>
-                            <Select value={(itemsPerPage || 10).toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
-                                <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
-                            Showing <span className="text-text-primary">{((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> of {requests.length}
-                        </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            disabled={currentPage === 1}
-                            onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.max(1, prev - 1)); }}
-                            className="h-7 w-7 border-border-sub bg-bg-primary"
-                        >
-                            <ChevronLeft size={14} />
-                        </Button>
-                        <div className="px-2 text-[10px] font-bold text-text-primary uppercase tracking-tighter">Page {currentPage} of {totalPages}</div>
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            disabled={currentPage === totalPages}
-                            onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.min(totalPages, prev + 1)); }}
-                            className="h-7 w-7 border-border-sub bg-bg-primary"
-                        >
-                            <ChevronRight size={14} />
-                        </Button>
-                    </div>
-                </div>
             </div>
 
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
+                <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1 text-left">
                                 <div className="flex items-center gap-2 mb-1 text-left">
                                     <ClipboardList className="text-brand-red h-5 w-5" />
-                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Audit</DialogTitle>
+                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Terminal</DialogTitle>
                                 </div>
-                                <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Verification required for deployment path authorization.</DialogDescription>
+                                <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Audit and verification terminal for client service requests.</DialogDescription>
                             </div>
                             <div className="text-right space-y-1">
                                 <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{selectedRequest?.id.toUpperCase()}</p>
@@ -524,9 +473,9 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             <CheckCircle2 size={20} />
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Registry Linkage</p>
+                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Registry Linkage Active</p>
                                             <p className="text-xs font-bold text-text-primary uppercase text-left">
-                                                {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'} Created: <span className="text-brand-red font-mono">{selectedRequest.convertedId.toUpperCase()}</span>
+                                                Converted to {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'}: <span className="text-brand-red font-mono">{selectedRequest.convertedId.toUpperCase()}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -534,10 +483,38 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         variant="outline" 
                                         size="sm" 
                                         className="h-8 text-[9px] font-bold uppercase"
-                                        onClick={() => handleViewRecord(selectedRequest)}
+                                        onClick={() => handleViewMissionCard(selectedRequest)}
                                     >
-                                        View Record <ExternalLink size={12} className="ml-1.5" />
+                                        View Mission Card <ChevronRight size={12} className="ml-1.5" />
                                     </Button>
+                                </div>
+                            )}
+
+                            {(selectedRequest.status === 'closed' || selectedRequest.status === 'rejected') && (
+                                <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub space-y-4 mb-6">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2">
+                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <History size={12}/> Audit Metadata
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-6">
+                                        <div className="space-y-1 text-left">
+                                            <p className="text-[8px] font-black text-text-muted uppercase">Created On</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.submittedDate}</p>
+                                        </div>
+                                        {selectedRequest.reviewedBy && (
+                                            <div className="space-y-1 text-left">
+                                                <p className="text-[8px] font-black text-text-muted uppercase">Reviewed By</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.reviewedBy}</p>
+                                            </div>
+                                        )}
+                                        {selectedRequest.closedAt && (
+                                            <div className="space-y-1 text-left">
+                                                <p className="text-[8px] font-black text-text-muted uppercase">Finalized On</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase">{format(parseISO(selectedRequest.closedAt), 'MM-dd-yyyy')}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -615,6 +592,22 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                     &quot;{selectedRequest.description}&quot;
                                 </div>
                             </div>
+                            
+                            {(selectedRequest.imageUrls?.length || 0) > 0 && (
+                                <div className="space-y-3">
+                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Visual Evidence Registry</p>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {selectedRequest.imageUrls?.map((url, i) => (
+                                            <div key={i} className="relative aspect-video rounded-xl border border-border-sub overflow-hidden bg-bg-primary group">
+                                                <img src={url} alt="Site evidence" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button variant="ghost" size="icon" className="text-white"><Eye size={20}/></Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -697,50 +690,20 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         )}
                         
                         {(selectedRequest?.status === 'closed' || selectedRequest?.status === 'rejected') && (
-                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
-                                Close Audit Log
-                            </Button>
+                            <div className="flex gap-3 w-full">
+                                <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
+                                    Exit Terminal
+                                </Button>
+                                {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
+                                    <Button 
+                                        className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                                        onClick={() => handleViewMissionCard(selectedRequest)}
+                                    >
+                                        View Converted Mission <ArrowUpRight size={14} className="ml-2" />
+                                    </Button>
+                                )}
+                            </div>
                         )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* LINKAGE POPUP DIALOG */}
-            <Dialog open={isLinkageOpen} onOpenChange={setIsLinkageOpen}>
-                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle2 className="text-text-green h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Registry Linkage</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Converted Mission Identifier</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6 px-6 space-y-6">
-                        <div className="p-6 rounded-2xl bg-bg-secondary border border-border-sub flex flex-col items-center gap-3 shadow-inner">
-                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Target Operational ID</p>
-                            <p className="text-3xl font-mono font-bold text-brand-red tracking-tighter text-center">
-                                {selectedRequest?.convertedId?.toUpperCase()}
-                            </p>
-                            <Badge variant="outline" className="text-[9px] h-5 px-3 uppercase bg-bg-primary border-border-sub font-black tracking-widest">
-                                {selectedRequest?.conversionType === 'project' ? 'Infrastructure Project' : 'Field Assignment'}
-                            </Badge>
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4 text-left">
-                            <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
-                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                                This intake has been successfully archived. The target mission registry is now active in the {selectedRequest?.conversionType === 'project' ? 'Projects' : 'Dispatch'} hub.
-                            </p>
-                        </div>
-                    </div>
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default gap-3">
-                        <Button variant="outline" onClick={() => setIsLinkageOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Close Terminal</Button>
-                        <Button 
-                            onClick={() => { setIsLinkageOpen(false); handleViewRecord(selectedRequest!); }} 
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
-                        >
-                            View Full Record <ChevronRight size={14} className="ml-1.5" />
-                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -923,6 +886,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            
+            {/* MISSION DETAIL CARD POPUP */}
+            <JobDetailDialog 
+                isOpen={isMissionCardOpen}
+                setIsOpen={setIsMissionCardOpen}
+                mission={linkedMission}
+                onUpdate={(id, updates) => {
+                    // Update in local mission if needed
+                    if (linkedMission?.id === id) {
+                        setLinkedMission({ ...linkedMission, ...updates });
+                    }
+                }}
+            />
         </div>
     );
 }

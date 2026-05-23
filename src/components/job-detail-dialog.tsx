@@ -206,11 +206,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
               <div className="space-y-4 text-left">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                   <Coins size={14} className="text-text-green shrink-0"/>
-                  <span>Financial Parameters</span>
+                  <span>Labor Rate</span>
                 </h3>
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex justify-between items-center">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Labor Rate</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Pricing Structure</p>
                     <p className="text-xs font-bold text-text-primary uppercase">{mission.payType} Logic</p>
                   </div>
                   <div className="text-right">
@@ -218,7 +218,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                       <>
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">fixed - hourly</p>
                         <p className="text-sm font-mono font-bold text-text-green">
-                          ${(mission.blendedFixedPay || 0).toFixed(0)} + ${(mission.blendedHourlyRate || 0).toFixed(0)}/hr
+                          ${mission.blendedFixedPay} + ${mission.blendedHourlyRate}/hr
                         </p>
                         <p className="text-[9px] text-text-muted font-bold uppercase">after {mission.blendedIncludedHours}hrs</p>
                       </>
@@ -236,7 +236,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
 
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><User size={14} className="text-brand-red shrink-0"/><span>Allocation Registry</span></h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><User size={14} className="text-brand-red shrink-0"/><span>Assigned Techs</span></h3>
                     {userIsAdmin && !isCompleted && !isAssigning && (
                         <div className="flex gap-2">
                             <Button variant="ghost" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={() => { setAssignMode('lead'); setIsAssigning(true); }}><RefreshCw size={12} className="mr-1.5"/> Swap Lead</Button>

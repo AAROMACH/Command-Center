@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft, MapPin, Pencil } from 'lucide-react';
+import { Import as ImportIcon, Loader2, AlertTriangle, CircleCheck, ChevronRight, ArrowLeft, MapPin, Pencil, Building2, Calendar, Clock } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -186,7 +186,24 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-3 flex-1 min-w-0">
                                         <div className="flex items-center gap-3">
-                                            <span className="font-mono text-[10px] font-bold text-brand-red uppercase">ID: {job.id}</span>
+                                            {/* EDITABLE ID */}
+                                            <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'id' })}>
+                                                {editingField?.id === job.id && editingField.field === 'id' ? (
+                                                    <Input 
+                                                        autoFocus
+                                                        value={job.id}
+                                                        onChange={e => handleUpdateField(job.id, 'id', e.target.value)}
+                                                        onBlur={() => setEditingField(null)}
+                                                        onKeyDown={e => e.key === 'Enter' && setEditingField(null)}
+                                                        className="h-6 w-32 font-mono text-[10px] font-bold uppercase bg-bg-secondary"
+                                                    />
+                                                ) : (
+                                                    <span className="font-mono text-[10px] font-bold text-brand-red uppercase flex items-center gap-2 group-hover:text-text-primary transition-colors cursor-pointer">
+                                                        ID: {job.id}
+                                                        <Pencil size={8} className="opacity-0 group-hover:opacity-100" />
+                                                    </span>
+                                                )}
+                                            </div>
                                             <Badge variant={job.isDuplicate ? "missed" : "active"} className="text-[8px] uppercase tracking-widest h-4">
                                                 {job.isDuplicate ? 'Duplicate' : 'New Entry'}
                                             </Badge>
@@ -205,7 +222,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                         className="h-7 text-xs font-bold uppercase bg-bg-secondary"
                                                     />
                                                 ) : (
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide flex items-center gap-2 group-hover:text-brand-red transition-colors">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide flex items-center gap-2 group-hover:text-brand-red transition-colors cursor-pointer text-left">
                                                         {job.title}
                                                         <Pencil size={10} className="opacity-0 group-hover:opacity-100 text-text-muted" />
                                                     </p>
@@ -225,7 +242,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                             className="h-6 text-[9px] uppercase bg-bg-secondary"
                                                         />
                                                     ) : (
-                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest cursor-pointer group-hover:text-text-primary transition-colors text-left">
                                                             <Building2 size={12}/>
                                                             <span>{job.clientName}</span>
                                                         </div>
@@ -244,7 +261,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                             className="h-6 text-[9px] uppercase bg-bg-secondary"
                                                         />
                                                     ) : (
-                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest cursor-pointer group-hover:text-text-primary transition-colors text-left">
                                                             <MapPin size={12} className="text-brand-red"/>
                                                             <span className="truncate">{job.location}</span>
                                                         </div>
@@ -252,7 +269,46 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4">
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {/* EDITABLE DATE */}
+                                                <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'scheduleDate' })}>
+                                                    {editingField?.id === job.id && editingField.field === 'scheduleDate' ? (
+                                                        <Input 
+                                                            autoFocus
+                                                            type="date"
+                                                            value={job.scheduleDate}
+                                                            onChange={e => handleUpdateField(job.id, 'scheduleDate', e.target.value)}
+                                                            onBlur={() => setEditingField(null)}
+                                                            onKeyDown={e => e.key === 'Enter' && setEditingField(null)}
+                                                            className="h-6 text-[9px] bg-bg-secondary"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest cursor-pointer group-hover:text-text-primary transition-colors text-left">
+                                                            <Calendar size={12}/>
+                                                            <span>{job.scheduleDate}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* EDITABLE TIME */}
+                                                <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'scheduleTime' })}>
+                                                    {editingField?.id === job.id && editingField.field === 'scheduleTime' ? (
+                                                        <Input 
+                                                            autoFocus
+                                                            value={job.scheduleTime}
+                                                            onChange={e => handleUpdateField(job.id, 'scheduleTime', e.target.value)}
+                                                            onBlur={() => setEditingField(null)}
+                                                            onKeyDown={e => e.key === 'Enter' && setEditingField(null)}
+                                                            className="h-6 text-[9px] bg-bg-secondary"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest cursor-pointer group-hover:text-text-primary transition-colors text-left">
+                                                            <Clock size={12}/>
+                                                            <span>{job.scheduleTime}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 {/* EDITABLE LABOR RATE */}
                                                 <div onDoubleClick={() => !job.isDuplicate && setEditingField({ id: job.id, field: 'pay' })}>
                                                     {editingField?.id === job.id && editingField.field === 'pay' ? (
@@ -266,9 +322,11 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                             className="h-6 w-24 text-[9px] font-mono bg-bg-secondary text-text-green"
                                                         />
                                                     ) : (
-                                                        <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20">
-                                                            ${job.pay.toFixed(2)} ({job.payType})
-                                                        </span>
+                                                        <div className="text-right">
+                                                            <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
+                                                                ${job.pay.toFixed(2)} ({job.payType})
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

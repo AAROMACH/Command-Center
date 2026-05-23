@@ -15,6 +15,7 @@ import {
   ChevronRight,
   CheckCircle2,
   Activity,
+  Separator
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -28,7 +29,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc } from 'firebase/firestore';
-import type { WorkOrder, Technician, Project, SiteRequest, ServiceRequest, TimeOffRequest } from '@/lib/types';
+import type { WorkOrder, Technician, Project, SiteRequest, ServiceRequest, TimeOffRequest, WeeklyLog } from '@/lib/types';
 import { 
     Dialog, 
     DialogContent, 
@@ -39,7 +40,6 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +53,7 @@ export default function DashboardPage() {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [clientRequests, setClientRequests] = useState<ServiceRequest[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
@@ -80,6 +81,10 @@ export default function DashboardPage() {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
         });
 
+        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+            setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+        });
+
         const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
             setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
         });
@@ -96,6 +101,7 @@ export default function DashboardPage() {
             unsubWO();
             unsubTech();
             unsubProj();
+            unsubLogs();
             unsubSite();
             unsubClientReq();
             unsubTOR();
@@ -161,7 +167,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
                 <Link href="/admin/dispatch?subtab=unassigned">
                     <StatCard 
                         label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
@@ -178,6 +184,15 @@ export default function DashboardPage() {
                         delta={`${projects.filter(p => p.status === 'on-hold').length} on hold`} 
                         deltaType="neutral"
                         icon="FolderKanban"
+                    />
+                </Link>
+                <Link href="/admin/financials?tab=payroll">
+                    <StatCard 
+                        label="Pending Weeklogs" 
+                        value={weeklyLogs.filter(l => l.status === 'Submitted').length.toString()} 
+                        delta="Awaiting Audit" 
+                        deltaType="warning"
+                        icon="ClipboardList"
                     />
                 </Link>
                 <div className="cursor-pointer" onClick={() => setIsPendingDialogOpen(true)}>

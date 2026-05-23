@@ -1,6 +1,6 @@
 'use client';
 import { cn } from "@/lib/utils";
-import { Clock, Users, TrendingUp, FolderKanban, Wrench, TriangleAlert, CopyX } from 'lucide-react';
+import { Clock, Users, TrendingUp, FolderKanban, Wrench, TriangleAlert, CopyX, ClipboardList } from 'lucide-react';
 
 const icons = {
     Clock,
@@ -9,7 +9,8 @@ const icons = {
     FolderKanban,
     Wrench,
     TriangleAlert,
-    CopyX
+    CopyX,
+    ClipboardList
 };
 
 export type IconName = keyof typeof icons;
@@ -39,18 +40,18 @@ export function StatCard({ label, value, delta, deltaType, icon }: StatCardProps
     }[deltaType];
 
     return (
-        <div className="bg-bg-secondary p-4 rounded-lg border border-border-default transition-colors hover:bg-bg-tertiary">
-            <div className="flex justify-between items-start mb-2">
+        <div className="bg-bg-secondary p-4 rounded-lg border border-border-default transition-colors hover:bg-bg-tertiary h-full">
+            <div className="flex justify-between items-start mb-2 text-left">
                 <div className="p-2 bg-bg-tertiary rounded-md">
                     <Icon className="h-5 w-5 text-text-muted" />
                 </div>
-                 <div className={cn("text-sm font-bold", deltaColor)}>
+                 <div className={cn("text-[10px] font-bold uppercase tracking-tight", deltaColor)}>
                     {delta}
                 </div>
             </div>
-            <div>
-                <p className="text-3xl font-bold text-text-primary">{value}</p>
-                <p className="text-sm text-text-muted">{label}</p>
+            <div className="text-left">
+                <p className="text-3xl font-bold text-text-primary tracking-tighter">{value}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</p>
             </div>
         </div>
     )

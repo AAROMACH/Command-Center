@@ -678,7 +678,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Pay Model</Label>
+                                        <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
                                             <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
                                                 <SelectValue />
@@ -691,7 +691,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                         </Select>
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                        <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
                                             <DollarSign size={12} className="text-text-green" />
                                             Labor Rate ($)
                                         </Label>
@@ -706,7 +706,7 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                 </div>
 
                                 {conversionPayType === 'blended' && (
-                                    <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                                    <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg bg-bg-secondary/50 border border-border-sub text-left">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
                                             <div className="relative">

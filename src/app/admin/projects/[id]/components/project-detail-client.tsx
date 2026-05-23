@@ -198,7 +198,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} />}
                 {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
-                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} projectId={project.id} projectStatus={project.status} />}
+                {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} project={project} />}
             </div>
 
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

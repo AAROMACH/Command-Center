@@ -1,7 +1,6 @@
-
 'use client';
 
-import type { ProjectDailyLog, Technician } from '@/lib/types';
+import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { LogAssignmentDialog } from './log-assignment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 
 const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
@@ -83,7 +82,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{(log.hoursWorked || 0).toFixed(1)} HOURS</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || '0h 0m'}</span>
                     </div>
                 </div>
 
@@ -112,19 +111,18 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
 type TimesheetsTabProps = {
     timesheets: ProjectDailyLog[];
     technicians: Technician[];
-    projectId: string;
-    projectStatus?: string;
+    project: Project;
 };
 
 
-export function TimesheetsTab({ timesheets, technicians, projectId, projectStatus }: TimesheetsTabProps) {
+export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTabProps) {
     const [viewBy, setViewBy] = useState<'tech' | 'date'>('date');
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [search, setSearch] = useState('');
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const { toast } = useToast();
 
-    const isReadOnly = projectStatus === 'completed';
+    const isReadOnly = project.status === 'completed';
 
     const getTechnician = useCallback((id: string) => technicians.find(t => t.id === id), [technicians]);
 
@@ -192,11 +190,18 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
 
     const handleManualLog = async (newLog: any) => {
         try {
+            const logHours = newLog.totalMinutes / 60;
             await addDoc(collection(db, 'projectDailyLogs'), {
                 ...newLog,
-                projectId,
-                hoursWorked: newLog.totalMinutes / 60
+                projectId: project.id,
+                hoursWorked: logHours
             });
+
+            const projectRef = doc(db, 'projects', project.id);
+            await updateDoc(projectRef, {
+                actualHours: (project.actualHours || 0) + logHours
+            });
+
             toast({ title: 'Session Transmitted', description: 'Timesheet log committed to project registry.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
@@ -285,7 +290,7 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
                                     </div>
                                     <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
-                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Total Time: <span className="text-text-primary font-mono text-xs">{(dailyLogs.reduce((acc, l) => acc + (l.hoursWorked || 0), 0)).toFixed(1)}h</span></span>
+                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Total Time: <span className="text-text-primary font-mono text-xs">{(project.actualHours || 0).toFixed(1)}h</span></span>
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: ProjectDailyLog) => (
@@ -306,7 +311,7 @@ export function TimesheetsTab({ timesheets, technicians, projectId, projectStatu
                 isOpen={isLogDialogOpen}
                 setIsOpen={setIsLogDialogOpen}
                 technicians={technicians}
-                projectId={projectId}
+                projectId={project.id}
                 onLogAdded={handleManualLog}
             />
         </div>

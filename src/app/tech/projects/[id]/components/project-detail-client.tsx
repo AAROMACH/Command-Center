@@ -243,14 +243,16 @@ const TimesheetsTab = ({
     onCheckIn, 
     onCheckOut, 
     activeSession, 
-    isReadOnly
+    isReadOnly,
+    project
 }: { 
     dailyLogs: ProjectDailyLog[], 
     technicians: Technician[], 
     onCheckIn: () => void, 
     onCheckOut: () => void, 
     activeSession: any, 
-    isReadOnly: boolean
+    isReadOnly: boolean,
+    project: Project
 }) => {
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
@@ -337,7 +339,10 @@ const TimesheetsTab = ({
                 </section>
 
                 <section className="space-y-3">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Timesheet Manifest</h3>
+                    <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
+                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Timesheet Manifest</h3>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Total Time: <span className="text-text-primary font-mono">{(project.actualHours || 0).toFixed(1)}h</span></p>
+                    </div>
                     <div className="space-y-2">
                         {dailyLogs.map(log => {
                             const tech = technicians.find(t => t.id === log.technicianId);
@@ -543,6 +548,12 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
+            
+            const projectRef = doc(db, 'projects', project.id);
+            await updateDoc(projectRef, {
+                actualHours: (project.actualHours || 0) + hoursWorked
+            });
+
             setActiveSession(null);
             toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
         } catch (e: any) {
@@ -570,6 +581,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                         <div className="pdh-meta">
                             <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
                             <div className="pdh-meta-item"><Calendar size={12}/> Started {formatDateDisplay(project.startDate)}</div>
+                            <div className="pdh-meta-item"><Clock size={12}/> Est. {project.estimatedDuration}</div>
                             <div className="pdh-meta-item"><Users size={12}/> {(project.team || []).length} Team Members</div>
                         </div>
                     </div>
@@ -611,6 +623,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                             onCheckOut={handleCheckOut} 
                             activeSession={activeSession}
                             isReadOnly={isReadOnly}
+                            project={project}
                         />
                     </TabsContent>
                 </div>

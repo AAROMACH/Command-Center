@@ -182,17 +182,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </button>
     );
 
-    if (requests.length === 0) {
-        return (
-            <div className="table-wrap">
-                <div className="empty-state !py-24 text-center border-none">
-                    <ClipboardList size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No missions match current intake filters.</p>
-                </div>
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-4">
             <div className="table-wrap">
@@ -328,7 +317,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                                 <Building2 size={12}/> Client Entity
                                             </p>
-                                            <VerifyToggle field="client" label="Audit" />
+                                            <VerifyToggle field="client" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{selectedRequest.clientName}</p>
@@ -339,7 +328,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                                 <MapPin size={12}/> Site Coordinates
                                             </p>
-                                            <VerifyToggle field="location" label="Audit" />
+                                            <VerifyToggle field="location" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                                             <span className="text-xs font-bold text-text-primary uppercase">{selectedRequest.location}</span>
@@ -353,7 +342,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                                 <LayoutDashboard size={12}/> Technical Category
                                             </p>
-                                            <VerifyToggle field="category" label="Audit" />
+                                            <VerifyToggle field="category" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                                             <Badge variant="outline" className="text-[10px] uppercase bg-bg-secondary">{selectedRequest.requestType}</Badge>
@@ -364,7 +353,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                                                 <AlertTriangle size={12}/> Deployment Priority
                                             </p>
-                                            <VerifyToggle field="priority" label="Audit" />
+                                            <VerifyToggle field="priority" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                                             <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="h-5 px-3 uppercase text-[10px]">
@@ -378,7 +367,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
                                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Scope Briefing</p>
-                                    <VerifyToggle field="scope" label="Audit" />
+                                    <VerifyToggle field="scope" label="verify" />
                                 </div>
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium text-left">
                                     &quot;{selectedRequest.description}&quot;

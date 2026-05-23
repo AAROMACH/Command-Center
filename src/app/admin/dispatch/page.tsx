@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, addDoc, onSnapshot, query } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,9 @@ export default function DispatchPage() {
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
-  const [dispatchSearchQuery, setDispatchSearchQuery] = useState("");
-  const [requestSearchQuery, setRequestSearchQuery] = useState("");
-  const [dispatchSortBy, setDispatchSortBy] = useState<SortOption>('date');
-  const [requestSortBy, setRequestSortBy] = useState<SortOption>('priority');
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>('priority');
 
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
@@ -123,58 +122,68 @@ export default function DispatchPage() {
 
   const filteredOrders = useMemo(() => {
     let results = allWorkOrders.filter(order => {
-      const matchesSearch = (order.id || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-        (order.description || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase()) ||
-        (order.clientName || '').toLowerCase().includes(dispatchSearchQuery.toLowerCase());
+      const matchesSearch = (order.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.clientName || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
       const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
       return matchesSearch && matchesPriority && matchesType && matchesSource;
     });
     return results.sort((a, b) => {
-        if (dispatchSortBy === 'priority') {
+        if (sortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-            return prio[a.priority] - prio[b.priority];
+            return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
         }
-        if (dispatchSortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
+        if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
         return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
     });
-  }, [allWorkOrders, dispatchSearchQuery, activePriorities, activeTypes, activeSources, dispatchSortBy]);
+  }, [allWorkOrders, searchQuery, activePriorities, activeTypes, activeSources, sortBy]);
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
-      const matchesSearch = (req.id || '').toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-        (req.clientName || '').toLowerCase().includes(requestSearchQuery.toLowerCase()) ||
-        (req.description || '').toLowerCase().includes(requestSearchQuery.toLowerCase());
+      const matchesSearch = (req.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (req.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (req.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
       return matchesSearch && matchesPriority && matchesType;
     });
     return results.sort((a, b) => {
-        if (requestSortBy === 'priority') {
+        if (sortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-            return prio[a.priority] - prio[b.priority];
+            return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
         }
         return (a.submittedDate || '').localeCompare(b.submittedDate || '');
     });
-  }, [allRequests, requestSearchQuery, activePriorities, activeTypes, requestSortBy]);
+  }, [allRequests, searchQuery, activePriorities, activeTypes, sortBy]);
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setActivePriorities([]);
+    setActiveTypes([]);
+    setActiveSources([]);
+    setSortBy('priority');
+  };
+
+  const hasActiveFilters = searchQuery !== "" || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'priority';
 
   return (
     <div className="space-y-6">
         <header className="page-header">
-            <div>
+            <div className="text-left">
               <p className="page-eyebrow flex items-center gap-2"><Layers size={12} />Operations Control Center</p>
               <h1 className="page-title">Dispatch & Intake</h1>
-              <p className="page-subtitle">Unified terminal for client requests and logistical job routing.</p>
+              <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="page-header-right">
                 {activeMasterTab === 'dispatch' ? (
                   <>
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
-                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)}>+ New Dispatch Entry</Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px]"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
+                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px]">+ New Dispatch Entry</Button>
                   </>
                 ) : (
-                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)}><Plus size={14} className="mr-2"/>New Service Request</Button>
+                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px]"><Plus size={14} className="mr-2"/>New Service Request</Button>
                 )}
             </div>
       </header>
@@ -185,6 +194,112 @@ export default function DispatchPage() {
               <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">SERVICE REQUESTS</TabsTrigger>
               <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
             </TabsList>
+        </div>
+
+        <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm">
+          <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
+            <Search className="h-4 w-4 text-text-muted" />
+            <input 
+              className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary" 
+              placeholder={`Search ${activeMasterTab === 'dispatch' ? 'assignments' : 'intake'}...`} 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+              <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                  <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                      <div className="flex items-center gap-2">
+                          <ArrowUpDown size={14} className="text-text-muted" />
+                          <SelectValue placeholder="Sort" />
+                      </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
+                      <SelectItem value="date" className="text-[10px] uppercase font-bold">Date</SelectItem>
+                      <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
+                      {activeMasterTab === 'dispatch' && <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>}
+                  </SelectContent>
+              </Select>
+
+              <Popover>
+                  <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("h-10 text-[10px]", hasActiveFilters && "border-brand-red text-brand-red")}>
+                          <SlidersHorizontal size={14} className="mr-2"/>
+                          Filters
+                          {hasActiveFilters && (
+                            <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">
+                              {(searchQuery !== "" ? 1 : 0) + activePriorities.length + activeTypes.length + activeSources.length}
+                            </Badge>
+                          )}
+                      </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                      <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                          <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                              {hasActiveFilters && (
+                                  <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                                      <X size={10} /> Reset
+                                  </button>
+                              )}
+                          </div>
+                      </div>
+                      <div className="p-4 space-y-6 text-left">
+                          <div className="space-y-3">
+                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                  {['critical', 'high', 'medium', 'low'].map(priority => (
+                                      <div key={priority} className="flex items-center space-x-2">
+                                          <Checkbox 
+                                              id={`prio-${priority}`} 
+                                              checked={activePriorities.includes(priority)}
+                                              onCheckedChange={() => togglePriority(priority)}
+                                          />
+                                          <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+
+                          <div className="space-y-3">
+                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Technical Category</p>
+                              <div className="space-y-2">
+                                  {SERVICE_CATEGORIES.map(type => (
+                                      <div key={type} className="flex items-center space-x-2">
+                                          <Checkbox 
+                                              id={`type-${type}`} 
+                                              checked={activeTypes.includes(type)}
+                                              onCheckedChange={() => toggleType(type)}
+                                          />
+                                          <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+
+                          {activeMasterTab === 'dispatch' && (
+                            <div className="space-y-3">
+                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
+                                <div className="space-y-2">
+                                    {['Imported', 'Manual', 'Client'].map(source => (
+                                        <div key={source} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`src-${source}`} 
+                                                checked={activeSources.includes(source)}
+                                                onCheckedChange={() => toggleSource(source)}
+                                            />
+                                            <Label htmlFor={`src-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                          )}
+                      </div>
+                  </PopoverContent>
+              </Popover>
+          </div>
         </div>
 
         <TabsContent value="requests" className="mt-0">

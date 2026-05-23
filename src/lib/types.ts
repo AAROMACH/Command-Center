@@ -248,6 +248,12 @@ export type ServiceRequest = {
   priority: 'low' | 'medium' | 'high' | 'critical';
   imageUrls?: string[];
   documentUrls?: string[];
+  rejectionReason?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  closedAt?: string;
+  convertedId?: string;
+  conversionType?: 'assignment' | 'project';
 };
 
 export type AssignmentTimeLog = {

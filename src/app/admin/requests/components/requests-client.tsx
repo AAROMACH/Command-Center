@@ -60,7 +60,7 @@ import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -145,7 +145,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                   status: 'rejected', 
                   rejectionReason: rejectionReason.trim(),
                   reviewedAt: new Date().toISOString(),
-                  reviewedBy: currentUser?.name || 'Admin'
+                  reviewedBy: currentUser?.name || 'Admin',
+                  closedAt: new Date().toISOString()
                 });
                 toast({
                     variant: "destructive",
@@ -168,6 +169,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                 // Conversion case
                 const isProject = destination === '/admin/projects';
                 const today = format(new Date(), 'yyyy-MM-dd');
+                const now = new Date().toISOString();
                 
                 if (destination === '/admin/dispatch') {
                   // CREATE WORK ORDER (Assignment)
@@ -190,7 +192,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     ]
                   };
                   await addDoc(collection(db, 'workOrders'), newWO);
-                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment' });
+                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment', closedAt: now });
                 } else if (destination === '/admin/projects') {
                   // CREATE PROJECT
                   const newProject: Omit<Project, 'id'> = {
@@ -211,7 +213,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     actualHours: 0
                   };
                   await addDoc(collection(db, 'projects'), newProject);
-                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'project' });
+                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'project', closedAt: now });
                 }
 
                 toast({
@@ -251,6 +253,15 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         </button>
     );
 
+    const formatDateStr = (dateStr: string | undefined) => {
+        if (!dateStr) return 'N/A';
+        try {
+            return format(parseISO(dateStr), 'MM-dd HH:mm');
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div className="table-wrap">
@@ -259,57 +270,78 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         <tr className="bg-bg-tertiary">
                             <th style={{ width: "160px" }} className="text-center pl-0">Intake ID</th>
                             <th className="text-left pl-0">Tactical Briefing & Scope</th>
-                            <th style={{ width: "220px" }} className="text-left pl-0">Site Coordinates</th>
+                            <th style={{ width: "220px" }} className="text-left pl-0">Audit Timeline</th>
                             <th style={{ width: "160px" }} className="text-center">Category</th>
                             <th style={{ width: "100px" }} className="text-center">Priority</th>
                             <th style={{ width: "100px" }} className="text-center"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {paginatedRequests.map((req) => (
-                            <tr key={req.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenReview(req)}>
-                                <td className="!py-4">
-                                    <div className="flex flex-col items-center justify-center gap-1">
-                                        <div className="font-mono text-[10px] font-bold text-brand-red uppercase">{req.id.toUpperCase()}</div>
-                                        <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">{req.submittedDate}</p>
-                                    </div>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <div className="flex flex-col max-w-[450px]">
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors line-clamp-1 text-left">{req.description}</p>
-                                        <div className="flex items-center gap-2 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                            <Building2 size={10} />
-                                            <span>{req.clientName}</span>
+                        {paginatedRequests.map((req) => {
+                            const isClosed = req.status === 'closed' || req.status === 'rejected';
+                            return (
+                                <tr key={req.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenReview(req)}>
+                                    <td className="!py-4">
+                                        <div className="flex flex-col items-center justify-center gap-1">
+                                            <div className="font-mono text-[10px] font-bold text-brand-red uppercase">{req.id.toUpperCase()}</div>
+                                            {isClosed ? (
+                                              <Badge variant={req.status === 'rejected' ? 'missed' : 'active'} className="text-[7px] h-3 px-1 uppercase tracking-tighter">
+                                                {req.status}
+                                              </Badge>
+                                            ) : (
+                                              <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">{req.submittedDate}</p>
+                                            )}
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary font-bold uppercase text-left">
-                                        <MapPin size={10} className="text-brand-red shrink-0" />
-                                        <span className="truncate max-w-[180px] text-left">{req.location}</span>
-                                    </div>
-                                </td>
-                                <td className="!py-4">
-                                    <div className="flex items-center justify-center">
-                                        <Badge variant="outline" className="text-[8px] h-4 bg-bg-primary border-border-sub text-text-muted uppercase">
-                                            {req.requestType}
-                                        </Badge>
-                                    </div>
-                                </td>
-                                <td className="!py-4">
-                                    <div className="flex items-center justify-center">
-                                        <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">
-                                            {req.priority}
-                                        </Badge>
-                                    </div>
-                                </td>
-                                <td className="!py-4">
-                                    <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <ChevronRight size={16} className="text-text-muted" />
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td className="!py-4 text-left pl-0">
+                                        <div className="flex flex-col max-w-[450px]">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors line-clamp-1 text-left">{req.description}</p>
+                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                                <Building2 size={10} />
+                                                <span>{req.clientName}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="!py-4 text-left pl-0">
+                                        <div className="flex flex-col gap-1 text-left">
+                                          <div className="flex items-center gap-2 text-[10px] text-text-secondary font-bold uppercase text-left">
+                                              <MapPin size={10} className="text-brand-red shrink-0" />
+                                              <span className="truncate max-w-[180px] text-left">{req.location}</span>
+                                          </div>
+                                          {isClosed && (
+                                            <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2">
+                                              <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
+                                                <Plus size={8} /> Created: {req.submittedDate}
+                                              </p>
+                                              <p className="text-[8px] text-brand-red uppercase font-bold flex items-center gap-1">
+                                                <CheckCircle2 size={8} className="text-text-green" /> Audit Final: {formatDateStr(req.closedAt || req.reviewedAt)}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                    </td>
+                                    <td className="!py-4">
+                                        <div className="flex items-center justify-center">
+                                            <Badge variant="outline" className="text-[8px] h-4 bg-bg-primary border-border-sub text-text-muted uppercase">
+                                                {req.requestType}
+                                            </Badge>
+                                        </div>
+                                    </td>
+                                    <td className="!py-4">
+                                        <div className="flex items-center justify-center">
+                                            <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">
+                                                {req.priority}
+                                            </Badge>
+                                        </div>
+                                    </td>
+                                    <td className="!py-4">
+                                        <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <ChevronRight size={16} className="text-text-muted" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
 

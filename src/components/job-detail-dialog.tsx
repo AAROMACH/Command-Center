@@ -35,7 +35,8 @@ import {
   X,
   UserPlus,
   Sparkles,
-  DollarSign
+  DollarSign,
+  FileText
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -185,7 +186,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 </Badge>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold uppercase tracking-wide text-text-primary leading-tight">{mission.description}</DialogTitle>
+          <DialogTitle className="text-xl font-bold uppercase tracking-wide text-text-primary leading-tight">{mission.title || mission.description}</DialogTitle>
           <div className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
              <span className="flex items-center gap-1.5"><MapPin size={12} className="text-brand-red shrink-0" /><span>{mission.location}</span></span>
              <span className="flex items-center gap-1.5"><Calendar size={12} className="text-text-muted shrink-0" /><span>{mission.scheduleDate}</span></span>
@@ -195,9 +196,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="space-y-8">
             <div className="space-y-4 text-left">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><StickyNote size={14} className="text-accent-gold shrink-0"/><span>Scope of Work</span></h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><StickyNote size={14} className="text-accent-gold shrink-0"/><span>Mission Description</span></h3>
                 <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
-                    {mission.notes?.[0] || mission.description}
+                    {mission.description}
                 </div>
             </div>
 

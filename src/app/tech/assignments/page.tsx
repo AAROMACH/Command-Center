@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -103,20 +102,25 @@ export default function TechAssignmentsPage() {
                 const q = searchQuery.toLowerCase();
                 const matchesSearch = (
                     wo.id.toLowerCase().includes(q) ||
-                    wo.description.toLowerCase().includes(q) ||
-                    wo.clientName.toLowerCase().includes(q) ||
-                    wo.location.toLowerCase().includes(q)
+                    (wo.title || '').toLowerCase().includes(q) ||
+                    (wo.description || '').toLowerCase().includes(q) ||
+                    (wo.clientName || '').toLowerCase().includes(q) ||
+                    (wo.location || '').toLowerCase().includes(q)
                 );
 
                 const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
                     try {
-                        const parts = wo.scheduleDate.split(/[-/]/);
+                        const parts = (wo.scheduleDate || '').split(/[-/]/);
                         let woDate;
-                        if (parts[0].length === 4) {
+                        if (parts[0] && parts[0].length === 4) {
                             woDate = startOfDay(new Date(wo.scheduleDate));
                         } else {
                             const [m, d, y] = parts;
-                            woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                            if (y && m && d) {
+                                woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                            } else {
+                                return true;
+                            }
                         }
                         
                         if (dateRange.from && dateRange.to) {
@@ -144,13 +148,13 @@ export default function TechAssignmentsPage() {
                 return prio[a.priority] - prio[b.priority];
             }
             if (sortBy === 'pay') return b.pay - a.pay;
-            return a.scheduleDate.localeCompare(b.scheduleDate);
+            return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
         });
     }, [activeAssignments, sortBy]);
 
     const completedAssignments = useMemo(() => 
         techWorkOrders.filter(wo => wo.status === 'completed')
-            .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate)),
+            .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || '')),
     [techWorkOrders]);
 
     const handleConfirm = async (woId: string) => {
@@ -265,10 +269,12 @@ export default function TechAssignmentsPage() {
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
+            const parts = dateStr.split(/[-/]/);
             if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${month}-${day}-${year}`;
+                const [m, d, y] = parts;
+                if (m.length === 2 && d.length === 2) {
+                    return `${m}-${d}-${y}`;
+                }
             }
             return dateStr;
         } catch (e) {
@@ -368,7 +374,7 @@ export default function TechAssignmentsPage() {
                             <thead>
                                 <tr>
                                     <th className="text-center">Work Order / Status</th>
-                                    <th className="text-center">Assignment Description</th>
+                                    <th className="text-center">Assignment Identifier</th>
                                     <th className="text-center">Site Location</th>
                                     <th className="text-center">Schedule Window</th>
                                     <th className="text-center">Action</th>
@@ -402,7 +408,7 @@ export default function TechAssignmentsPage() {
                                         </td>
                                         <td>
                                             <div className="flex flex-col items-center justify-center text-center">
-                                              <div className="cell-desc-title">{wo.description}</div>
+                                              <div className="cell-desc-title">{wo.title || wo.description}</div>
                                               <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
                                             </div>
                                         </td>
@@ -496,7 +502,7 @@ export default function TechAssignmentsPage() {
                                             </td>
                                             <td>
                                                 <div className="flex flex-col items-center justify-center text-center">
-                                                  <div className="cell-desc-title">{wo.description}</div>
+                                                  <div className="cell-desc-title">{wo.title || wo.description}</div>
                                                   <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
                                                       <CircleCheck size={12}/> COMPLETED
                                                   </div>

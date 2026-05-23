@@ -140,6 +140,7 @@ export default function AssignmentsHubPage() {
         
         const matchesSearch = (
           (wo.id || '').toLowerCase().includes(queryStr) ||
+          (wo.title || '').toLowerCase().includes(queryStr) ||
           (wo.description || '').toLowerCase().includes(queryStr) ||
           (wo.clientName || '').toLowerCase().includes(queryStr) ||
           (tech && (tech.name || '').toLowerCase().includes(queryStr))
@@ -466,7 +467,7 @@ export default function AssignmentsHubPage() {
                                         </td>
                                         <td className="text-left pl-0 py-4">
                                             <div className="flex flex-col min-w-0">
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.title || wo.description}</p>
                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{wo.clientName}</p>
                                             </div>
                                         </td>
@@ -567,7 +568,7 @@ export default function AssignmentsHubPage() {
                                                     </div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
                                             </div>
                                         </td>
                                         <td className="py-4">
@@ -629,9 +630,15 @@ export default function AssignmentsHubPage() {
               {editedOrder && (
                   <ScrollArea className="flex-1">
                     <div className="px-6 py-4 space-y-6">
-                        <div className="space-y-2 text-left">
-                          <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-                          <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                        <div className="space-y-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                                <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Description</Label>
+                                <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">

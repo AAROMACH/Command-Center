@@ -14,7 +14,7 @@ export const technicians: Technician[] = [
     address: '123 Woodward Ave, Detroit, MI 48201',
     hourlyRate: 65,
     emergencyContact: {
-      name: 'Sarah Johnson',
+      name: ' Sarah Johnson',
       relation: 'Spouse',
       phone: '555-111-9999'
     },
@@ -248,7 +248,8 @@ export const technicians: Technician[] = [
 export const workOrders: WorkOrder[] = [
   {
     id: 'wo-101',
-    description: 'Fix leaking faucet in main bathroom',
+    title: 'Faucet Leak Repair',
+    description: 'Fix leaking faucet in main bathroom. Standard plumbing mission.',
     location: '123 Main St, Royal Oak, MI 48067',
     requiredSkills: ['Plumbing'],
     priority: 'medium',
@@ -268,7 +269,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-102',
-    description: 'Repair central AC unit not cooling',
+    title: 'AC Unit Restoration',
+    description: 'Repair central AC unit not cooling. Commercial grade property.',
     location: '456 Oak St, Ferndale, MI 48220',
     requiredSkills: ['HVAC', 'Electrical'],
     priority: 'high',
@@ -288,7 +290,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-103',
-    description: 'Install new smart thermostat',
+    title: 'Smart Thermostat Deployment',
+    description: 'Install new smart thermostat and verify network connectivity.',
     location: '789 Pine Ave, Dearborn, MI 48124',
     requiredSkills: ['Electrical', 'Smart Home'],
     priority: 'low',
@@ -303,7 +306,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-104',
-    description: 'Broken refrigerator compressor',
+    title: 'Refrigerator Compressor Fix',
+    description: 'Broken refrigerator compressor. Immediate response required.',
     location: '321 Elm St, Pontiac, MI 48341',
     requiredSkills: ['Appliance Repair'],
     priority: 'critical',
@@ -327,7 +331,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-18965948',
-    description: 'Tech for Hospitality Site Inspection Survey',
+    title: 'Hospitality Site Survey',
+    description: 'Tech for Hospitality Site Inspection Survey. Audit all terminal wiring.',
     location: 'Monroe, MI 48162',
     requiredSkills: ['Inspection', 'Hospitality'],
     priority: 'medium',
@@ -344,7 +349,8 @@ export const workOrders: WorkOrder[] = [
   },
    {
     id: 'wo-105',
-    description: 'Full electrical wiring inspection',
+    title: 'Electrical Registry Audit',
+    description: 'Full electrical wiring inspection across all server racks.',
     location: '555 Market St, Detroit, MI 48226',
     requiredSkills: ['Electrical'],
     priority: 'high',
@@ -359,7 +365,8 @@ export const workOrders: WorkOrder[] = [
   },
    {
     id: 'wo-106',
-    description: 'Water heater replacement',
+    title: 'Water Heater Upgrade',
+    description: 'Water heater replacement. Deinstall old unit, calibrate new system.',
     location: '888 Woodward Ave, Detroit, MI 48226',
     requiredSkills: ['Plumbing', 'HVAC'],
     priority: 'medium',
@@ -379,7 +386,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-107',
-    description: 'Terminal Rack Audit & Labeling',
+    title: 'Terminal Rack Audit',
+    description: 'Terminal Rack Audit & Labeling. High-fidelity labeling protocol required.',
     location: '100 Renaissance Center, Detroit, MI 48243',
     requiredSkills: ['Networking', 'Cabling'],
     priority: 'medium',
@@ -400,7 +408,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-108',
-    description: 'Emergency Switch Calibration',
+    title: 'Switch Calibration',
+    description: 'Emergency Switch Calibration for core network infrastructure.',
     location: '100 Renaissance Center, Detroit, MI 48243',
     requiredSkills: ['Networking'],
     priority: 'critical',
@@ -420,7 +429,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-mock-88',
-    description: 'Audit Server Rack Terminations',
+    title: 'Rack Termination Audit',
+    description: 'Audit Server Rack Terminations and document fiber paths.',
     location: '999 Tech Plaza, Detroit, MI 48201',
     requiredSkills: ['Networking', 'Cabling'],
     priority: 'high',
@@ -437,7 +447,8 @@ export const workOrders: WorkOrder[] = [
   },
   {
     id: 'wo-corey-1',
-    description: 'Emergency Fiber Splicing - Rack 4',
+    title: 'Fiber Splicing - Rack 4',
+    description: 'Emergency Fiber Splicing - Rack 4. Restoration of critical uplinks.',
     location: 'Detroit Data Center, Detroit, MI 48201',
     requiredSkills: ['Fiber Optics', 'Networking'],
     priority: 'high',

@@ -42,6 +42,7 @@ export type ReliabilityEvent = {
 
 export type WorkOrder = {
   id: string;
+  title: string;
   description: string;
   location: string;
   requiredSkills: string[];
@@ -189,6 +190,23 @@ export type Task = {
   estimatedHours?: number; // Added for Economics logic
 };
 
+export type ProjectDailyLog = {
+  id: string;
+  projectId: string;
+  technicianId: string;
+  date: string;
+  hoursWorked: number;
+  totalHours: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  workSummary: string;
+  taskIdsProgressed: string[];
+  taskIdsCompleted: string[];
+  phaseIdsWorked: string[];
+  materialsUsed: { item: string; quantity: number }[];
+  photoUrls: string[];
+};
+
 export type ProjectDocument = {
   id: string;
   projectId: string;
@@ -307,23 +325,6 @@ export type SiteRequest = {
 };
 
 export type PenaltyEvent = ReliabilityEvent; // Alias for backward compatibility
-
-export type ProjectDailyLog = {
-  id: string;
-  projectId: string;
-  technicianId: string;
-  date: string;
-  hoursWorked: number;
-  totalHours: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  workSummary: string;
-  taskIdsProgressed: string[];
-  taskIdsCompleted: string[];
-  phaseIdsWorked: string[];
-  materialsUsed: { item: string; quantity: number }[];
-  photoUrls: string[];
-};
 
 export type Expense = {
   id: string;

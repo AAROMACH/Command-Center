@@ -293,7 +293,7 @@ export const WorkOrdersTable = React.memo(({
                   </td>
                   <td className="!py-4 text-left pl-0">
                     <div className="flex flex-col min-w-0">
-                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{order.description}</div>
+                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{order.title || order.description}</div>
                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{order.clientName}</div>
                     </div>
                   </td>
@@ -532,9 +532,15 @@ export const WorkOrdersTable = React.memo(({
             {editedOrder && (
                 <ScrollArea className="flex-1">
                     <div className="px-6 py-4 space-y-6">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-                            <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                        <div className="space-y-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                                <Input placeholder="e.g. Network Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Description</Label>
+                                <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

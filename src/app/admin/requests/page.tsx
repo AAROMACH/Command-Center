@@ -1,8 +1,9 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import { serviceRequests as initialServiceRequests } from "@/lib/data";
+import { useState, useMemo, useEffect } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, addDoc } from 'firebase/firestore';
 import { RequestsTabs } from "./components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Plus, Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Badge } from '@/components/ui/badge';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -27,7 +29,7 @@ const SERVICE_CATEGORIES = [
 type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function RequestsPage() {
-  const [allRequests, setAllRequests] = useState<ServiceRequest[]>(initialServiceRequests);
+  const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>('priority');
@@ -38,12 +40,28 @@ export default function RequestsPage() {
   
   const { toast } = useToast();
 
-  const handleAddNewRequest = (request: ServiceRequest) => {
-    setAllRequests(prev => [request, ...prev]);
-    toast({
-        title: "Intake Buffer Updated",
-        description: `Request ${request.id.toUpperCase()} has been added to the mission funnel.`,
+  // 1. Initialize Registry Listener
+  useEffect(() => {
+    const q = query(collection(db, 'clientRequests'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest));
+      setAllRequests(requests);
     });
+
+    return () => unsub();
+  }, []);
+
+  const handleAddNewRequest = async (request: ServiceRequest) => {
+    try {
+        const { id, ...data } = request;
+        await addDoc(collection(db, 'clientRequests'), data);
+        toast({
+            title: "Intake Buffer Updated",
+            description: `Request ${request.id.toUpperCase()} has been added to the mission funnel.`,
+        });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Intake Error', description: e.message });
+    }
   };
 
   const togglePriority = (priority: string) => {
@@ -67,9 +85,12 @@ export default function RequestsPage() {
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
-      const matchesSearch = req.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        (req.id || '').toLowerCase().includes(q) ||
+        (req.clientName || '').toLowerCase().includes(q) ||
+        (req.description || '').toLowerCase().includes(q) ||
+        (req.location || '').toLowerCase().includes(q);
       
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
@@ -80,11 +101,11 @@ export default function RequestsPage() {
     return results.sort((a, b) => {
         if (sortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-            return prio[a.priority] - prio[b.priority];
+            return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
         }
-        if (sortBy === 'client') return a.clientName.localeCompare(b.clientName);
-        if (sortBy === 'type') return a.requestType.localeCompare(b.requestType);
-        return b.submittedDate.localeCompare(a.submittedDate);
+        if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
+        if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
+        return (b.submittedDate || '').localeCompare(a.submittedDate || '');
     });
   }, [allRequests, searchQuery, activePriorities, activeTypes, sortBy]);
 
@@ -93,7 +114,7 @@ export default function RequestsPage() {
   return (
     <div className="space-y-6">
       <header className="page-header">
-        <div>
+        <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2">
             <ClipboardList size={12} />
             Service Funnel
@@ -111,9 +132,9 @@ export default function RequestsPage() {
 
        <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm">
         <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
-          <Search />
+          <Search className="h-4 w-4 text-text-muted" />
           <input 
-            className="search-input !h-10 !text-xs font-bold uppercase !w-full" 
+            className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary" 
             placeholder="Search registry by ID, client, or scope..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -122,10 +143,10 @@ export default function RequestsPage() {
 
         <div className="flex items-center gap-3 w-full md:w-auto">
             <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                     <div className="flex items-center gap-2">
                         <ArrowUpDown size={14} className="text-text-muted" />
-                        <SelectValue placeholder="Sort" />
+                        <SelectValue placeholder="Sort Registry" />
                     </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -155,7 +176,7 @@ export default function RequestsPage() {
                             )}
                         </div>
                     </div>
-                    <div className="p-4 space-y-6">
+                    <div className="p-4 space-y-6 text-left">
                         <div className="space-y-3">
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
                             <div className="grid grid-cols-2 gap-2">

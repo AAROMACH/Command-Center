@@ -36,7 +36,8 @@ import {
   SquarePlus,
   Plus,
   ArrowLeft,
-  ShieldAlert
+  ShieldAlert,
+  Type
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -59,6 +60,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
@@ -75,6 +77,9 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
+    const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
+    const [conversionType, setConversionType] = useState<'assignment' | 'project' | null>(null);
+    const [conversionTitle, setConversionTitle] = useState("");
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
@@ -126,10 +131,21 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const userIsSuper = isSuperAdmin(currentUser);
     const userIsDispatch = isDispatchAdmin(currentUser);
 
-    const handleAction = async (status: ServiceRequest['status'], destination?: string) => {
+    const handleOpenConversion = (type: 'assignment' | 'project') => {
+        if (!selectedRequest) return;
+        setConversionType(type);
+        setConversionTitle(
+            type === 'project' 
+                ? `${selectedRequest.clientName} - ${selectedRequest.requestType} Initiative`
+                : `${selectedRequest.clientName} - ${selectedRequest.requestType}`
+        );
+        setIsConversionDialogOpen(true);
+    };
+
+    const handleAction = async (status: ServiceRequest['status'], bypassConversion?: boolean) => {
         if (!selectedRequest) return;
         
-        const requiresSuper = status === 'rejected' || status === 'approved' || destination !== undefined;
+        const requiresSuper = status === 'rejected' || status === 'approved' || bypassConversion === true;
         if (requiresSuper && !userIsSuper) {
             toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'This authorization path requires Super Admin credentials.' });
             return;
@@ -164,21 +180,30 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Awaiting final authorization.`,
                 });
                 setIsReviewOpen(false);
-            } else if (status === 'approved' && !destination) {
+            } else if (status === 'approved') {
                 await updateDoc(docRef, { status: 'approved' });
                 toast({
                     title: "Intake Approved",
                     description: `Request ${selectedRequest.id.toUpperCase()} approved. Awaiting tactical deployment selection.`,
                 });
                 setIsReviewOpen(false);
-            } else if (destination) {
-                const isProject = destination === '/admin/projects';
-                const today = format(new Date(), 'yyyy-MM-dd');
-                const now = new Date().toISOString();
-                
-                if (destination === '/admin/dispatch') {
-                  const newWO: Omit<WorkOrder, 'id'> = {
-                    title: `${selectedRequest.clientName} - ${selectedRequest.requestType}`,
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Registry Error", description: e.message });
+        }
+    };
+
+    const executeConversion = async () => {
+        if (!selectedRequest || !conversionType || !conversionTitle.trim()) return;
+
+        const docRef = doc(db, 'clientRequests', selectedRequest.id);
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const now = new Date().toISOString();
+
+        try {
+            if (conversionType === 'assignment') {
+                const newWO: Omit<WorkOrder, 'id'> = {
+                    title: conversionTitle.trim(),
                     description: selectedRequest.description,
                     location: selectedRequest.location,
                     requiredSkills: [],
@@ -192,14 +217,16 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     payType: 'fixed',
                     source: 'Client',
                     history: [
-                      { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
+                        { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
                     ]
-                  };
-                  await addDoc(collection(db, 'workOrders'), newWO);
-                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment', closedAt: now });
-                } else if (destination === '/admin/projects') {
-                  const newProject: Omit<Project, 'id'> = {
-                    name: `${selectedRequest.clientName} - ${selectedRequest.requestType} Initiative`,
+                };
+                await addDoc(collection(db, 'workOrders'), newWO);
+                await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'assignment', closedAt: now });
+                toast({ title: "Assignment Staged", description: "Mission data has been transferred from intake to the operational registry." });
+                router.push('/admin/dispatch');
+            } else {
+                const newProject: Omit<Project, 'id'> = {
+                    name: conversionTitle.trim(),
                     client: selectedRequest.clientName,
                     location: selectedRequest.location,
                     status: 'active',
@@ -209,29 +236,21 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     assignedTechnicianIds: [],
                     team: [],
                     phases: [
-                      { id: 'ph-1', phaseNumber: 1, name: 'Site Audit & Prep', tasks: [] }
+                        { id: 'ph-1', phaseNumber: 1, name: 'Site Audit & Prep', tasks: [] }
                     ],
                     siteHazardNotes: [],
                     actualBudget: 0,
                     actualHours: 0
-                  };
-                  await addDoc(collection(db, 'projects'), newProject);
-                  await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'project', closedAt: now });
-                }
-
-                toast({
-                    title: isProject ? "Project Folder Initialized" : "Assignment Staged",
-                    description: "Mission data has been transferred from intake to the operational registry.",
-                });
-                setIsReviewOpen(false);
-                router.push(destination);
+                };
+                await addDoc(collection(db, 'projects'), newProject);
+                await updateDoc(docRef, { status: 'closed', convertedId: selectedRequest.id, conversionType: 'project', closedAt: now });
+                toast({ title: "Project Folder Initialized", description: "Mission data has been transferred from intake to the operational registry." });
+                router.push('/admin/projects');
             }
+            setIsConversionDialogOpen(false);
+            setIsReviewOpen(false);
         } catch (e: any) {
-            toast({
-                variant: "destructive",
-                title: "Registry Error",
-                description: e.message || "Failed to execute registry update.",
-            });
+            toast({ variant: 'destructive', title: 'Conversion Failed', description: e.message });
         }
     };
 
@@ -573,7 +592,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 <div className="grid grid-cols-2 gap-3 w-full">
                                     <Button 
                                         disabled={!userIsSuper}
-                                        onClick={() => handleAction('approved', '/admin/dispatch')} 
+                                        onClick={() => handleOpenConversion('assignment')} 
                                         className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
                                     >
                                         <Wrench size={16} className="mr-2" /> Convert to Assignment
@@ -581,7 +600,7 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                     <Button 
                                         disabled={!userIsSuper}
                                         variant="outline"
-                                        onClick={() => handleAction('approved', '/admin/projects')} 
+                                        onClick={() => handleOpenConversion('project')} 
                                         className="h-11 border-accent-gold text-accent-gold hover:bg-accent-gold/10 uppercase font-bold text-[10px] tracking-widest"
                                     >
                                         <Briefcase size={16} className="mr-2" /> Convert to Project
@@ -638,6 +657,63 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                             className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
                         >
                             <X size={16} className="mr-2" /> Confirm & Reject
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* CONVERSION INITIALIZATION POPUP */}
+            <Dialog open={isConversionDialogOpen} onOpenChange={setIsConversionDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            {conversionType === 'project' ? <Briefcase className="text-accent-gold h-5 w-5" /> : <Wrench className="text-brand-red h-5 w-5" />}
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">
+                                {conversionType === 'project' ? 'Initialize Project Registry' : 'Stage New Assignment'}
+                            </DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Define operational identifiers for the new registry entry.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                <Type size={12} className="text-brand-red" />
+                                Official Title / Identifier
+                            </Label>
+                            <Input 
+                                placeholder="e.g. Gotham Data Center Rewiring" 
+                                value={conversionTitle}
+                                onChange={e => setConversionTitle(e.target.value)}
+                                className="h-11 bg-bg-primary border-border-sub text-xs font-bold uppercase tracking-wide"
+                                autoFocus
+                            />
+                            <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-tighter">This title will be used in the master operational ledger.</p>
+                        </div>
+
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3">
+                            <div className="space-y-1 text-left">
+                                <p className="text-[8px] font-black text-text-muted uppercase">Inherited Context</p>
+                                <div className="flex items-center gap-2">
+                                    <Building2 size={12} className="text-brand-red" />
+                                    <p className="text-[10px] font-bold text-text-primary uppercase">{selectedRequest?.clientName}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <MapPin size={12} className="text-brand-red" />
+                                    <p className="text-[10px] font-bold text-text-primary uppercase truncate">{selectedRequest?.location}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsConversionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button 
+                            disabled={!conversionTitle.trim()}
+                            onClick={executeConversion} 
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                        >
+                            <CheckCircle2 size={16} className="mr-2" /> Finalize Registry
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -82,14 +82,14 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       });
     };
 
-    if (!window.google) {
+    if (!window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
       document.head.appendChild(script);
-    } else {
+    } else if (window.google) {
       initAutocomplete();
     }
   }, [isOpen]);

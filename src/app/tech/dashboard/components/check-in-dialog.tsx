@@ -31,6 +31,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
+const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
+
 type CheckInDialogProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
@@ -276,7 +278,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                              {/* Location Preview */}
                              <div className="relative aspect-video w-full bg-bg-primary rounded-lg overflow-hidden border border-border-sub">
                                 <iframe 
-                                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSy...FAKEKEY&q=${encodeURIComponent(selectedItem.location)}`} 
+                                    src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(selectedItem.location)}`} 
                                     width="100%" 
                                     height="100%" 
                                     style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 

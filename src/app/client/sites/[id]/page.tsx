@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -48,6 +47,8 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+
+const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 export default function SiteDetailPage() {
     const params = useParams();
@@ -155,7 +156,7 @@ export default function SiteDetailPage() {
                     <Card className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
                              <iframe 
-                                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSy...FAKEKEY&q=${encodeURIComponent(siteData.location)}`} 
+                                src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(siteData.location)}`} 
                                 width="100%" 
                                 height="100%" 
                                 style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 

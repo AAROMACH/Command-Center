@@ -190,7 +190,7 @@ export type ProjectDocument = {
   id: string;
   projectId: string;
   name: string;
-  type: 'pdf' | 'img' | 'doc';
+  type: 'pdf' | 'img' | 'doc' | 'csv' | 'other';
   label: string;
   uploader: string;
   uploadDate: string;

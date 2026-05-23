@@ -1,11 +1,10 @@
-
 'use client';
 
 import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Milestone, Camera, Paperclip, Plus, User } from 'lucide-react';
+import { Upload, FileText, Image as ImageIcon, Download, Trash2, FolderOpen, Milestone, Camera, Paperclip, Plus, User, FileSpreadsheet } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -23,7 +22,8 @@ const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
     if (type === 'pdf') return <FileText className="text-[#FF6644]"/>;
     if (type === 'img') return <ImageIcon className="text-text-green"/>;
     if (type === 'doc') return <FileText className="text-[#4488DD]"/>;
-    return <FileText />;
+    if (type === 'csv') return <FileSpreadsheet className="text-text-green"/>;
+    return <FileText className="text-text-muted"/>;
 };
 
 const PreSiteDocumentList = ({ docs, onDelete }: { docs: ProjectDocument[], onDelete: (id: string) => void }) => {
@@ -188,24 +188,40 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     const preSiteDocs = documents.filter(doc => !doc.phaseId);
 
     const handleUpload = async (file: File, phaseId?: string, taskId?: string) => {
+        // Size Check: 10MB Security Threshold
+        if (file.size > 10 * 1024 * 1024) {
+            toast({
+                variant: 'destructive',
+                title: 'Payload Error',
+                description: 'File size exceeds the 10MB security threshold.',
+            });
+            return;
+        }
+
         const extension = file.name.split('.').pop()?.toLowerCase();
-        const type = extension === 'pdf' ? 'pdf' : (['jpg', 'jpeg', 'png'].includes(extension || '') ? 'img' : 'doc');
+        let type: ProjectDocument['type'] = 'other';
+        if (extension === 'pdf') type = 'pdf';
+        else if (['jpg', 'jpeg', 'png', 'webp'].includes(extension || '')) type = 'img';
+        else if (['doc', 'docx', 'txt'].includes(extension || '')) type = 'doc';
+        else if (extension === 'csv') type = 'csv';
         
-        const newDoc: Omit<ProjectDocument, 'id'> = {
+        const docData: any = {
             projectId: project.id,
             name: file.name,
-            type: type as any,
+            type: type,
             label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
             uploader: 'System Admin',
             uploadDate: format(new Date(), 'MM-dd-yyyy'),
             size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
             url: URL.createObjectURL(file), // Proxy URL for prototype
-            phaseId,
-            taskId
         };
 
+        // Mission Registry Logic: Only include optional identifiers if defined
+        if (phaseId) docData.phaseId = phaseId;
+        if (taskId) docData.taskId = taskId;
+
         try {
-            await addDoc(collection(db, 'projectDocuments'), newDoc);
+            await addDoc(collection(db, 'projectDocuments'), docData);
             toast({
                 title: "Registry Handshake Successful",
                 description: `${file.name} has been synchronized with the project registry.`,

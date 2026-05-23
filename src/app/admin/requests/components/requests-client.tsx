@@ -678,19 +678,6 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
-                                            <DollarSign size={12} className="text-text-green" />
-                                            Labor Rate ($)
-                                        </Label>
-                                        <Input 
-                                            type="number"
-                                            placeholder="0.00" 
-                                            value={conversionPay}
-                                            onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
-                                            className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Pay Model</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
                                             <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
@@ -702,6 +689,19 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                                                 <SelectItem value="blended" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                            <DollarSign size={12} className="text-text-green" />
+                                            Labor Rate ($)
+                                        </Label>
+                                        <Input 
+                                            type="number"
+                                            placeholder="0.00" 
+                                            value={conversionPay}
+                                            onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
+                                            className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
+                                        />
                                     </div>
                                 </div>
 

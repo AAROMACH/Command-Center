@@ -238,19 +238,17 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
         toast({ variant: "destructive", title: "Buffer Full", description: "Maximum 2 technical documents authorized." });
         return;
       }
-      // For a prototype, we store the name to represent the link. In production, this would be an upload.
       setDocs([...docs, file.name]);
       toast({ title: "Technical Asset Buffered", description: `${file.name} ready for intake.` });
     }
     
-    // Reset input so the same file can be chosen again if needed (e.g. after deletion)
     e.target.value = "";
   };
 
   const removeAttachment = (type: 'image' | 'doc', index: number) => {
     if (type === 'image') {
       const urlToRemove = images[index];
-      URL.revokeObjectURL(urlToRemove); // Registry cleanup
+      URL.revokeObjectURL(urlToRemove);
       setImages(images.filter((_, i) => i !== index));
     } else {
       setDocs(docs.filter((_, i) => i !== index));

@@ -187,6 +187,7 @@ export const WorkOrdersTable = React.memo(({
             assignedTechnicianId: technicianId === 'unassigned' ? null : technicianId
         });
         setIsDialogOpen(false);
+        setSelectedOrder(null);
         toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
     } catch (e: any) {
         toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
@@ -216,6 +217,8 @@ export const WorkOrdersTable = React.memo(({
         const docRef = doc(db, 'workOrders', editedOrder.id);
         await updateDoc(docRef, { ...finalUpdate });
         setIsEditDialogOpen(false);
+        setSelectedOrder(null);
+        setEditedOrder(null);
         if (payChanged && payAdmin) {
             toast({ title: "Pay Parameters Updated", description: "Financial changes authorized." });
         } else {
@@ -229,10 +232,13 @@ export const WorkOrdersTable = React.memo(({
   const handleDeleteOrder = async () => {
     if (!selectedOrder) return;
     try {
-        await deleteDoc(doc(db, 'workOrders', selectedOrder.id));
+        const orderId = selectedOrder.id;
+        await deleteDoc(doc(db, 'workOrders', orderId));
         setIsEditDialogOpen(false);
         setIsDeleteDialogOpen(false);
-        toast({ title: "Registry Purged", description: `Mission ${selectedOrder.id.toUpperCase()} has been removed from the registry.` });
+        setSelectedOrder(null);
+        setEditedOrder(null);
+        toast({ title: "Registry Purged", description: `Mission ${orderId.toUpperCase()} has been removed from the registry.` });
     } catch (e: any) {
         toast({ variant: "destructive", title: "Purge Failed", description: e.message });
     }
@@ -426,7 +432,7 @@ export const WorkOrdersTable = React.memo(({
         onUpdate={handleJobUpdate}
       />
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedOrder(null); setIsDialogOpen(open); }}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="page-title text-xl flex items-center gap-2">
@@ -495,7 +501,7 @@ export const WorkOrdersTable = React.memo(({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedOrder(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between">

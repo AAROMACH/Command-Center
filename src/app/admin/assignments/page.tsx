@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -245,6 +244,8 @@ export default function AssignmentsHubPage() {
         const docRef = doc(db, 'workOrders', editedOrder.id);
         await updateDoc(docRef, { ...finalUpdate });
         setIsEditDialogOpen(false);
+        setSelectedJob(null);
+        setEditedOrder(null);
         toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -254,10 +255,13 @@ export default function AssignmentsHubPage() {
   const handleDeleteOrder = async () => {
     if (!selectedJob) return;
     try {
-        await deleteDoc(doc(db, 'workOrders', selectedJob.id));
+        const orderId = selectedJob.id;
+        await deleteDoc(doc(db, 'workOrders', orderId));
         setIsEditDialogOpen(false);
         setIsDeleteDialogOpen(false);
-        toast({ title: "Registry Purged", description: `Assignment ${selectedJob.id.toUpperCase()} removed from system.` });
+        setSelectedJob(null);
+        setEditedOrder(null);
+        toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
     } catch (e: any) {
         toast({ variant: "destructive", title: "Purge Failed", description: e.message });
     }
@@ -580,7 +584,7 @@ export default function AssignmentsHubPage() {
             onUpdate={handleJobUpdate}
         />
         
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedJob(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
           <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
               <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between">

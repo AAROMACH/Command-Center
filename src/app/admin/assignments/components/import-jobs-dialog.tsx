@@ -19,6 +19,7 @@ import type { WorkOrder } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type ImportJobsDialogProps = {
   isOpen: boolean;
@@ -324,7 +325,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                     ) : (
                                                         <div className="text-right">
                                                             <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
-                                                                ${job.pay.toFixed(2)} ({job.payType})
+                                                                ${job.pay.toFixed(2)} ({PAY_TYPE_LABELS[job.payType as keyof typeof PAY_TYPE_LABELS] || job.payType})
                                                             </span>
                                                         </div>
                                                     )}

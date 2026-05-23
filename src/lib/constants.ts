@@ -107,9 +107,9 @@ export const RELIABILITY_EVENT_TYPES = {
 } as const;
 
 export const PAY_TYPE_LABELS = {
-  fixed: "Fixed Rate",
-  hourly: "Hourly",
-  blended: "Blended Rate",
+  fixed: "Fixed labor rate",
+  hourly: "hourly labor rate",
+  blended: "blended labor rate",
 } as const;
 
 export const OUTCOME_CODE_LABELS = {

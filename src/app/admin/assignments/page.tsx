@@ -27,7 +27,9 @@ import {
   UserPlus,
   Trash2,
   ShieldCheck,
-  StickyNote
+  StickyNote,
+  Type,
+  FileText
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -75,6 +77,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 const getFieldNationLink = (id: string) => {
   const cleanId = id.replace(/^wo-/, '');
@@ -155,7 +158,7 @@ export default function AssignmentsHubPage() {
                 else { 
                   const [m, d, y] = parts;
                   if (y && m && d) {
-                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
+                      woDate = new Date(`${y}-${m}-${day}T12:00:00`);
                   } else {
                       return true; // Safe fallback for invalid dates
                   }
@@ -177,8 +180,20 @@ export default function AssignmentsHubPage() {
         return matchesSearch && matchesDate && matchesPriority && matchesSource;
       })
       .sort((a, b) => {
-        const safeA = { date: a.scheduleDate || '', client: a.clientName || '', status: a.status || '' };
-        const safeB = { date: b.scheduleDate || '', client: b.clientName || '', status: b.status || '' };
+        const safeA = { 
+            date: a.scheduleDate || '', 
+            client: a.clientName || '', 
+            status: a.status || '', 
+            title: a.title || a.description || '',
+            id: a.id || ''
+        };
+        const safeB = { 
+            date: b.scheduleDate || '', 
+            client: b.clientName || '', 
+            status: b.status || '', 
+            title: b.title || b.description || '',
+            id: b.id || ''
+        };
 
         switch (sortBy) {
           case 'client': return safeA.client.localeCompare(safeB.client);
@@ -513,7 +528,7 @@ export default function AssignmentsHubPage() {
                                                 {wo.payType === 'blended' ? (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">
-                                                            ${(wo.blendedFixedPay || 0).toFixed(0)} + ${(wo.blendedHourlyRate || 0).toFixed(0)}/hr
+                                                            ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
                                                         </span>
                                                         <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
                                                             after {wo.blendedIncludedHours || 0}hrs
@@ -522,7 +537,7 @@ export default function AssignmentsHubPage() {
                                                 ) : (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{wo.payType}</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{PAY_TYPE_LABELS[wo.payType as keyof typeof PAY_TYPE_LABELS] || wo.payType}</span>
                                                     </>
                                                 )}
                                             </div>
@@ -636,11 +651,15 @@ export default function AssignmentsHubPage() {
                     <div className="px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                  <Type size={12} className="text-brand-red"/> Job Title
+                                </Label>
                                 <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                  <FileText size={12} className="text-accent-gold"/> Scope of Work
+                                </Label>
                                 <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
                             </div>
                         </div>
@@ -700,9 +719,9 @@ export default function AssignmentsHubPage() {
                               <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
                                   <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                   <SelectContent>
-                                      <SelectItem value="fixed">Fixed</SelectItem>
-                                      <SelectItem value="hourly">Hourly</SelectItem>
-                                      <SelectItem value="blended">Blended</SelectItem>
+                                      <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                                      <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                                      <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                                   </SelectContent>
                               </Select>
                           </div>

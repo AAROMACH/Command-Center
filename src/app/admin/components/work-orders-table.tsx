@@ -59,7 +59,9 @@ import {
   Activity,
   Gauge,
   Sparkles,
-  Trash2
+  Trash2,
+  Type,
+  FileText
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +71,7 @@ import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type WorkOrdersTableProps = {
   workOrders: WorkOrder[];
@@ -198,7 +201,7 @@ export const WorkOrdersTable = React.memo(({
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
-    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedJob.payType;
+    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
@@ -343,7 +346,7 @@ export const WorkOrdersTable = React.memo(({
                                 {order.payType === 'blended' ? (
                                     <>
                                         <span className="font-mono text-xs font-bold text-text-green">
-                                            ${(order.blendedFixedPay || 0).toFixed(0)} + ${(order.blendedHourlyRate || 0).toFixed(0)}/hr
+                                            ${(order.blendedFixedPay || 0).toFixed(2)} + ${(order.blendedHourlyRate || 0).toFixed(2)}/hr
                                         </span>
                                         <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
                                             after {order.blendedIncludedHours}hrs
@@ -352,7 +355,7 @@ export const WorkOrdersTable = React.memo(({
                                 ) : (
                                     <>
                                         <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}</span>
-                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{PAY_TYPE_LABELS[order.payType as keyof typeof PAY_TYPE_LABELS] || order.payType}</span>
                                     </>
                                 )}
                             </div>
@@ -534,11 +537,15 @@ export const WorkOrdersTable = React.memo(({
                     <div className="px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                  <Type size={12} className="text-brand-red"/> Job Title
+                                </Label>
                                 <Input placeholder="e.g. Network Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Description</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                  <FileText size={12} className="text-accent-gold"/> Scope of Work
+                                </Label>
                                 <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
                             </div>
                         </div>
@@ -599,9 +606,9 @@ export const WorkOrdersTable = React.memo(({
                                 <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="fixed">Fixed</SelectItem>
-                                        <SelectItem value="hourly">Hourly</SelectItem>
-                                        <SelectItem value="blended">Blended</SelectItem>
+                                        <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                                        <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                                        <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

@@ -21,11 +21,12 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign, Type, FileText } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type NewAssignmentDialogProps = {
   isOpen: boolean;
@@ -101,6 +102,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       ...formData as WorkOrder,
       id: `wo-${Date.now().toString().slice(-6)}`,
       isAcknowledged: false,
+      source: 'Manual',
     };
 
     onSave(newOrder);
@@ -167,7 +169,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             <div className="px-6 py-4 space-y-6 text-left">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                    <Type size={12} className="text-brand-red"/> Job Title
+                  </Label>
                   <Input 
                     placeholder="e.g. Rack Audit & Labeling" 
                     value={formData.title}
@@ -176,7 +180,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                    <FileText size={12} className="text-accent-gold"/> Scope of Work
+                  </Label>
                   <Textarea 
                     placeholder="Primary objective and detailed requirements..." 
                     value={formData.description}
@@ -242,9 +248,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fixed">Fixed Rate</SelectItem>
-                      <SelectItem value="hourly">Hourly Logic</SelectItem>
-                      <SelectItem value="blended">Blended / Complex</SelectItem>
+                      <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                      <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                      <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -67,6 +67,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 
@@ -275,8 +276,33 @@ const TimesheetsTab = ({
         return () => clearInterval(interval);
     }, [activeSession]);
 
+    const groupedByDate = useMemo(() => {
+        const groups = dailyLogs.reduce((acc, log) => {
+            if (!acc[log.date]) acc[log.date] = { logs: [], total: 0 };
+            acc[log.date].logs.push(log);
+            acc[log.date].total += (log.hoursWorked || 0);
+            return acc;
+        }, {} as Record<string, { logs: ProjectDailyLog[], total: number }>);
+        
+        return Object.entries(groups)
+            .map(([date, data]) => ({ date, ...data }))
+            .sort((a, b) => b.date.localeCompare(a.date));
+    }, [dailyLogs]);
+
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-red-dim rounded-lg border border-brand-red/20 text-brand-red">
+                        <Clock size={20} />
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Master Project Tally</p>
+                        <p className="text-xl font-mono font-bold text-text-primary">{(project.actualHours || 0).toFixed(1)} Total Hours Logged</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-6">
                 <section className={cn("field-group border-2", isReadOnly ? "border-border-sub bg-bg-secondary/50 grayscale" : "border-brand-red/30 bg-brand-red-dim/5")}>
                     <div className="flex items-center justify-between mb-4">
@@ -339,35 +365,47 @@ const TimesheetsTab = ({
                 </section>
 
                 <section className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
-                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Timesheet Manifest</h3>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Total Time: <span className="text-text-primary font-mono">{(project.actualHours || 0).toFixed(1)}h</span></p>
-                    </div>
-                    <div className="space-y-2">
-                        {dailyLogs.map(log => {
-                            const tech = technicians.find(t => t.id === log.technicianId);
-                            return (
-                                <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3 text-left">
-                                    <div className="flex justify-between items-start">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Daily Activity Registry</h3>
+                    {groupedByDate.length > 0 ? (
+                        <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-2">
+                            {groupedByDate.map(group => (
+                                <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-lg overflow-hidden bg-bg-secondary">
+                                    <AccordionTrigger className="px-4 py-2 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
                                         <div className="flex items-center gap-3">
-                                            <Avatar className="h-7 w-7 border border-border-sub">
-                                                <AvatarImage src={tech?.avatarUrl} />
-                                                <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name || 'Field Operative'}</p>
-                                                <p className="text-[9px] text-text-muted font-mono uppercase tracking-widest">{formatDateDisplay(log.date)}</p>
-                                            </div>
+                                            <CalendarIcon size={14} className="text-brand-red" />
+                                            <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.date}</span>
+                                            <Badge variant="outline" className="text-[8px] bg-bg-tertiary h-4">{group.logs.length} LOGS</Badge>
                                         </div>
-                                        <div className="text-right">
-                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub text-text-green">{log.totalHours}</Badge>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{log.workSummary}&quot;</p>
-                                </div>
-                            )
-                        })}
-                    </div>
+                                        <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Day Total: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="p-2 space-y-1 bg-bg-primary/20">
+                                        {group.logs.map(log => {
+                                            const tech = technicians.find(t => t.id === log.technicianId);
+                                            return (
+                                                <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary space-y-2 text-left">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar className="h-5 w-5 border border-border-sub">
+                                                                <AvatarFallback className="text-[8px]">{tech?.name.charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</span>
+                                                        </div>
+                                                        <span className="text-[10px] font-mono font-bold text-text-green">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+                                                </div>
+                                            )
+                                        })}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                        <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                            <History size={48} className="mx-auto text-text-muted mb-2" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No site activity reported yet</p>
+                        </div>
+                    )}
                 </section>
             </div>
         </div>

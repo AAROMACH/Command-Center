@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Circle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock } from 'lucide-react';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -47,9 +47,6 @@ const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
               />
             </div>
           ))}
-          <button className="h-14 w-14 rounded border-2 border-dashed border-border-sub flex items-center justify-center text-text-muted hover:border-brand-red hover:text-brand-red transition-all">
-            <Plus size={16} />
-          </button>
         </div>
       </div>
     </div>
@@ -82,7 +79,7 @@ const TimesheetCard = ({ log, tech, viewBy }: { log: ProjectDailyLog; tech?: Tec
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || '0h 0m'}</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`}</span>
                     </div>
                 </div>
 
@@ -209,7 +206,22 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-red-dim rounded-lg border border-brand-red/20 text-brand-red">
+                        <Clock size={20} />
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Master Project Tally</p>
+                        <p className="text-xl font-mono font-bold text-text-primary">{(project.actualHours || 0).toFixed(1)} Total Hours Logged</p>
+                    </div>
+                </div>
+                <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-border-sub" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>
+                    <Download size={14} className="mr-1.5"/> Export Audit Manifest
+                </Button>
+            </div>
+
             <div className="flex flex-wrap justify-between items-center gap-3 p-2 bg-bg-secondary/30 rounded-lg border border-border-sub">
                 <div className="flex items-center gap-1.5 bg-bg-tertiary p-0.5 rounded border border-border-sub">
                     <Button onClick={() => setViewBy('date')} variant="ghost" className={cn("h-7 px-3 text-[10px] uppercase font-bold", viewBy === 'date' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Date</Button>
@@ -258,9 +270,6 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
                         </PopoverContent>
                       </Popover>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-8 !text-[10px] uppercase font-bold tracking-widest" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>
-                            <Download size={14} className="mr-1.5"/> CSV
-                        </Button>
                         <Button 
                             variant="default" 
                             size="sm" 
@@ -290,7 +299,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: TimesheetsTa
                                     </div>
                                     <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
-                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Total Time: <span className="text-text-primary font-mono text-xs">{(project.actualHours || 0).toFixed(1)}h</span></span>
+                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Group Time: <span className="text-text-primary font-mono text-xs">{group.totalTime}</span></span>
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: ProjectDailyLog) => (

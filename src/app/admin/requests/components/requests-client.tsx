@@ -32,7 +32,8 @@ import {
   Type,
   DollarSign,
   Lock,
-  Search
+  Search,
+  ArrowUpDown
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -42,6 +43,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -68,11 +70,12 @@ type RequestsClientProps = {
     isHistory?: boolean;
 };
 
-export function RequestsClient({ requests, workOrders = [], isHistory = false }: RequestsClientProps) {
+export function RequestsClient({ requests = [], workOrders = [], isHistory = false }: RequestsClientProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [isLinkageOpen, setIsLinkageOpen] = useState(false);
     const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
     const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
     const [conversionType, setConversionType] = useState<'assignment' | 'project' | null>(null);
@@ -108,7 +111,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
         }
     }, [isReviewOpen]);
 
-    const totalPages = Math.ceil(requests.length / itemsPerPage);
+    const totalPages = Math.ceil(requests.length / (itemsPerPage || 1));
     const paginatedRequests = useMemo(() => {
         const start = (currentPage - 1) * itemsPerPage;
         return requests.slice(start, start + itemsPerPage);
@@ -117,6 +120,11 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
     const handleOpenReview = (req: ServiceRequest) => {
         setSelectedRequest(req);
         setIsReviewOpen(true);
+    };
+
+    const handleOpenLinkage = (req: ServiceRequest) => {
+        setSelectedRequest(req);
+        setIsLinkageOpen(true);
     };
 
     const toggleVerify = (field: string) => {
@@ -205,16 +213,13 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
         if (!req.convertedId) return;
         
         if (req.conversionType === 'project') {
-            // Direct navigation to high-fidelity Project Registry
             router.push(`/admin/projects/${req.convertedId}`);
         } else {
             const wo = workOrders.find(w => w.id === req.convertedId);
-            // Contextual routing based on assignment status
-            // Logic: stay in Dispatch Hub, route to Unassigned or Assigned sub-tab
             if (!wo || wo.status === 'unassigned' || !wo.assignedTechnicianId) {
                 router.push('/admin/dispatch?tab=dispatch&subtab=unassigned');
             } else {
-                router.push('/admin/dispatch?tab=dispatch&subtab=assigned');
+                router.push('/admin/assignments');
             }
         }
     };
@@ -290,7 +295,6 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
             
-            // Execute contextual navigation handshake
             if (conversionType === 'project') {
                 router.push(`/admin/projects/${newId}`);
             } else {
@@ -308,13 +312,13 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
             onClick={() => toggleVerify(field)}
             className={cn(
                 "flex items-center gap-1.5 px-2 py-0.5 rounded transition-all",
-                (verifiedFields.has(field) || selectedRequest?.status !== 'new')
+                (verifiedFields.has(field) || (selectedRequest?.status !== 'new' && selectedRequest?.status !== 'rejected'))
                     ? "bg-green-dim text-text-green border border-green-border" 
                     : "bg-bg-tertiary text-text-muted border border-border-sub hover:border-text-primary",
                 selectedRequest?.status !== 'new' && "cursor-default"
             )}
         >
-            {(verifiedFields.has(field) || selectedRequest?.status !== 'new') ? <CheckCircle2 size={10} /> : <Circle size={10} />}
+            {(verifiedFields.has(field) || (selectedRequest?.status !== 'new' && selectedRequest?.status !== 'rejected')) ? <CheckCircle2 size={10} /> : <Circle size={10} />}
             <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
         </button>
     );
@@ -348,6 +352,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                     <th className="text-left pl-0">Mission Title</th>
                                     <th className="text-left pl-0">Scope Briefing</th>
                                     <th style={{ width: "180px" }} className="text-left pl-0">Audit Timeline</th>
+                                    <th style={{ width: "120px" }} className="text-center">Action</th>
                                 </>
                             )}
                         </tr>
@@ -405,10 +410,31 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                                 <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
                                                     <Plus size={8} /> Created: {req.submittedDate}
                                                 </p>
-                                                <p className="text-[8px] text-brand-red uppercase font-bold flex items-center gap-1">
-                                                    <CheckCircle2 size={8} className="text-text-green" /> Audit Final: {formatDateStr(req.closedAt || req.reviewedAt)}
+                                                <p className={cn("text-[8px] uppercase font-bold flex items-center gap-1", req.status === 'rejected' ? 'text-text-red' : 'text-text-green')}>
+                                                    <CheckCircle2 size={8} className={req.status === 'rejected' ? 'text-text-red' : 'text-text-green'} /> Final: {formatDateStr(req.closedAt || req.reviewedAt)}
                                                 </p>
                                             </div>
+                                        </td>
+                                        <td className="!py-4 text-center">
+                                            {req.status === 'closed' && req.convertedId ? (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-7 text-[8px] uppercase font-bold border-brand-red text-brand-red hover:bg-brand-red hover:text-white"
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenLinkage(req); }}
+                                                >
+                                                    View Linkage
+                                                </Button>
+                                            ) : (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-7 text-[8px] uppercase font-bold text-text-muted"
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenReview(req); }}
+                                                >
+                                                    View Details
+                                                </Button>
+                                            )}
                                         </td>
                                     </>
                                 )}
@@ -416,7 +442,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                         ))}
                         {paginatedRequests.length === 0 && (
                             <tr>
-                                <td colSpan={isHistory ? 5 : 6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">
+                                <td colSpan={isHistory ? 6 : 6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">
                                     Funnel Clear: No intake records matching registry criteria.
                                 </td>
                             </tr>
@@ -428,7 +454,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                     <div className="flex items-center gap-4 text-left">
                         <div className="flex items-center gap-1.5 text-left">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Show</p>
-                            <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+                            <Select value={(itemsPerPage || 10).toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
                                 <SelectTrigger className="h-7 w-[70px] bg-bg-primary text-[10px] font-bold border-border-sub">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -440,7 +466,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                             </Select>
                         </div>
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
-                            Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> of {requests.length}
+                            Showing <span className="text-text-primary">{((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, requests.length)}</span> of {requests.length}
                         </p>
                     </div>
                     
@@ -545,7 +571,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                             </p>
                                             <VerifyToggle field="location" label="verify" />
                                         </div>
-                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                        <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
                                             <span className="text-xs font-bold text-text-primary uppercase text-left">{selectedRequest.location}</span>
                                         </div>
                                     </div>
@@ -678,6 +704,46 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                 </DialogContent>
             </Dialog>
 
+            {/* LINKAGE POPUP DIALOG */}
+            <Dialog open={isLinkageOpen} onOpenChange={setIsLinkageOpen}>
+                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-3">
+                            <CheckCircle2 className="text-text-green h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Registry Linkage</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Converted Mission Identifier</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6 px-6 space-y-6">
+                        <div className="p-6 rounded-2xl bg-bg-secondary border border-border-sub flex flex-col items-center gap-3 shadow-inner">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Target Operational ID</p>
+                            <p className="text-3xl font-mono font-bold text-brand-red tracking-tighter">
+                                {selectedRequest?.convertedId?.toUpperCase()}
+                            </p>
+                            <Badge variant="outline" className="text-[9px] h-5 px-3 uppercase bg-bg-primary border-border-sub font-black tracking-widest">
+                                {selectedRequest?.conversionType === 'project' ? 'Infrastructure Project' : 'Field Assignment'}
+                            </Badge>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4">
+                            <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                                This intake has been successfully archived. The target mission registry is now active in the {selectedRequest?.conversionType === 'project' ? 'Projects' : 'Dispatch'} hub.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default gap-3">
+                        <Button variant="outline" onClick={() => setIsLinkageOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Close Terminal</Button>
+                        <Button 
+                            onClick={() => { setIsLinkageOpen(false); handleViewRecord(selectedRequest!); }} 
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                        >
+                            View Full Record <ChevronRight size={14} className="ml-1.5" />
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* REJECTION BRIEFING POPUP */}
             <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
@@ -690,9 +756,9 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                     </DialogHeader>
 
                     <div className="p-6 space-y-4">
-                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-1">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest text-left">Mission Termination Handshake</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium text-left">
+                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-1 text-left">
+                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Mission Termination Handshake</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
                                 You are rejecting request <span className="text-text-primary font-bold">{(selectedRequest?.id || '').toUpperCase()}</span>. This will be transmitted to the client entity.
                             </p>
                         </div>
@@ -752,9 +818,9 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
 
                         {conversionType === 'assignment' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4 items-start">
+                                <div className="grid grid-cols-2 gap-4 items-end">
                                     <div className="space-y-2 text-left">
-                                        <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
                                             <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
                                                 <SelectValue />
@@ -767,7 +833,7 @@ export function RequestsClient({ requests, workOrders = [], isHistory = false }:
                                         </Select>
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="h-4 text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
                                             <DollarSign size={12} className="text-text-green" />
                                             Labor Rate ($)
                                         </Label>

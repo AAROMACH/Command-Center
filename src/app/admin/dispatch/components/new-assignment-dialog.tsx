@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign, SearchCode } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -58,7 +58,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     location: '',
     blendedFixedPay: 0,
     blendedIncludedHours: 0,
-    blendedHourlyRate: 0
+    blendedHourlyRate: 0,
+    isAcknowledged: false
   });
   
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
@@ -70,9 +71,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   useEffect(() => {
     if (!isOpen) return;
 
-    // Define global failure handler to prevent console error from breaking UI in some environments
     window.gm_authFailure = () => {
-      console.warn("Google Maps API authentication failed. Verify API key activation and domain restrictions.");
+      console.warn("Google Maps API authentication failed.");
       toast({
         variant: "destructive",
         title: "Maps API Access Conflict",
@@ -111,6 +111,37 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       initAutocomplete();
     }
   }, [isOpen, toast]);
+
+  const resolveAddress = () => {
+    if (!formData.location || !window.google) return;
+    
+    try {
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: formData.location,
+        fields: ['formatted_address', 'geometry'],
+      };
+
+      service.findPlaceFromQuery(request, (results: any, status: any) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+          const place = results[0];
+          setFormData(prev => ({ ...prev, location: place.formatted_address }));
+          toast({
+            title: "Coordinate Match Verified",
+            description: `Registry updated to verified site: ${place.formatted_address}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Resolution Failed",
+            description: "No verified coordinates found for this identifier.",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Places Service Error:", e);
+    }
+  };
 
   const clients = useMemo(() => {
     return technicians.filter(t => 
@@ -258,13 +289,25 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
                     <div className="space-y-1.5">
-                        <Input 
-                            ref={addressInputRef}
-                            placeholder="Full address or coordinates..." 
-                            value={formData.location}
-                            onChange={(e) => setFormData({...formData, location: e.target.value})}
-                            className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all"
-                        />
+                        <div className="relative group">
+                            <Input 
+                                ref={addressInputRef}
+                                placeholder="Full address or coordinates..." 
+                                value={formData.location}
+                                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all pr-10"
+                            />
+                            {formData.location && (
+                                <button 
+                                    onClick={resolveAddress}
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                                    title="Verify Coordinates"
+                                >
+                                    <SearchCode size={14} />
+                                </button>
+                            )}
+                        </div>
                         <Button 
                             type="button" 
                             variant="ghost" 

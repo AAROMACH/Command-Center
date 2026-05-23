@@ -20,7 +20,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User } from 'lucide-react';
+import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User, SearchCode } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -60,7 +60,6 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   useEffect(() => {
     if (!isOpen) return;
 
-    // Define global failure handler
     window.gm_authFailure = () => {
       console.warn("Google Maps API authentication failed.");
       toast({
@@ -101,6 +100,37 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       initAutocomplete();
     }
   }, [isOpen, toast]);
+
+  const resolveAddress = () => {
+    if (!formData.location || !window.google) return;
+    
+    try {
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: formData.location,
+        fields: ['formatted_address', 'geometry'],
+      };
+
+      service.findPlaceFromQuery(request, (results: any, status: any) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+          const place = results[0];
+          setFormData(prev => ({ ...prev, location: place.formatted_address }));
+          toast({
+            title: "Coordinate Match Verified",
+            description: `Registry updated to verified site: ${place.formatted_address}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Resolution Failed",
+            description: "No verified coordinates found for this identifier.",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Places Service Error:", e);
+    }
+  };
 
   const handleSave = () => {
     if (!formData.name || !formData.client || !formData.location) return;
@@ -175,8 +205,18 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     placeholder="Full Address" 
                     value={formData.location}
                     onChange={e => setFormData({...formData, location: e.target.value})}
-                    className="bg-bg-primary pl-10"
+                    className="bg-bg-primary pl-10 pr-10"
                 />
+                {formData.location && (
+                    <button 
+                        onClick={resolveAddress}
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                        title="Verify Coordinates"
+                    >
+                        <SearchCode size={14} />
+                    </button>
+                )}
             </div>
           </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -74,7 +75,7 @@ export default function DispatchPage() {
       setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician)));
     });
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
-      setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest));
+      setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)));
     });
     const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
       setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
@@ -154,7 +155,7 @@ export default function DispatchPage() {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
         }
-        return (a.submittedDate || '').localeCompare(b.submittedDate || '');
+        return (a.submittedDate || '').localeCompare(a.submittedDate || '');
     });
   }, [allRequests, searchQuery, activePriorities, activeTypes, sortBy]);
 

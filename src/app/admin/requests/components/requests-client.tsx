@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -63,7 +64,7 @@ import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
-    workOrders: WorkOrder[];
+    workOrders?: WorkOrder[];
     isHistory?: boolean;
 };
 

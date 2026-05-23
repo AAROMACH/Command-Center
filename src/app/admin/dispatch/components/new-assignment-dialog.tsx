@@ -30,8 +30,11 @@ import { cn } from '@/lib/utils';
 declare global {
   interface Window {
     google: any;
+    gm_authFailure?: () => void;
   }
 }
+
+const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 type NewAssignmentDialogProps = {
   isOpen: boolean;
@@ -62,9 +65,20 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Define global failure handler to prevent console error from breaking UI in some environments
+    window.gm_authFailure = () => {
+      console.warn("Google Maps API authentication failed. Verify API key activation and domain restrictions.");
+      toast({
+        variant: "destructive",
+        title: "Maps API Access Conflict",
+        description: "Places Autocomplete is restricted. Standard manual address entry protocol remains active.",
+      });
+    };
 
     const scriptId = 'google-maps-places-script';
     const initAutocomplete = () => {
@@ -82,23 +96,21 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete terminal restricted or API not activated.");
+        console.warn("Places Autocomplete initialization prevented. Manual coordinate entry active.");
       }
     };
 
     if (!window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
       document.head.appendChild(script);
     } else if (window.google) {
       initAutocomplete();
     }
-  }, [isOpen]);
-
-  const { toast } = useToast();
+  }, [isOpen, toast]);
 
   const clients = useMemo(() => {
     return technicians.filter(t => 
@@ -158,7 +170,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         location: '',
         blendedFixedPay: 0,
         blendedIncludedHours: 0,
-        blendedHourlyRate: 0
+        blendedHourlyRate: 0,
+        isAcknowledged: false
       });
       setRegistrySearch("");
   };

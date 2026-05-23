@@ -112,15 +112,15 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
-                  <Calendar className="w-3.5 h-3.5 text-text-muted" />
+                  <Calendar className="w-3.5 h-3.5" />
                   {wo.scheduleDate} · {wo.scheduleTime}
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
-                  <MapPin className="w-3.5 h-3.5 text-brand-red shrink-0" />
+                  <MapPin className="w-3.5 h-3.5" />
                   <span className="truncate">{formatCityState(wo.location)}</span>
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-text-secondary">
-                  <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                  <Building2 className="w-3.5 h-3.5" />
                   <span className="truncate">{wo.clientName}</span>
                 </span>
               </div>

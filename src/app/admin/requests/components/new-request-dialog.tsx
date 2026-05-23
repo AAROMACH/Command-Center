@@ -28,8 +28,11 @@ import { cn } from '@/lib/utils';
 declare global {
   interface Window {
     google: any;
+    gm_authFailure?: () => void;
   }
 }
+
+const MAPS_API_KEY = "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0";
 
 type NewRequestDialogProps = {
   isOpen: boolean;
@@ -50,9 +53,20 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   const [images, setImages] = useState<string[]>([]);
   const [docs, setDocs] = useState<string[]>([]);
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Define global failure handler
+    window.gm_authFailure = () => {
+      console.warn("Google Maps API authentication failed.");
+      toast({
+        variant: "destructive",
+        title: "Maps API Access Conflict",
+        description: "Places Autocomplete is restricted. Manual site address entry remains active.",
+      });
+    };
 
     const scriptId = 'google-maps-places-script';
     const initAutocomplete = () => {
@@ -70,23 +84,21 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete terminal restricted or API not activated.");
+        console.warn("Places Autocomplete initialization prevented. Manual coordinate entry active.");
       }
     };
 
     if (!window.google && !document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.onload = initAutocomplete;
       document.head.appendChild(script);
     } else if (window.google) {
       initAutocomplete();
     }
-  }, [isOpen]);
-
-  const { toast } = useToast();
+  }, [isOpen, toast]);
 
   const handleSave = () => {
     if (!formData.clientName || !formData.location || !formData.description) {

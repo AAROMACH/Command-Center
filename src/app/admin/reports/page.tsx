@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { 
     Search, 
     MapPin, 
@@ -30,7 +31,8 @@ import {
     Lock,
     TrendingUp,
     CheckCircle2,
-    ArrowUpDown
+    ArrowUpDown,
+    BarChart3
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -85,7 +87,11 @@ import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWee
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
-type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';
+// Tactical Performance: Code-splitting heavy chart library
+const TechAnalytics = dynamic(() => import('./components/tech-analytics').then(mod => mod.TechAnalytics), {
+    loading: () => <div className="h-[500px] w-full bg-bg-tertiary animate-pulse rounded-2xl" />,
+    ssr: false
+});
 
 export default function ActivityAuditPage() {
     const searchParams = useSearchParams();
@@ -97,6 +103,8 @@ export default function ActivityAuditPage() {
     
     // Mission Registry state for local updates
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+    const [techRegistry] = useState<Technician[]>(technicians);
+    const [logRegistry] = useState<WeeklyLog[]>(weeklyLogs);
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -117,9 +125,6 @@ export default function ActivityAuditPage() {
 
     // Change Log States
     const [isClLoaded, setIsClLoaded] = useState(false);
-    const [clSearch, setClSearch] = useState("");
-    const [clType, setClType] = useState("all");
-    const [expandedClIds, setExpandedClIds] = useState<Set<string>>(new Set());
 
     // Job Detail state
     const [isJobOpen, setIsJobOpen] = useState(false);
@@ -178,16 +183,6 @@ export default function ActivityAuditPage() {
     }, [workOrders]);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
-
-    const siteHistorical = useMemo(() => {
-        if (!activeSite) return [];
-        return workOrders.filter(wo => wo.location === activeSite.location && wo.status === 'completed');
-    }, [activeSite, workOrders]);
-
-    const siteActive = useMemo(() => {
-        if (!activeSite) return [];
-        return workOrders.filter(wo => wo.location === activeSite.location && wo.status !== 'completed');
-    }, [activeSite, workOrders]);
 
     const sortedAllSiteVisits = useMemo(() => {
         if (!activeSite) return [];
@@ -460,7 +455,7 @@ export default function ActivityAuditPage() {
                             <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
-                                        {msg.senderName.charAt(0)}
+                                        {(msg.senderName || 'A').charAt(0)}
                                     </div>
                                     <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Sent by {msg.senderName}</span>
                                 </div>
@@ -737,61 +732,6 @@ export default function ActivityAuditPage() {
                                     </DialogContent>
                                 </Dialog>
 
-                                {/* OPEN TICKETS DIALOG */}
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
-                                            <p className="text-2xl font-bold text-text-primary">{siteActive.length}</p>
-                                            <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteActive.length > 0 ? "text-accent-gold" : "text-text-green")}>
-                                                {siteActive.length > 0 ? 'Active Queue' : 'Service Clean'}
-                                            </p>
-                                        </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <AlertTriangle size={20} className="text-accent-gold" />
-                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Active Mission Audit</DialogTitle>
-                                            </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Live dispatch buffer and intake funnel for site coordinate: {activeSite.name}</DialogDescription>
-                                        </DialogHeader>
-                                        <ScrollArea className="flex-1">
-                                            <div className="p-6 space-y-3">
-                                                {siteActive.length > 0 ? siteActive.map(wo => (
-                                                    <div 
-                                                        key={wo.id} 
-                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between cursor-pointer"
-                                                    >
-                                                        <div className="text-left space-y-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
-                                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
-                                                                    {wo.status}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
-                                                        </div>
-                                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
-                                                    </div>
-                                                )) : (
-                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                                        <CheckCircle2 size={48} className="mx-auto mb-2 text-text-green" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">Mission funnel clear: No active tickets</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
                                     <p className="text-2xl font-bold text-text-primary">99.9%</p>
@@ -832,7 +772,7 @@ export default function ActivityAuditPage() {
             <header className="space-y-1 text-center">
                 <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
                 <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Activity Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system changes</p>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system analytics</p>
             </header>
 
             <div className="space-y-6">
@@ -850,21 +790,22 @@ export default function ActivityAuditPage() {
                 {!searchQuery ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                         <div className="flex justify-center">
-                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-12 justify-center mb-8">
+                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
                                 <TabsTrigger 
                                     value="tech" 
                                     className="tab-trigger-activity"
                                     onClick={() => setSelectedTechId(null)}
                                 >
-                                    Technician activity
+                                    Personnel Registry
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="sites" 
                                     className="tab-trigger-activity"
                                     onClick={() => setSelectedSiteId(null)}
                                 >
-                                    Site activity
+                                    Site Index
                                 </TabsTrigger>
+                                <TabsTrigger value="analytics" className="tab-trigger-activity">Tactical Analytics</TabsTrigger>
                                 <TabsTrigger value="messaging" className="tab-trigger-activity">Broadcast Comms</TabsTrigger>
                                 <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                                     Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
@@ -927,6 +868,14 @@ export default function ActivityAuditPage() {
 
                             <TabsContent value="sites" className="m-0">
                                 {renderSiteActivity()}
+                            </TabsContent>
+
+                            <TabsContent value="analytics" className="m-0">
+                                <TechAnalytics 
+                                    technicians={techRegistry} 
+                                    workOrders={workOrders} 
+                                    weeklyLogs={logRegistry} 
+                                />
                             </TabsContent>
 
                             <TabsContent value="messaging" className="m-0">
@@ -1008,3 +957,5 @@ export default function ActivityAuditPage() {
         </div>
     );
 }
+
+type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';

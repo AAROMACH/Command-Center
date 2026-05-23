@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase, SearchCode, Search, Users, Building2, Navigation, Upload } from 'lucide-react';
+import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, SquarePlus, Building2, Navigation, Upload, Search, Users } from 'lucide-react';
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -469,10 +469,10 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <X size={14} className="mr-2"/> Cancel Intake
             </Button>
             <div className="flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                  <Wrench size={14} className="mr-2" /> Assignment
+                  <SquarePlus size={14} className="mr-2" /> Create Assignment
                 </Button>
                 <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
                   <ClipboardList size={14} className="mr-2" /> Create request

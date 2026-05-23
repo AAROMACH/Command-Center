@@ -538,7 +538,7 @@ function EditLogDialog({
                             <Textarea 
                                 value={formData.workSummary} 
                                 onChange={e => setFormData({...formData, workSummary: e.target.value})} 
-                                className="bg-bg-primary text-xs min-h-[100px] leading-relaxed uppercase font-medium"
+                                className="bg-bg-primary text-xs min-h-[100px] leading-relaxed font-medium"
                                 placeholder="Edit report summary..."
                             />
                         </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -128,7 +129,7 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
                     </div>
                      <div className="space-y-2 text-left">
                          <Label htmlFor="logSummary" className="text-[10px] uppercase font-bold text-text-muted">Mission Narrative</Label>
-                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[120px] text-xs uppercase font-medium leading-relaxed" placeholder="Document site activity, terminal outcomes, and field obstacles..."/>
+                        <Textarea id="logSummary" name="logSummary" value={logData.logSummary} onChange={handleInputChange} className="bg-bg-primary min-h-[120px] text-xs font-medium leading-relaxed" placeholder="Document site activity, terminal outcomes, and field obstacles..."/>
                     </div>
                 </div>
                 <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">

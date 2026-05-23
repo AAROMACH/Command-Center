@@ -35,6 +35,8 @@ type NewAssignmentDialogProps = {
 
 export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignmentDialogProps) {
   const [formData, setFormData] = useState<Partial<WorkOrder>>({
+    title: '',
+    description: '',
     priority: 'medium',
     status: 'unassigned',
     projectType: 'Installation',
@@ -86,7 +88,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   }, [registrySearch, clients]);
 
   const handleSave = () => {
-    if (!formData.description || !formData.location || !formData.clientName) {
+    if (!formData.title || !formData.description || !formData.location || !formData.clientName) {
       toast({
         variant: "destructive",
         title: "Validation Error",
@@ -108,6 +110,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
   const handleReset = () => {
       setFormData({
+        title: '',
+        description: '',
         priority: 'medium',
         status: 'unassigned',
         projectType: 'Installation',
@@ -160,15 +164,26 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
             </DialogHeader>
 
-            <div className="px-6 py-4 space-y-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-                <Textarea 
-                  placeholder="Primary objective and low voltage requirements..." 
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="bg-bg-primary border-border-sub h-20 text-xs"
-                />
+            <div className="px-6 py-4 space-y-6 text-left">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
+                  <Input 
+                    placeholder="e.g. Rack Audit & Labeling" 
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    className="bg-bg-primary h-10 text-xs font-bold uppercase"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work</Label>
+                  <Textarea 
+                    placeholder="Primary objective and detailed requirements..." 
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="bg-bg-primary border-border-sub h-24 text-xs"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

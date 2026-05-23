@@ -196,7 +196,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="space-y-8">
             <div className="space-y-4 text-left">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><StickyNote size={14} className="text-accent-gold shrink-0"/><span>Mission Description</span></h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><StickyNote size={14} className="text-accent-gold shrink-0"/><span>Scope of Work</span></h3>
                 <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
                     {mission.description}
                 </div>
@@ -210,7 +210,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 </h3>
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex justify-between items-center">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Settlement Model</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Labor Rate</p>
                     <p className="text-xs font-bold text-text-primary uppercase">{mission.payType} Logic</p>
                   </div>
                   <div className="text-right">

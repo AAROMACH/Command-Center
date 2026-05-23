@@ -26,7 +26,8 @@ import {
   ExternalLink,
   UserPlus,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  StickyNote
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -77,7 +78,7 @@ import { isAdmin, isPayAdmin } from "@/lib/permissions";
 
 const getFieldNationLink = (id: string) => {
   const cleanId = id.replace(/^wo-/, '');
-  return `https://app.app.fieldnation.com/workorders/${cleanId}`;
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
@@ -444,7 +445,7 @@ export default function AssignmentsHubPage() {
                                 <th className="text-center">Operative</th>
                                 <th className="text-left pl-0">Site Coordinates</th>
                                 <th className="text-left pl-0">Schedule Date</th>
-                                <th className="text-right pr-6">Financials</th>
+                                <th className="text-right pr-6">Labor Rate</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -636,8 +637,8 @@ export default function AssignmentsHubPage() {
                                 <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Description</Label>
-                                <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work</Label>
+                                <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

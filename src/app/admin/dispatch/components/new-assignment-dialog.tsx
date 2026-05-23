@@ -79,7 +79,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   }, [registrySearch, clients]);
 
   const handleSave = () => {
-    if (!formData.title || !formData.location || !formData.clientName) {
+    if (!formData.title || !formData.description || !formData.location || !formData.clientName) {
       toast({
         variant: "destructive",
         title: "Validation Error",
@@ -156,7 +156,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               <DialogDescription>Manual entry of a new low voltage field job.</DialogDescription>
             </DialogHeader>
 
-            <div className="px-6 py-4 space-y-6">
+            <div className="px-6 py-4 space-y-6 text-left">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title</Label>
@@ -168,7 +168,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Description</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work</Label>
                   <Textarea 
                     placeholder="Primary objective and detailed requirements..." 
                     value={formData.description}

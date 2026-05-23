@@ -55,6 +55,9 @@ export type WorkOrder = {
   scheduleTime: string;
   pay: number;
   payType: 'fixed' | 'hourly' | 'blended';
+  blendedFixedPay?: number;
+  blendedIncludedHours?: number;
+  blendedHourlyRate?: number;
   isAcknowledged?: boolean;
   routeId?: string; // Links job to a specific route
   isImported?: boolean; // Flag for jobs from FieldNation

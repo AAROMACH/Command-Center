@@ -676,6 +676,45 @@ export default function AssignmentsHubPage() {
                         </div>
                     </div>
 
+                    {editedOrder.payType === 'blended' && (
+                        <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                                <div className="relative">
+                                    <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                    <Input 
+                                        type="number"
+                                        value={editedOrder.blendedFixedPay || ''}
+                                        onChange={(e) => setEditedOrder({...editedOrder, blendedFixedPay: parseFloat(e.target.value) || 0})}
+                                        className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                                <Input 
+                                    type="number"
+                                    value={editedOrder.blendedIncludedHours || ''}
+                                    onChange={(e) => setEditedOrder({...editedOrder, blendedIncludedHours: parseFloat(e.target.value) || 0})}
+                                    className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
+                                />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                                <div className="relative">
+                                    <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                    <Input 
+                                        type="number"
+                                        value={editedOrder.blendedHourlyRate || ''}
+                                        onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
+                                        className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                    />
+                                </div>
+                            </div>
+                            <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                        </div>
+                    )}
+
                       <Separator className="bg-border-sub" />
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2 text-left">

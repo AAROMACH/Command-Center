@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation } from 'lucide-react';
+import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,7 +44,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     scheduleDate: new Date().toISOString().split('T')[0],
     scheduleTime: '09:00 AM EST',
     clientName: '',
-    location: ''
+    location: '',
+    blendedFixedPay: 0,
+    blendedIncludedHours: 0,
+    blendedHourlyRate: 0
   });
   
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
@@ -106,7 +109,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         scheduleDate: new Date().toISOString().split('T')[0],
         scheduleTime: '09:00 AM EST',
         clientName: '',
-        location: ''
+        location: '',
+        blendedFixedPay: 0,
+        blendedIncludedHours: 0,
+        blendedHourlyRate: 0
       });
       setRegistrySearch("");
   };
@@ -230,6 +236,48 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   </Select>
                 </div>
               </div>
+
+              {formData.payType === 'blended' && (
+                <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                        <div className="relative">
+                            <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <Input 
+                                type="number"
+                                placeholder="0.00"
+                                value={formData.blendedFixedPay || ''}
+                                onChange={(e) => setFormData({...formData, blendedFixedPay: parseFloat(e.target.value) || 0})}
+                                className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                        <Input 
+                            type="number"
+                            placeholder="0"
+                            value={formData.blendedIncludedHours || ''}
+                            onChange={(e) => setFormData({...formData, blendedIncludedHours: parseFloat(e.target.value) || 0})}
+                            className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                        <div className="relative">
+                            <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <Input 
+                                type="number"
+                                placeholder="0.00"
+                                value={formData.blendedHourlyRate || ''}
+                                onChange={(e) => setFormData({...formData, blendedHourlyRate: parseFloat(e.target.value) || 0})}
+                                className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                            />
+                        </div>
+                    </div>
+                    <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Fixed amount for specified hours, then hourly rate applies.</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">

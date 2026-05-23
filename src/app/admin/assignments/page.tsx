@@ -268,7 +268,6 @@ export default function AssignmentsHubPage() {
         setIsEditDialogOpen(false);
         setIsDeleteDialogOpen(false);
         setSelectedJob(null);
-        setSelectedOrder(null); // Clear WorkOrdersTable selection if open
         setEditedOrder(null);
         toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
     } catch (e: any) {
@@ -648,7 +647,7 @@ export default function AssignmentsHubPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2 text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-                              <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
+                              <Select value={editedProject.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
                                   <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="Installation">Installation</SelectItem>
@@ -810,3 +809,4 @@ export default function AssignmentsHubPage() {
     </div>
   );
 }
+

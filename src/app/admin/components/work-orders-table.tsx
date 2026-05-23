@@ -353,7 +353,7 @@ export const WorkOrdersTable = React.memo(({
                                         </>
                                     ) : (
                                         <>
-                                            <span className="font-mono text-xs font-bold">{order.pay.toFixed(2)}</span>
+                                            <span className="font-mono text-xs font-bold">${order.pay.toFixed(2)}</span>
                                             <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
                                         </>
                                     )}

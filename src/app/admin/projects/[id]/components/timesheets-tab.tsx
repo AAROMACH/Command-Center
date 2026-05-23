@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
@@ -6,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save, X } from 'lucide-react';
-import React, { useState, useMemo, useCallback } from 'react';
+import { Search, Plus, Check, Calendar as CalendarIcon, ChevronDown, ChevronUp, Download, Clock, Pencil, Trash2, User, Save, X, History, Info } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -415,26 +416,49 @@ function EditLogDialog({
     onSave: (l: ProjectDailyLog) => void,
     onDelete: (id: string) => void
 }) {
-    const [formData, setFormData] = useState<ProjectDailyLog>({ ...log });
+    // Normalization logic for Input type="date" (yyyy-MM-dd)
+    const normalizeDate = useCallback((dateStr: string) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split(/[-/]/);
+        if (parts[0].length === 4) return dateStr; // Already yyyy-MM-dd
+        const [m, d, y] = parts;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }, []);
+
+    const [formData, setFormData] = useState<ProjectDailyLog>({ 
+        ...log,
+        date: normalizeDate(log.date)
+    });
+
+    useEffect(() => {
+        setFormData({
+            ...log,
+            date: normalizeDate(log.date)
+        });
+    }, [log, normalizeDate]);
 
     const handleSave = () => {
-        // Calculate duration and decimal hours from boundaries
-        const checkIn = parse(`${formData.date}T${formData.checkInTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-        const checkOut = parse(`${formData.date}T${formData.checkOutTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-        const diffMs = checkOut.getTime() - checkIn.getTime();
-        
-        if (diffMs < 0) return; // Silent discard of invalid boundaries
+        try {
+            // Calculate duration and decimal hours from boundaries
+            const checkIn = parse(`${formData.date}T${formData.checkInTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            const checkOut = parse(`${formData.date}T${formData.checkOutTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            const diffMs = checkOut.getTime() - checkIn.getTime();
+            
+            if (diffMs < 0) return;
 
-        const totalMinutes = Math.round(diffMs / 60000);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        const hoursWorked = parseFloat((totalMinutes / 60).toFixed(1));
+            const totalMinutes = Math.round(diffMs / 60000);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const hoursWorked = parseFloat((totalMinutes / 60).toFixed(1));
 
-        onSave({
-            ...formData,
-            hoursWorked,
-            totalHours: `${hours}h ${minutes}m`
-        });
+            onSave({
+                ...formData,
+                hoursWorked,
+                totalHours: `${hours}h ${minutes}m`
+            });
+        } catch (e) {
+            console.error("Temporal parsing error:", e);
+        }
     };
 
     return (
@@ -449,50 +473,81 @@ function EditLogDialog({
                 </DialogHeader>
 
                 <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Operative</Label>
-                            <Select value={formData.technicianId} onValueChange={(val) => setFormData({...formData, technicianId: val})}>
-                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                    {/* TECHNICIAN ORIGINAL REFERENCE */}
+                    <div className="space-y-3">
+                        <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2">
+                            <History size={12}/> Technician&apos;s Original Log
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-bg-secondary border border-border-sub shadow-inner">
+                            <div className="space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase">Initial Date</p>
+                                <p className="text-xs font-mono font-bold text-text-primary uppercase">{log.date}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[8px] font-black text-text-muted uppercase">Original Window</p>
+                                <p className="text-xs font-mono font-bold text-text-primary uppercase">
+                                    {log.checkInTime || 'N/A'} — {log.checkOutTime || 'N/A'}
+                                </p>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Work Date</Label>
-                            <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-10 bg-bg-primary text-xs" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Check-In Time</Label>
-                            <Input 
-                                type="time" 
-                                value={formData.checkInTime || '09:00'} 
-                                onChange={e => setFormData({...formData, checkInTime: e.target.value})} 
-                                className="h-10 bg-bg-primary text-sm font-mono font-bold"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Check-Out Time</Label>
-                            <Input 
-                                type="time" 
-                                value={formData.checkOutTime || '17:00'} 
-                                onChange={e => setFormData({...formData, checkOutTime: e.target.value})} 
-                                className="h-10 bg-bg-primary text-sm font-mono font-bold"
-                            />
+                        <div className="flex items-center gap-2 px-2">
+                            <Info size={12} className="text-text-muted" />
+                            <p className="text-[9px] text-text-muted font-bold uppercase">Reference values shown for audit integrity.</p>
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-text-muted">Field Summary</Label>
-                        <Textarea 
-                            value={formData.workSummary} 
-                            onChange={e => setFormData({...formData, workSummary: e.target.value})} 
-                            className="bg-bg-primary text-xs min-h-[100px] leading-relaxed uppercase font-medium"
-                        />
+                    <Separator className="bg-border-sub" />
+
+                    {/* EDITABLE FIELDS */}
+                    <div className="space-y-6">
+                        <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] px-1">Current Log Parameters</h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Operative</Label>
+                                <Select value={formData.technicianId} onValueChange={(val) => setFormData({...formData, technicianId: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Work Date</Label>
+                                <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-10 bg-bg-primary text-xs" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Check-In Time</Label>
+                                <Input 
+                                    type="time" 
+                                    value={formData.checkInTime || '09:00'} 
+                                    onChange={e => setFormData({...formData, checkInTime: e.target.value})} 
+                                    className="h-10 bg-bg-primary text-sm font-mono font-bold"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Check-Out Time</Label>
+                                <Input 
+                                    type="time" 
+                                    value={formData.checkOutTime || '17:00'} 
+                                    onChange={e => setFormData({...formData, checkOutTime: e.target.value})} 
+                                    className="h-10 bg-bg-primary text-sm font-mono font-bold"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Field Summary</Label>
+                            <Textarea 
+                                value={formData.workSummary} 
+                                onChange={e => setFormData({...formData, workSummary: e.target.value})} 
+                                className="bg-bg-primary text-xs min-h-[100px] leading-relaxed uppercase font-medium"
+                                placeholder="Edit report summary..."
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -502,7 +557,7 @@ function EditLogDialog({
                     </Button>
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-6 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
-                        <Button onClick={handleSave} className="h-10 px-8 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
+                        <Button onClick={handleSave} className="h-10 px-8 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
                             <Save size={16} className="mr-2"/> Save Changes
                         </Button>
                     </div>

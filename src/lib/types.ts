@@ -239,6 +239,7 @@ export type TimesheetLog = {
 
 export type ServiceRequest = {
   id: string;
+  title?: string;
   clientName: string;
   location: string;
   requestType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission';

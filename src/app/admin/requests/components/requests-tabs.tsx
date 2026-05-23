@@ -52,7 +52,7 @@ export function RequestsTabs({ serviceRequests }: RequestsTabsProps) {
           <RequestsClient requests={approvedRequests} />
         </TabsContent>
         <TabsContent value="closed" className="mt-0">
-          <RequestsClient requests={closedRequests} />
+          <RequestsClient requests={closedRequests} isHistory />
         </TabsContent>
       </Tabs>
   );

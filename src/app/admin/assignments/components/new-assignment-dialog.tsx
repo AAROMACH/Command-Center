@@ -223,16 +223,6 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-                  <Input 
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.pay || ''}
-                    onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
-                    className="bg-bg-primary h-10 font-mono text-text-green text-sm"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
@@ -243,6 +233,18 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.payType !== 'blended' && (
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                    <Input 
+                      type="number"
+                      placeholder="0.00"
+                      value={formData.pay || ''}
+                      onChange={(e) => setFormData({...formData, pay: parseFloat(e.target.value) || 0})}
+                      className="bg-bg-primary h-10 font-mono text-text-green text-sm"
+                    />
+                  </div>
+                )}
               </div>
 
               {formData.payType === 'blended' && (
@@ -255,7 +257,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 type="number"
                                 placeholder="0.00"
                                 value={formData.blendedFixedPay || ''}
-                                onChange={(e) => setFormData({...formData, blendedFixedPay: parseFloat(e.target.value) || 0})}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setFormData({...formData, blendedFixedPay: val, pay: val});
+                                }}
                                 className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
                             />
                         </div>

@@ -502,7 +502,7 @@ export const WorkOrdersTable = React.memo(({
       </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedOrder(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
-        <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
+        <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
             <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
@@ -520,158 +520,164 @@ export const WorkOrdersTable = React.memo(({
                 </div>
             </DialogHeader>
             {editedOrder && (
-                <div className="px-6 py-4 space-y-6">
-                    <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
-                        <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
-                    </div>
+                <ScrollArea className="flex-1">
+                    <div className="px-6 py-4 space-y-6">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Job Title / Description</Label>
+                            <Textarea placeholder="Primary objective..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-20 text-xs" />
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                            <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                            <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-                            <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
-                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Installation">Installation</SelectItem>
-                                    <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
-                                    <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                    <SelectItem value="Survey">Survey</SelectItem>
-                                    <SelectItem value="Repair">Repair</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
-                            <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
-                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="low">Low</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                    <SelectItem value="critical">Critical</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
-                            <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-                            <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
-                            <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
-                            <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
-                                <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="fixed">Fixed</SelectItem>
-                                    <SelectItem value="hourly">Hourly</SelectItem>
-                                    <SelectItem value="blended">Blended</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    {editedOrder.payType === 'blended' && (
-                        <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
-                                <div className="relative">
-                                    <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                                <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                                <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                                <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Installation">Installation</SelectItem>
+                                        <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                        <SelectItem value="Survey">Survey</SelectItem>
+                                        <SelectItem value="Repair">Repair</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
+                                <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="low">Low</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="high">High</SelectItem>
+                                        <SelectItem value="critical">Critical</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
+                                <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
+                                <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                                <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="fixed">Fixed</SelectItem>
+                                        <SelectItem value="hourly">Hourly</SelectItem>
+                                        <SelectItem value="blended">Blended</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {editedOrder.payType !== 'blended' && (
+                                <div className="space-y-2 text-left">
+                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Settlement Pay ($)</Label>
+                                  <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
+                                </div>
+                            )}
+                        </div>
+
+                        {editedOrder.payType === 'blended' && (
+                            <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                                    <div className="relative">
+                                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                        <Input 
+                                            type="number"
+                                            value={editedOrder.blendedFixedPay || ''}
+                                            onChange={(e) => {
+                                              const val = parseFloat(e.target.value) || 0;
+                                              setEditedOrder({...editedOrder, blendedFixedPay: val, pay: val});
+                                            }}
+                                            className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
                                     <Input 
                                         type="number"
-                                        value={editedOrder.blendedFixedPay || ''}
-                                        onChange={(e) => setEditedOrder({...editedOrder, blendedFixedPay: parseFloat(e.target.value) || 0})}
-                                        className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                        value={editedOrder.blendedIncludedHours || ''}
+                                        onChange={(e) => setEditedOrder({...editedOrder, blendedIncludedHours: parseFloat(e.target.value) || 0})}
+                                        className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
                                     />
                                 </div>
-                            </div>
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
-                                <Input 
-                                    type="number"
-                                    value={editedOrder.blendedIncludedHours || ''}
-                                    onChange={(e) => setEditedOrder({...editedOrder, blendedIncludedHours: parseFloat(e.target.value) || 0})}
-                                    className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
-                                />
-                            </div>
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
-                                <div className="relative">
-                                    <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
-                                    <Input 
-                                        type="number"
-                                        value={editedOrder.blendedHourlyRate || ''}
-                                        onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                        className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
-                                    />
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                                    <div className="relative">
+                                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                        <Input 
+                                            type="number"
+                                            value={editedOrder.blendedHourlyRate || ''}
+                                            onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
+                                            className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                        />
+                                    </div>
                                 </div>
+                                <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
                             </div>
-                            <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
-                        </div>
-                    )}
+                        )}
 
-                    <Separator className="bg-border-sub" />
+                        <Separator className="bg-border-sub" />
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                            <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
-                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
-                                    <SelectValue placeholder="Select Technician" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                    {technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
-                            <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="unassigned" className="text-xs uppercase font-bold">UNASSIGNED</SelectItem>
-                                    <SelectItem value="assigned" className="text-xs uppercase font-bold">ASSIGNED</SelectItem>
-                                    <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
-                                    <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
-                                    <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
-                                    <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                                <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                                    <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
+                                        <SelectValue placeholder="Select Technician" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                                        {technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                                <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                                    <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="unassigned" className="text-xs uppercase font-bold">UNASSIGNED</SelectItem>
+                                        <SelectItem value="assigned" className="text-xs uppercase font-bold">ASSIGNED</SelectItem>
+                                        <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
+                                        <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
+                                        <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
+                                        <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
-                    
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                        <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
-                    </DialogFooter>
-                </div>
+                </ScrollArea>
             )}
+            <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -73,8 +72,8 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
             projectId,
             technicianId: logData.technicianId,
             date: logData.date,
-            checkInTime: format(checkIn, 'h:mm a'),
-            checkOutTime: format(checkOut, 'h:mm a'),
+            checkInTime: logData.checkInTime, // Store raw HH:mm
+            checkOutTime: logData.checkOutTime, // Store raw HH:mm
             totalHours: `${hours}h ${minutes}m`,
             totalMinutes,
             workSummary: logData.logSummary || 'MANUAL REGISTRY ENTRY',
@@ -140,4 +139,3 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         </Dialog>
     );
 }
-

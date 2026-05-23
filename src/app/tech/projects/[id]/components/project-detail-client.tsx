@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -577,6 +576,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             date: format(now, 'yyyy-MM-dd'),
             hoursWorked,
             totalHours: `${h}h ${m}m`,
+            checkInTime: format(activeSession.startTime, 'HH:mm'),
+            checkOutTime: format(now, 'HH:mm'),
             workSummary: 'Automated field session closure.',
             taskIdsProgressed: [],
             taskIdsCompleted: [],

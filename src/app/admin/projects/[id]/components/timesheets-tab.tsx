@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
@@ -84,7 +83,7 @@ const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; te
                     </div>
                     <div className="flex flex-col text-left">
                         <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
-                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`}</span>
+                        <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)} HOURS`}</span>
                     </div>
                 </div>
 
@@ -419,7 +418,23 @@ function EditLogDialog({
     const [formData, setFormData] = useState<ProjectDailyLog>({ ...log });
 
     const handleSave = () => {
-        onSave(formData);
+        // Calculate duration and decimal hours from boundaries
+        const checkIn = parse(`${formData.date}T${formData.checkInTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        const checkOut = parse(`${formData.date}T${formData.checkOutTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        const diffMs = checkOut.getTime() - checkIn.getTime();
+        
+        if (diffMs < 0) return; // Silent discard of invalid boundaries
+
+        const totalMinutes = Math.round(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const hoursWorked = parseFloat((totalMinutes / 60).toFixed(1));
+
+        onSave({
+            ...formData,
+            hoursWorked,
+            totalHours: `${hours}h ${minutes}m`
+        });
     };
 
     return (
@@ -452,21 +467,21 @@ function EditLogDialog({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Billable Hours</Label>
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Check-In Time</Label>
                             <Input 
-                                type="number" 
-                                value={formData.hoursWorked || 0} 
-                                onChange={e => setFormData({...formData, hoursWorked: parseFloat(e.target.value) || 0})} 
+                                type="time" 
+                                value={formData.checkInTime || '09:00'} 
+                                onChange={e => setFormData({...formData, checkInTime: e.target.value})} 
                                 className="h-10 bg-bg-primary text-sm font-mono font-bold"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Display Duration</Label>
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Check-Out Time</Label>
                             <Input 
-                                placeholder="e.g. 4h 30m" 
-                                value={formData.totalHours || ''} 
-                                onChange={e => setFormData({...formData, totalHours: e.target.value})} 
-                                className="h-10 bg-bg-primary text-xs font-mono"
+                                type="time" 
+                                value={formData.checkOutTime || '17:00'} 
+                                onChange={e => setFormData({...formData, checkOutTime: e.target.value})} 
+                                className="h-10 bg-bg-primary text-sm font-mono font-bold"
                             />
                         </div>
                     </div>
@@ -496,4 +511,3 @@ function EditLogDialog({
         </Dialog>
     );
 }
-

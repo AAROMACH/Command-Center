@@ -311,6 +311,8 @@ export type ProjectDailyLog = {
   date: string;
   hoursWorked: number;
   totalHours: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   workSummary: string;
   taskIdsProgressed: string[];
   taskIdsCompleted: string[];

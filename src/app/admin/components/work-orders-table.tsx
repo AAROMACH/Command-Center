@@ -62,7 +62,8 @@ import {
   Sparkles,
   Trash2,
   Type,
-  FileText
+  FileText,
+  RefreshCw
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -153,17 +154,28 @@ export const WorkOrdersTable = React.memo(({
     setIsDetailOpen(true);
   }, []);
 
+  const filteredTechniciansRegistry = useMemo(() => {
+    return technicians
+      .filter(t => {
+          const roles = t.roles || [];
+          const role = (t.role || '').toLowerCase();
+          return !roles.includes('client') && !role.includes('client');
+      })
+      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
+  }, [technicians, techSearchQuery]);
+
   const handleGetAiRecommendation = async () => {
-    if (!selectedOrder) return;
+    if (!mission) return;
     setIsAiLoading(true);
     try {
       const result = await getRecommendation({
         workOrder: {
-          id: selectedOrder.id,
-          description: selectedOrder.description,
-          location: selectedOrder.location,
-          requiredSkills: selectedOrder.requiredSkills,
-          priority: selectedOrder.priority,
+          id: selectedOrder?.id || "",
+          description: selectedOrder?.description || "",
+          location: selectedOrder?.location || "",
+          requiredSkills: selectedOrder?.requiredSkills || [],
+          priority: selectedOrder?.priority || 'medium',
         },
         availableTechnicians: technicians.map((t) => ({
           id: t.id,

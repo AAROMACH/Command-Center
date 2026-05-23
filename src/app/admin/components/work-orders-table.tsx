@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -349,13 +350,18 @@ export const WorkOrdersTable = React.memo(({
                                             ${(order.blendedFixedPay || 0).toFixed(2)} + ${(order.blendedHourlyRate || 0).toFixed(2)}/hr
                                         </span>
                                         <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
-                                            after {order.blendedIncludedHours}hrs
+                                            after {order.blendedIncludedHours} hrs
                                         </span>
+                                    </>
+                                ) : order.payType === 'hourly' ? (
+                                    <>
+                                        <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}/hr</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">hourly labor rate</span>
                                     </>
                                 ) : (
                                     <>
                                         <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}</span>
-                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{PAY_TYPE_LABELS[order.payType as keyof typeof PAY_TYPE_LABELS] || order.payType}</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">fixed labor rate</span>
                                     </>
                                 )}
                             </div>

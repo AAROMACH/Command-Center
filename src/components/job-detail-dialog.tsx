@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -210,23 +211,27 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 </h3>
                 <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex justify-between items-center">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Pricing Structure</p>
-                    <p className="text-xs font-bold text-text-primary uppercase">{mission.payType} Logic</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Pricing Model</p>
+                    <p className="text-xs font-bold text-text-primary uppercase">{(mission.payType || 'fixed').replace(/_/g, ' ')} labor rate</p>
                   </div>
                   <div className="text-right">
                     {mission.payType === 'blended' ? (
                       <>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">fixed - hourly</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">payout signature</p>
                         <p className="text-sm font-mono font-bold text-text-green">
-                          ${mission.blendedFixedPay} + ${mission.blendedHourlyRate}/hr
+                          ${(mission.blendedFixedPay || 0).toFixed(2)} + ${(mission.blendedHourlyRate || 0).toFixed(2)}/hr
                         </p>
-                        <p className="text-[9px] text-text-muted font-bold uppercase">after {mission.blendedIncludedHours}hrs</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase">after {mission.blendedIncludedHours} hrs</p>
                       </>
+                    ) : mission.payType === 'hourly' ? (
+                        <>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">payout signature</p>
+                            <p className="text-sm font-mono font-bold text-text-green">${(mission.pay || 0).toFixed(2)}/hr</p>
+                        </>
                     ) : (
                       <>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Labor Rate</p>
-                        <p className="text-lg font-mono font-bold text-text-green">${mission.pay.toFixed(2)}</p>
-                        <p className="text-[9px] text-text-muted font-bold uppercase">{mission.payType} Payout</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">payout signature</p>
+                        <p className="text-sm font-mono font-bold text-text-green">${(mission.pay || 0).toFixed(2)}</p>
                       </>
                     )}
                   </div>

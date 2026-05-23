@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -531,13 +532,18 @@ export default function AssignmentsHubPage() {
                                                             ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
                                                         </span>
                                                         <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
-                                                            after {wo.blendedIncludedHours || 0}hrs
+                                                            after {wo.blendedIncludedHours || 0} hrs
                                                         </span>
+                                                    </>
+                                                ) : wo.payType === 'hourly' ? (
+                                                    <>
+                                                        <span className="text-sm font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}/hr</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">hourly labor rate</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{PAY_TYPE_LABELS[wo.payType as keyof typeof PAY_TYPE_LABELS] || wo.payType}</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">fixed labor rate</span>
                                                     </>
                                                 )}
                                             </div>

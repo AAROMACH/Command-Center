@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -341,9 +342,19 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                                                         />
                                                     ) : (
                                                         <div className="text-right">
-                                                            <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
-                                                                ${job.pay.toFixed(2)} ({PAY_TYPE_LABELS[job.payType as keyof typeof PAY_TYPE_LABELS] || job.payType})
-                                                            </span>
+                                                            {job.payType === 'blended' ? (
+                                                                <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
+                                                                    ${(job.blendedFixedPay || 0).toFixed(2)} + ${(job.blendedHourlyRate || 0).toFixed(2)}/hr after {job.blendedIncludedHours} hrs
+                                                                </span>
+                                                            ) : job.payType === 'hourly' ? (
+                                                                <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
+                                                                    ${job.pay.toFixed(2)}/hr
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20 cursor-pointer hover:bg-green-dim/10 transition-colors">
+                                                                    ${job.pay.toFixed(2)} (fixed)
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

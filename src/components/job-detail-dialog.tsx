@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -56,6 +55,11 @@ type JobDetailDialogProps = {
   mission: WorkOrder | null;
   onEdit?: (mission: WorkOrder) => void;
   onUpdate?: (woId: string, updates: Partial<WorkOrder>) => void;
+};
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
 export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }: JobDetailDialogProps) {
@@ -197,7 +201,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="space-y-8">
             <div className="space-y-4 text-left">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2"><StickyNote size={14} className="text-accent-gold shrink-0"/><span>Scope of Work</span></h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                    <StickyNote size={14} className="text-accent-gold shrink-0"/>
+                    <span>Scope of Work</span>
+                  </h3>
+                  {mission.source === 'Imported' && (
+                    <a 
+                      href={getFieldNationLink(mission.id)} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[9px] font-black text-brand-red hover:underline uppercase tracking-tighter"
+                    >
+                      <ExternalLink size={10} />
+                      View Field Nation Registry
+                    </a>
+                  )}
+                </div>
                 <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase">
                     {mission.description}
                 </div>

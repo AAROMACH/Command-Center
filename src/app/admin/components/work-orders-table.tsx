@@ -632,7 +632,7 @@ export const WorkOrdersTable = React.memo(({
                                             type="number"
                                             value={editedOrder.blendedHourlyRate || ''}
                                             onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                            className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                            className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
                                         />
                                     </div>
                                 </div>

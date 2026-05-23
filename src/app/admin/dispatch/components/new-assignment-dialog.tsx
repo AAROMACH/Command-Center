@@ -347,7 +347,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 placeholder="0.00"
                                 value={formData.blendedHourlyRate || ''}
                                 onChange={(e) => setFormData({...formData, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
                             />
                         </div>
                     </div>

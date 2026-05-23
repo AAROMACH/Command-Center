@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -218,7 +217,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                       <>
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">fixed - hourly</p>
                         <p className="text-sm font-mono font-bold text-text-green">
-                          ${(mission.blendedFixedPay || 0).toFixed(2)} + ${(mission.blendedHourlyRate || 0).toFixed(2)}/hr
+                          ${(mission.blendedFixedPay || 0).toFixed(0)} - ${(mission.blendedHourlyRate || 0).toFixed(0)}
                         </p>
                         <p className="text-[9px] text-text-muted font-bold uppercase">Incl. {mission.blendedIncludedHours}h</p>
                       </>

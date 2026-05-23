@@ -268,6 +268,7 @@ export default function AssignmentsHubPage() {
         setIsEditDialogOpen(false);
         setIsDeleteDialogOpen(false);
         setSelectedJob(null);
+        setSelectedOrder(null); // Clear WorkOrdersTable selection if open
         setEditedOrder(null);
         toast({ title: "Registry Purged", description: `Assignment ${orderId.toUpperCase()} removed from system.` });
     } catch (e: any) {
@@ -508,7 +509,7 @@ export default function AssignmentsHubPage() {
                                                 {wo.payType === 'blended' ? (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">
-                                                            ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
+                                                            ${(wo.blendedFixedPay || 0).toFixed(0)} - ${(wo.blendedHourlyRate || 0).toFixed(0)}
                                                         </span>
                                                         <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">
                                                             fixed - hourly

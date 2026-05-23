@@ -35,7 +35,8 @@ import {
   MessageSquare,
   SquarePlus,
   Plus,
-  ArrowLeft
+  ArrowLeft,
+  ShieldAlert
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -73,10 +74,10 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const { toast } = useToast();
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
-    const [isRejecting, setIsRejecting] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -97,8 +98,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     useEffect(() => {
         if (!isReviewOpen) {
             setVerifiedFields(new Set());
-            setRejectionReason("");
-            setIsRejecting(false);
         }
     }, [isReviewOpen]);
 
@@ -156,18 +155,22 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     title: "Intake Terminated",
                     description: `Request ${selectedRequest.id.toUpperCase()} has been rejected. Note logged for client.`,
                 });
+                setIsRejectionDialogOpen(false);
+                setIsReviewOpen(false);
             } else if (status === 'reviewed') {
                 await updateDoc(docRef, { status: 'reviewed' });
                 toast({
                     title: "Review Finalized",
                     description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Awaiting final authorization.`,
                 });
+                setIsReviewOpen(false);
             } else if (status === 'approved' && !destination) {
                 await updateDoc(docRef, { status: 'approved' });
                 toast({
                     title: "Intake Approved",
                     description: `Request ${selectedRequest.id.toUpperCase()} approved. Awaiting tactical deployment selection.`,
                 });
+                setIsReviewOpen(false);
             } else if (destination) {
                 const isProject = destination === '/admin/projects';
                 const today = format(new Date(), 'yyyy-MM-dd');
@@ -220,11 +223,8 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                     title: isProject ? "Project Folder Initialized" : "Assignment Staged",
                     description: "Mission data has been transferred from intake to the operational registry.",
                 });
-                router.push(destination);
-            }
-
-            if (!destination) {
                 setIsReviewOpen(false);
+                router.push(destination);
             }
         } catch (e: any) {
             toast({
@@ -475,23 +475,6 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 </div>
                             </div>
 
-                            {isRejecting && (
-                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 px-1">
-                                        <MessageSquare size={12}/> Rejection Briefing
-                                    </h3>
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Manual note to give reason to client (Required for Reject)</Label>
-                                        <Textarea 
-                                            placeholder="Provide clear tactical justification for intake termination..." 
-                                            value={rejectionReason}
-                                            onChange={e => setRejectionReason(e.target.value)}
-                                            className="bg-bg-primary border-border-sub min-h-[100px] text-xs leading-relaxed uppercase font-medium"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-3">
                                     <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center justify-center gap-2">
@@ -559,43 +542,21 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                     <Badge variant="active" className="text-[8px] h-4">AUDIT PASSED</Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 w-full">
-                                    {isRejecting ? (
-                                        <>
-                                            <Button 
-                                                variant="outline" 
-                                                onClick={() => setIsRejecting(false)} 
-                                                className="h-11 uppercase font-bold text-[10px] tracking-widest"
-                                            >
-                                                <ArrowLeft size={16} className="mr-2" /> Back
-                                            </Button>
-                                            <Button 
-                                                variant="destructive" 
-                                                disabled={!userIsSuper || !rejectionReason.trim()}
-                                                onClick={() => handleAction('rejected')} 
-                                                className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
-                                            >
-                                                <X size={16} className="mr-2" /> Confirm & Reject
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Button 
-                                                variant="destructive-outline" 
-                                                disabled={!userIsSuper}
-                                                onClick={() => setIsRejecting(true)} 
-                                                className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
-                                            >
-                                                <X size={16} className="mr-2" /> Reject Intake
-                                            </Button>
-                                            <Button 
-                                                disabled={!userIsSuper}
-                                                onClick={() => handleAction('approved')} 
-                                                className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
-                                            >
-                                                <Check size={16} className="mr-2" /> Approve for Deployment
-                                            </Button>
-                                        </>
-                                    )}
+                                    <Button 
+                                        variant="destructive-outline" 
+                                        disabled={!userIsSuper}
+                                        onClick={() => setIsRejectionDialogOpen(true)} 
+                                        className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    >
+                                        <X size={16} className="mr-2" /> Reject Intake
+                                    </Button>
+                                    <Button 
+                                        disabled={!userIsSuper}
+                                        onClick={() => handleAction('approved')} 
+                                        className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                    >
+                                        <Check size={16} className="mr-2" /> Approve for Deployment
+                                    </Button>
                                 </div>
                                 {!userIsSuper && (
                                     <p className="text-[8px] text-text-muted uppercase text-center font-bold italic">Hierarchical Lock: Super Admin authorization required for deployment.</p>
@@ -634,6 +595,50 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                                 Close Audit Log
                             </Button>
                         )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* REJECTION BRIEFING POPUP */}
+            <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <ShieldAlert className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Rejection Briefing</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Provide a tactical justification for terminating this intake request.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4">
+                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-1">
+                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest text-left">Mission Termination Handshake</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium text-left">
+                                You are rejecting request <span className="text-text-primary font-bold">{(selectedRequest?.id || '').toUpperCase()}</span>. This will be transmitted to the client entity.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Manual note to give reason to client (Required)</Label>
+                            <Textarea 
+                                placeholder="e.g., Site access restricted, incomplete data, or out of service scope..." 
+                                value={rejectionReason}
+                                onChange={e => setRejectionReason(e.target.value)}
+                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed uppercase font-medium"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsRejectionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button 
+                            variant="destructive" 
+                            disabled={!rejectionReason.trim()}
+                            onClick={() => handleAction('rejected')} 
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                        >
+                            <X size={16} className="mr-2" /> Confirm & Reject
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

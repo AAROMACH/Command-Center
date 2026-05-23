@@ -180,6 +180,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
     toast({ title: "Registry Updated", description: "Allocation committed to Firestore." });
   };
 
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mission.location)}`;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh] shadow-2xl">
@@ -194,8 +196,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
           </div>
           <DialogTitle className="text-xl font-bold uppercase tracking-wide text-text-primary leading-tight">{mission.title || mission.description}</DialogTitle>
           <div className="flex items-center gap-4 text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
-             <span className="flex items-center gap-1.5"><MapPin size={12} className="text-brand-red shrink-0" /><span>{mission.location}</span></span>
-             <span className="flex items-center gap-1.5"><Calendar size={12} className="text-text-muted shrink-0" /><span>{mission.scheduleDate}</span></span>
+             <a 
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 hover:text-brand-red hover:underline transition-all cursor-pointer group/loc"
+             >
+                <MapPin size={12} className="text-brand-red shrink-0 group-hover/loc:scale-110 transition-transform" />
+                <span>{mission.location}</span>
+             </a>
+             <span className="flex items-center gap-1.5">
+                <Calendar size={12} className="text-text-muted shrink-0" />
+                <span>{mission.scheduleDate}</span>
+             </span>
           </div>
         </DialogHeader>
 
@@ -252,7 +265,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                     ) : (
                       <>
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">payout signature</p>
-                        <p className="text-sm font-mono font-bold text-text-green">${(mission.pay || 0).toFixed(2)}</p>
+                        <p className="text-sm font-mono font-bold text-text-primary">${(mission.pay || 0).toFixed(2)}</p>
                       </>
                     )}
                   </div>

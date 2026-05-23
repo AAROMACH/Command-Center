@@ -58,6 +58,7 @@ import { db } from "@/lib/firebase";
 import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 import { format, parseISO } from 'date-fns';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -75,6 +76,9 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
     const [conversionTitle, setConversionTitle] = useState("");
     const [conversionPay, setConversionPay] = useState<number>(0);
     const [conversionPayType, setConversionPayType] = useState<'fixed' | 'hourly' | 'blended'>('fixed');
+    const [blendedFixed, setBlendedFixed] = useState<number>(0);
+    const [blendedHours, setBlendedHours] = useState<number>(0);
+    const [blendedHourly, setBlendedHourly] = useState<number>(0);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [verifiedFields, setVerifiedFields] = useState<Set<string>>(new Set());
     const [rejectionReason, setRejectionReason] = useState("");
@@ -136,6 +140,9 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
         );
         setConversionPay(0);
         setConversionPayType('fixed');
+        setBlendedFixed(0);
+        setBlendedHours(0);
+        setBlendedHourly(0);
         setIsConversionDialogOpen(true);
     };
 
@@ -214,6 +221,9 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                     scheduleTime: '09:00 AM EST',
                     pay: conversionPay,
                     payType: conversionPayType,
+                    blendedFixedPay: conversionPayType === 'blended' ? blendedFixed : undefined,
+                    blendedIncludedHours: conversionPayType === 'blended' ? blendedHours : undefined,
+                    blendedHourlyRate: conversionPayType === 'blended' ? blendedHourly : undefined,
                     source: 'Client',
                     history: [
                         { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
@@ -664,32 +674,78 @@ export function RequestsClient({ requests, isHistory = false }: RequestsClientPr
                         </div>
 
                         {conversionType === 'assignment' && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
-                                        <DollarSign size={12} className="text-text-green" />
-                                        Labor Rate ($)
-                                    </Label>
-                                    <Input 
-                                        type="number"
-                                        placeholder="0.00" 
-                                        value={conversionPay}
-                                        onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
-                                        className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
-                                    />
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                            <DollarSign size={12} className="text-text-green" />
+                                            Labor Rate ($)
+                                        </Label>
+                                        <Input 
+                                            type="number"
+                                            placeholder="0.00" 
+                                            value={conversionPay}
+                                            onChange={e => setConversionPay(parseFloat(e.target.value) || 0)}
+                                            className="h-11 bg-bg-primary border-border-sub text-xs font-mono text-text-green font-bold"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Pay Model</Label>
+                                        <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
+                                            <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                                                <SelectItem value="hourly" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                                                <SelectItem value="blended" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
-                                <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Pay Model</Label>
-                                    <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
-                                        <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="fixed" className="text-xs uppercase font-bold">Fixed Rate</SelectItem>
-                                            <SelectItem value="hourly" className="text-xs uppercase font-bold">Hourly Rate</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+
+                                {conversionPayType === 'blended' && (
+                                    <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                                            <div className="relative">
+                                                <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                                <Input 
+                                                    type="number"
+                                                    value={blendedFixed || ''}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value) || 0;
+                                                        setBlendedFixed(val);
+                                                        setConversionPay(val);
+                                                    }}
+                                                    className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                                            <Input 
+                                                type="number"
+                                                value={blendedHours || ''}
+                                                onChange={(e) => setBlendedHours(parseFloat(e.target.value) || 0)}
+                                                className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
+                                            />
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                                            <div className="relative">
+                                                <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                                <Input 
+                                                    type="number"
+                                                    value={blendedHourly || ''}
+                                                    onChange={(e) => setBlendedHourly(parseFloat(e.target.value) || 0)}
+                                                    className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 

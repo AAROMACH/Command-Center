@@ -30,7 +30,8 @@ import {
   Search,
   CheckCircle2,
   Lock,
-  Circle
+  Circle,
+  ArrowUpRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -119,12 +120,9 @@ export function RequestsClient({ requests }: RequestsClientProps) {
         if (!selectedRequest) return;
         
         // REGISTRY GUARD: Enforce role-based operational paths
-        if (status === 'rejected' && !userIsSuper) {
-            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'Intake termination requires Super Admin credentials.' });
-            return;
-        }
-        if (status === 'approved' && !userIsSuper) {
-            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'Deployment path authorization requires Super Admin credentials.' });
+        const requiresSuper = status === 'rejected' || status === 'approved' || destination !== undefined;
+        if (requiresSuper && !userIsSuper) {
+            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'This authorization path requires Super Admin credentials.' });
             return;
         }
 
@@ -142,20 +140,26 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                 await updateDoc(docRef, { status: 'reviewed' });
                 toast({
                     title: "Review Finalized",
-                    description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Deployment paths authorized for Super Admin.`,
+                    description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed. Awaiting final authorization.`,
                 });
-            } else if (status === 'approved') {
+            } else if (status === 'approved' && !destination) {
                 await updateDoc(docRef, { status: 'approved' });
+                toast({
+                    title: "Intake Approved",
+                    description: `Request ${selectedRequest.id.toUpperCase()} approved. Awaiting tactical deployment selection.`,
+                });
+            } else if (destination) {
+                // Conversion case
                 const isProject = destination === '/admin/projects';
                 toast({
-                    title: isProject ? "Project Path Authorized" : "Dispatch Path Authorized",
+                    title: isProject ? "Project Path Initialized" : "Assignment Path Initialized",
                     description: "Transitioning to deployment terminal.",
                 });
+                router.push(destination);
             }
 
-            setIsReviewOpen(false);
-            if (destination) {
-                router.push(destination);
+            if (!destination) {
+                setIsReviewOpen(false);
             }
         } catch (e: any) {
             toast({
@@ -169,15 +173,17 @@ export function RequestsClient({ requests }: RequestsClientProps) {
     const VerifyToggle = ({ field, label }: { field: string, label: string }) => (
         <button 
             type="button"
+            disabled={selectedRequest?.status !== 'new'}
             onClick={() => toggleVerify(field)}
             className={cn(
                 "flex items-center gap-1.5 px-2 py-0.5 rounded transition-all",
-                verifiedFields.has(field) 
+                (verifiedFields.has(field) || selectedRequest?.status !== 'new')
                     ? "bg-green-dim text-text-green border border-green-border" 
-                    : "bg-bg-tertiary text-text-muted border border-border-sub hover:border-text-primary"
+                    : "bg-bg-tertiary text-text-muted border border-border-sub hover:border-text-primary",
+                selectedRequest?.status !== 'new' && "cursor-default"
             )}
         >
-            {verifiedFields.has(field) ? <CheckCircle2 size={10} /> : <Circle size={10} />}
+            {(verifiedFields.has(field) || selectedRequest?.status !== 'new') ? <CheckCircle2 size={10} /> : <Circle size={10} />}
             <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
         </button>
     );
@@ -408,71 +414,92 @@ export function RequestsClient({ requests }: RequestsClientProps) {
                         </div>
                     )}
 
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-col md:flex-row items-center gap-6">
-                        <div className="flex-1 w-full text-left">
-                            {selectedRequest?.status === 'new' ? (
-                                <div className="space-y-4 w-full">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Terminal Audit Phase:</p>
-                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", isAllVerified ? "text-text-green" : "text-text-red")}>
-                                            {verifiedFields.size} / 5 Fields Verified
-                                        </p>
-                                    </div>
-                                    {(userIsSuper || userIsDispatch) ? (
-                                        <Button 
-                                            disabled={!isAllVerified}
-                                            onClick={() => handleAction('reviewed')} 
-                                            className={cn(
-                                                "w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] transition-all",
-                                                isAllVerified ? "bg-brand-red hover:bg-brand-red-hover shadow-lg" : "bg-bg-tertiary text-text-muted border border-border-sub"
-                                            )}
-                                        >
-                                            {isAllVerified ? (
-                                                <><SearchCheck size={16} className="mr-2" /> Mark as Reviewed & Confirmed</>
-                                            ) : (
-                                                <><Lock size={14} className="mr-2" /> Verify All Fields to Continue</>
-                                            )}
-                                        </Button>
-                                    ) : (
-                                        <div className="p-3 rounded bg-bg-secondary border border-border-sub flex items-center justify-center gap-2">
-                                            <Lock size={12} className="text-text-muted" />
-                                            <p className="text-[9px] font-bold uppercase text-text-muted">Awaiting Authorization Access</p>
-                                        </div>
-                                    )}
+                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
+                        {selectedRequest?.status === 'new' && (
+                            <div className="flex flex-col items-center gap-4 w-full">
+                                <div className="flex items-center justify-between w-full">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Audit Verification Phase:</p>
+                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isAllVerified ? "text-text-green" : "text-text-red")}>
+                                        {verifiedFields.size} / 5 Fields Verified
+                                    </p>
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="flex flex-col md:flex-row items-end gap-4 w-full">
-                                        {userIsSuper && (
-                                            <Button variant="destructive-outline" onClick={() => handleAction('rejected')} className="h-11 px-8 uppercase font-bold text-[10px] tracking-[0.2em] shrink-0 border-brand-red text-text-red hover:bg-brand-red-dim">
-                                                Reject Intake
-                                            </Button>
-                                        )}
-                                        <div className="flex-1 w-full text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-3">Authorize Deployment Path:</p>
-                                            {userIsSuper ? (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <Button onClick={() => handleAction('approved', '/admin/dispatch')} className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] bg-brand-red hover:bg-brand-red-hover shadow-lg">
-                                                        <Wrench size={16} className="mr-2" /> Dispatch as assignment
-                                                    </Button>
-                                                    <Button onClick={() => handleAction('approved', '/admin/projects')} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-[0.15em] border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                                                        <Briefcase size={16} className="mr-2" /> Convert to project
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-center gap-3">
-                                                    <ShieldCheck size={16} className="text-text-green" />
-                                                    <div className="text-left">
-                                                        <p className="text-[10px] font-bold uppercase text-text-primary">Audit Verified</p>
-                                                        <p className="text-[9px] text-text-muted uppercase">Awaiting Super Admin deployment authorization.</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                                <Button 
+                                    disabled={!isAllVerified || (!userIsSuper && !userIsDispatch)}
+                                    onClick={() => handleAction('reviewed')} 
+                                    className={cn(
+                                        "w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] transition-all",
+                                        isAllVerified ? "bg-brand-red hover:bg-brand-red-hover shadow-lg" : "bg-bg-tertiary text-text-muted border border-border-sub"
+                                    )}
+                                >
+                                    {isAllVerified ? (
+                                        <><SearchCheck size={16} className="mr-2" /> Mark as Reviewed & Confirmed</>
+                                    ) : (
+                                        <><Lock size={14} className="mr-2" /> Verify All Fields to Continue</>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
+
+                        {selectedRequest?.status === 'reviewed' && (
+                            <div className="flex flex-col gap-4 w-full">
+                                <div className="flex items-center justify-between w-full border-b border-border-sub pb-2">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Authorization Decision:</p>
+                                    <Badge variant="active" className="text-[8px] h-4">AUDIT PASSED</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                    <Button 
+                                        variant="destructive-outline" 
+                                        disabled={!userIsSuper}
+                                        onClick={() => handleAction('rejected')} 
+                                        className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    >
+                                        <X size={16} className="mr-2" /> Reject Intake
+                                    </Button>
+                                    <Button 
+                                        disabled={!userIsSuper}
+                                        onClick={() => handleAction('approved')} 
+                                        className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                    >
+                                        <Check size={16} className="mr-2" /> Approve for Deployment
+                                    </Button>
+                                </div>
+                                {!userIsSuper && (
+                                    <p className="text-[8px] text-text-muted uppercase text-center font-bold italic">Hierarchical Lock: Super Admin authorization required for deployment.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {selectedRequest?.status === 'approved' && (
+                            <div className="flex flex-col gap-4 w-full">
+                                <div className="flex items-center justify-between w-full border-b border-border-sub pb-2">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Tactical Deployment Path:</p>
+                                    <Badge variant="active" className="text-[8px] h-4">AUTHORIZED</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                    <Button 
+                                        disabled={!userIsSuper}
+                                        onClick={() => handleAction('approved', '/admin/dispatch')} 
+                                        className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                    >
+                                        <Wrench size={16} className="mr-2" /> Convert to Assignment
+                                    </Button>
+                                    <Button 
+                                        disabled={!userIsSuper}
+                                        variant="outline"
+                                        onClick={() => handleAction('approved', '/admin/projects')} 
+                                        className="h-11 border-accent-gold text-accent-gold hover:bg-accent-gold/10 uppercase font-bold text-[10px] tracking-widest"
+                                    >
+                                        <Briefcase size={16} className="mr-2" /> Convert to Project
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {(selectedRequest?.status === 'closed' || selectedRequest?.status === 'rejected') && (
+                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
+                                Close Audit Log
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

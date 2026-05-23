@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -435,7 +434,7 @@ export const WorkOrdersTable = React.memo(({
         onUpdate={handleJobUpdate}
       />
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedOrder(null); setIsDialogOpen(open); }}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="page-title text-xl flex items-center gap-2">
@@ -574,7 +573,7 @@ export const WorkOrdersTable = React.memo(({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
-                                <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                                <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>

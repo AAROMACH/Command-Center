@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -21,8 +21,10 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase, SearchCode } from 'lucide-react';
-import type { ServiceRequest } from '@/lib/types';
+import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, Wrench, Briefcase, SearchCode, Search, Users, Building2 } from 'lucide-react';
+import type { ServiceRequest, Technician } from '@/lib/types';
+import { technicians } from '@/lib/data';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 declare global {
@@ -52,6 +54,8 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
   const [images, setImages] = useState<string[]>([]);
   const [docs, setDocs] = useState<string[]>([]);
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+  const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -135,6 +139,36 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     }
   };
 
+  const clients = useMemo(() => {
+    return technicians.filter(t => 
+        t.roles?.includes('client') || 
+        t.role.toLowerCase().includes('client') || 
+        t.clientCompany
+    );
+  }, []);
+
+  const filteredRegistry = useMemo(() => {
+    return clients.filter(c => 
+        (c.clientCompany || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
+        (c.name || '').toLowerCase().includes(registrySearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(registrySearch.toLowerCase())
+    );
+  }, [registrySearch, clients]);
+
+  const selectClientFromRegistry = (client: Technician) => {
+    const name = client.clientCompany || client.name;
+    setFormData(prev => ({
+        ...prev,
+        clientName: name,
+        location: '' 
+    }));
+    setIsRegistryOpen(false);
+    toast({
+        title: "Registry Match Selected",
+        description: `${name} has been linked to this service request.`,
+    });
+  };
+
   const handleSave = () => {
     if (!formData.clientName || !formData.location || !formData.description) {
       toast({
@@ -169,6 +203,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     });
     setImages([]);
     setDocs([]);
+    setRegistrySearch("");
   };
 
   const simulateUpload = (type: 'image' | 'doc') => {
@@ -197,185 +232,254 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
-      <DialogContent 
-        className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left"
-        onPointerDownOutside={(e) => {
-          if (e.target instanceof Element && e.target.closest('.pac-container')) {
-            e.preventDefault();
-          }
-        }}
-      >
-        <DialogHeader className="p-6 pb-2 text-left">
-          <div className="flex items-center gap-2 mb-1">
-            <ClipboardList className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
-          </div>
-          <DialogDescription className="text-xs uppercase font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
-        </DialogHeader>
-
-        <div className="px-6 py-4 space-y-6 text-left">
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-              <Input 
-                placeholder="Name or Organization"
-                value={formData.clientName}
-                onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                className="bg-bg-primary border-border-sub h-10 text-xs"
-              />
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
+        <DialogContent 
+          className="sm:max-w-[600px] bg-bg-elevated border-border-default max-h-[95vh] overflow-y-auto p-0 shadow-2xl text-left"
+          onPointerDownOutside={(e) => {
+            if (e.target instanceof Element && e.target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <DialogHeader className="p-6 pb-2 text-left">
+            <div className="flex items-center gap-2 mb-1 text-left">
+              <ClipboardList className="text-brand-red h-5 w-5" />
+              <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-              <div className="relative group">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                <Input 
-                    ref={addressInputRef}
-                    placeholder="Full Address"
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub"
-                />
-                {formData.location && (
-                    <button 
-                        onClick={resolveAddress}
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
-                        title="Verify Coordinates"
-                    >
-                        <SearchCode size={14} />
-                    </button>
-                )}
-              </div>
-            </div>
-          </div>
+            <DialogDescription className="text-left text-xs uppercase font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
+          </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-              <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
-                <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Installation" className="text-xs font-bold uppercase">Installation</SelectItem>
-                  <SelectItem value="Troubleshooting" className="text-xs font-bold uppercase">Troubleshooting</SelectItem>
-                  <SelectItem value="Maintenance" className="text-xs font-bold uppercase">Maintenance</SelectItem>
-                  <SelectItem value="Survey" className="text-xs font-bold uppercase">Survey</SelectItem>
-                  <SelectItem value="Repair" className="text-xs font-bold uppercase">Repair</SelectItem>
-                  <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
-              <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low" className="text-xs font-bold uppercase">Low (Standard)</SelectItem>
-                  <SelectItem value="medium" className="text-xs font-bold uppercase">Medium (Nominal)</SelectItem>
-                  <SelectItem value="high" className="text-xs font-bold uppercase">High (4h Target)</SelectItem>
-                  <SelectItem value="critical" className="text-xs font-bold uppercase">Critical (Emergency)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Request</Label>
-            <Textarea 
-              placeholder="Provide detailed job parameters and client requirements..." 
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="bg-bg-primary border-border-sub h-24 text-xs font-medium uppercase"
-            />
-          </div>
-
-          <div className="space-y-4 pt-2">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                  <Camera size={14} className="text-brand-red" />
-                  Site Images (Max 3)
-                </Label>
-                <span className="text-[9px] font-mono text-text-muted">{images.length}/3</span>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {images.map((img, i) => (
-                  <div key={i} className="relative aspect-video rounded border border-border-sub overflow-hidden group bg-bg-primary">
-                    <img src={img} alt={`Upload ${i}`} className="w-full h-full object-cover" />
-                    <button 
-                      type="button"
-                      onClick={() => removeAttachment('image', i)}
-                      className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={10} />
-                    </button>
-                  </div>
-                ))}
-                {images.length < 3 && (
-                  <button 
-                    type="button"
-                    onClick={() => simulateUpload('image')}
-                    className="aspect-video rounded border-2 border-dashed border-border-sub hover:border-brand-red hover:bg-brand-red-dim/5 transition-all flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red"
+          <div className="px-6 py-4 space-y-6 text-left">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                <div className="space-y-1.5">
+                  <Input 
+                    placeholder="Name or Organization"
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                    onClick={() => setIsRegistryOpen(true)}
                   >
-                    <Plus size={16} />
-                    <span className="text-[8px] font-bold uppercase">Add Photo</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                  <FileText size={14} className="text-accent-gold" />
-                  Technical Docs (Max 2)
-                </Label>
-                <span className="text-[9px] font-mono text-text-muted">{docs.length}/2</span>
+                    <Search size={12}/> Search Registry
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
-                {docs.map((doc, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <FileText size={12} className="text-text-muted" />
-                      <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{doc}</span>
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                <div className="relative group">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <Input 
+                      ref={addressInputRef}
+                      placeholder="Full Address"
+                      value={formData.location}
+                      onChange={(e) => setFormData({...formData, location: e.target.value})}
+                      className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub"
+                  />
+                  {formData.location && (
+                      <button 
+                          onClick={resolveAddress}
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
+                          title="Verify Coordinates"
+                      >
+                          <SearchCode size={14} />
+                      </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
+                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Installation" className="text-xs font-bold uppercase">Installation</SelectItem>
+                    <SelectItem value="Troubleshooting" className="text-xs font-bold uppercase">Troubleshooting</SelectItem>
+                    <SelectItem value="Maintenance" className="text-xs font-bold uppercase">Maintenance</SelectItem>
+                    <SelectItem value="Survey" className="text-xs font-bold uppercase">Survey</SelectItem>
+                    <SelectItem value="Repair" className="text-xs font-bold uppercase">Repair</SelectItem>
+                    <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
+                <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
+                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low" className="text-xs font-bold uppercase">Low (Standard)</SelectItem>
+                    <SelectItem value="medium" className="text-xs font-bold uppercase">Medium (Nominal)</SelectItem>
+                    <SelectItem value="high" className="text-xs font-bold uppercase">High (4h Target)</SelectItem>
+                    <SelectItem value="critical" className="text-xs font-bold uppercase">Critical (Emergency)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Request</Label>
+              <Textarea 
+                placeholder="Provide detailed job parameters and client requirements..." 
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="bg-bg-primary border-border-sub h-24 text-xs font-medium uppercase leading-relaxed"
+              />
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                    <Camera size={14} className="text-brand-red" />
+                    Site Images (Max 3)
+                  </Label>
+                  <span className="text-[9px] font-mono text-text-muted">{images.length}/3</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {images.map((img, i) => (
+                    <div key={i} className="relative aspect-video rounded border border-border-sub overflow-hidden group bg-bg-primary">
+                      <img src={img} alt={`Upload ${i}`} className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => removeAttachment('image', i)}
+                        className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={10} />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => removeAttachment('doc', i)} className="text-text-muted hover:text-text-red">
-                      <Trash2 size={12} />
+                  ))}
+                  {images.length < 3 && (
+                    <button 
+                      type="button"
+                      onClick={() => simulateUpload('image')}
+                      className="aspect-video rounded border-2 border-dashed border-border-sub hover:border-brand-red hover:bg-brand-red-dim/5 transition-all flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red"
+                    >
+                      <Plus size={16} />
+                      <span className="text-[8px] font-bold uppercase">Add Photo</span>
                     </button>
-                  </div>
-                ))}
-                {docs.length < 2 && (
-                  <button 
-                    type="button"
-                    onClick={() => simulateUpload('doc')}
-                    className="w-full py-3 rounded border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
-                  >
-                    <Plus size={14} />
-                    <span className="text-[9px] font-bold uppercase">Attach SOW / Blueprint</span>
-                  </button>
-                )}
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                    <FileText size={14} className="text-accent-gold" />
+                    Technical Docs (Max 2)
+                  </Label>
+                  <span className="text-[9px] font-mono text-text-muted">{docs.length}/2</span>
+                </div>
+                <div className="space-y-2">
+                  {docs.map((doc, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText size={12} className="text-text-muted" />
+                        <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{doc}</span>
+                      </div>
+                      <button type="button" onClick={() => removeAttachment('doc', i)} className="text-text-muted hover:text-text-red">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {docs.length < 2 && (
+                    <button 
+                      type="button"
+                      onClick={() => simulateUpload('doc')}
+                      className="w-full py-3 rounded border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
+                    >
+                      <Plus size={14} />
+                      <span className="text-[9px] font-bold uppercase">Attach SOW / Blueprint</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-row items-end gap-4">
-          <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
-            <X size={14} className="mr-2"/> Cancel Intake
-          </Button>
-          <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover">
-                <Wrench size={14} className="mr-2" /> Assignment
-              </Button>
-              <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
-                <Briefcase size={14} className="mr-2" /> Convert to project
-              </Button>
+          <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-row items-end gap-4">
+            <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
+              <X size={14} className="mr-2"/> Cancel Intake
+            </Button>
+            <div className="flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                  <Wrench size={14} className="mr-2" /> Assignment
+                </Button>
+                <Button type="button" onClick={handleSave} variant="outline" className="h-11 text-[10px] uppercase font-bold tracking-widest border-accent-gold text-accent-gold hover:bg-accent-gold/10">
+                  <Briefcase size={14} className="mr-2" /> Convert to project
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CLIENT REGISTRY POPUP */}
+      <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
+              <DialogHeader className="p-6 pb-2 text-left">
+                  <div className="flex items-center gap-2 mb-1">
+                      <Users className="text-brand-red h-5 w-5" />
+                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Client Registry</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs text-left">Select existing client to link to this assignment.</DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-2">
+                  <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                      <Input 
+                          placeholder="Filter registry by name or ID..." 
+                          value={registrySearch}
+                          onChange={(e) => setRegistrySearch(e.target.value)}
+                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                      />
+                  </div>
+              </div>
+              <ScrollArea className="flex-1 px-6 py-4">
+                  <div className="space-y-1">
+                      {filteredRegistry.map(client => (
+                          <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => selectClientFromRegistry(client)}
+                              className="w-full flex items-center gap-3 p-3 rounded hover:bg-bg-tertiary transition-colors text-left group active:bg-brand-red-dim border border-transparent hover:border-border-sub"
+                          >
+                              <div className="p-1.5 bg-bg-secondary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                                  <Building2 size={16} />
+                              </div>
+                              <div className="flex-1 overflow-hidden">
+                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                  {client.businessType && (
+                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                  )}
+                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                              </div>
+                              <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                      ))}
+                      {filteredRegistry.length === 0 && (
+                          <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                          </div>
+                      )}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }

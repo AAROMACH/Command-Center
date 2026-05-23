@@ -339,24 +339,22 @@ export const WorkOrdersTable = React.memo(({
                           </Button>
                         )
                         ) : (
-                            <div className="flex items-center gap-1.5 text-text-green text-left">
-                                <div className="flex flex-col items-start leading-none text-left">
-                                    {order.payType === 'blended' ? (
-                                        <>
-                                            <span className="font-mono text-xs font-bold">
-                                                ${(order.blendedFixedPay || 0).toFixed(0)} - ${(order.blendedHourlyRate || 0).toFixed(0)}
-                                            </span>
-                                            <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
-                                                fixed - hourly
-                                            </span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span className="font-mono text-xs font-bold">${order.pay.toFixed(2)}</span>
-                                            <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
-                                        </>
-                                    )}
-                                </div>
+                            <div className="flex flex-col items-start leading-none text-left">
+                                {order.payType === 'blended' ? (
+                                    <>
+                                        <span className="font-mono text-xs font-bold text-text-green">
+                                            ${(order.blendedFixedPay || 0).toFixed(0)} + ${(order.blendedHourlyRate || 0).toFixed(0)}/hr
+                                        </span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">
+                                            after {order.blendedIncludedHours || 0}hrs
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="font-mono text-xs font-bold text-text-green">${order.pay.toFixed(2)}</span>
+                                        <span className="text-[8px] uppercase font-bold tracking-widest text-text-muted mt-0.5">{order.payType}</span>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>

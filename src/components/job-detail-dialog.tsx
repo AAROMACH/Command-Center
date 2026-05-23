@@ -217,9 +217,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                       <>
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">fixed - hourly</p>
                         <p className="text-sm font-mono font-bold text-text-green">
-                          ${(mission.blendedFixedPay || 0).toFixed(0)} - ${(mission.blendedHourlyRate || 0).toFixed(0)}
+                          ${(mission.blendedFixedPay || 0).toFixed(0)} + ${(mission.blendedHourlyRate || 0).toFixed(0)}/hr
                         </p>
-                        <p className="text-[9px] text-text-muted font-bold uppercase">Incl. {mission.blendedIncludedHours}h</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase">after {mission.blendedIncludedHours}hrs</p>
                       </>
                     ) : (
                       <>
@@ -290,7 +290,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 ) : (
                     <div className="space-y-3">
                         <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 text-left">
                                 <Avatar className="h-12 w-12 border-2 border-border-sub"><AvatarImage src={leadTech?.avatarUrl} /><AvatarFallback>U</AvatarFallback></Avatar>
                                 <div className="text-left">
                                     <p className="text-sm font-bold text-text-primary uppercase">{leadTech?.name || 'Unallocated'}</p>

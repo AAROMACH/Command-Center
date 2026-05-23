@@ -77,7 +77,7 @@ import { isAdmin, isPayAdmin } from "@/lib/permissions";
 
 const getFieldNationLink = (id: string) => {
   const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
+  return `https://app.app.fieldnation.com/workorders/${cleanId}`;
 };
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
@@ -153,7 +153,7 @@ export default function AssignmentsHubPage() {
                 else { 
                   const [m, d, y] = parts;
                   if (y && m && d) {
-                      woDate = new Date(`${y}-${m}-${day}T12:00:00`);
+                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
                   } else {
                       return true; // Safe fallback for invalid dates
                   }
@@ -508,16 +508,16 @@ export default function AssignmentsHubPage() {
                                                 {wo.payType === 'blended' ? (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">
-                                                            ${(wo.blendedFixedPay || 0).toFixed(0)} - ${(wo.blendedHourlyRate || 0).toFixed(0)}
+                                                            ${(wo.blendedFixedPay || 0).toFixed(0)} + ${(wo.blendedHourlyRate || 0).toFixed(0)}/hr
                                                         </span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">
-                                                            fixed - hourly
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                            after {wo.blendedIncludedHours || 0}hrs
                                                         </span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green">${wo.pay?.toFixed(2)}</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">{wo.payType}</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{wo.payType}</span>
                                                     </>
                                                 )}
                                             </div>
@@ -647,7 +647,7 @@ export default function AssignmentsHubPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2 text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
-                              <Select value={editedProject.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
+                              <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
                                   <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="Installation">Installation</SelectItem>
@@ -809,4 +809,3 @@ export default function AssignmentsHubPage() {
     </div>
   );
 }
-

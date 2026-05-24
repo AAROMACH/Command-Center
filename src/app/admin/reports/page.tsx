@@ -38,7 +38,9 @@ import {
     DollarSign,
     ShieldCheck,
     ClipboardList,
-    Gauge
+    Gauge,
+    Filter,
+    FileCheck
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -81,13 +83,13 @@ import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
-import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay } from 'date-fns';
+import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
-type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';
+type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {
     const searchParams = useSearchParams();
@@ -107,7 +109,7 @@ export default function ActivityAuditPage() {
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
-    const [auditRange, setAuditRange] = useState<SiteAuditRange>('all');
+    const [auditRange, setAuditRange] = useState<AuditRange>('all');
     const [customVisitRange, setCustomVisitRange] = useState<DateRange | undefined>(undefined);
 
     // Messaging State
@@ -279,14 +281,13 @@ export default function ActivityAuditPage() {
         };
     }, [activeSite, workOrders, projects, invoices]);
 
-    const sortedAllSiteVisits = useMemo(() => {
-        if (!siteAuditData) return [];
-        let all = [...siteAuditData.visits];
+    const getFilteredVisits = useCallback((visits: WorkOrder[]) => {
+        let results = [...visits];
         const now = startOfDay(new Date());
 
         if (auditRange === '7d') {
             const cutoff = subDays(now, 7);
-            all = all.filter(wo => {
+            results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
                 if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
@@ -295,16 +296,26 @@ export default function ActivityAuditPage() {
             });
         } else if (auditRange === '30d') {
             const cutoff = subDays(now, 30);
-            all = all.filter(wo => {
+            results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
                 if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
+        } else if (auditRange === 'custom' && customVisitRange?.from) {
+            results = results.filter(wo => {
+                const parts = (wo.scheduleDate || '').split(/[-/]/);
+                let woDate;
+                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
+                const start = startOfDay(customVisitRange.from!);
+                const end = customVisitRange.to ? startOfDay(customVisitRange.to) : start;
+                return isWithinInterval(woDate, { start, end });
+            });
         }
 
-        return all.sort((a, b) => {
+        return results.sort((a, b) => {
             const parseDate = (str: string) => {
                 const parts = str.split(/[-/]/);
                 if (parts[0].length === 4) return new Date(str).getTime();
@@ -315,7 +326,17 @@ export default function ActivityAuditPage() {
             const dateB = parseDate(b.scheduleDate);
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    }, [siteAuditData, visitSortDir, auditRange]);
+    }, [auditRange, customVisitRange, visitSortDir]);
+
+    const sortedAllSiteVisits = useMemo(() => {
+        if (!siteAuditData) return [];
+        return getFilteredVisits(siteAuditData.visits);
+    }, [siteAuditData, getFilteredVisits]);
+
+    const sortedTechVisits = useMemo(() => {
+        if (!techStats) return [];
+        return getFilteredVisits(techStats.myJobs);
+    }, [techStats, getFilteredVisits]);
 
     const anomalyCounts = useMemo(() => {
         const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -541,11 +562,11 @@ export default function ActivityAuditPage() {
             <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 text-left">
                             <MessageSquare className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Compose Broadcast</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs">Transmit a tactical message to the selected portal registry.</DialogDescription>
+                        <DialogDescription className="text-xs text-left">Transmit a tactical message to the selected portal registry.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4 px-6">
                         <div className="grid grid-cols-2 gap-4">
@@ -596,12 +617,82 @@ export default function ActivityAuditPage() {
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
                         <Button variant="outline" onClick={() => setIsBroadcasting(false)}>Cancel</Button>
-                        <Button onClick={handleBroadcast} className="bg-brand-red hover:bg-brand-red-hover px-10 text-white">
+                        <Button onClick={handleBroadcast} className="bg-brand-red hover:bg-brand-red-hover px-10">
                             <Send size={16} className="mr-2" /> Execute Broadcast
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+        </div>
+    );
+
+    const renderAuditHeader = (title: string, count: number) => (
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub mb-6 shadow-sm">
+            <div className="flex items-center gap-3 text-left">
+                <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
+                    <Filter size={16} />
+                </div>
+                <div className="text-left">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">{title}</h3>
+                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{count} records match registry constraints</p>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <div className={cn(
+                            "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                            (auditRange === 'custom' || auditRange !== 'all') && "border-brand-red ring-1 ring-brand-red"
+                        )}>
+                            <CalendarIcon size={12} className={cn("mr-2", auditRange !== 'all' ? "text-brand-red" : "text-text-muted")} />
+                            <span className={cn(
+                                "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                auditRange !== 'all' ? "text-text-primary" : "text-text-muted"
+                            )}>
+                                {auditRange === 'all' ? 'Full Temporal Registry' : 
+                                 auditRange === '7d' ? 'Last 7 Days' : 
+                                 auditRange === '30d' ? 'Last 30 Days' :
+                                 customVisitRange?.from ? (
+                                    customVisitRange.to ? `${format(customVisitRange.from, "MM-dd")} – ${format(customVisitRange.to, "MM-dd")}` : format(customVisitRange.from, "MM-dd")
+                                 ) : "Custom Range"}
+                            </span>
+                        </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                        <div className="p-3 border-b border-border-sub bg-bg-tertiary flex justify-between items-center">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Temporal constraints</p>
+                            <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[9px] font-bold text-brand-red hover:underline">Reset</button>
+                        </div>
+                        <div className="p-3 space-y-4 text-left">
+                            <div className="grid grid-cols-1 gap-2">
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>Full Registry</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '7d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('7d')}>Last 7 Days</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '30d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('30d')}>Last 30 Days</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'custom' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('custom')}>Custom Range</Button>
+                            </div>
+                            {auditRange === 'custom' && (
+                                <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <Calendar initialFocus mode="range" selected={customVisitRange} onSelect={setCustomVisitRange} numberOfMonths={1} />
+                                </div>
+                            )}
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
+                <Select value={visitSortDir} onValueChange={(v: any) => setVisitSortDir(v)}>
+                    <SelectTrigger className="w-[120px] h-9 bg-bg-primary text-[10px] uppercase font-bold border-border-main">
+                        <div className="flex items-center gap-2">
+                            <ArrowUpDown size={14} className="text-text-muted" />
+                            <SelectValue />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="desc" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
+                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
     );
 
@@ -678,47 +769,51 @@ export default function ActivityAuditPage() {
                         </TabsContent>
 
                         <TabsContent value="visits" className="m-0 space-y-4">
-                             <div className="flex justify-between items-center px-1">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Full Deployment Manifest</h3>
-                                <Select value={visitSortDir} onValueChange={(v: any) => setVisitSortDir(v)}>
-                                    <SelectTrigger className="w-[120px] h-8 bg-bg-secondary text-[8px] uppercase font-bold border-border-sub"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="desc" className="text-[8px] uppercase font-bold">Newest First</SelectItem>
-                                        <SelectItem value="asc" className="text-[8px] uppercase font-bold">Oldest First</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                             </div>
+                             {renderAuditHeader("Site Deployment Manifest", sortedAllSiteVisits.length)}
                              <div className="table-wrap p-0">
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sortedAllSiteVisits.map(wo => (
-                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                <TableCell className="text-left py-4 pl-6">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
-                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
-                                                    {formatDateDisplay(wo.scheduleDate)}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-5 text-[8px] tracking-widest">
-                                                        {wo.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
-                                            </TableRow>
-                                        ))}
+                                        {sortedAllSiteVisits.map(wo => {
+                                            const linkedLog = weeklyLogs.find(log => log.items.some(item => item.workOrderId === wo.id));
+                                            return (
+                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                    <TableCell className="text-left py-4 pl-6">
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
+                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                                            <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                        {formatDateDisplay(wo.scheduleDate)}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-5 text-[8px] tracking-widest">
+                                                            {wo.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {linkedLog ? (
+                                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub uppercase tracking-tighter">
+                                                                <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
                                     </TableBody>
                                 </Table>
                              </div>
@@ -877,7 +972,7 @@ export default function ActivityAuditPage() {
                                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="space-y-1">
-                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
+                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name || 'Unnamed Operative'}</h2>
                                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email}</p>
                                                             </div>
                                                         </div>
@@ -934,37 +1029,51 @@ export default function ActivityAuditPage() {
                                                     </TabsList>
 
                                                     <TabsContent value="missions" className="m-0 space-y-3">
+                                                        {renderAuditHeader("Mission Performance Ledger", sortedTechVisits.length)}
                                                         <div className="table-wrap p-0">
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {techStats.myJobs.map(wo => (
-                                                                        <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                            <TableCell className="text-left py-4 pl-6">
-                                                                                <div className="flex flex-col gap-1">
-                                                                                    <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
-                                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
-                                                                                    <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
-                                                                                </div>
-                                                                            </TableCell>
-                                                                            <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
-                                                                                {formatDateDisplay(wo.scheduleDate)}
-                                                                            </TableCell>
-                                                                            <TableCell className="text-center">
-                                                                                <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
-                                                                                    {wo.status}
-                                                                                </Badge>
-                                                                            </TableCell>
-                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
-                                                                        </TableRow>
-                                                                    ))}
+                                                                    {sortedTechVisits.map(wo => {
+                                                                        const linkedLog = weeklyLogs.find(log => log.items.some(item => item.workOrderId === wo.id));
+                                                                        return (
+                                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                                <TableCell className="text-left py-4 pl-6">
+                                                                                    <div className="flex flex-col gap-0.5">
+                                                                                        <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
+                                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
+                                                                                    </div>
+                                                                                </TableCell>
+                                                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                                                    {formatDateDisplay(wo.scheduleDate)}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-center">
+                                                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                        {wo.status}
+                                                                                    </Badge>
+                                                                                </TableCell>
+                                                                                <TableCell className="text-center">
+                                                                                    {linkedLog ? (
+                                                                                        <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub uppercase tracking-tighter">
+                                                                                            <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
+                                                                                        </Badge>
+                                                                                    ) : (
+                                                                                        <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                                            </TableRow>
+                                                                        )
+                                                                    })}
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
@@ -972,7 +1081,7 @@ export default function ActivityAuditPage() {
 
                                                     <TabsContent value="settlements" className="m-0 space-y-3">
                                                         <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex justify-between items-center mb-2 shadow-sm text-left">
-                                                            <div className="space-y-1">
+                                                            <div className="space-y-1 text-left">
                                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Cumulative 1099 Disbursement</p>
                                                                 <p className="text-2xl font-mono font-bold text-text-green">${techStats.totalEarnings.toLocaleString()}</p>
                                                             </div>
@@ -1007,7 +1116,7 @@ export default function ActivityAuditPage() {
                                                     <TabsContent value="penalties" className="m-0 space-y-3">
                                                         {techStats.penalties.map(p => (
                                                             <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
-                                                                <div className="flex items-center gap-4">
+                                                                <div className="flex items-center gap-4 text-left">
                                                                     <div className={cn(
                                                                         "p-2 rounded-lg border",
                                                                         p.category === 'critical_failure' ? "bg-brand-red-dim text-text-red border-brand-red/30" : "bg-accent-gold-dim text-accent-gold border-accent-gold/30"

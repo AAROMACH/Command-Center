@@ -33,7 +33,12 @@ import {
     TrendingUp,
     CheckCircle2,
     ArrowUpDown,
-    BarChart3
+    BarChart3,
+    Wrench,
+    DollarSign,
+    ShieldCheck,
+    ClipboardList,
+    Gauge
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -74,13 +79,16 @@ import {
     penaltyEvents,
     assignmentTimeLogs,
 } from '@/lib/data';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
-import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
+import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {
     const searchParams = useSearchParams();
@@ -95,6 +103,7 @@ export default function ActivityAuditPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
 
     // Audit Detail States
@@ -137,12 +146,15 @@ export default function ActivityAuditPage() {
         const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
         });
+        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+            setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+        });
         const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
 
         return () => {
-            unsubWO(); unsubTech(); unsubLogs(); unsubProj(); unsubTOR();
+            unsubWO(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
         };
     }, []);
 
@@ -165,17 +177,38 @@ export default function ActivityAuditPage() {
         const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
         const reliability = Math.max(0, 100 - (points * 5));
         
-        return { total: myJobs.length, completed, reliability, penaltyPoints: points, penalties };
-    }, [selectedTechId, workOrders]);
+        const myLogs = weeklyLogs.filter(log => log.technicianId === selectedTechId);
+        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+
+        return { 
+            total: myJobs.length, 
+            completed, 
+            reliability, 
+            penaltyPoints: points, 
+            penalties,
+            totalEarnings,
+            myJobs,
+            myLogs
+        };
+    }, [selectedTechId, workOrders, weeklyLogs]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
         technicians.forEach(t => {
-            t.managedSites?.forEach(s => uniqueSites.set(s.location, { ...s, client: t.clientCompany || 'Strategic Partner' }));
+            t.managedSites?.forEach(s => uniqueSites.set(s.location, { 
+                ...s, 
+                client: t.clientCompany || 'Strategic Partner',
+                clientId: t.id 
+            }));
         });
         workOrders.forEach(wo => {
             if (!uniqueSites.has(wo.location)) {
-                uniqueSites.set(wo.location, { id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, name: wo.location.split(',')[0], location: wo.location, client: wo.clientName });
+                uniqueSites.set(wo.location, { 
+                    id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, 
+                    name: wo.location.split(',')[0], 
+                    location: wo.location, 
+                    client: wo.clientName 
+                });
             }
         });
         return Array.from(uniqueSites.values());
@@ -183,40 +216,44 @@ export default function ActivityAuditPage() {
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
 
+    const siteAuditData = useMemo(() => {
+        if (!activeSite) return null;
+        
+        const siteVisits = workOrders.filter(wo => wo.location === activeSite.location);
+        
+        // Find client company associated with this site to pull projects/invoices
+        const clientProjects = projects.filter(p => p.client === activeSite.client || p.location === activeSite.location);
+        const clientInvoices = invoices.filter(inv => inv.clientName === activeSite.client);
+        
+        return {
+            visits: siteVisits,
+            projects: clientProjects,
+            invoices: clientInvoices
+        };
+    }, [activeSite, workOrders, projects, invoices]);
+
     const sortedAllSiteVisits = useMemo(() => {
-        if (!activeSite) return [];
-        let all = workOrders.filter(wo => wo.location === activeSite.location);
+        if (!siteAuditData) return [];
+        let all = [...siteAuditData.visits];
         const now = startOfDay(new Date());
 
         if (auditRange === '7d') {
             const cutoff = subDays(now, 7);
             all = all.filter(wo => {
-                const woDate = parseISO(wo.scheduleDate.includes('-') ? wo.scheduleDate.split('-').reverse().join('-') : wo.scheduleDate);
+                const parts = (wo.scheduleDate || '').split(/[-/]/);
+                let woDate;
+                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
         } else if (auditRange === '30d') {
             const cutoff = subDays(now, 30);
             all = all.filter(wo => {
-                const woDate = parseISO(wo.scheduleDate.includes('-') ? wo.scheduleDate.split('-').reverse().join('-') : wo.scheduleDate);
+                const parts = (wo.scheduleDate || '').split(/[-/]/);
+                let woDate;
+                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
-            });
-        } else if (auditRange === 'custom' && customVisitRange?.from) {
-            all = all.filter(wo => {
-                try {
-                    const parts = wo.scheduleDate.split(/[-/]/);
-                    let woDate;
-                    if (parts[0].length === 4) {
-                        woDate = startOfDay(new Date(wo.scheduleDate));
-                    } else {
-                        const [m, d, y] = parts;
-                        woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
-                    }
-                    
-                    if (customVisitRange.from && customVisitRange.to) {
-                        return woDate >= startOfDay(customVisitRange.from) && woDate <= startOfDay(customVisitRange.to);
-                    }
-                    return isSameDay(woDate, customVisitRange.from!);
-                } catch (e) { return false; }
             });
         }
 
@@ -231,7 +268,7 @@ export default function ActivityAuditPage() {
             const dateB = parseDate(b.scheduleDate);
             return visitSortDir === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    }, [activeSite, visitSortDir, auditRange, customVisitRange, workOrders]);
+    }, [siteAuditData, visitSortDir, auditRange]);
 
     const anomalyCounts = useMemo(() => {
         const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
@@ -253,100 +290,14 @@ export default function ActivityAuditPage() {
         });
     };
 
-    // ── BROADCAST LOGIC ──────────────────────────────────────────────────
-
-    const handleBroadcast = () => {
-        if (!newMessage.subject || !newMessage.body) {
-            toast({ variant: 'destructive', title: 'Broadcast Error', description: 'Please provide both a subject and a message body.' });
-            return;
-        }
-
-        let expiresAt: string | undefined = undefined;
-        const now = new Date();
-        if (durationHours === "1") expiresAt = addHours(now, 1).toISOString();
-        else if (durationHours === "4") expiresAt = addHours(now, 4).toISOString();
-        else if (durationHours === "24") expiresAt = addDays(now, 1).toISOString();
-        else if (durationHours === "168") expiresAt = addWeeks(now, 1).toISOString();
-
-        const msg: AdminMessage = {
-            id: `msg-${Date.now()}`,
-            senderId: currentUser?.id || 'admin-001',
-            senderName: currentUser?.name || 'System Admin',
-            subject: newMessage.subject!,
-            body: newMessage.body!,
-            timestamp: now.toISOString(),
-            expiresAt,
-            isLocked: newMessage.isLocked,
-            type: newMessage.type as any,
-            targetPortal: newMessage.targetPortal as any
-        };
-
-        const updatedMessages = [msg, ...messages];
-        setMessages(updatedMessages);
-        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
-        window.dispatchEvent(new Event('storage'));
-
-        setIsBroadcasting(false);
-        setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
-        toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
-    };
-
-    const handleRevokeBroadcast = (id: string) => {
-        const updatedMessages = messages.filter(m => m.id !== id);
-        setMessages(updatedMessages);
-        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
-        window.dispatchEvent(new Event('storage'));
-        toast({ title: 'Broadcast Revoked', description: 'Directive removed from all terminals.' });
-    };
-
-    // ── SEARCH LOGIC ─────────────────────────────────────────────────────
-
-    const searchResults = useMemo(() => {
-        if (!searchQuery.trim()) return [];
-        const q = searchQuery.toLowerCase();
-        const results: any[] = [];
-        
-        technicians.forEach(t => {
-            if (t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)) {
-                results.push({ type: 'Technician', id: t.id, label: t.name, meta: `${t.email} · ${t.role} · active`, cls: 'bg-green-dim text-text-green' });
-            }
-        });
-
-        workOrders.forEach(wo => {
-            if (wo.id.toLowerCase().includes(q) || wo.description.toLowerCase().includes(q)) {
-                results.push({ type: 'Assignment', id: wo.id, label: `WO ${wo.id.toUpperCase()} — ${wo.description}`, meta: `${wo.clientName} · ${wo.location} · $${wo.pay} · ${wo.status}`, cls: 'bg-bg-tertiary text-text-primary' });
-            }
-        });
-
-        projects.forEach(p => {
-            if (p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) {
-                results.push({ type: 'Project', id: p.id, label: `${p.name} — ${p.client}`, meta: `${p.location} · ${p.status}`, cls: 'bg-accent-gold-dim text-accent-gold' });
-            }
-        });
-
-        return results;
-    }, [searchQuery, workOrders, technicians, projects]);
-
-    const handleResultClick = (result: any) => {
-        if (result.type === 'Technician') {
-            setSelectedTechId(result.id);
-            setSearchQuery("");
-            setActiveTab("tech");
-        } else if (result.type === 'Assignment') {
-            const wo = workOrders.find(w => w.id === result.id);
-            if (wo) {
-                setSelectedJob(wo);
-                setIsJobOpen(true);
-            }
-        }
-    };
+    // ── RENDERERS ────────────────────────────────────────────────────────
 
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
                 <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
-                    <RefreshCw size={12} className="mr-1.5"/> Refresh
+                    <RefreshCw size={12} className="mr-1.5"/> Refresh Registry
                 </Button>
             </div>
             {technicians.filter(t => !t.roles?.includes('client')).map(t => {
@@ -358,14 +309,14 @@ export default function ActivityAuditPage() {
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
-                                    <AvatarFallback>{(t?.name || 'U').charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{(t.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {assignmentTimeLogs.some(log => log.technicianId === t.id && !log.checkOutTime) && (
                                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
                                 )}
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{t.name}</p>
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{t.name || 'Unnamed Operative'}</p>
                                 <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{t.email}</p>
                             </div>
                         </div>
@@ -434,7 +385,7 @@ export default function ActivityAuditPage() {
                             <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">{msg.body}</p>
                             <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
+                                    <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
                                         {(msg.senderName || 'A').charAt(0)}
                                     </div>
                                     <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Sent by {msg.senderName}</span>
@@ -450,18 +401,12 @@ export default function ActivityAuditPage() {
                             </div>
                         </div>
                     ))}
-                    {messages.length === 0 && (
-                        <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                            <MessageSquare size={32} className="mx-auto mb-2 text-text-muted" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">Broadcast registry is empty</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
             {/* BROADCAST DIALOG */}
             <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
-                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
                     <DialogHeader className="text-left">
                         <DialogTitle className="uppercase tracking-widest font-bold">Compose Broadcast</DialogTitle>
                         <DialogDescription className="text-xs">Transmit a tactical message to the selected portal registry.</DialogDescription>
@@ -491,33 +436,6 @@ export default function ActivityAuditPage() {
                                         <SelectItem value="success">Operational Success</SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Broadcast Duration</Label>
-                                <Select value={durationHours} onValueChange={setDurationHours}>
-                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1">1 Hour</SelectItem>
-                                        <SelectItem value="4">4 Hours</SelectItem>
-                                        <SelectItem value="24">24 Hours</SelectItem>
-                                        <SelectItem value="168">7 Days</SelectItem>
-                                        <SelectItem value="permanent">Permanent</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted block mb-2">Registry Lock</Label>
-                                <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub h-10">
-                                    <span className="text-[9px] font-bold uppercase text-text-muted">Lock Directive</span>
-                                    <Switch 
-                                        checked={newMessage.isLocked} 
-                                        onCheckedChange={(val) => setNewMessage({...newMessage, isLocked: val})}
-                                        className="scale-75"
-                                    />
-                                </div>
                             </div>
                         </div>
 
@@ -552,7 +470,7 @@ export default function ActivityAuditPage() {
     );
 
     const renderSiteActivity = () => {
-        if (selectedSiteId && activeSite) {
+        if (selectedSiteId && activeSite && siteAuditData) {
             return (
                 <div className="space-y-8 animate-in fade-in duration-300">
                     <div className="flex items-center justify-between">
@@ -561,40 +479,170 @@ export default function ActivityAuditPage() {
                         </Button>
                     </div>
 
-                    <Card className="bg-bg-secondary border-border-main shadow-2xl">
-                        <CardHeader className="pb-4 text-left">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-1">
-                                    <CardTitle className="text-lg uppercase tracking-wider">{activeSite.name}</CardTitle>
-                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                        <MapPin size={10} className="text-brand-red"/> {activeSite.location}
-                                    </p>
-                                </div>
-                                <Badge variant="active" className="text-[8px] uppercase h-5 tracking-widest">Managed Asset</Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
-                                    <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.length}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
-                                </div>
+                    <div className="flex items-center gap-6 text-left mb-6">
+                        <div className="p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm">
+                            <Building2 size={32} className="text-brand-red" />
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-bold uppercase tracking-wide text-text-primary">{activeSite.name}</h2>
+                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                <MapPin size={12} className="text-brand-red"/> {activeSite.location}
+                            </p>
+                        </div>
+                    </div>
 
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
-                                    <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.filter(wo => wo.status !== 'completed').length}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">In Queue</p>
-                                </div>
+                    <Tabs defaultValue="overview" className="w-full">
+                        <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10">
+                            <TabsTrigger value="overview" className="tab !px-8 h-full data-[state=active]:bg-brand-red">TACTICAL OVERVIEW</TabsTrigger>
+                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">VISIT LEDGER ({siteAuditData.visits.length})</TabsTrigger>
+                            <TabsTrigger value="projects" className="tab !px-8 h-full data-[state=active]:bg-brand-red">PROJECT FOLDERS ({siteAuditData.projects.length})</TabsTrigger>
+                            <TabsTrigger value="billing" className="tab !px-8 h-full data-[state=active]:bg-brand-red">FINANCIAL AUDIT</TabsTrigger>
+                        </TabsList>
 
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
-                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
+                        <TabsContent value="overview" className="m-0 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Integrity</p>
+                                    <p className="text-3xl font-bold text-text-primary">99.9%</p>
+                                    <Badge variant="active" className="h-4 text-[7px] uppercase">Compliant</Badge>
+                                </Card>
+                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
+                                    <p className="text-3xl font-bold text-text-primary">{siteAuditData.visits.filter(wo => wo.status !== 'completed').length}</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold">awaiting action</p>
+                                </Card>
+                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Strategic Value</p>
+                                    <p className="text-3xl font-mono font-bold text-text-green">${siteAuditData.invoices.reduce((a, b) => a + b.total, 0).toLocaleString()}</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold">settled invoices</p>
+                                </Card>
+                            </div>
+                            
+                            <div className="p-6 rounded-xl border border-border-sub bg-bg-secondary/50 text-left space-y-4">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Client Briefing</h3>
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-3 text-left">
+                                        <div className="space-y-0.5">
+                                            <p className="text-[8px] font-bold text-text-muted uppercase">Affiliated Entity</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase">{activeSite.client}</p>
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[8px] font-bold text-text-muted uppercase">Site Access Instructions</p>
+                                            <p className="text-xs text-text-secondary leading-relaxed">Check in at security desk. Badge verification required. Loading dock access via rear gate code 5592.</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3 text-left">
+                                        <div className="space-y-0.5">
+                                            <p className="text-[8px] font-bold text-text-muted uppercase">Primary On-Site Point</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase">MGR. Robert House</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </TabsContent>
+
+                        <TabsContent value="visits" className="m-0 space-y-4">
+                             <div className="flex justify-between items-center px-1">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Full Deployment Manifest</h3>
+                                <Select value={visitSortDir} onValueChange={(v: any) => setVisitSortDir(v)}>
+                                    <SelectTrigger className="w-[120px] h-8 bg-bg-secondary text-[8px] uppercase font-bold border-border-sub"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="desc" className="text-[8px] uppercase font-bold">Newest First</SelectItem>
+                                        <SelectItem value="asc" className="text-[8px] uppercase font-bold">Oldest First</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                             <div className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader className="bg-bg-tertiary">
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission ID</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Scope & Outcome</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
+                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sortedAllSiteVisits.map(wo => (
+                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
+                                                <TableCell className="text-left py-4">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                    <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.scheduleDate} · {wo.scheduleTime}</p>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-5 text-[8px] tracking-widest">
+                                                        {wo.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                             </div>
+                        </TabsContent>
+
+                        <TabsContent value="projects" className="m-0 space-y-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {siteAuditData.projects.map(p => (
+                                    <Card key={p.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer group" onClick={() => router.push(`/admin/projects/${p.id}`)}>
+                                        <CardContent className="p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-4 text-left">
+                                                <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted group-hover:bg-brand-red-dim group-hover:text-brand-red transition-all">
+                                                    <Briefcase size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{p.name}</p>
+                                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5">Started: {p.startDate} · {p.status}</p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                {siteAuditData.projects.length === 0 && (
+                                    <div className="col-span-full py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40">
+                                        <Briefcase size={32} className="mx-auto text-text-muted mb-2" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">No site-linked project folders found</p>
+                                    </div>
+                                )}
+                             </div>
+                        </TabsContent>
+
+                        <TabsContent value="billing" className="m-0 space-y-4">
+                            <div className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader className="bg-bg-tertiary">
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Invoice #</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Target Project/WO</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Due Date</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
+                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {siteAuditData.invoices.map(inv => (
+                                            <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">INV-{inv.invoiceNumber}</TableCell>
+                                                <TableCell className="text-xs uppercase font-bold text-text-primary text-left">
+                                                    {inv.projectId ? `Project: ${inv.projectId.toUpperCase()}` : inv.workOrderId ? `Job: ${inv.workOrderId.toUpperCase()}` : 'General Settlement'}
+                                                </TableCell>
+                                                <TableCell className="text-xs text-text-muted text-left">{inv.dueDate}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant={inv.status === 'paid' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                        {inv.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${inv.total.toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             );
         }
@@ -602,7 +650,7 @@ export default function ActivityAuditPage() {
         return (
             <div className="space-y-2">
                 <div className="flex justify-between items-center px-1 mb-4 text-left">
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Site Coordinates</p>
+                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Managed Site Coordinates</p>
                 </div>
                 {siteList.map(site => (
                     <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
@@ -623,11 +671,11 @@ export default function ActivityAuditPage() {
     };
 
     return (
-        <div className="max-w-[1000px] mx-auto space-y-8">
+        <div className="max-w-[1200px] mx-auto space-y-8">
             <header className="space-y-1 text-center">
                 <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Activity Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Live monitor for technicians, sites, anomalies, and system analytics</p>
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Master Registry Audit</h1>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Unified oversight for personnel, sites, and strategic analytics</p>
             </header>
 
             <div className="space-y-6">
@@ -668,54 +716,173 @@ export default function ActivityAuditPage() {
                             </TabsList>
                         </div>
 
-                        <div className="min-h-[400px]">
+                        <div className="min-h-[500px]">
                             <TabsContent value="tech" className="m-0">
-                                {selectedTechId ? (
+                                {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300">
                                         <div className="flex items-center justify-between">
                                             <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
-                                                <ArrowLeft size={14} className="mr-1.5"/> Back to Roster
+                                                <ArrowLeft size={14} className="mr-1.5"/> Back to Registry
                                             </Button>
                                         </div>
-                                        <Card className="bg-bg-secondary border-border-main shadow-2xl">
-                                            <CardContent className="p-6 space-y-8">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-6 text-left">
-                                                        <Avatar className="h-16 w-16 border-2 border-border-sub">
-                                                            <AvatarImage src={activeTech?.avatarUrl} />
-                                                            <AvatarFallback>{(activeTech?.name || 'U').charAt(0)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="space-y-1 text-left">
-                                                            <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech?.name}</h2>
-                                                            <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech?.email} · {activeTech?.id.toUpperCase()}</p>
+                                        
+                                        <div className="flex flex-col lg:flex-row gap-6">
+                                            <div className="lg:w-1/3 space-y-6">
+                                                <Card className="bg-bg-secondary border-border-main shadow-2xl">
+                                                    <CardContent className="p-8 space-y-8 text-center">
+                                                        <div className="flex flex-col items-center gap-4">
+                                                            <Avatar className="h-20 w-20 border-2 border-brand-red">
+                                                                <AvatarImage src={activeTech.avatarUrl} />
+                                                                <AvatarFallback>{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="space-y-1">
+                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
+                                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <Badge variant="active" className="h-6 px-4 uppercase text-[10px] tracking-widest">Active Profile</Badge>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Assignments</p>
-                                                        <p className="text-2xl font-bold text-text-primary">{techStats?.total}</p>
-                                                    </div>
-                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Completed</p>
-                                                        <p className="text-2xl font-bold text-text-primary">{techStats?.completed}</p>
-                                                    </div>
-                                                    <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability</p>
-                                                        <p className={cn("text-2xl font-bold", techStats && techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats?.reliability}%</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-center gap-3">
-                                                    <Button variant="outline" size="sm" className="h-9 px-8 uppercase font-bold tracking-widest" asChild>
-                                                        <a href={`mailto:${activeTech?.email}`}><Mail size={16} className="mr-2"/> Email</a>
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" className="h-9 px-8 uppercase font-bold tracking-widest" asChild>
-                                                        <a href={`tel:${activeTech?.phone}`}><Phone size={16} className="mr-2"/> Call</a>
-                                                    </Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                                        
+                                                        <div className="space-y-6 pt-4 border-t border-border-sub/30">
+                                                            <div className="space-y-1">
+                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust</p>
+                                                                <p className={cn("text-5xl font-mono font-bold tracking-tighter", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
+                                                                <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
+                                                                    {getReliabilityTier(techStats.reliability)}
+                                                                </Badge>
+                                                            </div>
+
+                                                            <div className="flex justify-center gap-4">
+                                                                <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                                    <a href={`mailto:${activeTech.email}`}><Mail size={14} className="mr-2"/> Email</a>
+                                                                </Button>
+                                                                <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                                    <a href={`tel:${activeTech.phone}`}><Phone size={14} className="mr-2"/> Call</a>
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                                
+                                                <Card className="bg-bg-tertiary/30 border-border-sub">
+                                                    <CardHeader className="pb-3 text-left">
+                                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                                            <Gauge size={14} className="text-brand-red"/> Performance Index
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="space-y-3">
+                                                        <div className="flex justify-between items-center px-1">
+                                                            <span className="text-[10px] font-bold text-text-muted uppercase">Mission Success</span>
+                                                            <span className="text-xs font-bold text-text-primary uppercase">{techStats.completed} / {techStats.total}</span>
+                                                        </div>
+                                                        <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub">
+                                                            <div className="h-full bg-brand-red" style={{ width: `${(techStats.completed / (techStats.total || 1)) * 100}%` }} />
+                                                        </div>
+                                                        <p className="text-[8px] text-text-muted uppercase italic text-left">Finalized deployments within rolling registry.</p>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+
+                                            <div className="flex-1 overflow-hidden">
+                                                <Tabs defaultValue="missions" className="w-full">
+                                                    <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 w-full justify-start gap-8 px-6">
+                                                        <TabsTrigger value="missions" className="tab h-full data-[state=active]:bg-brand-red">MISSION HISTORY ({techStats.myJobs.length})</TabsTrigger>
+                                                        <TabsTrigger value="settlements" className="tab h-full data-[state=active]:bg-brand-red">PAYROLL LEDGER ({techStats.myLogs.length})</TabsTrigger>
+                                                        <TabsTrigger value="penalties" className="tab h-full data-[state=active]:bg-brand-red">PENALTY AUDIT</TabsTrigger>
+                                                    </TabsList>
+
+                                                    <TabsContent value="missions" className="m-0 space-y-3">
+                                                        <div className="table-wrap p-0">
+                                                            <Table>
+                                                                <TableHeader className="bg-bg-tertiary">
+                                                                    <TableRow className="hover:bg-transparent border-border-sub">
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">ID</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Assignment Scope</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {techStats.myJobs.map(wo => (
+                                                                        <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                            <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
+                                                                            <TableCell className="text-left">
+                                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                                                <p className="text-[9px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-center">
+                                                                                <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                    {wo.status}
+                                                                                </Badge>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </TabsContent>
+
+                                                    <TabsContent value="settlements" className="m-0 space-y-3">
+                                                        <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex justify-between items-center mb-2 shadow-sm text-left">
+                                                            <div className="space-y-1">
+                                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Cumulative 1099 Disbursement</p>
+                                                                <p className="text-2xl font-mono font-bold text-text-green">${techStats.totalEarnings.toLocaleString()}</p>
+                                                            </div>
+                                                            <Badge variant="active" className="uppercase text-[9px] h-6 px-4">CLEARED YTD</Badge>
+                                                        </div>
+                                                        <div className="table-wrap p-0">
+                                                            <Table>
+                                                                <TableHeader className="bg-bg-tertiary">
+                                                                    <TableRow className="hover:bg-transparent border-border-sub">
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Period</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Audit Status</TableHead>
+                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Payout</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {techStats.myLogs.map(log => (
+                                                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                                            <TableCell className="font-bold uppercase text-xs pl-6 text-left">Week of {log.weekOf}</TableCell>
+                                                                            <TableCell className="text-left">
+                                                                                <Badge variant={log.status === 'Approved' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                    {log.status}
+                                                                                </Badge>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </TabsContent>
+
+                                                    <TabsContent value="penalties" className="m-0 space-y-3">
+                                                        {techStats.penalties.map(p => (
+                                                            <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={cn(
+                                                                        "p-2 rounded-lg border",
+                                                                        p.category === 'critical_failure' ? "bg-brand-red-dim text-text-red border-brand-red/30" : "bg-accent-gold-dim text-accent-gold border-accent-gold/30"
+                                                                    )}>
+                                                                        <ShieldAlert size={16}/>
+                                                                    </div>
+                                                                    <div className="text-left">
+                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{p.eventType.replace(/_/g, ' ')}</p>
+                                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5">{format(parseISO(p.createdAt), 'MMM d, yyyy')} · {p.reason}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-sm font-mono font-bold text-text-red">{p.scoreChange}</span>
+                                                            </div>
+                                                        ))}
+                                                        {techStats.penalties.length === 0 && (
+                                                            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40">
+                                                                <CheckCircle2 size={48} className="mx-auto text-text-green mb-2" />
+                                                                <p className="text-[10px] font-bold uppercase tracking-widest">Clean penalty registry</p>
+                                                            </div>
+                                                        )}
+                                                    </TabsContent>
+                                                </Tabs>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : renderTechnicianRoster()}
                             </TabsContent>
@@ -741,7 +908,7 @@ export default function ActivityAuditPage() {
                                             <div className="space-y-1">
                                                 <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Field Verification Anomaly</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    Operational discrepancy detected in <code>project_daily_logs</code> registry.
+                                                    Operational discrepancy detected in <code>project_daily_logs</code> registry. Potential temporal ghosting.
                                                 </p>
                                             </div>
                                         </div>
@@ -788,5 +955,3 @@ export default function ActivityAuditPage() {
         </div>
     );
 }
-
-type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';

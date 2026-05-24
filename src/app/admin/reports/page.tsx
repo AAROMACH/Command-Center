@@ -85,7 +85,7 @@ import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
 const formatDateDisplay = (dateStr: string) => {
@@ -93,7 +93,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {
@@ -163,7 +163,10 @@ export default function ActivityAuditPage() {
             const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
             setTechnicians(techs);
             const userId = localStorage.getItem('currentUserId');
-            if (userId) setCurrentUser(techs.find(t => t.id === userId) || null);
+            if (userId) {
+                const user = techs.find(t => t.id === userId);
+                if (user) setCurrentUser(user);
+            }
         });
         const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
@@ -386,10 +389,8 @@ export default function ActivityAuditPage() {
     };
 
     const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
-        // Active work update
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, updates).catch((e: any) => {
-            // Unassigned pool update
             const woRef = doc(db, 'workOrders', woId);
             updateDoc(woRef, updates).catch(err => {
                 toast({ variant: 'destructive', title: 'Registry Error', description: err.message });
@@ -430,7 +431,7 @@ export default function ActivityAuditPage() {
             }
         });
 
-        // Search Assignments (Both pools)
+        // Search Assignments
         [...workOrders, ...assignments].forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || (wo.title || wo.description).toLowerCase().includes(q)) {
                 results.push({

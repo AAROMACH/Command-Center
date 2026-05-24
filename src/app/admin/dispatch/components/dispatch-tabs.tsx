@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -27,13 +28,12 @@ export function DispatchTabs({
   
   useEffect(() => {
     const subtab = searchParams.get('subtab');
-    if (subtab && (subtab === 'unassigned' || subtab === 'routes' || subtab === 'assigned')) {
+    if (subtab && (subtab === 'unassigned' || subtab === 'routes')) {
       setActiveTab(subtab);
     }
   }, [searchParams]);
 
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId);
-  const assignedWorkOrders = workOrders.filter(wo => wo.status !== 'unassigned' && !!wo.assignedTechnicianId);
   
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -43,9 +43,6 @@ export function DispatchTabs({
         </TabsTrigger>
         <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
           Routes <span className="tab-count">({routes.length})</span>
-        </TabsTrigger>
-        <TabsTrigger value="assigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
-          Assigned <span className="tab-count">({assignedWorkOrders.length})</span>
         </TabsTrigger>
       </TabsList>
       
@@ -67,17 +64,6 @@ export function DispatchTabs({
             allWorkOrders={workOrders}
             onWorkOrdersChange={onWorkOrdersChange}
             technicians={technicians}
-          />
-      </TabsContent>
-      
-      <TabsContent value="assigned" className="mt-0">
-          <WorkOrdersClient
-              workOrders={assignedWorkOrders}
-              allWorkOrders={workOrders}
-              technicians={technicians}
-              onWorkOrdersChange={onWorkOrdersChange}
-              routes={routes}
-              mode="assigned"
           />
       </TabsContent>
     </Tabs>

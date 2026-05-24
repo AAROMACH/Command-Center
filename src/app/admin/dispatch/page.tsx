@@ -6,9 +6,10 @@ import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
+import { WorkOrdersClient } from "./components/work-orders-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown, Calendar } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
@@ -47,7 +48,11 @@ type SortOption = 'date' | 'client' | 'priority' | 'type';
 
 export default function DispatchPage() {
   const searchParams = useSearchParams();
-  const [activeMasterTab, setActiveMasterTab] = useState(searchParams.get('tab') === 'dispatch' ? 'dispatch' : 'requests');
+  const [activeMasterTab, setActiveMasterTab] = useState(
+    searchParams.get('tab') === 'dispatch' ? 'dispatch' : 
+    searchParams.get('tab') === 'assignments' ? 'assignments' : 
+    'requests'
+  );
   
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -66,6 +71,13 @@ export default function DispatchPage() {
   const [activeSources, setActiveSources] = useState<string[]>([]);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'dispatch' || tab === 'requests' || tab === 'assignments')) {
+      setActiveMasterTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -143,9 +155,11 @@ export default function DispatchPage() {
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
-      const matchesSearch = (req.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (req.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (req.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = (req.id || '').toLowerCase().includes(q) ||
+        (req.clientName || '').toLowerCase().includes(q) ||
+        (req.description || '').toLowerCase().includes(q) ||
+        (req.location || '').toLowerCase().includes(q);
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
       return matchesSearch && matchesPriority && matchesType;
@@ -178,7 +192,7 @@ export default function DispatchPage() {
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="page-header-right">
-                {activeMasterTab === 'dispatch' ? (
+                {activeMasterTab !== 'requests' ? (
                   <>
                     <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px]"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
                     <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px]">+ New Dispatch Entry</Button>
@@ -194,6 +208,7 @@ export default function DispatchPage() {
             <TabsList className="tabs !p-0 !bg-bg-tertiary">
               <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">SERVICE REQUESTS</TabsTrigger>
               <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
+              <TabsTrigger value="assignments" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">ASSIGNMENTS</TabsTrigger>
             </TabsList>
         </div>
 
@@ -202,7 +217,7 @@ export default function DispatchPage() {
             <Search className="h-4 w-4 text-text-muted" />
             <input 
               className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary" 
-              placeholder={`Search ${activeMasterTab === 'dispatch' ? 'assignments' : 'intake'}...`} 
+              placeholder={`Search ${activeMasterTab === 'requests' ? 'intake' : 'assignments'}...`} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -220,7 +235,7 @@ export default function DispatchPage() {
                       <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
                       <SelectItem value="date" className="text-[10px] uppercase font-bold">Date</SelectItem>
                       <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
-                      {activeMasterTab === 'dispatch' && <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>}
+                      {activeMasterTab !== 'requests' && <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>}
                   </SelectContent>
               </Select>
 
@@ -280,7 +295,7 @@ export default function DispatchPage() {
                               </div>
                           </div>
 
-                          {activeMasterTab === 'dispatch' && (
+                          {activeMasterTab !== 'requests' && (
                             <div className="space-y-3">
                                 <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
                                 <div className="space-y-2">
@@ -314,6 +329,17 @@ export default function DispatchPage() {
               onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
               routes={routes}
               onRoutesChange={(updated) => updated.forEach(r => setDoc(doc(db, 'routes', r.id), r, { merge: true }))}
+           />
+        </TabsContent>
+
+        <TabsContent value="assignments" className="mt-0">
+           <WorkOrdersClient 
+              workOrders={filteredOrders.filter(wo => wo.status !== 'unassigned' && !!wo.assignedTechnicianId)} 
+              allWorkOrders={allWorkOrders} 
+              technicians={technicians} 
+              onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+              routes={routes}
+              mode="assigned"
            />
         </TabsContent>
       </Tabs>

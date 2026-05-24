@@ -115,6 +115,7 @@ const formatDateDisplay = (dateStr: string) => {
 type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "tech");
@@ -777,7 +778,7 @@ export default function ActivityAuditPage() {
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Weeklog Identification</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
@@ -1037,7 +1038,7 @@ export default function ActivityAuditPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Weeklog Identification</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>

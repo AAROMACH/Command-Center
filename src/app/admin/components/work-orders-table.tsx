@@ -64,6 +64,26 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
+const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    try {
+        const parts = dateStr.split(/[-/]/);
+        let d;
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
+        else { 
+            const [m, day, y] = parts;
+            if (y && m && day) {
+                d = new Date(`${y}-${m}-${day}T12:00:00`);
+            } else {
+                return dateStr;
+            }
+        }
+        return format(d, 'MM-dd-yyyy');
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 type WorkOrdersTableProps = {
   workOrders: WorkOrder[];
   allWorkOrders: WorkOrder[];
@@ -204,8 +224,8 @@ export const WorkOrdersTable = React.memo(({
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedJob.pay;
-      finalUpdate.payType = selectedJob.payType;
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -249,7 +269,7 @@ export const WorkOrdersTable = React.memo(({
   }, [toast]);
 
   return (
-    <>
+    <div className="w-full space-y-4">
       <div className="table-wrap border-none rounded-none">
         <table className="tbl">
           <thead>
@@ -286,7 +306,7 @@ export const WorkOrdersTable = React.memo(({
                     <div className="flex flex-col items-start justify-center gap-1.5 pl-0">
                       <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
                         <Calendar size={13} className="text-text-muted shrink-0" />
-                        <span>{order.scheduleDate}</span>
+                        <span>{formatDateDisplay(order.scheduleDate)}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
                         <Clock size={13} className="text-text-muted shrink-0" />
@@ -457,7 +477,7 @@ export const WorkOrdersTable = React.memo(({
                     </Button>
                 )}
                 {isAiLoading && (
-                    <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-center gap-3">
+                    <div className="p-3 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center gap-3">
                          <div className="h-4 w-4 rounded-full border-2 border-accent-gold border-t-transparent animate-spin" />
                          <span className="text-xs font-bold uppercase tracking-widest text-accent-gold">Calculating optimal operative...</span>
                     </div>
@@ -695,4 +715,6 @@ export const WorkOrdersTable = React.memo(({
       </Dialog>
     </div>
   );
-}
+});
+
+WorkOrdersTable.displayName = "WorkOrdersTable";

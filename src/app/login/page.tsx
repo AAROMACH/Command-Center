@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,13 +7,14 @@ import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { technicians } from "@/lib/data";
+import { collection, onSnapshot, query } from "firebase/firestore";
+import { technicians as mockTechnicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2, ShieldAlert, UserCheck, ChevronRight, Terminal } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserCheck, ChevronRight, Terminal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +54,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showBypass, setShowBypass] = useState(false);
   const [demoUser, setDemoUser] = useState<string>("");
+  const [registryUsers, setRegistryUsers] = useState<any[]>([]);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
   
   const {
@@ -64,6 +65,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  // Fetch real accounts when bypass is toggled
+  useEffect(() => {
+    if (showBypass) {
+        const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+            if (!snap.empty) {
+                setRegistryUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            } else {
+                setRegistryUsers(mockTechnicians);
+            }
+        }, (err) => {
+            console.warn("Bypass registry handshake restricted:", err);
+            setRegistryUsers(mockTechnicians);
+        });
+        return () => unsub();
+    }
+  }, [showBypass]);
+
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
     try {
@@ -72,7 +90,9 @@ export default function LoginPage() {
       const firebaseUser = userCredential.user;
 
       // 2. Cross-reference with Personnel Registry
-      const user = technicians.find(
+      const user = registryUsers.find(
+        (t) => (t.email || '').toLowerCase() === firebaseUser.email?.toLowerCase()
+      ) || mockTechnicians.find(
         (t) => t.email.toLowerCase() === firebaseUser.email?.toLowerCase()
       );
 
@@ -82,22 +102,14 @@ export default function LoginPage() {
 
       toast({
         title: "Authorization Successful",
-        description: `Terminal access granted for ${user?.name || 'Authorized User'}.`,
+        description: `Terminal access granted for ${user?.name || user?.fullName || 'Authorized User'}.`,
       });
 
       handleRedirect(user);
     } catch (error: any) {
-      console.error("Authentication error:", error);
-      
-      let errorMessage = "An unexpected error occurred during the security handshake.";
-      
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = "Invalid operative credentials. Please verify your access key or use the demo bypass.";
-        setShowBypass(true);
-      } else if (error.code === 'auth/api-key-not-valid') {
-        errorMessage = "Mission Blocked: Firebase API Key is missing or invalid.";
-        setShowBypass(true);
-      }
+      // Silence raw development blocks for prototyping
+      let errorMessage = "Invalid operative credentials. Please verify your access key or use the dev bypass.";
+      setShowBypass(true);
 
       toast({
         variant: "destructive",
@@ -111,12 +123,12 @@ export default function LoginPage() {
 
   const handleDemoLogin = () => {
     if (!demoUser) return;
-    const user = technicians.find(t => t.id === demoUser);
+    const user = registryUsers.find(t => t.id === demoUser) || mockTechnicians.find(t => t.id === demoUser);
     if (user) {
       localStorage.setItem("currentUserId", user.id);
       toast({
-        title: "Demo Protocol Active",
-        description: `Simulated login as ${user.name} established.`,
+        title: "Dev Protocol Active",
+        description: `Simulated login as ${user.name || user.fullName} established.`,
       });
       handleRedirect(user);
     }
@@ -228,7 +240,7 @@ export default function LoginPage() {
               {showBypass && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <p className="text-[9px] text-text-muted uppercase font-bold text-left leading-relaxed">
-                    Select a registered identity to initialize terminal access without Auth credentials.
+                    Select a real registry account to initialize terminal access.
                   </p>
                   <div className="flex gap-2">
                     <Select value={demoUser} onValueChange={setDemoUser}>
@@ -236,9 +248,9 @@ export default function LoginPage() {
                         <SelectValue placeholder="Select Identity..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {technicians.map(t => (
+                        {registryUsers.map(t => (
                           <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
-                            {t.name} ({t.roles?.[0].replace(/_/g, ' ') || t.role})
+                            {t.name || t.fullName} ({t.roles?.[0]?.replace(/_/g, ' ') || t.role})
                           </SelectItem>
                         ))}
                       </SelectContent>

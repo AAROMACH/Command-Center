@@ -209,26 +209,26 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         });
     };
 
-    const confirmedItems = localLog?.items.filter(item => item.confirmationStatus === 'confirmed') || [];
+    const confirmedItems = localLog?.items?.filter(item => item.confirmationStatus === 'confirmed') || [];
     const discrepancyItems = [
-        ...(localLog?.items.filter(item => item.confirmationStatus === 'disputed') || []),
+        ...(localLog?.items?.filter(item => item.confirmationStatus === 'disputed') || []),
         ...(localLog?.missingAssignmentReports || [])
     ];
 
-    const totalJobsCount = (localLog?.items.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
+    const totalJobsCount = (localLog?.items?.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
     const auditCompleteCount = auditedIds.size;
     const isManifestFullyAudited = auditCompleteCount === totalJobsCount && totalJobsCount > 0;
 
     const calculatedTotalPayout = useMemo(() => {
         if (!localLog) return 0;
-        const assignmentPay = localLog.items
+        const assignmentPay = (localLog.items || [])
             .filter(i => i.confirmationStatus === 'confirmed' || i.confirmationStatus === 'disputed')
             .reduce((acc, i) => {
                 const wo = findWorkOrder(i.workOrderId);
                 return acc + (wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0);
             }, 0);
         
-        const reimbursementPay = localLog.reimbursements.reduce((acc, r) => acc + r.amount, 0);
+        const reimbursementPay = (localLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
         
         return assignmentPay + reimbursementPay;
     }, [localLog, localWorkOrders, findWorkOrder]);
@@ -245,7 +245,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <AvatarImage src={technician.avatarUrl} />
                                 <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <div>
+                            <div className="text-left">
                                 <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
                                     Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
@@ -369,7 +369,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         <TabsContent value="discrepancy" className="m-0 h-full">
                             <ScrollArea className="h-full p-4">
                                 <div className="space-y-2">
-                                    {localLog.items.filter(i => i.confirmationStatus === 'disputed').map(item => {
+                                    {(localLog.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = auditedIds.has(item.id);
                                         return (
@@ -495,7 +495,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <Coins size={10} className="text-accent-gold" /> Expenses
                                 </h3>
                                 <div className="space-y-0.5">
-                                    {localLog.reimbursements.map(item => (
+                                    {(localLog.reimbursements || []).map(item => (
                                         <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center">
                                             <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1">{item.description}</p>
                                             <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>

@@ -9,7 +9,20 @@ import { RequestsTabs } from "../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./components/work-orders-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown, Calendar, History as HistoryIcon, Wrench } from "lucide-react";
+import { 
+  SlidersHorizontal, 
+  Plus, 
+  Search, 
+  Import as ImportIcon, 
+  Layers, 
+  ClipboardList, 
+  X, 
+  ArrowUpDown, 
+  Calendar as CalendarIcon, 
+  History as HistoryIcon, 
+  Wrench,
+  Activity
+} from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
@@ -27,6 +40,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 
 const SERVICE_CATEGORIES = [
@@ -44,7 +60,7 @@ const ASSIGNMENT_SOURCES = [
   'Client'
 ];
 
-type SortOption = 'date' | 'client' | 'priority' | 'type';
+type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | 'type';
 
 export default function DispatchPage() {
   const searchParams = useSearchParams();
@@ -64,6 +80,7 @@ export default function DispatchPage() {
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>('priority');
 
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
@@ -72,13 +89,7 @@ export default function DispatchPage() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && (tab === 'dispatch' || tab === 'requests' || tab === 'assignments')) {
-      setActiveMasterTab(tab);
-    }
-  }, [searchParams]);
-
+  // 1. Initialize Registry Listeners
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
@@ -121,111 +132,168 @@ export default function DispatchPage() {
       .catch((e) => toast({ variant: "destructive", title: "Write Failed", description: e.message }));
   };
 
-  const togglePriority = (priority: string) => {
-    setActivePriorities(prev => prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]);
-  };
-
-  const toggleType = (type: string) => {
-    setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-  };
-
-  const toggleSource = (source: string) => {
-    setActiveSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]);
+  const resetFilters = () => {
+    setSearchQuery("");
+    setDateRange(undefined);
+    setActivePriorities([]);
+    setActiveTypes([]);
+    setActiveSources([]);
+    setSortBy('priority');
+    toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
   };
 
   const filteredOrders = useMemo(() => {
     let results = allWorkOrders.filter(order => {
-      const matchesSearch = (order.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.clientName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        (order.id || '').toLowerCase().includes(q) ||
+        (order.title || '').toLowerCase().includes(q) ||
+        (order.description || '').toLowerCase().includes(q) ||
+        (order.clientName || '').toLowerCase().includes(q);
+      
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
       const matchesSource = activeSources.length === 0 || (order.source && activeSources.includes(order.source));
-      return matchesSearch && matchesPriority && matchesType && matchesSource;
+      
+      const matchesDate = !dateRange?.from || (order.scheduleDate && (() => {
+          try {
+              const parts = (order.scheduleDate || '').split(/[-/]/);
+              let woDate;
+              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate)); } 
+              else { 
+                const [m, d, y] = parts;
+                if (y && m && d) {
+                    woDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                } else {
+                    return true;
+                }
+              }
+              
+              if (dateRange.from && dateRange.to) {
+                  return woDate >= startOfDay(dateRange.from) && woDate <= startOfDay(dateRange.to);
+              }
+              if (dateRange.from) {
+                  return isSameDay(woDate, dateRange.from);
+              }
+              return true;
+          } catch (e) { return false; }
+      })());
+
+      return matchesSearch && matchesPriority && matchesType && matchesSource && matchesDate;
     });
+
+    return results.sort((a, b) => {
+        switch (sortBy) {
+            case 'priority':
+                const prio = { critical: 0, high: 1, medium: 2, low: 3 };
+                return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
+            case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
+            case 'status': return (a.status || '').localeCompare(b.status || '');
+            case 'pay': return (b.pay || 0) - (a.pay || 0);
+            case 'type': return (a.projectType || '').localeCompare(b.projectType || '');
+            case 'tech':
+                const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
+                const techB = technicians.find(t => t.id === b.assignedTechnicianId)?.name || 'Unassigned';
+                return techA.localeCompare(techB);
+            default:
+                return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
+        }
+    });
+  }, [allWorkOrders, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, technicians]);
+
+  const filteredRequests = useMemo(() => {
+    let results = allRequests.filter(req => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        (req.id || '').toLowerCase().includes(q) ||
+        (req.clientName || '').toLowerCase().includes(q) ||
+        (req.description || '').toLowerCase().includes(q) ||
+        (req.location || '').toLowerCase().includes(q);
+      
+      const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
+      const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
+      
+      const matchesDate = !dateRange?.from || (req.submittedDate && (() => {
+          try {
+              const parts = (req.submittedDate || '').split(/[-/]/);
+              let reqDate;
+              if (parts[0] && parts[0].length === 4) { reqDate = startOfDay(new Date(req.submittedDate)); } 
+              else { 
+                const [m, d, y] = parts;
+                if (y && m && d) {
+                    reqDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                } else {
+                    return true;
+                }
+              }
+              
+              if (dateRange.from && dateRange.to) {
+                  return reqDate >= startOfDay(dateRange.from) && reqDate <= startOfDay(dateRange.to);
+              }
+              if (dateRange.from) {
+                  return isSameDay(reqDate, dateRange.from);
+              }
+              return true;
+          } catch (e) { return false; }
+      })());
+
+      return matchesSearch && matchesPriority && matchesType && matchesDate;
+    });
+
     return results.sort((a, b) => {
         if (sortBy === 'priority') {
             const prio = { critical: 0, high: 1, medium: 2, low: 3 };
             return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
         }
         if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
-        return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
+        if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
+        return (b.submittedDate || '').localeCompare(a.submittedDate || '');
     });
-  }, [allWorkOrders, searchQuery, activePriorities, activeTypes, activeSources, sortBy]);
+  }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy]);
 
-  const filteredRequests = useMemo(() => {
-    let results = allRequests.filter(req => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = (req.id || '').toLowerCase().includes(q) ||
-        (req.clientName || '').toLowerCase().includes(q) ||
-        (req.description || '').toLowerCase().includes(q) ||
-        (req.location || '').toLowerCase().includes(q);
-      const matchesPriority = activePriorities.length === 0 || activePriorities.includes(req.priority);
-      const matchesType = activeTypes.length === 0 || activeTypes.includes(req.requestType);
-      return matchesSearch && matchesPriority && matchesType;
-    });
-    return results.sort((a, b) => {
-        if (sortBy === 'priority') {
-            const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-            return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
-        }
-        return (a.submittedDate || '').localeCompare(a.submittedDate || '');
-    });
-  }, [allRequests, searchQuery, activePriorities, activeTypes, sortBy]);
-
-  const resetFilters = () => {
-    setSearchQuery("");
-    setActivePriorities([]);
-    setActiveTypes([]);
-    setActiveSources([]);
-    setSortBy('priority');
-  };
-
-  const hasActiveFilters = searchQuery !== "" || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'priority';
+  const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'priority';
 
   return (
     <div className="space-y-6">
-        <header className="page-header">
+        <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="text-left">
               <p className="page-eyebrow flex items-center gap-2"><Layers size={12} />Operations Control Center</p>
               <h1 className="page-title">Dispatch & Intake</h1>
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
-            <div className="page-header-right">
+            <div className="flex items-center gap-3">
                 {activeMasterTab !== 'requests' ? (
                   <>
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px]"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
-                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px]">+ New Dispatch Entry</Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
+                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest">+ New Dispatch Entry</Button>
                   </>
                 ) : (
-                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px]"><Plus size={14} className="mr-2"/>New Service Request</Button>
+                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest"><Plus size={14} className="mr-2"/>New Service Request</Button>
                 )}
             </div>
       </header>
 
-      <Tabs value={activeMasterTab} onValueChange={setActiveMasterTab} className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-            <TabsList className="tabs !p-0 !bg-bg-tertiary">
-              <TabsTrigger value="requests" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">SERVICE REQUESTS</TabsTrigger>
-              <TabsTrigger value="dispatch" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">DISPATCH HUB</TabsTrigger>
-              <TabsTrigger value="assignments" className="tab !px-8 !py-4 data-[state=active]:bg-bg-secondary data-[state=active]:border-2 data-[state=active]:border-brand-red data-[state=active]:text-brand-red">ASSIGNMENTS</TabsTrigger>
+      <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
+            <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
+              <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab">DISPATCH HUB</TabsTrigger>
+              <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>
             </TabsList>
-        </div>
 
-        <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm">
-          <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
-            <Search className="h-4 w-4 text-text-muted" />
-            <input 
-              className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary" 
-              placeholder={`Search ${activeMasterTab === 'requests' ? 'intake' : 'assignments'}...`} 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="search-wrap flex-1 !mb-0">
+                <Search className="h-4 w-4 text-text-muted" />
+                <input 
+                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary" 
+                  placeholder={`Search registry...`} 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
               <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                  <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                  <SelectTrigger className="w-[140px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                       <div className="flex items-center gap-2">
                           <ArrowUpDown size={14} className="text-text-muted" />
                           <SelectValue placeholder="Sort" />
@@ -235,18 +303,51 @@ export default function DispatchPage() {
                       <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
                       <SelectItem value="date" className="text-[10px] uppercase font-bold">Date</SelectItem>
                       <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
-                      {activeMasterTab !== 'requests' && <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>}
+                      <SelectItem value="status" className="text-[10px] uppercase font-bold">Status</SelectItem>
+                      <SelectItem value="pay" className="text-[10px] uppercase font-bold">Labor Rate</SelectItem>
+                      <SelectItem value="tech" className="text-[10px] uppercase font-bold">Technician</SelectItem>
+                      <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>
                   </SelectContent>
               </Select>
 
               <Popover>
                   <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("h-10 text-[10px]", hasActiveFilters && "border-brand-red text-brand-red")}>
+                    <div className={cn(
+                        "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                        dateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                    )}>
+                        <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                        <span className={cn(
+                            "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                            dateRange?.from ? "text-text-primary" : "text-text-muted"
+                        )}>
+                            {dateRange?.from ? (
+                                dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
+                            ) : "Date Filter"}
+                        </span>
+                        {dateRange?.from && (
+                            <button 
+                                className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
+                            >
+                                <X size={10} />
+                            </button>
+                        )}
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                    <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
+                  </PopoverContent>
+              </Popover>
+
+              <Popover>
+                  <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("h-9 text-[10px]", hasActiveFilters && "border-brand-red text-brand-red")}>
                           <SlidersHorizontal size={14} className="mr-2"/>
                           Filters
                           {hasActiveFilters && (
                             <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">
-                              {(searchQuery !== "" ? 1 : 0) + activePriorities.length + activeTypes.length + activeSources.length}
+                              {(searchQuery !== "" ? 1 : 0) + (dateRange?.from ? 1 : 0) + activePriorities.length + activeTypes.length + activeSources.length}
                             </Badge>
                           )}
                       </Button>
@@ -271,7 +372,7 @@ export default function DispatchPage() {
                                           <Checkbox 
                                               id={`prio-${priority}`} 
                                               checked={activePriorities.includes(priority)}
-                                              onCheckedChange={() => togglePriority(priority)}
+                                              onCheckedChange={(checked) => setActivePriorities(prev => checked ? [...prev, priority] : prev.filter(p => p !== priority))}
                                           />
                                           <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
                                       </div>
@@ -281,37 +382,37 @@ export default function DispatchPage() {
 
                           <div className="space-y-3">
                               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Technical Category</p>
+                              <ScrollArea className="h-[120px]">
+                                <div className="space-y-2 pr-4">
+                                    {SERVICE_CATEGORIES.map(type => (
+                                        <div key={type} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`type-${type}`} 
+                                                checked={activeTypes.includes(type)}
+                                                onCheckedChange={(checked) => setActiveTypes(prev => checked ? [...prev, type] : prev.filter(t => t !== type))}
+                                            />
+                                            <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
+                                        </div>
+                                    ))}
+                                </div>
+                              </ScrollArea>
+                          </div>
+
+                          <div className="space-y-3">
+                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
                               <div className="space-y-2">
-                                  {SERVICE_CATEGORIES.map(type => (
-                                      <div key={type} className="flex items-center space-x-2">
+                                  {ASSIGNMENT_SOURCES.map(source => (
+                                      <div key={source} className="flex items-center space-x-2">
                                           <Checkbox 
-                                              id={`type-${type}`} 
-                                              checked={activeTypes.includes(type)}
-                                              onCheckedChange={() => toggleType(type)}
+                                              id={`src-${source}`} 
+                                              checked={activeSources.includes(source)}
+                                              onCheckedChange={(checked) => setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source))}
                                           />
-                                          <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
+                                          <Label htmlFor={`src-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
                                       </div>
                                   ))}
                               </div>
                           </div>
-
-                          {activeMasterTab !== 'requests' && (
-                            <div className="space-y-3">
-                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
-                                <div className="space-y-2">
-                                    {['Imported', 'Manual', 'Client'].map(source => (
-                                        <div key={source} className="flex items-center space-x-2">
-                                            <Checkbox 
-                                                id={`src-${source}`} 
-                                                checked={activeSources.includes(source)}
-                                                onCheckedChange={() => toggleSource(source)}
-                                            />
-                                            <Label htmlFor={`src-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                          )}
                       </div>
                   </PopoverContent>
               </Popover>
@@ -324,18 +425,30 @@ export default function DispatchPage() {
 
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs 
-              workOrders={filteredOrders} 
+              workOrders={filteredOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId)} 
               technicians={technicians} 
-              onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+              onWorkOrdersChange={(updated) => {
+                // Bulk update support is limited in client-side Firestore without transactions, 
+                // so we update individually for this prototype.
+                updated.forEach(wo => {
+                  const docRef = doc(db, 'workOrders', wo.id);
+                  updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                });
+              }}
               routes={routes}
-              onRoutesChange={(updated) => updated.forEach(r => setDoc(doc(db, 'routes', r.id), r, { merge: true }))}
+              onRoutesChange={(updated) => {
+                updated.forEach(r => {
+                  const docRef = doc(db, 'routes', r.id);
+                  setDoc(docRef, r, { merge: true }).catch(e => console.error("Route update error", e));
+                });
+              }}
            />
         </TabsContent>
 
         <TabsContent value="assignments" className="mt-0">
             <Tabs defaultValue="active">
                 <div className="flex items-center justify-between gap-4 mb-4 bg-bg-secondary/50 p-3 rounded-lg border border-border-sub">
-                    <TabsList className="tabs !mb-0">
+                    <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
                         <TabsTrigger value="active" className="tab flex items-center gap-2">
                             <Wrench size={12} /> Active Missions
                         </TabsTrigger>
@@ -350,7 +463,12 @@ export default function DispatchPage() {
                       workOrders={filteredOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && !!wo.assignedTechnicianId)} 
                       allWorkOrders={allWorkOrders} 
                       technicians={technicians} 
-                      onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+                      onWorkOrdersChange={(updated) => {
+                        updated.forEach(wo => {
+                          const docRef = doc(db, 'workOrders', wo.id);
+                          updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                        });
+                      }}
                       routes={routes}
                       mode="assigned"
                    />
@@ -361,7 +479,12 @@ export default function DispatchPage() {
                       workOrders={filteredOrders.filter(wo => wo.status === 'completed')} 
                       allWorkOrders={allWorkOrders} 
                       technicians={technicians} 
-                      onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+                      onWorkOrdersChange={(updated) => {
+                        updated.forEach(wo => {
+                          const docRef = doc(db, 'workOrders', wo.id);
+                          updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                        });
+                      }}
                       routes={routes}
                       mode="assigned"
                    />

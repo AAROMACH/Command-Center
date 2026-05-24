@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -40,10 +39,9 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assignments' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-  { href: '/admin/analytics', label: 'Intelligence', icon: BarChart3, permission: 'view_reports' },
+  { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
-  { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },
 ];
 
 const clientNavItems: NavItem[] = [

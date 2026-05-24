@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { 
     Search, 
     MapPin, 
@@ -82,16 +81,11 @@ import {
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
-
-// Tactical Performance: Code-splitting heavy chart library
-const TechAnalytics = dynamic(() => import('./components/tech-analytics').then(mod => mod.TechAnalytics), {
-    loading: () => <div className="h-[500px] w-full bg-bg-tertiary animate-pulse rounded-2xl" />,
-    ssr: false
-});
 
 export default function ActivityAuditPage() {
     const searchParams = useSearchParams();
@@ -103,8 +97,6 @@ export default function ActivityAuditPage() {
     
     // Mission Registry state for local updates
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
-    const [techRegistry] = useState<Technician[]>(technicians);
-    const [logRegistry] = useState<WeeklyLog[]>(weeklyLogs);
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -236,10 +228,10 @@ export default function ActivityAuditPage() {
     }, [activeSite, visitSortDir, auditRange, customVisitRange, workOrders]);
 
     const anomalyCounts = useMemo(() => {
-        const unassigned = workOrders.filter(wo => wo.status === 'unassigned').length;
+        const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
         const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
-        return unassigned + overdueLogs + openCheckins + 2;
+        return unassignedCount + overdueLogs + openCheckins + 2;
     }, [workOrders]);
 
     const handleTabChange = (val: string) => {
@@ -457,7 +449,7 @@ export default function ActivityAuditPage() {
                                     <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
                                         {(msg.senderName || 'A').charAt(0)}
                                     </div>
-                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Sent by {msg.senderName}</span>
+                                    <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Sent by {msg.senderName}</span>
                                 </div>
                                 <Button 
                                     variant="ghost" 
@@ -805,7 +797,7 @@ export default function ActivityAuditPage() {
                                 >
                                     Site Index
                                 </TabsTrigger>
-                                <TabsTrigger value="analytics" className="tab-trigger-activity">Tactical Analytics</TabsTrigger>
+                                <TabsTrigger value="analytics" className="tab-trigger-activity">Strategic Intelligence</TabsTrigger>
                                 <TabsTrigger value="messaging" className="tab-trigger-activity">Broadcast Comms</TabsTrigger>
                                 <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                                     Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
@@ -871,11 +863,7 @@ export default function ActivityAuditPage() {
                             </TabsContent>
 
                             <TabsContent value="analytics" className="m-0">
-                                <TechAnalytics 
-                                    technicians={techRegistry} 
-                                    workOrders={workOrders} 
-                                    weeklyLogs={logRegistry} 
-                                />
+                                <IntelligenceTerminal />
                             </TabsContent>
 
                             <TabsContent value="messaging" className="m-0">

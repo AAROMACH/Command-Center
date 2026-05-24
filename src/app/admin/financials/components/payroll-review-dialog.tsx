@@ -49,9 +49,6 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
-/**
- * @fileOverview Specialized audit sub-component for imported platform jobs.
- */
 function ImportedJobAudit({ 
     wo, 
     onUpdateWorkOrder 

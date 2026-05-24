@@ -88,9 +88,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
-/**
- * @fileOverview Tactical geographic and temporal formatting utilities.
- */
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
@@ -124,6 +121,7 @@ export default function ActivityAuditPage() {
     
     // Registry states
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -158,6 +156,9 @@ export default function ActivityAuditPage() {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
+        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
         const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
             const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
             setTechnicians(techs);
@@ -178,7 +179,7 @@ export default function ActivityAuditPage() {
         });
 
         return () => {
-            unsubWO(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
+            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
         };
     }, []);
 
@@ -245,7 +246,7 @@ export default function ActivityAuditPage() {
 
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
-        const myJobs = workOrders.filter(wo => wo.assignedTechnicianId === selectedTechId);
+        const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = penaltyEvents.filter(pe => pe.technicianId === selectedTechId);
         const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
@@ -264,7 +265,7 @@ export default function ActivityAuditPage() {
             myJobs,
             myLogs
         };
-    }, [selectedTechId, workOrders, weeklyLogs]);
+    }, [selectedTechId, assignments, weeklyLogs]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
@@ -285,15 +286,25 @@ export default function ActivityAuditPage() {
                 });
             }
         });
+        assignments.forEach(wo => {
+            if (!uniqueSites.has(wo.location)) {
+                uniqueSites.set(wo.location, { 
+                    id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, 
+                    name: wo.location.split(',')[0], 
+                    location: wo.location, 
+                    client: wo.clientName 
+                });
+            }
+        });
         return Array.from(uniqueSites.values());
-    }, [workOrders, technicians]);
+    }, [workOrders, assignments, technicians]);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
 
     const siteAuditData = useMemo(() => {
         if (!activeSite) return null;
         
-        const siteVisits = workOrders.filter(wo => wo.location === activeSite.location);
+        const siteVisits = assignments.filter(wo => wo.location === activeSite.location);
         const clientProjects = projects.filter(p => p.client === activeSite.client || p.location === activeSite.location);
         const clientInvoices = invoices.filter(inv => inv.clientName === activeSite.client);
         
@@ -302,7 +313,7 @@ export default function ActivityAuditPage() {
             projects: clientProjects,
             invoices: clientInvoices
         };
-    }, [activeSite, workOrders, projects, invoices]);
+    }, [activeSite, assignments, projects, invoices]);
 
     const getFilteredVisits = useCallback((visits: WorkOrder[]) => {
         let results = [...visits];
@@ -375,9 +386,14 @@ export default function ActivityAuditPage() {
     };
 
     const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
-        const docRef = doc(db, 'workOrders', woId);
+        // Active work update
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, updates).catch((e: any) => {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            // Unassigned pool update
+            const woRef = doc(db, 'workOrders', woId);
+            updateDoc(woRef, updates).catch(err => {
+                toast({ variant: 'destructive', title: 'Registry Error', description: err.message });
+            });
         });
     };
 
@@ -414,8 +430,8 @@ export default function ActivityAuditPage() {
             }
         });
 
-        // Search Work Orders
-        workOrders.forEach(wo => {
+        // Search Assignments (Both pools)
+        [...workOrders, ...assignments].forEach(wo => {
             if (wo.id.toLowerCase().includes(q) || (wo.title || wo.description).toLowerCase().includes(q)) {
                 results.push({
                     type: 'ASSIGNMENT',
@@ -430,7 +446,7 @@ export default function ActivityAuditPage() {
         });
 
         return results;
-    }, [searchQuery, technicians, siteList, workOrders]);
+    }, [searchQuery, technicians, siteList, workOrders, assignments]);
 
     const handleResultClick = (result: any) => {
         if (result.cat === 'tech') {
@@ -922,7 +938,7 @@ export default function ActivityAuditPage() {
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted group-focus-within:text-brand-red transition-colors" />
                     <Input 
-                        placeholder="Search technicians, work orders, site coordinates, projects…" 
+                        placeholder="Search technicians, assignments, site coordinates, projects…" 
                         className="h-14 pl-12 bg-bg-secondary border-border-main text-sm uppercase font-bold tracking-wide focus:border-brand-red rounded-2xl shadow-xl"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

@@ -61,7 +61,7 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 const formatDateDisplay = (dateStr: string) => {
@@ -198,19 +198,36 @@ export const WorkOrdersTable = React.memo(({
 
   const handleAssign = useCallback((technicianId: string) => {
     if (!selectedOrder) return;
-    const docRef = doc(db, 'workOrders', selectedOrder.id);
     
-    updateDoc(docRef, {
-        status: 'assigned',
-        assignedTechnicianId: technicianId === 'unassigned' ? null : technicianId
-    }).catch((e: any) => {
-        console.error("Assign Update Error:", e);
-        toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
-    });
+    // Deployment Logic: Move from workOrders to assignments
+    const assignmentId = `asmt-${Date.now()}`;
+    const assignmentRef = doc(db, 'assignments', assignmentId);
+    const woRef = doc(db, 'workOrders', selectedOrder.id);
 
-    setIsDialogOpen(false);
-    setSelectedOrder(null);
-    toast({ title: "Dispatch Confirmed", description: `Assignment ${selectedOrder.id.toUpperCase()} transmitted to operative.` });
+    const assignmentData = {
+        ...selectedOrder,
+        id: assignmentId,
+        workOrderId: selectedOrder.id,
+        techId: technicianId,
+        assignedTechnicianId: technicianId,
+        status: 'assigned',
+        assignedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    setDoc(assignmentRef, assignmentData)
+        .then(() => {
+            return deleteDoc(woRef);
+        })
+        .then(() => {
+            setIsDialogOpen(false);
+            setSelectedOrder(null);
+            toast({ title: "Dispatch Confirmed", description: "Assignment initialized in deployment registry." });
+        })
+        .catch((e: any) => {
+            console.error("Assign Update Error:", e);
+            toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
+        });
   }, [selectedOrder, toast]);
 
   const handleSaveChanges = () => {
@@ -221,8 +238,8 @@ export const WorkOrdersTable = React.memo(({
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedJob.pay;
-      finalUpdate.payType = selectedJob.payType;
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -232,7 +249,8 @@ export const WorkOrdersTable = React.memo(({
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
 
-    const docRef = doc(db, 'workOrders', editedOrder.id);
+    const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
+    const docRef = doc(db, collectionName, editedOrder.id);
     updateDoc(docRef, { ...finalUpdate }).catch((e: any) => {
         console.error("Save Changes Error:", e);
         toast({ variant: "destructive", title: "Save Failed", description: e.message });
@@ -246,7 +264,8 @@ export const WorkOrdersTable = React.memo(({
 
   const handleDeleteOrder = () => {
     if (!selectedOrder) return;
-    const docRef = doc(db, 'workOrders', selectedOrder.id);
+    const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
+    const docRef = doc(db, collectionName, selectedOrder.id);
     deleteDoc(docRef).catch((e: any) => {
       console.error("Purge Error:", e);
       toast({ variant: "destructive", title: "Purge Failed", description: e.message });
@@ -258,12 +277,13 @@ export const WorkOrdersTable = React.memo(({
   };
 
   const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {
-    const docRef = doc(db, 'workOrders', woId);
+    const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
+    const docRef = doc(db, collectionName, woId);
     updateDoc(docRef, updates).catch((e: any) => {
         console.error("Job Update Error:", e);
         toast({ variant: "destructive", title: "Update Failed", description: e.message });
     });
-  }, [toast]);
+  }, [mode, toast]);
 
   const getFieldNationLink = (id: string) => {
     const cleanId = id.replace(/^wo-/, '');
@@ -286,7 +306,7 @@ export const WorkOrdersTable = React.memo(({
           </thead>
           <tbody>
             {paginatedOrders.map((order) => {
-              const techId = order.assignedTechnicianId || order.assignedTechIds?.[0];
+              const techId = order.assignedTechnicianId || order.assignedTechIds?.[0] || order.techId;
               const technician = technicians.find(t => t.id === techId);
               return (
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
@@ -531,8 +551,8 @@ export const WorkOrdersTable = React.memo(({
             <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1 text-left">
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Parameters</DialogTitle>
+                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
                 </div>
             </DialogHeader>

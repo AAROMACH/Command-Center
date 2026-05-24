@@ -56,20 +56,14 @@ export default function TechDashboardPage() {
             if (d.exists()) {
                 setTech({ ...d.data(), id: d.id } as Technician);
             } else {
-                // Tactical Fallback: Resolve identity from personnel registry if Firestore record is missing
                 const mockTech = mockTechnicians.find(t => t.id === userId);
                 if (mockTech) setTech(mockTech);
             }
         });
 
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-            const orders = snap.docs
-                .map(d => ({ ...d.data(), id: d.id } as WorkOrder))
-                .filter(wo => 
-                    wo.assignedTechnicianId === userId || 
-                    (wo.assignedTechIds && wo.assignedTechIds.includes(userId))
-                );
-            setAllWorkOrders(orders);
+        // ACTIVE ASSIGNMENTS LIVE IN THE ASSIGNMENTS COLLECTION
+        const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
+            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
         const logQ = query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId), where('status', '==', 'Draft'));
@@ -79,7 +73,7 @@ export default function TechDashboardPage() {
 
         return () => {
             unsubTech();
-            unsubWO();
+            unsubAsmt();
             unsubLogs();
         };
     }, [router]);
@@ -90,7 +84,7 @@ export default function TechDashboardPage() {
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
         try {
-            const docRef = doc(db, 'workOrders', woId);
+            const docRef = doc(db, 'assignments', woId);
             await updateDoc(docRef, { status: newStatus });
             toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
         } catch (e: any) {

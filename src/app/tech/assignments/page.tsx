@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { workOrders, technicians, weeklyLogs } from '@/lib/data';
+import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -43,7 +43,7 @@ import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -87,16 +87,11 @@ export default function TechAssignmentsPage() {
         setCurrentTechId(userId);
 
         if (userId) {
-            const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-                const orders = snap.docs
-                    .map(d => ({ ...d.data(), id: d.id } as WorkOrder))
-                    .filter(wo => 
-                        wo.assignedTechnicianId === userId || 
-                        (wo.assignedTechIds && wo.assignedTechIds.includes(userId))
-                    );
-                setAllWorkOrders(orders);
+            // ACTIVE ASSIGNMENTS LIVE IN THE ASSIGNMENTS COLLECTION
+            const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
+                setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
-            return () => unsubWO();
+            return () => unsubAsmt();
         }
     }, []);
 
@@ -174,8 +169,7 @@ export default function TechAssignmentsPage() {
     const handleConfirm = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        // Update in Firestore
-        const docRef = doc(db, 'workOrders', woId);
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'confirmed',
             isAcknowledged: true,
@@ -191,7 +185,7 @@ export default function TechAssignmentsPage() {
     const handleStartTrip = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        const docRef = doc(db, 'workOrders', woId);
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'on-my-way',
             history: [
@@ -206,7 +200,7 @@ export default function TechAssignmentsPage() {
     const handleCheckIn = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        const docRef = doc(db, 'workOrders', woId);
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'in-progress',
             history: [
@@ -221,7 +215,7 @@ export default function TechAssignmentsPage() {
     const handleCheckOut = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        const docRef = doc(db, 'workOrders', woId);
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'completed',
             history: [
@@ -236,7 +230,7 @@ export default function TechAssignmentsPage() {
     const handleReopen = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        const docRef = doc(db, 'workOrders', woId);
+        const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'in-progress',
             history: [
@@ -250,7 +244,6 @@ export default function TechAssignmentsPage() {
     };
 
     const isAudited = (woId: string) => {
-        // Mock audit check logic
         return false;
     };
 
@@ -288,7 +281,7 @@ export default function TechAssignmentsPage() {
                         Service Assignment Console
                     </p>
                     <h1 className="page-title">Assignments</h1>
-                    <p className="page-subtitle">Manage tactical assignments and historical performance audit.</p>
+                    <p className="page-subtitle text-left">Manage tactical assignments and historical performance audit.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <div className="search-wrap">

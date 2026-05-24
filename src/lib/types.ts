@@ -42,6 +42,7 @@ export type ReliabilityEvent = {
 
 export type WorkOrder = {
   id: string;
+  workOrderId?: string; // Cross-reference for assignment docs
   title: string;
   description: string;
   location: string;

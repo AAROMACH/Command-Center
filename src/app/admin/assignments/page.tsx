@@ -97,7 +97,8 @@ export default function AssignmentsHubPage() {
 
   // 1. Initialize Registry Listeners
   useEffect(() => {
-    const q = query(collection(db, 'workOrders'));
+    // ACTIVE WORK LIVES IN ASSIGNMENTS COLLECTION
+    const q = query(collection(db, 'assignments'));
     const unsub = onSnapshot(q, (snapshot) => {
       const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder));
       setWorkOrders(orders);
@@ -125,12 +126,8 @@ export default function AssignmentsHubPage() {
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        // Support both legacy single string and modern array field for tech ID
-        const techId = wo.assignedTechnicianId || (wo.assignedTechIds && wo.assignedTechIds[0]);
+        const techId = wo.assignedTechnicianId || (wo.assignedTechIds && wo.assignedTechIds[0]) || wo.techId;
         
-        // Enforce Registry Rule: Assignment terminal requires a technician allocation
-        if (wo.status === 'unassigned' || !techId) return false;
-
         const tech = technicians.find(t => t.id === techId);
         const queryStr = searchQuery.toLowerCase();
         
@@ -192,8 +189,8 @@ export default function AssignmentsHubPage() {
           case 'status': return safeA.status.localeCompare(safeB.status);
           case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
-            const idA = a.assignedTechnicianId || a.assignedTechIds?.[0];
-            const idB = b.assignedTechnicianId || b.assignedTechIds?.[0];
+            const idA = a.assignedTechnicianId || a.assignedTechIds?.[0] || a.techId;
+            const idB = b.assignedTechnicianId || b.assignedTechIds?.[0] || b.techId;
             const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
             const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
             return techA.localeCompare(techB);
@@ -262,7 +259,7 @@ export default function AssignmentsHubPage() {
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
 
-    const docRef = doc(db, 'workOrders', editedOrder.id);
+    const docRef = doc(db, 'assignments', editedOrder.id);
     updateDoc(docRef, { ...finalUpdate }).catch((error: any) => {
         console.error("Registry Update Error:", error);
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -276,7 +273,7 @@ export default function AssignmentsHubPage() {
 
   const handleDeleteOrder = () => {
     if (!selectedJob) return;
-    const docRef = doc(db, 'workOrders', selectedJob.id);
+    const docRef = doc(db, 'assignments', selectedJob.id);
     deleteDoc(docRef).catch((e: any) => {
       console.error("Purge Error:", e);
       toast({ variant: "destructive", title: "Purge Failed", description: e.message });
@@ -288,7 +285,7 @@ export default function AssignmentsHubPage() {
   };
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
-    const docRef = doc(db, 'workOrders', woId);
+    const docRef = doc(db, 'assignments', woId);
     updateDoc(docRef, updates).catch((error: any) => {
         console.error("Field Update Error:", error);
         toast({ variant: "destructive", title: "Registry Error", description: error.message });
@@ -460,7 +457,7 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {activeWorkOrders.map(wo => {
-                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
@@ -569,7 +566,7 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {archivedWorkOrders.map(wo => {
-                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
@@ -770,7 +767,7 @@ export default function AssignmentsHubPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                               <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                              <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                              <Select value={editedOrder.assignedTechnicianId || editedOrder.techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                                 <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
                                   <SelectValue placeholder="Select Technician" />
                                 </SelectTrigger>

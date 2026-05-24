@@ -41,7 +41,8 @@ import {
   Navigation,
   Play,
   LogOut,
-  Lock
+  Lock,
+  CheckCircle2
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn, formatCityState } from '@/lib/utils';
 import { isAdmin, isTech } from '@/lib/permissions';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { getRecommendation } from '@/app/admin/dispatch/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -505,7 +506,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
             </ScrollArea>
 
             <DialogFooter className="p-6 border-t border-border-default bg-bg-tertiary/30">
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full h-11 uppercase font-bold text-[10px] tracking-widest">Close Terminal</Button>
+                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-11 uppercase font-bold text-[10px] tracking-widest">Close Terminal</Button>
             </DialogFooter>
         </Tabs>
       </DialogContent>

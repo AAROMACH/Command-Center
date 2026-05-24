@@ -53,7 +53,8 @@ import {
   FileText,
   RefreshCw,
   Trash2,
-  Lock
+  Lock,
+  CheckCircle2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";

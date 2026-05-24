@@ -52,13 +52,16 @@ export default function TechDashboardPage() {
         
         setCurrentTechId(userId);
 
+        // Pre-populate from mock data to avoid loading hang while Firestore syncs
+        const initialTech = mockTechnicians.find(t => t.id === userId);
+        if (initialTech) setTech(initialTech);
+
         const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
             if (d.exists()) {
                 setTech({ ...d.data(), id: d.id } as Technician);
-            } else {
-                const mockTech = mockTechnicians.find(t => t.id === userId);
-                if (mockTech) setTech(mockTech);
             }
+        }, (err) => {
+            console.warn("Personnel registry handshake restricted:", err);
         });
 
         // ACTIVE ASSIGNMENTS LIVE IN THE ASSIGNMENTS COLLECTION

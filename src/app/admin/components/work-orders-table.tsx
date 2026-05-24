@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
 import { getRecommendation } from "../dispatch/actions";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {

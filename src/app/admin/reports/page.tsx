@@ -89,6 +89,29 @@ import { useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
+/**
+ * @fileOverview Tactical geographic and temporal formatting utilities.
+ */
+const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    try {
+        const parts = dateStr.split(/[-/]/);
+        let d;
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
+        else { 
+            const [m, day, y] = parts;
+            if (y && m && day) {
+                d = new Date(`${y}-${m}-${day}T12:00:00`);
+            } else {
+                return dateStr;
+            }
+        }
+        return format(d, 'MM-dd-yyyy');
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {

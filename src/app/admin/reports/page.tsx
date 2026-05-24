@@ -403,6 +403,26 @@ export default function ActivityAuditPage() {
         }
     };
 
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+          const parts = dateStr.split(/[-/]/);
+          let d;
+          if (parts[0].length === 4) { d = new Date(dateStr); } 
+          else { 
+            const [m, day, y] = parts;
+            if (y && m && day) {
+                d = new Date(`${y}-${m}-${day}T12:00:00`);
+            } else {
+                return dateStr;
+            }
+          }
+          return format(d, 'MM-dd-yyyy');
+        } catch (e) {
+          return dateStr;
+        }
+    };
+
     // ── RENDERERS ────────────────────────────────────────────────────────
 
     const renderTechnicianRoster = () => (
@@ -672,8 +692,8 @@ export default function ActivityAuditPage() {
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">ID</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
                                         </TableRow>
@@ -681,10 +701,15 @@ export default function ActivityAuditPage() {
                                     <TableBody>
                                         {sortedAllSiteVisits.map(wo => (
                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                <TableCell className="font-mono text-brand-red font-bold text-[9px] pl-6">{(wo.id || '').toUpperCase()}</TableCell>
-                                                <TableCell className="text-left py-4">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
-                                                    <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.scheduleDate} · {wo.scheduleTime}</p>
+                                                <TableCell className="text-left py-4 pl-6">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
+                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                    {formatDateDisplay(wo.scheduleDate)}
                                                 </TableCell>
                                                 <TableCell className="text-center">
                                                     <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-5 text-[8px] tracking-widest">
@@ -913,8 +938,8 @@ export default function ActivityAuditPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">ID</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
                                                                     </TableRow>
@@ -922,10 +947,15 @@ export default function ActivityAuditPage() {
                                                                 <TableBody>
                                                                     {techStats.myJobs.map(wo => (
                                                                         <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                            <TableCell className="font-mono text-brand-red font-bold text-[9px] pl-6">{(wo.id || '').toUpperCase()}</TableCell>
-                                                                            <TableCell className="text-left py-4">
-                                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
-                                                                                <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
+                                                                            <TableCell className="text-left py-4 pl-6">
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
+                                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                                                                    <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
+                                                                                </div>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                                                {formatDateDisplay(wo.scheduleDate)}
                                                                             </TableCell>
                                                                             <TableCell className="text-center">
                                                                                 <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">

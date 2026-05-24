@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { 
@@ -797,7 +797,7 @@ export default function ActivityAuditPage() {
                                                         {formatDateDisplay(wo.scheduleDate)}
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-5 text-[8px] tracking-widest">
+                                                        <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
                                                             {wo.status}
                                                         </Badge>
                                                     </TableCell>

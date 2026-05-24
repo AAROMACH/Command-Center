@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -452,7 +451,7 @@ export default function DispatchPage() {
                 <div className="flex items-center justify-between gap-4 mb-4 bg-bg-secondary/50 p-3 rounded-lg border border-border-sub">
                     <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
                         <TabsTrigger value="active" className="tab flex items-center gap-2">
-                            <Wrench size={12} /> Active Missions
+                            <Wrench size={12} /> Active Assignments
                         </TabsTrigger>
                         <TabsTrigger value="history" className="tab flex items-center gap-2">
                             <HistoryIcon size={12} /> Assignment History

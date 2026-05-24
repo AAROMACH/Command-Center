@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -46,6 +45,7 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -190,7 +190,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mission.location)}`;
 
   const getTacticalTime = (type: string) => {
-      const entry = (mission.history || []).find(h => h.details.includes(type));
+      const entry = (mission.history || []).find(h => h.details.toLowerCase().includes(type.toLowerCase()));
       if (!entry) return 'N/A';
       const timeMatch = entry.details.match(/\d{2}:\d{2}/);
       return timeMatch ? timeMatch[0] : 'LOGGED';

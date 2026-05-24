@@ -157,7 +157,7 @@ export default function ActivityAuditPage() {
         };
     }, []);
 
-    // Load broadcast messages
+    // Load broadcast messages from local storage
     useEffect(() => {
         const stored = localStorage.getItem('aaromach_broadcast_ledger');
         const localMsgs = stored ? JSON.parse(stored) : [];
@@ -187,7 +187,6 @@ export default function ActivityAuditPage() {
         setMessages(updatedMessages);
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
         
-        // Notify other windows/tabs
         window.dispatchEvent(new Event('storage'));
 
         toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
@@ -196,7 +195,6 @@ export default function ActivityAuditPage() {
     };
 
     const handleRevokeBroadcast = (id: string) => {
-        // Track revoked IDs globally
         let revokedIds: string[] = [];
         try {
             const revokedJson = localStorage.getItem('aaromach_revoked_messages');
@@ -271,7 +269,6 @@ export default function ActivityAuditPage() {
         if (!activeSite) return null;
         
         const siteVisits = workOrders.filter(wo => wo.location === activeSite.location);
-        
         const clientProjects = projects.filter(p => p.client === activeSite.client || p.location === activeSite.location);
         const clientInvoices = invoices.filter(inv => inv.clientName === activeSite.client);
         
@@ -675,8 +672,8 @@ export default function ActivityAuditPage() {
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Mission ID</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Scope & Outcome</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">ID</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title & Result</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
                                         </TableRow>
@@ -686,7 +683,7 @@ export default function ActivityAuditPage() {
                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                 <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
                                                 <TableCell className="text-left py-4">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                                     <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.scheduleDate} · {wo.scheduleTime}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center">
@@ -868,6 +865,9 @@ export default function ActivityAuditPage() {
                                                                     {getReliabilityTier(techStats.reliability)}
                                                                 </Badge>
                                                             </div>
+                                                            <div className="flex items-center justify-center gap-1.5 opacity-60">
+                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest">REG ID: {activeTech.id}</span>
+                                                            </div>
 
                                                             <div className="flex justify-center gap-4">
                                                                 <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
@@ -914,7 +914,7 @@ export default function ActivityAuditPage() {
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">ID</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Assignment Scope</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
                                                                     </TableRow>
@@ -924,7 +924,7 @@ export default function ActivityAuditPage() {
                                                                         <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                             <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
                                                                             <TableCell className="text-left py-4">
-                                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
+                                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                                                                 <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
                                                                             </TableCell>
                                                                             <TableCell className="text-center">
@@ -1074,4 +1074,3 @@ export default function ActivityAuditPage() {
         </div>
     );
 }
-

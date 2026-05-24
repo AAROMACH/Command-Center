@@ -59,9 +59,7 @@ import {
     DialogHeader, 
     DialogTitle, 
     DialogDescription, 
-    DialogFooter,
-    DialogTrigger,
-    DialogClose
+    DialogFooter 
 } from '@/components/ui/dialog';
 import {
   Popover,
@@ -87,6 +85,7 @@ import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWee
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
 type SiteAuditRange = 'all' | '7d' | '30d' | 'custom';
 
@@ -165,6 +164,58 @@ export default function ActivityAuditPage() {
         setMessages(localMsgs);
     }, []);
 
+    const handleBroadcast = () => {
+        if (!newMessage.subject || !newMessage.body) {
+            toast({ variant: 'destructive', title: 'Transmission Error', description: 'Subject and body are required for broadcast.' });
+            return;
+        }
+
+        const msg: AdminMessage = {
+            id: `msg-${Date.now()}`,
+            senderId: currentUser?.id || 'admin',
+            senderName: currentUser?.name || 'System Admin',
+            subject: newMessage.subject!,
+            body: newMessage.body!,
+            timestamp: new Date().toISOString(),
+            type: newMessage.type as any,
+            targetPortal: newMessage.targetPortal as any,
+            isLocked: newMessage.isLocked,
+            expiresAt: addHours(new Date(), parseInt(durationHours)).toISOString()
+        };
+
+        const updatedMessages = [msg, ...messages];
+        setMessages(updatedMessages);
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
+        
+        // Notify other windows/tabs
+        window.dispatchEvent(new Event('storage'));
+
+        toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
+        setIsBroadcasting(false);
+        setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
+    };
+
+    const handleRevokeBroadcast = (id: string) => {
+        // Track revoked IDs globally
+        let revokedIds: string[] = [];
+        try {
+            const revokedJson = localStorage.getItem('aaromach_revoked_messages');
+            if (revokedJson) revokedIds = JSON.parse(revokedJson);
+        } catch (e) {}
+
+        if (!revokedIds.includes(id)) {
+            revokedIds.push(id);
+            localStorage.setItem('aaromach_revoked_messages', JSON.stringify(revokedIds));
+        }
+
+        const updated = messages.filter(m => m.id !== id);
+        setMessages(updated);
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updated));
+        
+        window.dispatchEvent(new Event('storage'));
+        toast({ variant: 'destructive', title: 'Broadcast Revoked', description: 'Directive purged from all target terminals.' });
+    };
+
     // ── DATA RESOLUTION ──────────────────────────────────────────────────
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
@@ -221,7 +272,6 @@ export default function ActivityAuditPage() {
         
         const siteVisits = workOrders.filter(wo => wo.location === activeSite.location);
         
-        // Find client company associated with this site to pull projects/invoices
         const clientProjects = projects.filter(p => p.client === activeSite.client || p.location === activeSite.location);
         const clientInvoices = invoices.filter(inv => inv.clientName === activeSite.client);
         
@@ -272,7 +322,7 @@ export default function ActivityAuditPage() {
 
     const anomalyCounts = useMemo(() => {
         const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
-        const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
+        const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft').length;
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
         return unassignedCount + overdueLogs + openCheckins;
     }, [workOrders, weeklyLogs]);
@@ -288,6 +338,72 @@ export default function ActivityAuditPage() {
         updateDoc(docRef, updates).catch((e: any) => {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         });
+    };
+
+    const searchResults = useMemo(() => {
+        if (!searchQuery) return [];
+        const q = searchQuery.toLowerCase();
+        const results: any[] = [];
+
+        // Search Techs
+        technicians.filter(t => !t.roles?.includes('client')).forEach(t => {
+            if ((t.name || '').toLowerCase().includes(q) || (t.id || '').toLowerCase().includes(q)) {
+                results.push({
+                    type: 'OPERATIVE',
+                    label: t.name,
+                    meta: `${t.role} · Reliability: ${t.reliabilityScore}%`,
+                    id: t.id,
+                    cat: 'tech',
+                    cls: 'border-brand-red text-brand-red'
+                });
+            }
+        });
+
+        // Search Sites
+        siteList.forEach(s => {
+            if (s.name.toLowerCase().includes(q) || s.location.toLowerCase().includes(q)) {
+                results.push({
+                    type: 'SITE',
+                    label: s.name,
+                    meta: `${s.client} · ${s.location}`,
+                    id: s.id,
+                    cat: 'site',
+                    cls: 'border-accent-gold text-accent-gold'
+                });
+            }
+        });
+
+        // Search Work Orders
+        workOrders.forEach(wo => {
+            if (wo.id.toLowerCase().includes(q) || (wo.title || wo.description).toLowerCase().includes(q)) {
+                results.push({
+                    type: 'ASSIGNMENT',
+                    label: wo.title || wo.description,
+                    meta: `ID: ${wo.id.toUpperCase()} · Status: ${wo.status} · Client: ${wo.clientName}`,
+                    id: wo.id,
+                    data: wo,
+                    cat: 'job',
+                    cls: 'border-text-green text-text-green'
+                });
+            }
+        });
+
+        return results;
+    }, [searchQuery, technicians, siteList, workOrders]);
+
+    const handleResultClick = (result: any) => {
+        if (result.cat === 'tech') {
+            setSelectedTechId(result.id);
+            setActiveTab('tech');
+            setSearchQuery("");
+        } else if (result.cat === 'site') {
+            setSelectedSiteId(result.id);
+            setActiveTab('sites');
+            setSearchQuery("");
+        } else if (result.cat === 'job') {
+            setSelectedJob(result.data);
+            setIsJobOpen(true);
+        }
     };
 
     // ── RENDERERS ────────────────────────────────────────────────────────
@@ -347,7 +463,7 @@ export default function ActivityAuditPage() {
                         <p className="text-[10px] text-text-muted uppercase tracking-widest">System-wide broadcast terminal</p>
                     </div>
                 </div>
-                <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-widest">
+                <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-widest text-white">
                     <Send size={14} className="mr-2" />
                     Broadcast Message
                 </Button>
@@ -406,12 +522,15 @@ export default function ActivityAuditPage() {
 
             {/* BROADCAST DIALOG */}
             <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
-                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
-                    <DialogHeader className="text-left">
-                        <DialogTitle className="uppercase tracking-widest font-bold">Compose Broadcast</DialogTitle>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <MessageSquare className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Compose Broadcast</DialogTitle>
+                        </div>
                         <DialogDescription className="text-xs">Transmit a tactical message to the selected portal registry.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-6 py-4 px-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Target Portal</Label>
@@ -458,9 +577,9 @@ export default function ActivityAuditPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
                         <Button variant="outline" onClick={() => setIsBroadcasting(false)}>Cancel</Button>
-                        <Button onClick={handleBroadcast} className="bg-brand-red hover:bg-brand-red-hover px-10">
+                        <Button onClick={handleBroadcast} className="bg-brand-red hover:bg-brand-red-hover px-10 text-white">
                             <Send size={16} className="mr-2" /> Execute Broadcast
                         </Button>
                     </DialogFooter>
@@ -722,7 +841,7 @@ export default function ActivityAuditPage() {
                                     <div className="space-y-8 animate-in fade-in duration-300">
                                         <div className="flex items-center justify-between">
                                             <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
-                                                <ArrowLeft size={14} className="mr-1.5"/> Back to Registry
+                                                <ArrowLeft size={14} className="mr-2"/> Back to Registry
                                             </Button>
                                         </div>
                                         
@@ -804,12 +923,12 @@ export default function ActivityAuditPage() {
                                                                     {techStats.myJobs.map(wo => (
                                                                         <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                             <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
-                                                                            <TableCell className="text-left">
+                                                                            <TableCell className="text-left py-4">
                                                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.description}</p>
-                                                                                <p className="text-[9px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
+                                                                                <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
                                                                             </TableCell>
                                                                             <TableCell className="text-center">
-                                                                                <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
                                                                                     {wo.status}
                                                                                 </Badge>
                                                                             </TableCell>
@@ -843,7 +962,7 @@ export default function ActivityAuditPage() {
                                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                                                             <TableCell className="font-bold uppercase text-xs pl-6 text-left">Week of {log.weekOf}</TableCell>
                                                                             <TableCell className="text-left">
-                                                                                <Badge variant={log.status === 'Approved' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
                                                                                     {log.status}
                                                                                 </Badge>
                                                                             </TableCell>
@@ -955,3 +1074,4 @@ export default function ActivityAuditPage() {
         </div>
     );
 }
+

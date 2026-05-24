@@ -21,7 +21,8 @@ import {
   LogOut,
   FileCheck,
   RotateCcw,
-  X
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -193,7 +194,7 @@ export default function TechAssignmentsPage() {
                 { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).then(() => {
-            toast({ title: "Trip Started", description: "Mission status transitioned to En Route." });
+            toast({ title: "Trip Started", description: "Assignment status transitioned to En Route." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 

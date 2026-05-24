@@ -9,12 +9,12 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { technicians as mockTechnicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2, UserCheck, ChevronRight, Terminal } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserCheck, Terminal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,12 +37,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 const loginSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -56,65 +52,65 @@ export default function LoginPage() {
   const [demoUser, setDemoUser] = useState<string>("");
   const [registryUsers, setRegistryUsers] = useState<any[]>([]);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
+
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
-  // Fetch real accounts when bypass is toggled
+  // Fetch users on mount — not gated behind bypass toggle
   useEffect(() => {
-    if (showBypass) {
-        const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-            if (!snap.empty) {
-                setRegistryUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-            } else {
-                setRegistryUsers(mockTechnicians);
-            }
-        }, (err) => {
-            console.warn("Bypass registry handshake restricted:", err);
-            setRegistryUsers(mockTechnicians);
-        });
-        return () => unsub();
-    }
-  }, [showBypass]);
+    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+      if (!snap.empty) {
+        setRegistryUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      } else {
+        setRegistryUsers(mockTechnicians);
+      }
+    }, (err) => {
+      console.warn("Registry fetch failed:", err);
+      setRegistryUsers(mockTechnicians);
+    });
+    return () => unsub();
+  }, []);
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
     try {
-      // 1. Execute Firebase Auth Handshake
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const firebaseUser = userCredential.user;
 
-      // 2. Cross-reference with Personnel Registry
-      const user = registryUsers.find(
-        (t) => (t.email || '').toLowerCase() === firebaseUser.email?.toLowerCase()
-      ) || mockTechnicians.find(
-        (t) => t.email.toLowerCase() === firebaseUser.email?.toLowerCase()
-      );
-
-      if (typeof window !== "undefined" && user) {
-        localStorage.setItem("currentUserId", user.id);
+      // Match by Firebase UID first, fall back to email match
+      let user = registryUsers.find(t => t.id === firebaseUser.uid);
+      if (!user) {
+        user = registryUsers.find(
+          t => (t.email || '').toLowerCase() === firebaseUser.email?.toLowerCase()
+        );
+      }
+      if (!user) {
+        user = mockTechnicians.find(
+          t => t.email.toLowerCase() === firebaseUser.email?.toLowerCase()
+        );
       }
 
-      toast({
-        title: "Authorization Successful",
-        description: `Terminal access granted for ${user?.name || user?.fullName || 'Authorized User'}.`,
-      });
-
-      handleRedirect(user);
+      if (user) {
+        localStorage.setItem("currentUserId", user.id);
+        toast({
+          title: "Authorization Successful",
+          description: `Terminal access granted for ${user.name || user.fullName || 'Authorized User'}.`,
+        });
+        handleRedirect(user);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Registry Mismatch",
+          description: "Firebase auth succeeded but no matching user record found.",
+        });
+      }
     } catch (error: any) {
-      // Silence raw development blocks for prototyping
-      let errorMessage = "Invalid operative credentials. Please verify your access key or use the dev bypass.";
       setShowBypass(true);
-
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: errorMessage,
+        description: "Invalid credentials. Use the dev bypass or verify your access key.",
       });
     } finally {
       setIsLoading(false);
@@ -152,11 +148,11 @@ export default function LoginPage() {
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             {logo && (
-              <Image 
-                src={logo.imageUrl} 
-                alt="Aaromach Logo" 
-                width={300} 
-                height={150} 
+              <Image
+                src={logo.imageUrl}
+                alt="Aaromach Logo"
+                width={300}
+                height={150}
                 className="object-contain"
                 data-ai-hint={logo.imageHint}
                 priority
@@ -173,7 +169,7 @@ export default function LoginPage() {
             </CardDescription>
           </div>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -190,23 +186,21 @@ export default function LoginPage() {
                 <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.email.message}</p>
               )}
             </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Access Key</Label>
-                <Link 
-                  href="/forgot-password" 
-                  className="text-[9px] font-black uppercase text-brand-red hover:underline tracking-tighter"
-                >
+                <Link href="/forgot-password" className="text-[9px] font-black uppercase text-brand-red hover:underline tracking-tighter">
                   Lost Credentials?
                 </Link>
               </div>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
                   disabled={isLoading}
-                  {...register("password")} 
-                  placeholder="••••••••" 
+                  {...register("password")}
+                  placeholder="••••••••"
                   className="bg-bg-primary border-border-sub pr-10 h-11 text-xs"
                 />
                 <button
@@ -218,25 +212,23 @@ export default function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-[10px] font-bold text-brand-red uppercase text-left">
-                  {errors.password.message}
-                </p>
+                <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.password.message}</p>
               )}
             </div>
 
             <div className="pt-4 border-t border-border-sub space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-widest text-accent-gold flex items-center gap-2">
-                  <Terminal size={12}/> Dev Portal Bypass
+                  <Terminal size={12} /> Dev Portal Bypass
                 </p>
-                <Switch 
-                  id="bypass-toggle" 
-                  checked={showBypass} 
+                <Switch
+                  id="bypass-toggle"
+                  checked={showBypass}
                   onCheckedChange={setShowBypass}
                   className="scale-75"
                 />
               </div>
-              
+
               {showBypass && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <p className="text-[9px] text-text-muted uppercase font-bold text-left leading-relaxed">
@@ -255,9 +247,9 @@ export default function LoginPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={handleDemoLogin}
                       disabled={!demoUser}
                       className="h-10 px-3 border-accent-gold text-accent-gold hover:bg-accent-gold-dim"
@@ -269,9 +261,10 @@ export default function LoginPage() {
               )}
             </div>
           </CardContent>
+
           <CardFooter className="flex flex-col gap-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading}
               className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest text-xs"
             >

@@ -61,7 +61,7 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 const formatDateDisplay = (dateStr: string) => {
@@ -196,38 +196,40 @@ export const WorkOrdersTable = React.memo(({
     }
   };
 
-  const handleAssign = useCallback((technicianId: string) => {
+  const handleAssign = useCallback(async (technicianId: string) => {
     if (!selectedOrder) return;
-    
-    // Deployment Logic: Move from workOrders to assignments
-    const assignmentId = `asmt-${Date.now()}`;
-    const assignmentRef = doc(db, 'assignments', assignmentId);
-    const woRef = doc(db, 'workOrders', selectedOrder.id);
 
-    const assignmentData = {
-        ...selectedOrder,
-        id: assignmentId,
-        workOrderId: selectedOrder.id,
-        techId: technicianId,
-        assignedTechnicianId: technicianId,
-        status: 'assigned',
-        assignedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
+    try {
+      const snapshot = await getDocs(collection(db, 'assignments'));
+      const count = snapshot.size + 1;
+      const shortId = `ASM-${String(count).padStart(3, '0')}`;
 
-    setDoc(assignmentRef, assignmentData)
-        .then(() => {
-            return deleteDoc(woRef);
-        })
-        .then(() => {
-            setIsDialogOpen(false);
-            setSelectedOrder(null);
-            toast({ title: "Dispatch Confirmed", description: "Assignment initialized in deployment registry." });
-        })
-        .catch((e: any) => {
-            console.error("Assign Update Error:", e);
-            toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
-        });
+      const assignmentId = `asmt-${Date.now()}`;
+      const assignmentRef = doc(db, 'assignments', assignmentId);
+      const woRef = doc(db, 'workOrders', selectedOrder.id);
+
+      const assignmentData = {
+          ...selectedOrder,
+          id: assignmentId,
+          shortId: shortId,
+          workOrderId: selectedOrder.id,
+          techId: technicianId,
+          assignedTechnicianId: technicianId,
+          status: 'assigned',
+          assignedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+      };
+
+      await setDoc(assignmentRef, assignmentData);
+      await deleteDoc(woRef);
+
+      setIsDialogOpen(false);
+      setSelectedOrder(null);
+      toast({ title: "Dispatch Confirmed", description: `Assignment ${shortId} initialized in deployment registry.` });
+    } catch (e: any) {
+      console.error("Assign Update Error:", e);
+      toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
+    }
   }, [selectedOrder, toast]);
 
   const handleSaveChanges = () => {
@@ -285,8 +287,9 @@ export const WorkOrdersTable = React.memo(({
     });
   }, [mode, toast]);
 
-  const getFieldNationLink = (id: string) => {
-    const cleanId = id.replace(/^wo-/, '');
+  const getFieldNationLink = (order: WorkOrder) => {
+    const sourceId = order.workOrderId || order.id;
+    const cleanId = sourceId.replace(/^wo-/, '');
     return `https://app.fieldnation.com/workorders/${cleanId}`;
   };
 
@@ -308,13 +311,19 @@ export const WorkOrdersTable = React.memo(({
             {paginatedOrders.map((order) => {
               const techId = order.assignedTechnicianId || order.assignedTechIds?.[0] || order.techId;
               const technician = technicians.find(t => t.id === techId);
+              const displayId = order.shortId || order.id;
               return (
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
                       <div className="flex items-center gap-1.5">
-                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{order.id.toUpperCase()}</div>
+                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{displayId.toUpperCase()}</div>
+                        {order.source === 'Imported' && (
+                          <a href={getFieldNationLink(order)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                            <ExternalLink size={10} />
+                          </a>
+                        )}
                       </div>
                     </div>
                   </td>

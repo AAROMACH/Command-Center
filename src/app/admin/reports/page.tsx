@@ -85,7 +85,7 @@ import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
 const formatDateDisplay = (dateStr: string) => {
@@ -93,7 +93,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {
@@ -691,7 +691,7 @@ export default function ActivityAuditPage() {
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'custom' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('custom')}>Custom Range</Button>
                             </div>
                             {auditRange === 'custom' && (
-                                <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                     <Calendar initialFocus mode="range" selected={customVisitRange} onSelect={setCustomVisitRange} numberOfMonths={1} />
                                 </div>
                             )}

@@ -34,15 +34,17 @@ export type ReliabilityEvent = {
   relatedWeeklyLogId?: string;
   relatedTicketId?: string;
   createdAt: string;
-  createdBy: string; // "system" or admin name
+  createdBy: string;
   eventSource: 'automatic' | 'manual';
-  eventKey?: string; // unique key for idempotency (e.g., techId+type+recordId+date)
+  eventKey?: string;
   category: ReliabilityEventCategory;
 };
 
 export type WorkOrder = {
   id: string;
-  workOrderId?: string; // Cross-reference for assignment docs
+  workOrderId?: string;   // Cross-reference for assignment docs
+  shortId?: string;       // Human-readable ID e.g. ASM-001
+  techId?: string;        // Technician UID for assignment docs
   title: string;
   description: string;
   location: string;
@@ -50,7 +52,7 @@ export type WorkOrder = {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'completed';
   assignedTechnicianId?: string;
-  assignedTechIds?: string[]; // Supporting array-based assignment from schema
+  assignedTechIds?: string[];
   additionalTechnicianIds?: string[];
   clientName: string;
   projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission' | string;
@@ -62,15 +64,13 @@ export type WorkOrder = {
   blendedIncludedHours?: number;
   blendedHourlyRate?: number;
   isAcknowledged?: boolean;
-  routeId?: string; // Links job to a specific route
-  isImported?: boolean; // Flag for jobs from FieldNation
-  source?: 'Imported' | 'Manual' | 'Client'; // Origin of the assignment
-  // Enhanced detail fields
+  routeId?: string;
+  isImported?: boolean;
+  source?: 'Imported' | 'Manual' | 'Client';
   history?: { type: 'tech_swap' | 'tech_add' | 'tech_remove' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
   notes?: string[];
   reimbursements?: FinancialRecord[];
   finalPay?: number;
-  // Pay Change Approval Workflow
   payChangeRequest?: {
     pay: number;
     payType: 'fixed' | 'hourly' | 'blended';
@@ -91,12 +91,12 @@ export type Route = {
 export type Technician = {
   id: string;
   name: string;
-  role: string; // Legacy single role field
-  roles?: AppRole[]; // New multi-role array
+  role: string;
+  roles?: AppRole[];
   email: string;
   phone: string;
   address?: string;
-  hourlyRate?: number; // Added for Economics logic
+  hourlyRate?: number;
   emergencyContact?: {
     name: string;
     relation: string;
@@ -110,9 +110,9 @@ export type Technician = {
   avatarUrl: string;
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; 
-  businessType?: string; // New field for corporate classification
-  planId?: string; // Links client to a specific PlanTier
-  subscriptionStatus?: 'active' | 'pending' | 'none'; // New field for subscription lifecycle
+  businessType?: string;
+  planId?: string;
+  subscriptionStatus?: 'active' | 'pending' | 'none';
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
     preferredRadius: number;
@@ -120,12 +120,10 @@ export type Technician = {
     preferredJobTypes: string[];
     availabilityOverride: boolean;
   };
-  // Tracking fields for Payouts (Tech)
   payoutPreferences?: {
     method: 'ACH' | 'Check' | 'Zelle' | 'Venmo' | string;
     notes?: string;
   };
-  // Tracking fields for Billing (Client)
   billingDetails?: {
     contactName: string;
     email: string;
@@ -142,7 +140,7 @@ export type Recommendation = {
 
 export type ProjectTeamMember = {
   technicianId: string;
-  role:string;
+  role: string;
 };
 
 export type Project = {
@@ -189,7 +187,7 @@ export type Task = {
   requiresFileUpload?: boolean;
   requiresOther?: boolean;
   otherRequirementLabel?: string;
-  estimatedHours?: number; // Added for Economics logic
+  estimatedHours?: number;
 };
 
 export type ProjectDailyLog = {
@@ -333,7 +331,7 @@ export type SiteRequest = {
   submittedDate: string;
 };
 
-export type PenaltyEvent = ReliabilityEvent; // Alias for backward compatibility
+export type PenaltyEvent = ReliabilityEvent;
 
 export type Expense = {
   id: string;
@@ -343,7 +341,7 @@ export type Expense = {
   description: string;
   amount: number;
   status: 'Pending' | 'Approved' | 'Rejected';
-  projectId?: string; // Added for project linkage
+  projectId?: string;
 };
 
 export type Report = {

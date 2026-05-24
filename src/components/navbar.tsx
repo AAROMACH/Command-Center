@@ -34,26 +34,26 @@ type NavItem = {
 };
 
 const adminNavItems: NavItem[] = [
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'manage_assignments' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },
   { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
 ];
 
 const clientNavItems: NavItem[] = [
+  { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'client_portal' },
   { href: '/client/tickets', label: 'Tickets', icon: ClipboardList, permission: 'client_portal' },
   { href: '/client/projects', label: 'Projects', icon: Briefcase, permission: 'client_portal' },
-  { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'client_portal' },
   { href: '/client/sites', label: 'Sites', icon: MapPin, permission: 'client_portal' },
   { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
 ];
 
 const techNavItems: NavItem[] = [
+  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
   { href: '/tech/projects', label: 'Projects', icon: Briefcase, permission: 'view_assigned_projects_only' },
-  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
   { href: '/tech/earnings', label: 'Billing', icon: Coins, permission: 'field_logs' },
 ];

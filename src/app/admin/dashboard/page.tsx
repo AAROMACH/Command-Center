@@ -41,6 +41,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest } from '@/lib/types';
 
 // Performance: Code-splitting heavy chart library
 const WorkloadChart = dynamic(() => import('./components/workload-chart').then(mod => mod.WorkloadChart), {
@@ -50,6 +51,7 @@ const WorkloadChart = dynamic(() => import('./components/workload-chart').then(m
 
 export default function DashboardPage() {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
@@ -64,6 +66,10 @@ export default function DashboardPage() {
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+
+        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
         const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
@@ -98,6 +104,7 @@ export default function DashboardPage() {
 
         return () => {
             unsubWO();
+            unsubAsmt();
             unsubTech();
             unsubProj();
             unsubLogs();
@@ -117,11 +124,11 @@ export default function DashboardPage() {
             .filter(t => !t.roles?.includes('client'))
             .map(tech => ({
                 name: tech.name,
-                assigned: workOrders.filter(wo => wo.assignedTechnicianId === tech.id && wo.status !== 'completed').length
+                assigned: assignments.filter(wo => (wo.assignedTechnicianId === tech.id || wo.techId === tech.id) && wo.status !== 'completed').length
             }))
             .sort((a, b) => b.assigned - a.assigned)
             .slice(0, 5)
-    , [technicians, workOrders]);
+    , [technicians, assignments]);
 
     const pendingRequests = useMemo(() => {
         const tickets = clientRequests.filter(r => r.status === 'new');
@@ -167,10 +174,10 @@ export default function DashboardPage() {
             </header>
 
             <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
-                <Link href="/admin/dispatch?subtab=unassigned">
+                <Link href="/admin/dispatch?subtab=assignments">
                     <StatCard 
                         label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
-                        value={workOrders.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way').length.toString()} 
+                        value={assignments.filter(wo => wo.status === 'assigned' || wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way').length.toString()} 
                         delta={`${workOrders.filter(wo => wo.status === 'unassigned').length} unassigned`} 
                         deltaType="warning" 
                         icon="Wrench"
@@ -236,7 +243,7 @@ export default function DashboardPage() {
                                                 <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch?tab=unassigned')} className="h-7 text-[10px]">Assign</Button>
+                                                <Button variant="default" size="sm" onClick={() => router.push('/admin/dispatch?tab=dispatch')} className="h-7 text-[10px]">Assign</Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

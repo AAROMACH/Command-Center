@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { 
     Search, 
     MapPin, 
@@ -69,15 +71,8 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { 
-    technicians, 
-    workOrders as initialWorkOrders, 
-    projects, 
     penaltyEvents,
-    weeklyLogs,
-    expenses,
-    timeOffRequests,
     assignmentTimeLogs,
-    adminMessages as initialMessages,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -95,8 +90,12 @@ export default function ActivityAuditPage() {
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
-    // Mission Registry state for local updates
-    const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+    // Registry states
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [technicians, setTechnicians] = useState<Technician[]>([]);
+    const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -115,40 +114,48 @@ export default function ActivityAuditPage() {
     });
     const [durationHours, setDurationHours] = useState("24");
 
-    // Change Log States
-    const [isClLoaded, setIsClLoaded] = useState(false);
-
     // Job Detail state
     const [isJobOpen, setIsJobOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     const { toast } = useToast();
 
+    // 1. Initialize Registry Listeners
     useEffect(() => {
-        const tab = searchParams.get('tab');
-        if (tab) setActiveTab(tab);
-        
-        const userId = localStorage.getItem('currentUserId');
-        if (userId) {
-            setCurrentUser(technicians.find(t => t.id === userId) || null);
-        }
-    }, [searchParams]);
+        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+            const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
+            setTechnicians(techs);
+            const userId = localStorage.getItem('currentUserId');
+            if (userId) setCurrentUser(techs.find(t => t.id === userId) || null);
+        });
+        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+            setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+        });
+        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+            setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
+        });
+        const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+            setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+        });
 
-    // Load messages from registry
+        return () => {
+            unsubWO(); unsubTech(); unsubLogs(); unsubProj(); unsubTOR();
+        };
+    }, []);
+
+    // Load broadcast messages
     useEffect(() => {
         const stored = localStorage.getItem('aaromach_broadcast_ledger');
         const localMsgs = stored ? JSON.parse(stored) : [];
-        
-        const revokedJson = localStorage.getItem('aaromach_revoked_messages');
-        const revokedIds = revokedJson ? JSON.parse(revokedJson) : [];
-        
-        const filteredInitial = initialMessages.filter(m => !revokedIds.includes(m.id));
-        setMessages([...localMsgs, ...filteredInitial]);
+        setMessages(localMsgs);
     }, []);
 
     // ── DATA RESOLUTION ──────────────────────────────────────────────────
 
-    const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId]);
+    const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
 
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
@@ -172,7 +179,7 @@ export default function ActivityAuditPage() {
             }
         });
         return Array.from(uniqueSites.values());
-    }, [workOrders]);
+    }, [workOrders, technicians]);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
 
@@ -181,7 +188,6 @@ export default function ActivityAuditPage() {
         let all = workOrders.filter(wo => wo.location === activeSite.location);
         const now = startOfDay(new Date());
 
-        // Apply Segmented Range Filtering
         if (auditRange === '7d') {
             const cutoff = subDays(now, 7);
             all = all.filter(wo => {
@@ -231,8 +237,8 @@ export default function ActivityAuditPage() {
         const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
         const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft' && isBefore(parseISO('2024-07-28'), new Date())).length;
         const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
-        return unassignedCount + overdueLogs + openCheckins + 2;
-    }, [workOrders]);
+        return unassignedCount + overdueLogs + openCheckins;
+    }, [workOrders, weeklyLogs]);
 
     const handleTabChange = (val: string) => {
         setActiveTab(val);
@@ -241,12 +247,10 @@ export default function ActivityAuditPage() {
     };
 
     const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
-        setWorkOrders(prev => prev.map(order => 
-            order.id === woId ? { ...order, ...updates } : order
-        ));
-        if (selectedJob?.id === woId) {
-            setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
-        }
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, updates).catch((e: any) => {
+            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        });
     };
 
     // ── BROADCAST LOGIC ──────────────────────────────────────────────────
@@ -279,32 +283,18 @@ export default function ActivityAuditPage() {
 
         const updatedMessages = [msg, ...messages];
         setMessages(updatedMessages);
-        
-        const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
-        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
-        
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
         window.dispatchEvent(new Event('storage'));
 
         setIsBroadcasting(false);
         setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
-        setDurationHours("24");
         toast({ title: 'Message Broadcasted', description: `Message transmitted to ${newMessage.targetPortal} portal(s).` });
     };
 
     const handleRevokeBroadcast = (id: string) => {
         const updatedMessages = messages.filter(m => m.id !== id);
         setMessages(updatedMessages);
-        
-        const storedOnly = updatedMessages.filter(m => !initialMessages.some(im => im.id === m.id));
-        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(storedOnly));
-        
-        const revokedJson = localStorage.getItem('aaromach_revoked_messages');
-        let revokedIds = revokedJson ? JSON.parse(revokedJson) : [];
-        if (initialMessages.some(im => im.id === id) && !revokedIds.includes(id)) {
-            revokedIds.push(id);
-            localStorage.setItem('aaromach_revoked_messages', JSON.stringify(revokedIds));
-        }
-
+        localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
         window.dispatchEvent(new Event('storage'));
         toast({ title: 'Broadcast Revoked', description: 'Directive removed from all terminals.' });
     };
@@ -335,7 +325,7 @@ export default function ActivityAuditPage() {
         });
 
         return results;
-    }, [searchQuery, workOrders]);
+    }, [searchQuery, workOrders, technicians, projects]);
 
     const handleResultClick = (result: any) => {
         if (result.type === 'Technician') {
@@ -351,11 +341,9 @@ export default function ActivityAuditPage() {
         }
     };
 
-    // ── RENDER HELPERS ───────────────────────────────────────────────────
-
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
-            <div className="flex justify-between items-center px-1 mb-4">
+            <div className="flex justify-between items-center px-1 mb-4 text-left">
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
                 <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh
@@ -366,7 +354,7 @@ export default function ActivityAuditPage() {
                 const isReliable = pts <= 2;
                 return (
                     <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 text-left">
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
@@ -587,142 +575,17 @@ export default function ActivityAuditPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                {/* TOTAL VISITS DIALOG */}
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
-                                            <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.length}</p>
-                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
-                                        </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <History size={20} className="text-brand-red" />
-                                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
-                                                </div>
-                                                <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-1">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === 'all' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
-                                                        onClick={() => setAuditRange('all')}
-                                                    >
-                                                        ALL
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === '7d' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
-                                                        onClick={() => setAuditRange('7d')}
-                                                    >
-                                                        7D
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === '30d' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
-                                                        onClick={() => setAuditRange('30d')}
-                                                    >
-                                                        30D
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className={cn("h-6 text-[8px] font-bold uppercase tracking-widest px-2", auditRange === 'custom' ? "bg-bg-tertiary text-brand-red" : "text-text-muted")}
-                                                        onClick={() => setAuditRange('custom')}
-                                                    >
-                                                        Custom
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            
-                                            {auditRange === 'custom' && (
-                                                <div className="mt-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                    <div className="flex items-center gap-1 bg-bg-primary border border-border-sub rounded-md p-0.5 h-8">
-                                                        <div className="flex items-center gap-1 px-2 border-r border-border-sub">
-                                                            <CalendarIcon size={10} className="text-text-muted" />
-                                                            <input 
-                                                                type="date" 
-                                                                className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
-                                                                value={customVisitRange?.from ? format(customVisitRange.from, 'yyyy-MM-dd') : ''}
-                                                                onChange={(e) => {
-                                                                    const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                                                                    setCustomVisitRange(prev => ({ from: d, to: prev?.to }));
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="flex items-center gap-1 px-2">
-                                                            <input 
-                                                                type="date" 
-                                                                className="bg-transparent border-none focus:ring-0 text-[9px] font-mono p-0 h-auto w-[90px] uppercase"
-                                                                value={customVisitRange?.to ? format(customVisitRange.to, 'yyyy-MM-dd') : ''}
-                                                                onChange={(e) => {
-                                                                    const d = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                                                                    setCustomVisitRange(prev => ({ from: prev?.from, to: d }));
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <Select value={visitSortDir} onValueChange={(val: any) => setVisitSortDir(val)}>
-                                                        <SelectTrigger className="h-8 w-[100px] text-[8px] font-bold uppercase tracking-widest bg-bg-primary">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <ArrowUpDown size={10} />
-                                                                <SelectValue />
-                                                            </div>
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="desc" className="text-[8px] font-bold uppercase">Newest</SelectItem>
-                                                            <SelectItem value="asc" className="text-[8px] font-bold uppercase">Oldest</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-                                        </DialogHeader>
-                                        <ScrollArea className="flex-1">
-                                            <div className="p-6 space-y-3">
-                                                {sortedAllSiteVisits.length > 0 ? sortedAllSiteVisits.map(wo => (
-                                                    <div 
-                                                        key={wo.id} 
-                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub hover:border-muted transition-all group flex items-center justify-between cursor-pointer"
-                                                    >
-                                                        <div className="flex items-center gap-4 text-left">
-                                                            <div className={cn(
-                                                                "p-2 rounded border border-border-sub",
-                                                                wo.status === 'completed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary text-accent-gold border-border-sub"
-                                                            )}>
-                                                                {wo.status === 'completed' ? <CheckCircle2 size={18}/> : <ActivityIcon size={18}/>}
-                                                            </div>
-                                                            <div className="text-left">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-3.5 text-[7px] uppercase px-1">{wo.status}</Badge>
-                                                                </div>
-                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
-                                                                    ID: {wo.id.toUpperCase()} · Scheduled: {wo.scheduleDate}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold">View Detail</Button>
-                                                    </div>
-                                                )) : (
-                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                                        <History size={48} className="mx-auto mb-2 text-text-muted" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No visit records in registry for this window</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
+                                    <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.length}</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
+                                    <p className="text-2xl font-bold text-text-primary">{sortedAllSiteVisits.filter(wo => wo.status !== 'completed').length}</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">In Queue</p>
+                                </div>
 
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
@@ -738,7 +601,7 @@ export default function ActivityAuditPage() {
 
         return (
             <div className="space-y-2">
-                <div className="flex justify-between items-center px-1 mb-4">
+                <div className="flex justify-between items-center px-1 mb-4 text-left">
                     <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Site Coordinates</p>
                 </div>
                 {siteList.map(site => (
@@ -802,7 +665,6 @@ export default function ActivityAuditPage() {
                                 <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                                     Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
                                 </TabsTrigger>
-                                <TabsTrigger value="changelog" className="tab-trigger-activity">Change log</TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -877,33 +739,14 @@ export default function ActivityAuditPage() {
                                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
                                             <div className="space-y-1">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Schema Drift — <code>project_daily_logs</code></p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Field Verification Anomaly</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
-                                                    Document <code>atl-GD7bfWeRk</code> uses <code>technicianId</code> instead of the system-standard <code>techId</code>. 
+                                                    Operational discrepancy detected in <code>project_daily_logs</code> registry.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </TabsContent>
-
-                            <TabsContent value="changelog" className="m-0">
-                                {!isClLoaded ? (
-                                    <div className="py-24 text-center border border-border-sub bg-bg-secondary/50 rounded-2xl space-y-6">
-                                        <History size={48} className="mx-auto text-text-muted opacity-20" />
-                                        <p className="text-sm font-bold uppercase text-text-primary tracking-wide">Load Operational Change Log</p>
-                                        <Button onClick={() => setIsClLoaded(true)} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-widest">
-                                            Load From Archive
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6 text-center">
-                                        <p className="text-xs text-text-muted uppercase font-bold italic">Change log streaming active...</p>
-                                        <div className="text-text-muted text-[10px] uppercase font-bold tracking-widest p-12 border border-dashed border-border-sub rounded-xl">
-                                            Historical timeline data will be populated here as events are recorded.
-                                        </div>
-                                    </div>
-                                )}
                             </TabsContent>
                         </div>
                     </Tabs>

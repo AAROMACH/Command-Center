@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { 
     Search, 
     MapPin, 
@@ -358,7 +358,7 @@ export default function ActivityAuditPage() {
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
-                                    <AvatarFallback>{t.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{(t?.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {assignmentTimeLogs.some(log => log.technicianId === t.id && !log.checkOutTime) && (
                                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
@@ -683,7 +683,7 @@ export default function ActivityAuditPage() {
                                                     <div className="flex items-center gap-6 text-left">
                                                         <Avatar className="h-16 w-16 border-2 border-border-sub">
                                                             <AvatarImage src={activeTech?.avatarUrl} />
-                                                            <AvatarFallback>{activeTech?.name.charAt(0)}</AvatarFallback>
+                                                            <AvatarFallback>{(activeTech?.name || 'U').charAt(0)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="space-y-1 text-left">
                                                             <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech?.name}</h2>

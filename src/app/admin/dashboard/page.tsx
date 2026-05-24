@@ -346,7 +346,7 @@ export default function DashboardPage() {
                                                 <div className="flex items-center gap-4 text-left">
                                                     <Avatar className="h-10 w-10 border border-border-sub">
                                                         <AvatarImage src={tech?.avatarUrl} />
-                                                        <AvatarFallback>{tech?.name.charAt(0)}</AvatarFallback>
+                                                        <AvatarFallback>{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                     </Avatar>
                                                     <div className="text-left">
                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>

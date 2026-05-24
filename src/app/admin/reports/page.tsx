@@ -166,7 +166,7 @@ export default function ActivityAuditPage() {
         setMessages(localMsgs);
     }, []);
 
-    const handleBroadcast = () => {
+    const handleBroadcast = useCallback(() => {
         if (!newMessage.subject || !newMessage.body) {
             toast({ variant: 'destructive', title: 'Transmission Error', description: 'Subject and body are required for broadcast.' });
             return;
@@ -194,9 +194,9 @@ export default function ActivityAuditPage() {
         toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
         setIsBroadcasting(false);
         setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
-    };
+    }, [newMessage, currentUser, messages, durationHours, toast]);
 
-    const handleRevokeBroadcast = (id: string) => {
+    const handleRevokeBroadcast = useCallback((id: string) => {
         let revokedIds: string[] = [];
         try {
             const revokedJson = localStorage.getItem('aaromach_revoked_messages');
@@ -214,7 +214,7 @@ export default function ActivityAuditPage() {
         
         window.dispatchEvent(new Event('storage'));
         toast({ variant: 'destructive', title: 'Broadcast Revoked', description: 'Directive purged from all target terminals.' });
-    };
+    }, [messages, toast]);
 
     // ── DATA RESOLUTION ──────────────────────────────────────────────────
 
@@ -421,26 +421,6 @@ export default function ActivityAuditPage() {
         } else if (result.cat === 'job') {
             setSelectedJob(result.data);
             setIsJobOpen(true);
-        }
-    };
-
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-          const parts = dateStr.split(/[-/]/);
-          let d;
-          if (parts[0].length === 4) { d = new Date(dateStr); } 
-          else { 
-            const [m, day, y] = parts;
-            if (y && m && day) {
-                d = new Date(`${y}-${m}-${day}T12:00:00`);
-            } else {
-                return dateStr;
-            }
-          }
-          return format(d, 'MM-dd-yyyy');
-        } catch (e) {
-          return dateStr;
         }
     };
 
@@ -775,7 +755,7 @@ export default function ActivityAuditPage() {
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
                                             <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
@@ -783,7 +763,7 @@ export default function ActivityAuditPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {sortedAllSiteVisits.map(wo => {
-                                            const linkedLog = weeklyLogs.find(log => log.items.some(item => item.workOrderId === wo.id));
+                                            const linkedLog = weeklyLogs.find(log => log.items?.some(item => item.workOrderId === wo.id));
                                             return (
                                                 <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                     <TableCell className="text-left py-4 pl-6">
@@ -1035,7 +1015,7 @@ export default function ActivityAuditPage() {
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
                                                                         <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
@@ -1043,7 +1023,7 @@ export default function ActivityAuditPage() {
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {sortedTechVisits.map(wo => {
-                                                                        const linkedLog = weeklyLogs.find(log => log.items.some(item => item.workOrderId === wo.id));
+                                                                        const linkedLog = weeklyLogs.find(log => log.items?.some(item => item.workOrderId === wo.id));
                                                                         return (
                                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                                 <TableCell className="text-left py-4 pl-6">

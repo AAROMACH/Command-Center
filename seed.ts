@@ -39,11 +39,12 @@ const users = [
     id: ADMIN_AUTH_UID,
     userId: ADMIN_ID,
     authUid: ADMIN_AUTH_UID,
-    fullName: "Admin",
+    name: "Admin Staff",
     email: "admin@aaromach.com",
     phone: null,
     avatarUrl: null,
     role: "admin",
+    roles: ["super_admin"],
     status: "active",
     reliabilityScore: null,
     reliabilityStatus: null,
@@ -67,11 +68,12 @@ const users = [
     id: TECH_AUTH_UID,
     userId: TECH_ID,
     authUid: TECH_AUTH_UID,
-    fullName: "Corey Williams",
+    name: "Corey Williams",
     email: "cwilliams@aaromach.com",
     phone: "555-200-3000",
     avatarUrl: null,
     role: "technician",
+    roles: ["field_technician"],
     status: "active",
     reliabilityScore: 91,
     reliabilityStatus: "reliable",
@@ -108,11 +110,12 @@ const users = [
     id: CLIENT_AUTH_UID,
     userId: CLIENT_ID,
     authUid: CLIENT_AUTH_UID,
-    fullName: "Premium Brands Contact",
+    name: "Premium Brands Contact",
     email: "client@premiumbrands.com",
     phone: "555-700-1000",
     avatarUrl: null,
     role: "client",
+    roles: ["client"],
     status: "active",
     reliabilityScore: null,
     reliabilityStatus: null,
@@ -151,8 +154,8 @@ const workOrders = [
     source: "field_nation",
     importBatchId: "batch_0001",
     externalWorkOrderId: "10000001",
-    clientId: CLIENT_ID,
-    clientName: "Premium Brands Contact",
+    clientId: CLIENT_AUTH_UID,
+    clientName: "Premium Brands",
     projectId: null,
     assignedTechnicianId: TECH_AUTH_UID,
     assignedTechIds: [TECH_AUTH_UID],
@@ -185,8 +188,8 @@ const workOrders = [
     source: "client_portal",
     importBatchId: null,
     externalWorkOrderId: null,
-    clientId: CLIENT_ID,
-    clientName: "Premium Brands Contact",
+    clientId: CLIENT_AUTH_UID,
+    clientName: "Premium Brands",
     projectId: null,
     assignedTechIds: [],
     requiredSkills: ["Camera Systems"],
@@ -251,8 +254,8 @@ const workOrders = [
     source: "aaromach",
     importBatchId: null,
     externalWorkOrderId: null,
-    clientId: CLIENT_ID,
-    clientName: "Premium Brands Contact",
+    clientId: CLIENT_AUTH_UID,
+    clientName: "Premium Brands",
     projectId: "proj_0001",
     assignedTechnicianId: TECH_AUTH_UID,
     assignedTechIds: [TECH_AUTH_UID],
@@ -318,40 +321,12 @@ const assignments = [
   },
 ];
 
-const assignmentTimeLogs = [
-  {
-    _parentId: "asmt_0002", id: "tl_0001", assignmentId: "asmt_0002", workOrderId: "wo_0002", techId: TECH_AUTH_UID,
-    source: "gps", checkInAt: "2026-04-04T12:00:00Z", checkOutAt: null,
-    checkInLocation: { lat: 42.3314, lng: -83.0458, accuracyMeters: 12 }, checkOutLocation: null,
-    distanceFromSiteMetersAtCheckIn: 18, distanceFromSiteMetersAtCheckOut: null,
-    gpsValidationStatus: "pending", gpsExceptionReason: null, onSiteCheckIn: true, onSiteCheckOut: null,
-    lateCheckIn: false, minutesWorked: null, status: "checked_in", note: null,
-    createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z",
-  },
-  {
-    _parentId: "asmt_0003", id: "tl_0001", assignmentId: "asmt_0003", workOrderId: "wo_0003", techId: TECH_AUTH_UID,
-    source: "manual", checkInAt: "2026-04-04T12:00:00Z", checkOutAt: null,
-    checkInLocation: { lat: 42.2808, lng: -83.743, accuracyMeters: 20 }, checkOutLocation: null,
-    distanceFromSiteMetersAtCheckIn: null, distanceFromSiteMetersAtCheckOut: null,
-    gpsValidationStatus: "pending", gpsExceptionReason: null, onSiteCheckIn: true, onSiteCheckOut: null,
-    lateCheckIn: false, minutesWorked: null, status: "checked_in", note: null,
-    createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z",
-  },
-];
-
-const assignmentHistory = [
-  { _parentId: "asmt_0001", id: "hist_0001", eventType: "assigned", oldScheduledDate: null, newScheduledDate: "2026-04-04T12:00:00Z", reasonCode: null, note: "Initial assignment from Field Nation import", changedBy: ADMIN_ID, changedAt: "2026-04-04T12:00:00Z" },
-  { _parentId: "asmt_0002", id: "hist_0001", eventType: "assigned", oldScheduledDate: null, newScheduledDate: "2026-04-04T12:00:00Z", reasonCode: null, note: "Assigned from approved client request", changedBy: ADMIN_ID, changedAt: "2026-04-04T12:00:00Z" },
-  { _parentId: "asmt_0003", id: "hist_0001", eventType: "assigned", oldScheduledDate: null, newScheduledDate: "2026-04-04T12:00:00Z", reasonCode: null, note: "Assigned from manual work order entry", changedBy: ADMIN_ID, changedAt: "2026-04-04T12:00:00Z" },
-  { _parentId: "asmt_0004", id: "hist_0001", eventType: "assigned", oldScheduledDate: null, newScheduledDate: "2026-04-22T08:00:00Z", reasonCode: null, note: "Assigned to Wixom project proj_0001 Phase 1", changedBy: ADMIN_ID, changedAt: "2026-04-17T00:00:00Z" },
-];
-
 const projects = [
   {
     id: "proj_0001",
     title: "Wixom Camera and Network Upgrade",
     clientId: CLIENT_AUTH_UID,
-    clientName: "Premium Brands Contact",
+    clientName: "Premium Brands",
     location: "Wixom, MI",
     siteIds: [],
     status: "active",
@@ -410,7 +385,7 @@ const weeklyLogItems = [
 ];
 
 const clientRequests = [
-  { id: "creq_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands Contact", createdBy: CLIENT_AUTH_UID, title: "Front Camera Offline", description: "The front entrance camera is not showing video.", locationText: "Detroit, MI", location: "Detroit, MI", requestType: "troubleshooting", priority: "high", preferredDate: "2026-04-04T12:00:00Z", attachments: [], status: "approved", convertedWorkOrderId: "wo_0002", convertedAt: "2026-04-04T12:00:00Z", convertedBy: ADMIN_ID, adminNotes: null, createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
+  { id: "creq_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands", createdBy: CLIENT_AUTH_UID, title: "Front Camera Offline", description: "The front entrance camera is not showing video.", locationText: "Detroit, MI", location: "Detroit, MI", requestType: "troubleshooting", priority: "high", preferredDate: "2026-04-04T12:00:00Z", attachments: [], status: "approved", convertedWorkOrderId: "wo_0002", convertedAt: "2026-04-04T12:00:00Z", convertedBy: ADMIN_ID, adminNotes: null, createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
 ];
 
 const manualWorkOrderEntries = [
@@ -430,7 +405,7 @@ const importBatches = [
 ];
 
 const invoices = [
-  { id: "inv_0001", invoiceNumber: "INV-0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands Contact", projectId: "proj_0001", workOrderId: null, issueDate: "2026-04-17", dueDate: "2026-05-17", status: "draft", lineItems: [{ id: "li_0001", description: "Camera & Network Upgrade – Labor (64 hrs @ $225/hr)", quantity: 64, unitPrice: 225 }, { id: "li_0002", description: "Materials & Hardware", quantity: 1, unitPrice: 4200 }], notes: "Net 30. Thank you for your business.", subtotal: 18600, tax: 0, total: 18600, createdBy: ADMIN_ID, createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
+  { id: "inv_0001", invoiceNumber: "INV-0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands", projectId: "proj_0001", workOrderId: null, issueDate: "2026-04-17", dueDate: "2026-05-17", status: "draft", lineItems: [{ id: "li_0001", description: "Camera & Network Upgrade – Labor (64 hrs @ $225/hr)", quantity: 64, unitPrice: 225 }, { id: "li_0002", description: "Materials & Hardware", quantity: 1, unitPrice: 4200 }], notes: "Net 30. Thank you for your business.", subtotal: 18600, tax: 0, total: 18600, createdBy: ADMIN_ID, createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
 
 const planTiers = [
@@ -440,11 +415,11 @@ const planTiers = [
 ];
 
 const sites = [
-  { id: "site_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands Contact", siteName: "Premium Brands – Detroit Flagship", locationText: "Detroit, MI", location: "Detroit, MI", siteGeo: { lat: 42.3314, lng: -83.0458 }, managerName: "Jordan Lee", managerPhone: "555-700-2000", siteAccessInstructions: "Check in at front desk, ask for Jordan.", status: "active", createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
+  { id: "site_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands", siteName: "Premium Brands – Detroit Flagship", locationText: "Detroit, MI", location: "Detroit, MI", siteGeo: { lat: 42.3314, lng: -83.0458 }, managerName: "Jordan Lee", managerPhone: "555-700-2000", siteAccessInstructions: "Check in at front desk, ask for Jordan.", status: "active", createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
 ];
 
 const siteRequests = [
-  { id: "sreq_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands Contact", siteName: "Premium Brands – Wixom Distribution", locationText: "Wixom, MI", location: "Wixom, MI", managerName: "Sam Torres", managerPhone: "555-700-3000", status: "approved", convertedSiteId: null, reviewedBy: ADMIN_ID, reviewedAt: "2026-04-17T00:00:00Z", createdAt: "2026-04-15T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
+  { id: "sreq_0001", clientId: CLIENT_AUTH_UID, clientName: "Premium Brands", siteName: "Premium Brands – Wixom Distribution", locationText: "Wixom, MI", location: "Wixom, MI", managerName: "Sam Torres", managerPhone: "555-700-3000", status: "approved", convertedSiteId: null, reviewedBy: ADMIN_ID, reviewedAt: "2026-04-17T00:00:00Z", createdAt: "2026-04-15T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
 
 const notifications = [
@@ -592,4 +567,3 @@ seed().catch((err: Error) => {
   console.error("\n❌  Seed failed:", err.message ?? err);
   process.exit(1);
 });
-

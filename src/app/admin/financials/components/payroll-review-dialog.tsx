@@ -52,11 +52,6 @@ const getFieldNationLink = (id: string) => {
 
 /**
  * @fileOverview Specialized audit sub-component for imported platform jobs.
- * Implements tactical split logic with platform fee deduction:
- * additionalNet = additionalCharges * 0.846
- * laborNet      = totalPay - additionalNet
- * techPay       = (laborNet * 0.50) + additionalNet
- * aaromachPay   = laborNet * 0.50
  */
 function ImportedJobAudit({ 
     wo, 
@@ -70,7 +65,6 @@ function ImportedJobAudit({
     const overhead = wo.auditOverhead || 0;
     const additionalCharges = reimbursement + overhead;
     
-    // Financial Multiplier for Platform Fees (1 - 0.154 = 0.846)
     const fnMultiplier = 0.846;
     const additionalNet = additionalCharges * fnMultiplier;
     
@@ -210,11 +204,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         });
     };
 
-    const confirmedItems = localLog?.items?.filter(item => item.confirmationStatus === 'confirmed') || [];
-    const discrepancyItems = [
+    const confirmedItems = useMemo(() => localLog?.items?.filter(item => item.confirmationStatus === 'confirmed') || [], [localLog]);
+    const discrepancyItems = useMemo(() => [
         ...(localLog?.items?.filter(item => item.confirmationStatus === 'disputed') || []),
         ...(localLog?.missingAssignmentReports || [])
-    ];
+    ], [localLog]);
 
     const totalJobsCount = (localLog?.items?.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
     const auditCompleteCount = auditedIds.size;
@@ -370,7 +364,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         <TabsContent value="discrepancy" className="m-0 h-full">
                             <ScrollArea className="h-full p-4">
                                 <div className="space-y-2">
-                                    {(localLog.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
+                                    {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = auditedIds.has(item.id);
                                         return (
@@ -419,7 +413,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         )
                                     })}
 
-                                    {localLog.missingAssignmentReports?.map(report => {
+                                    {localLog?.missingAssignmentReports?.map(report => {
                                         const isAudited = auditedIds.has(report.id);
                                         return (
                                             <Card key={report.id} className={cn(
@@ -496,7 +490,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <Coins size={10} className="text-accent-gold" /> Expenses
                                 </h3>
                                 <div className="space-y-0.5">
-                                    {(localLog.reimbursements || []).map(item => (
+                                    {(localLog?.reimbursements || []).map(item => (
                                         <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center">
                                             <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1">{item.description}</p>
                                             <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>
@@ -523,7 +517,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 </Tabs>
 
                 <DialogFooter className="p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-row items-center gap-3 shrink-0">
-                    {localLog.status === 'Submitted' ? (
+                    {localLog?.status === 'Submitted' ? (
                         <>
                             <Button variant="destructive-outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
                                 <X size={16} className="mr-2"/> Deny Manifest
@@ -558,4 +552,3 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         </Dialog>
     );
 }
-

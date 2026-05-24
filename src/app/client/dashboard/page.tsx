@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { projects, serviceRequests, technicians, invoices, workOrders } from '@/lib/data';
-import type { Project, ServiceRequest, Technician, Invoice } from '@/lib/types';
+import { db } from "@/lib/firebase";
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import type { Project, ServiceRequest, Technician, Invoice, WorkOrder } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,73 +25,85 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
+import { technicians as mockTechs } from '@/lib/data';
 
 export default function ClientDashboardPage() {
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    const [myProjects, setMyProjects] = useState<Project[]>([]);
+    const [myRequests, setMyRequests] = useState<ServiceRequest[]>([]);
+    const [myWorkOrders, setMyWorkOrders] = useState<WorkOrder[]>([]);
+    const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
-        setCurrentUserId(localStorage.getItem('currentUserId'));
+        const userId = localStorage.getItem('currentUserId');
+        if (!userId) return;
+
+        const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) {
+                const userData = { ...d.data(), id: d.id } as Technician;
+                setCurrentUser(userData);
+                
+                const clientName = userData.clientCompany || userData.name;
+
+                const unsubProj = onSnapshot(query(collection(db, 'projects'), where('client', '==', clientName)), (snap) => {
+                    setMyProjects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project)));
+                });
+
+                const unsubReq = onSnapshot(query(collection(db, 'clientRequests'), where('clientName', '==', clientName)), (snap) => {
+                    setMyRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)));
+                });
+
+                const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('clientName', '==', clientName)), (snap) => {
+                    setMyWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+                });
+
+                const unsubInv = onSnapshot(query(collection(db, 'invoices'), where('clientName', '==', clientName)), (snap) => {
+                    setMyInvoices(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Invoice)));
+                });
+
+                return () => { unsubProj(); unsubReq(); unsubWO(); unsubInv(); };
+            }
+        });
+
+        return () => unsubUser();
     }, []);
 
-    const currentUser = useMemo(() => 
-        currentUserId ? technicians.find(t => t.id === currentUserId) : null
-    , [currentUserId]);
-
-    const myProjects = useMemo(() => {
-        if (!currentUser?.clientCompany) return [];
-        return projects.filter(p => p.client === currentUser.clientCompany);
-    }, [currentUser]);
-
-    const myRequests = useMemo(() => {
-        if (!currentUser?.clientCompany) return [];
-        return serviceRequests.filter(r => r.clientName === currentUser.clientCompany);
-    }, [currentUser]);
-
     const outstandingBalance = useMemo(() => {
-        if (!currentUser?.clientCompany) return 0;
-        return invoices
-            .filter(inv => inv.clientName === currentUser.clientCompany && inv.status !== 'paid' && inv.status !== 'void')
+        return myInvoices
+            .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
             .reduce((acc, inv) => acc + inv.total, 0);
-    }, [currentUser]);
+    }, [myInvoices]);
 
     const recentActivity = useMemo(() => {
-        if (!currentUser?.clientCompany) return [];
-        // Combined assignments for client sites
-        return workOrders
-            .filter(wo => wo.clientName === currentUser.clientCompany)
-            .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))
+        return [...myWorkOrders]
+            .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
             .slice(0, 5);
-    }, [currentUser]);
+    }, [myWorkOrders]);
 
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [month, day, year] = parts;
-                return `${month}/${day}/${year}`;
-            }
             return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
         }
     };
 
-    if (!mounted || !currentUserId) return null;
+    if (!mounted) return null;
 
     return (
         <div className="space-y-6">
             <header className="page-header">
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <LayoutDashboard size={12} />
                         Low Voltage Site Pulse
                     </p>
                     <h1 className="page-title">Command Dashboard</h1>
-                    <p className="page-subtitle">Real-time job tracking for {currentUser?.clientCompany}.</p>
+                    <p className="page-subtitle text-left">Real-time job tracking for {currentUser?.clientCompany || currentUser?.name}.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <NotificationBell />
@@ -135,7 +149,7 @@ export default function ClientDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-3xl font-bold text-text-primary">
-                            {workOrders.filter(wo => wo.clientName === currentUser?.clientCompany && wo.status === 'in-progress').length}
+                            {myWorkOrders.filter(wo => wo.status === 'in-progress').length}
                         </p>
                     </CardContent>
                 </Card>
@@ -144,7 +158,7 @@ export default function ClientDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="text-left">
                             <CardTitle>infrastructure Deployment Progress</CardTitle>
                             <CardDescription>Status tracking for your low voltage projects.</CardDescription>
                         </CardHeader>
@@ -152,12 +166,12 @@ export default function ClientDashboardPage() {
                             <div className="divide-y divide-border-sub">
                                 {myProjects.map(project => (
                                     <Link key={project.id} href={`/client/projects`}>
-                                        <div className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer">
+                                        <div className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer text-left">
                                             <div className="space-y-1">
                                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{project.name}</p>
-                                                <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold">
-                                                    <span className="flex items-center gap-1"><MapPin size={10}/> {project.location}</span>
-                                                    <span className="flex items-center gap-1"><Calendar size={10}/> Started {formatDateStr(project.startDate)}</span>
+                                                <div className="flex items-center gap-3 text-[10px] text-text-muted font-bold uppercase">
+                                                    <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {project.location}</span>
+                                                    <span className="flex items-center gap-1.5"><Calendar size={10}/> Started {formatDateStr(project.startDate)}</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">
@@ -170,26 +184,26 @@ export default function ClientDashboardPage() {
                                     </Link>
                                 ))}
                                 {myProjects.length === 0 && (
-                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No active projects found.</div>
+                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No active projects found in the registry.</div>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="text-left">
                             <CardTitle>Field Activity Terminal</CardTitle>
                             <CardDescription>Latest field technician updates and job results.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border-sub">
                                 {recentActivity.map(activity => (
-                                    <div key={activity.id} className="p-4 flex items-center justify-between">
+                                    <div key={activity.id} className="p-4 flex items-center justify-between text-left">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted">
                                                 <Clock size={16} />
                                             </div>
-                                            <div>
+                                            <div className="text-left">
                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{activity.description}</p>
                                                 <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">{activity.location} • {formatDateStr(activity.scheduleDate)} • {activity.id.toUpperCase()}</p>
                                             </div>
@@ -200,7 +214,7 @@ export default function ClientDashboardPage() {
                                     </div>
                                 ))}
                                 {recentActivity.length === 0 && (
-                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No recent jobs logged.</div>
+                                    <div className="p-12 text-center text-text-muted text-xs uppercase tracking-widest italic">No recent field activity logged.</div>
                                 )}
                             </div>
                         </CardContent>
@@ -209,7 +223,7 @@ export default function ClientDashboardPage() {
 
                 <div className="space-y-6">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                             <CardTitle>Recent Service Requests</CardTitle>
                             <Button variant="default" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={() => router.push('/client/tickets')}>
                                 <Plus size={12} className="mr-1.5"/>
@@ -219,7 +233,7 @@ export default function ClientDashboardPage() {
                         <CardContent className="p-0">
                             <div className="divide-y divide-border-sub">
                                 {myRequests.slice(0, 3).map(request => (
-                                    <div key={request.id} className="p-3 flex flex-col gap-1.5 hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => router.push('/client/tickets')}>
+                                    <div key={request.id} className="p-3 flex flex-col gap-1.5 hover:bg-bg-tertiary transition-colors cursor-pointer text-left" onClick={() => router.push('/client/tickets')}>
                                         <div className="flex justify-between items-start">
                                             <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide line-clamp-1">{request.description}</p>
                                             <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[8px] h-4 uppercase">
@@ -230,7 +244,7 @@ export default function ClientDashboardPage() {
                                     </div>
                                 ))}
                                 {myRequests.length === 0 && (
-                                    <div className="p-8 text-center text-[9px] text-text-muted uppercase tracking-widest italic">No pending requests.</div>
+                                    <div className="p-8 text-center text-[9px] text-text-muted uppercase tracking-widest italic">No pending requests in the intake funnel.</div>
                                 )}
                             </div>
                         </CardContent>

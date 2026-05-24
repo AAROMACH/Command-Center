@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { technicians, workOrders, assignmentTimeLogs } from '@/lib/data';
-import type { Technician, WorkOrder, AssignmentTimeLog } from '@/lib/types';
+import { db } from "@/lib/firebase";
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import type { Technician, WorkOrder, AssignmentTimeLog, Project, ProjectDocument } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,7 +33,8 @@ import {
     ArrowUpRight,
     ExternalLink,
     Check,
-    X
+    X,
+    Eye
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -62,7 +65,11 @@ export default function SiteDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
+    const [allProjects, setAllProjects] = useState<Project[]>([]);
+    const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]);
+    const [liveCheckIns, setLiveCheckIns] = useState<AssignmentTimeLog[]>([]);
     const [mounted, setMounted] = useState(false);
     
     // Job Detail state
@@ -71,39 +78,49 @@ export default function SiteDetailPage() {
 
     useEffect(() => {
         setMounted(true);
-        setCurrentUserId(localStorage.getItem('currentUserId'));
+        const userId = localStorage.getItem('currentUserId');
+        if (!userId) return;
 
-        // Defensive Protocol: Catch RefererNotAllowedMapError or other auth failures
-        window.gm_authFailure = () => {
-            console.warn("Google Maps API Handshake Restricted.");
-            toast({
-              variant: "destructive",
-              title: "Registry Security Error",
-              description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
-            });
-          };
-    }, [toast]);
+        const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) {
+                const userData = { ...d.data(), id: d.id } as Technician;
+                setCurrentUser(userData);
+                
+                const clientName = userData.clientCompany || userData.name;
+
+                const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('clientName', '==', clientName)), (snap) => {
+                    setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+                });
+
+                const unsubProj = onSnapshot(query(collection(db, 'projects'), where('client', '==', clientName)), (snap) => {
+                    setAllProjects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project)));
+                });
+
+                return () => { unsubWO(); unsubProj(); };
+            }
+        });
+
+        // Live check-ins usually aren't filtered by client at the collection level easily without complex indexes,
+        // but for this prototype we'll listen to all active logs.
+        const unsubLogs = onSnapshot(collection(db, 'assignments'), (snap) => {
+            // Placeholder logic for live checkins if using assignments subcollections
+        });
+
+        return () => unsubUser();
+    }, []);
 
     const id = params.id as string;
 
-    const currentUser = useMemo(() => 
-        currentUserId ? technicians.find(t => t.id === currentUserId) : null
-    , [currentUserId]);
-
-    // Reconstruct the specific site data from the ID
     const siteData = useMemo(() => {
-        if (!currentUser?.clientCompany) return null;
+        if (!currentUser) return null;
         
         const clientSites = currentUser.managedSites || [];
-        const clientWorkOrders = workOrders.filter(wo => wo.clientName === currentUser.clientCompany);
         
-        // Find by ID in managed sites or by derived ID from work orders
         let targetSite = clientSites.find(s => s.id === id);
         let location = targetSite?.location;
 
         if (!targetSite) {
-            // If not in managed sites, it might be a derived ID
-            const woWithSite = clientWorkOrders.find(wo => `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}` === id);
+            const woWithSite = allWorkOrders.find(wo => `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}` === id);
             if (woWithSite) {
                 location = woWithSite.location;
                 targetSite = { id, name: location.split(',')[0], location };
@@ -112,41 +129,33 @@ export default function SiteDetailPage() {
 
         if (!targetSite || !location) return null;
 
-        const activeAssignments = clientWorkOrders.filter(wo => wo.location === location && wo.status !== 'completed');
-        const historicalAssignments = clientWorkOrders.filter(wo => wo.location === location && wo.status === 'completed');
-        const liveCheckIns = assignmentTimeLogs.filter(log => 
-            activeAssignments.some(wo => wo.id === log.workOrderId) && !log.checkOutTime
-        );
+        const activeAssignments = allWorkOrders.filter(wo => wo.location === location && wo.status !== 'completed');
+        const historicalAssignments = allWorkOrders.filter(wo => wo.location === location && wo.status === 'completed');
+        const siteProjects = allProjects.filter(p => p.location.includes(location!) || location!.includes(p.location));
 
         return {
             ...targetSite,
             activeAssignments,
             historicalAssignments,
-            liveCheckIns,
-            contact: 'Site Manager - 555-0199',
+            siteProjects,
+            contact: 'Site Manager',
             documents: [
                 { id: 'sd-1', name: 'Site_Safety_Protocol_v2.pdf', size: '1.2MB', date: '01/15/2024' },
-                { id: 'sd-2', name: 'MDF_Rack_Layout_Final.pdf', size: '3.4MB', date: '03/22/2024' },
-                { id: 'sd-3', name: 'Emergency_Contact_Sheet.pdf', size: '450KB', date: '05/10/2024' }
+                { id: 'sd-2', name: 'MDF_Rack_Layout_Final.pdf', size: '3.4MB', date: '03/22/2024' }
             ]
         };
-    }, [currentUser, id]);
+    }, [currentUser, id, allWorkOrders, allProjects]);
 
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const [month, day, year] = parts;
-                return `${month}/${day}/${year}`;
-            }
             return dateStr.replace(/-/g, '/');
         } catch (e) {
             return dateStr;
         }
     };
 
-    if (!mounted || !currentUserId) return null;
+    if (!mounted) return null;
     if (!siteData) return (
         <div className="p-24 text-center">
             <p className="text-text-muted uppercase font-bold tracking-widest">Site Coordinate Not Found</p>
@@ -157,7 +166,7 @@ export default function SiteDetailPage() {
     return (
         <div className="space-y-8 relative">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/client/sites')} className="h-10 w-10">
+                <Button variant="ghost" size="icon" onClick={() => router.push('/client/sites')} className="h-10 w-10 text-text-muted hover:text-text-primary">
                     <ChevronLeft size={24} />
                 </Button>
                 <div className="text-left">
@@ -170,7 +179,6 @@ export default function SiteDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* LEFT: Site Stats & Map */}
                 <div className="space-y-6">
                     <Card className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
@@ -189,16 +197,11 @@ export default function SiteDetailPage() {
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
                                 </div>
                              )}
-                            <div className="absolute top-2 left-2 z-10">
-                                <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
-                                    <Navigation size={10} className="text-brand-red" /> Live Site Feed
-                                </div>
-                            </div>
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
-                                <p className="text-sm font-bold text-text-primary">{siteData.location}</p>
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-tight">{siteData.location}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">
                                 <div className="space-y-1 text-left">
@@ -221,171 +224,28 @@ export default function SiteDetailPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                {/* TOTAL VISITS DIALOG */}
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Total Visits</p>
-                                            <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
-                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
-                                        </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <History size={20} className="text-brand-red" />
-                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Visit Registry Audit</DialogTitle>
-                                            </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Full historical manifest for site coordinate: {siteData.name}</DialogDescription>
-                                        </DialogHeader>
-                                        <ScrollArea className="flex-1">
-                                            <div className="p-6 space-y-3">
-                                                {[...siteData.historicalAssignments, ...siteData.activeAssignments].length > 0 ? [...siteData.historicalAssignments, ...siteData.activeAssignments].map(wo => (
-                                                    <div 
-                                                        key={wo.id} 
-                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub space-y-1 text-left group hover:border-text-muted transition-all cursor-pointer"
-                                                    >
-                                                        <div className="flex justify-between items-center">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
-                                                                <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="text-[7px] h-3.5 px-1 uppercase">{wo.status}</Badge>
-                                                            </div>
-                                                            <span className="text-[8px] text-text-muted font-bold">{formatDateDisplay(wo.scheduleDate)}</span>
-                                                        </div>
-                                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
-                                                    </div>
-                                                )) : (
-                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                                        <History size={48} className="mx-auto mb-2 text-text-muted" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">No historical records found</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-
-                                {/* OPEN TICKETS DIALOG */}
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Open Tickets</p>
-                                            <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
-                                            <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
-                                                {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Service Clean'}
-                                            </p>
-                                        </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <AlertCircle size={20} className="text-accent-gold" />
-                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">Active Mission Funnel</DialogTitle>
-                                            </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Live dispatch buffer and intake funnel for site coordinate: {siteData.name}</DialogDescription>
-                                        </DialogHeader>
-                                        <ScrollArea className="flex-1">
-                                            <div className="p-6 space-y-3">
-                                                {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
-                                                    <div 
-                                                        key={wo.id} 
-                                                        onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
-                                                        className="p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-text-muted transition-all flex items-center justify-between cursor-pointer"
-                                                    >
-                                                        <div className="text-left space-y-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{wo.id.toUpperCase()}</span>
-                                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[7px] h-3.5 px-1 uppercase tracking-tighter">
-                                                                    {wo.status}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{wo.description}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase font-bold">{wo.scheduleTime} • {formatDateDisplay(wo.scheduleDate)}</p>
-                                                        </div>
-                                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
-                                                    </div>
-                                                )) : (
-                                                    <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                                        <CheckCircle2 size={48} className="mx-auto mb-2 text-text-green" />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">Mission funnel clear: No active tickets</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Terminal</Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-
-                                {/* UPTIME TIER DIALOG */}
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1 cursor-pointer hover:border-text-muted transition-all group">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] group-hover:text-brand-red">Uptime Tier</p>
-                                            <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
-                                        </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[70vh] shadow-2xl">
-                                        <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <TrendingUp size={20} className="text-brand-red" />
-                                                <DialogTitle className="text-lg font-bold uppercase tracking-widest">SLA Performance Audit</DialogTitle>
-                                            </div>
-                                            <DialogDescription className="text-xs uppercase font-bold text-text-muted">Real-time uptime verification and performance tracking.</DialogDescription>
-                                        </DialogHeader>
-                                        <div className="p-8 space-y-8 text-left">
-                                            <div className="space-y-4">
-                                                <div className="flex justify-between items-end">
-                                                    <div className="space-y-1">
-                                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Active Response Tier</p>
-                                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Enterprise Standard (4-Hour)</p>
-                                                    </div>
-                                                    <Badge variant="active" className="h-5 px-2 text-[8px] uppercase tracking-widest">Compliant</Badge>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-text-muted">
-                                                        <span>Target Uptime</span>
-                                                        <span className="text-text-primary">99.9%</span>
-                                                    </div>
-                                                    <div className="h-2 w-full rounded-full bg-bg-tertiary overflow-hidden border border-border-sub">
-                                                        <div className="h-full bg-text-green" style={{ width: '99.9%' }} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-start gap-4">
-                                                <Info size={18} className="text-brand-red shrink-0 mt-0.5" />
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Audit Parameter</p>
-                                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
-                                                        Uptime calculations are derived from historical ticket completion timelines and verified field check-ins.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" className="w-full uppercase font-bold text-[10px] tracking-widest h-10">Close Audit</Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
+                                    <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
+                                    <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
+                                    <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
+                                        {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Clean'}
+                                    </p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
+                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
+                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
+                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* RIGHT: Operational Activity */}
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="activity" className="w-full">
                         <TabsList className="tabs !p-0 !bg-bg-tertiary mb-6">
@@ -395,7 +255,6 @@ export default function SiteDetailPage() {
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
-                            {/* Active Assignments */}
                             <div className="space-y-3">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-left">Active Assignment Registry</p>
                                 <div className="space-y-2">
@@ -481,46 +340,11 @@ export default function SiteDetailPage() {
                                         </Button>
                                     </div>
                                 ))}
-                                {siteData.documents.length === 0 && (
-                                    <div className="p-24 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
-                                        <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No site assets registered.</p>
-                                    </div>
-                                )}
                             </div>
                         </TabsContent>
                     </Tabs>
                 </div>
             </div>
-
-            {/* LIVE ONSITE POPUP INDICATOR */}
-            {siteData.liveCheckIns.length > 0 && (
-                <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-6 duration-500">
-                    <div className="bg-[#0c0c0c]/90 backdrop-blur-xl border border-green-border/50 rounded-2xl p-4 shadow-[0_0_40px_rgba(31,138,85,0.25)] flex items-center gap-5 ring-1 ring-white/10">
-                        <div className="relative">
-                            <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1 animate-ping" />
-                            <div className="h-3 w-3 rounded-full bg-text-green absolute -top-1 -right-1" />
-                            <div className="p-2.5 bg-green-dim/20 rounded-xl border border-green-border text-text-green">
-                                <UserCheck size={22} />
-                            </div>
-                        </div>
-                        <div className="text-left space-y-0.5">
-                            <div className="flex items-center gap-2.5">
-                                <p className="text-xs font-black text-white uppercase tracking-widest">Technician On-Site</p>
-                                <Badge variant="active" className="h-4 px-1.5 text-[7px] animate-pulse uppercase tracking-tighter">LIVE PULSE</Badge>
-                            </div>
-                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-tight">Verified presence at {siteData.name}</p>
-                        </div>
-                        <div className="h-8 w-px bg-white/10 mx-1" />
-                        <button 
-                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-text-muted hover:white"
-                            title="Audit Session Details"
-                        >
-                            <ChevronRight size={18} />
-                        </button>
-                    </div>
-                </div>
-            )}
 
             <JobDetailDialog isOpen={isJobOpen} setIsOpen={setIsJobOpen} mission={selectedJob} />
         </div>

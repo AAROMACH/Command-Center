@@ -726,7 +726,7 @@ export default function ActivityAuditPage() {
                     <Tabs defaultValue="overview" className="w-full">
                         <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10">
                             <TabsTrigger value="overview" className="tab !px-8 h-full data-[state=active]:bg-brand-red">TACTICAL OVERVIEW</TabsTrigger>
-                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">VISIT LEDGER ({siteAuditData.visits.length})</TabsTrigger>
+                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">WEEKLOG HISTORY ({siteAuditData.visits.length})</TabsTrigger>
                             <TabsTrigger value="projects" className="tab !px-8 h-full data-[state=active]:bg-brand-red">PROJECT FOLDERS ({siteAuditData.projects.length})</TabsTrigger>
                             <TabsTrigger value="billing" className="tab !px-8 h-full data-[state=active]:bg-brand-red">FINANCIAL AUDIT</TabsTrigger>
                         </TabsList>
@@ -1227,4 +1227,3 @@ function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
         </div>
     );
 }
-

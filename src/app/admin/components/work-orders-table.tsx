@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -135,7 +136,7 @@ export const WorkOrdersTable = React.memo(({
     return [...workOrders].sort((a, b) => (a.scheduleDate || '').localeCompare(b.scheduleDate || ''));
   }, [workOrders]);
 
-  const totalPages = Math.ceil(sortedWorkOrders.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedWorkOrders.length / (itemsPerPage || 1));
   const paginatedOrders = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return sortedWorkOrders.slice(start, start + itemsPerPage);

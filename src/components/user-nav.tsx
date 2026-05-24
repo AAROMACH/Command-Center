@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -54,7 +55,13 @@ export function UserNav() {
         );
         setCurrentUser(registryUser);
       } else {
-        setCurrentUser(undefined);
+        const storedId = localStorage.getItem('currentUserId');
+        if (storedId) {
+            const registryUser = technicians.find(t => t.id === storedId);
+            setCurrentUser(registryUser);
+        } else {
+            setCurrentUser(undefined);
+        }
       }
     });
 
@@ -64,6 +71,7 @@ export function UserNav() {
   if (!mounted) return <div className="h-8 w-8 rounded-full bg-bg-secondary animate-pulse" />;
 
   const displayName = firebaseUser?.displayName || currentUser?.name || 'Authorized User';
+  const email = firebaseUser?.email || currentUser?.email || 'No email';
   const userAvatarUrl = firebaseUser?.photoURL || currentUser?.avatarUrl;
   const userFallback = displayName.split(' ').map(n => n[0]).join('') || 'U';
   
@@ -105,11 +113,11 @@ export function UserNav() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {firebaseUser?.email || currentUser?.email || 'No email'}
+        <DropdownMenuLabel className="font-normal border-b border-border-sub bg-bg-tertiary/20 pb-4">
+          <div className="flex flex-col space-y-1.5">
+            <p className="text-sm font-bold uppercase tracking-wide text-text-primary truncate">{displayName}</p>
+            <p className="text-[10px] font-mono font-bold text-brand-red uppercase tracking-tighter truncate opacity-70">
+              {email}
             </p>
           </div>
         </DropdownMenuLabel>

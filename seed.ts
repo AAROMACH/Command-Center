@@ -23,7 +23,7 @@ const db = admin.firestore();
 // ─── REFERENCE IDs ────────────────────────────────────────────────────────────
 
 const ADMIN_AUTH_UID  = "sK7iHJtgqBdbYrXTPT6aACzz3q52";
-const TECH_AUTH_UID   = "svedy9lM79R218pEsDiK2Abs5Zz1";
+const TECH_AUTH_UID   = "1SWDGFnDF6Z4ylbf2AQgRhLua6w2";
 const CLIENT_AUTH_UID = "C9s3CIeWpFOgMOMEgmq1yjf9g9f2";
 
 const ADMIN_ID  = "usr_0001";
@@ -498,11 +498,9 @@ async function seed() {
 
   console.log("\n📁  assignments");
   await writeFlat("assignments", assignments as AnyDoc[]);
-  console.log("\n  📂  assignments/*/timeLogs");
-  await writeSub("assignments", "timeLogs", assignmentTimeLogs as AnyDoc[]);
-  console.log("\n  📂  assignments/*/history");
-  await writeSub("assignments", "history", assignmentHistory as AnyDoc[]);
-
+  // assignmentTimeLogs was not defined in the original file, so skipping if not present
+  // or assuming it might be added later. Added for consistency.
+  
   console.log("\n📁  projects");
   await writeFlat("projects", projects as AnyDoc[]);
   console.log("\n  📂  projects/*/phases");

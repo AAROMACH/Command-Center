@@ -249,7 +249,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                         <div className="flex items-center gap-2">
                              <div className="flex flex-col items-end mr-4">
-                                <p className="text-[8px] font-black uppercase text-text-muted">Audit Progress</p>
+                                <p className="text-[8px] font-black text-text-muted uppercase">Audit Progress</p>
                                 <p className={cn("text-xs font-mono font-bold", isManifestFullyAudited ? "text-text-green" : "text-accent-gold")}>
                                     {auditCompleteCount} / {totalJobsCount} VERIFIED
                                 </p>

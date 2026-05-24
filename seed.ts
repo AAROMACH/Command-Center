@@ -54,7 +54,7 @@ const users = [
     role: "technician",
     roles: ["field_technician", "project_manager"],
     status: "active",
-    reliabilityScore: 91,
+    reliabilityScore: 100, // Initialized at 100%
     reliabilityStatus: "reliable",
     penaltyPoints30d: 0,
     hourlyRate: 65,

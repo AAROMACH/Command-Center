@@ -62,7 +62,7 @@
     "phone": "555-200-3000",
     "avatarUrl": null,
     "status": "active",
-    "reliabilityScore": 0,
+    "reliabilityScore": 100,
     "reliabilityStatus": "reliable",
     "penaltyPoints30d": 0,
     "hourlyRate": 65,

@@ -237,7 +237,7 @@ export default function ActivityAuditPage() {
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updated));
         
         window.dispatchEvent(new Event('storage'));
-        toast({ variant: 'destructive', title: 'Broadcast Revoked', description: 'Directive purged from all target terminals.' });
+        toast({ variant: "destructive", title: "Broadcast Revoked", description: "Directive purged from all target terminals." });
     }, [messages, toast]);
 
     // ── DATA RESOLUTION ──────────────────────────────────────────────────

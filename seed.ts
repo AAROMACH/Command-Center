@@ -72,14 +72,14 @@ const users = [
     phone: "555-200-3000",
     avatarUrl: null,
     role: "technician",
-    roles: ["field_technician"],
+    roles: ["field_technician", "project_manager"],
     status: "active",
     reliabilityScore: 91,
     reliabilityStatus: "reliable",
     penaltyPoints30d: 0,
     hourlyRate: 65,
     skills: ["Cabling", "Networking", "Camera Systems", "Low Voltage"],
-    address: "Detroit, MI",
+    address: "32701 Annapolis St, Wayne, MI 48184, USA",
     emergencyContact: { name: "Dana Williams", relation: "Spouse", phone: "555-200-9999" },
     availability: {
       monday:    { start: "08:00", end: "17:00" },
@@ -320,7 +320,7 @@ const assignments = [
   },
 ];
 
-const projects = [
+const projects_list = [
   {
     id: "proj_0001",
     title: "Wixom Camera and Network Upgrade",
@@ -373,7 +373,7 @@ const projectDailyLogs = [
   { _parentId: "proj_0001", id: "dl_0001", projectId: "proj_0001", assignmentId: "asmt_0004", techId: TECH_AUTH_UID, logDate: "2026-04-22", hoursWorked: 0, workSummary: "", phaseIdsWorked: [], taskIdsCompleted: [], taskIdsProgressed: [], issues: null, materialsUsed: [], photoUrls: [], createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
 
-const weeklyLogs = [
+const weeklyLogs_list = [
   { id: "wl_0001", technicianId: TECH_AUTH_UID, techName: "Corey Williams", weekOf: "03-30-2026", weekStartDate: "2026-03-30T00:00:00Z", weekEndDate: "2026-04-05T23:59:59Z", dueAt: "2026-04-06T23:59:59Z", status: "Draft", syncStatus: "live", locked: false, snapshotTakenAt: null, totalPayout: null, submittedAt: null, reviewedAt: null, reviewedBy: null, adminNotes: null, createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z", items: [], reimbursements: [] },
 ];
 
@@ -430,7 +430,7 @@ const messages = [
   { id: "msg_0001", senderId: ADMIN_ID, senderName: "Admin", recipientIds: [TECH_AUTH_UID], type: "system", content: "Welcome to the Aaromach platform. Your assignments and project details will appear here.", relatedEntityType: null, relatedEntityId: null, isRead: false, createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
 
-const timeOffRequests = [
+const timeOffRequests_list = [
   { id: "tor_0001", userId: TECH_AUTH_UID, userName: "Corey Williams", type: "personal", startDate: "2026-04-25", endDate: "2026-04-26", reason: "Personal time off", status: "pending", reviewedBy: null, reviewedAt: null, notes: null, createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
 
@@ -495,11 +495,9 @@ async function seed() {
 
   console.log("\n📁  assignments");
   await writeFlat("assignments", assignments as AnyDoc[]);
-  // assignmentTimeLogs was not defined in the original file, so skipping if not present
-  // or assuming it might be added later. Added for consistency.
   
   console.log("\n📁  projects");
-  await writeFlat("projects", projects as AnyDoc[]);
+  await writeFlat("projects", projects_list as AnyDoc[]);
   console.log("\n  📂  projects/*/phases");
   await writeSub("projects", "phases", projectPhases as AnyDoc[]);
   console.log("\n  📂  projects/*/phases/*/tasks");
@@ -508,7 +506,7 @@ async function seed() {
   await writeSub("projects", "dailyLogs", projectDailyLogs as AnyDoc[]);
 
   console.log("\n📁  weeklyLogs");
-  await writeFlat("weeklyLogs", weeklyLogs as AnyDoc[]);
+  await writeFlat("weeklyLogs", weeklyLogs_list as AnyDoc[]);
   console.log("\n  📂  weeklyLogs/*/items");
   await writeSub("weeklyLogs", "items", weeklyLogItems as AnyDoc[]);
 
@@ -546,7 +544,7 @@ async function seed() {
   await writeFlat("messages", messages as AnyDoc[]);
 
   console.log("\n📁  timeOffRequests");
-  await writeFlat("timeOffRequests", timeOffRequests as AnyDoc[]);
+  await writeFlat("timeOffRequests", timeOffRequests_list as AnyDoc[]);
 
   console.log("\n📁  systemConfig");
   for (const [docId, data] of Object.entries(systemConfig)) {

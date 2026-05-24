@@ -221,8 +221,8 @@ export const WorkOrdersTable = React.memo(({
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedOrder.pay;
-      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.pay = selectedJob.pay;
+      finalUpdate.payType = selectedJob.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -264,6 +264,11 @@ export const WorkOrdersTable = React.memo(({
         toast({ variant: "destructive", title: "Update Failed", description: e.message });
     });
   }, [toast]);
+
+  const getFieldNationLink = (id: string) => {
+    const cleanId = id.replace(/^wo-/, '');
+    return `https://app.fieldnation.com/workorders/${cleanId}`;
+  };
 
   return (
     <div className="w-full space-y-4">

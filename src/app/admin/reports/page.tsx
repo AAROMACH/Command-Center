@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
     MapPin, 
@@ -34,7 +34,6 @@ import {
     TrendingUp,
     CheckCircle2,
     ArrowUpDown,
-    BarChart3,
     Wrench,
     DollarSign,
     ShieldCheck,
@@ -86,7 +85,6 @@ import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
@@ -112,6 +110,8 @@ const formatDateDisplay = (dateStr: string) => {
         return dateStr;
     }
 };
+
+type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {
     const router = useRouter();
@@ -1213,15 +1213,6 @@ export default function ActivityAuditPage() {
                     @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
                 }
             `}</style>
-        </div>
-    );
-}
-
-function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
-    return (
-        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-            <Icon size={48} className="mx-auto text-text-muted mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
         </div>
     );
 }

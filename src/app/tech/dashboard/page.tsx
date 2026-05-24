@@ -2,23 +2,21 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, addDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { technicians as mockTechnicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
-  MapPin, 
   Clock, 
   Play,
   ClipboardList,
   Receipt,
   LogOut,
-  Navigation,
-  Check
+  Navigation
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
-import { isSameDay, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
 import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
@@ -27,7 +25,7 @@ import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -43,17 +41,27 @@ export default function TechDashboardPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
+        if (!userId) {
+            router.push('/login');
+            return;
+        }
+        
         setCurrentTechId(userId);
-        if (!userId) return;
 
         const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
-            if (d.exists()) setTech({ ...d.data(), id: d.id } as Technician);
+            if (d.exists()) {
+                setTech({ ...d.data(), id: d.id } as Technician);
+            } else {
+                // Tactical Fallback: Resolve identity from personnel registry if Firestore record is missing
+                const mockTech = mockTechnicians.find(t => t.id === userId);
+                if (mockTech) setTech(mockTech);
+            }
         });
 
-        // We fetch all work orders for this tech by checking both single ID and array field
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
             const orders = snap.docs
                 .map(d => ({ ...d.data(), id: d.id } as WorkOrder))
@@ -72,10 +80,9 @@ export default function TechDashboardPage() {
         return () => {
             unsubTech();
             unsubWO();
-            unsubmittedLogs; // existing unsub cleanup pattern
             unsubLogs();
         };
-    }, [currentTechId]);
+    }, [router]);
 
     const activeJob = useMemo(() => 
         allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed'),
@@ -92,7 +99,14 @@ export default function TechDashboardPage() {
     };
 
     if (!currentTechId || !tech) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Initializing Terminal...</div>;
+        return (
+            <div className="flex h-screen items-center justify-center bg-bg-primary">
+                <div className="text-center space-y-4">
+                    <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Synchronizing Field terminal...</p>
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -16,8 +16,7 @@ import {
   Calendar,
   Activity,
   ScrollText,
-  Coins,
-  BarChart3
+  Coins
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';

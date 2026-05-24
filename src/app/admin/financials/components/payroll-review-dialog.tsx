@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -557,3 +558,4 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         </Dialog>
     );
 }
+

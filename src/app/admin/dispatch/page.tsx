@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./components/work-orders-client";
@@ -266,13 +266,11 @@ export default function DispatchPage() {
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="flex items-center gap-3">
-                {activeMasterTab !== 'requests' ? (
+                {activeMasterTab !== 'requests' && (
                   <>
                     <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
                     <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest">+ New Dispatch Entry</Button>
                   </>
-                ) : (
-                  <Button variant="default" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest"><Plus size={14} className="mr-2"/>New Service Request</Button>
                 )}
             </div>
       </header>

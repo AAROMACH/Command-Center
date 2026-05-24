@@ -422,7 +422,7 @@ export default function ActivityAuditPage() {
                             <div className="relative">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
-                                    <AvatarFallback>{(t.name || 'U').charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {assignmentTimeLogs.some(log => log.technicianId === t.id && !log.checkOutTime) && (
                                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
@@ -561,7 +561,7 @@ export default function ActivityAuditPage() {
                                 placeholder="Clear, concise directive..." 
                                 value={newMessage.subject}
                                 onChange={e => setNewMessage({...newMessage, subject: e.target.value})}
-                                className="h-10 bg-bg-primary text-xs uppercase font-bold"
+                                className="h-10 bg-bg-primary border-border-sub text-xs uppercase font-bold"
                             />
                         </div>
                         <div className="space-y-2 text-left">
@@ -672,8 +672,8 @@ export default function ActivityAuditPage() {
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">ID</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title & Result</TableHead>
+                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">ID</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
                                         </TableRow>
@@ -681,7 +681,7 @@ export default function ActivityAuditPage() {
                                     <TableBody>
                                         {sortedAllSiteVisits.map(wo => (
                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
+                                                <TableCell className="font-mono text-brand-red font-bold text-[9px] pl-6">{(wo.id || '').toUpperCase()}</TableCell>
                                                 <TableCell className="text-left py-4">
                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                                     <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.scheduleDate} · {wo.scheduleTime}</p>
@@ -747,7 +747,7 @@ export default function ActivityAuditPage() {
                                                 </TableCell>
                                                 <TableCell className="text-xs text-text-muted text-left">{inv.dueDate}</TableCell>
                                                 <TableCell className="text-center">
-                                                    <Badge variant={inv.status === 'paid' ? 'active' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                    <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'sent' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
                                                         {inv.status}
                                                     </Badge>
                                                 </TableCell>
@@ -849,7 +849,7 @@ export default function ActivityAuditPage() {
                                                         <div className="flex flex-col items-center gap-4">
                                                             <Avatar className="h-20 w-20 border-2 border-brand-red">
                                                                 <AvatarImage src={activeTech.avatarUrl} />
-                                                                <AvatarFallback>{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
+                                                                <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="space-y-1">
                                                                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
@@ -913,16 +913,16 @@ export default function ActivityAuditPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">ID</TableHead>
+                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">ID</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest">Mission Title</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {techStats.myJobs.map(wo => (
                                                                         <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                            <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">{(wo.id || '').toUpperCase()}</TableCell>
+                                                                            <TableCell className="font-mono text-brand-red font-bold text-[9px] pl-6">{(wo.id || '').toUpperCase()}</TableCell>
                                                                             <TableCell className="text-left py-4">
                                                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                                                                 <p className="text-[10px] text-text-muted font-bold uppercase mt-1">{wo.clientName} · {wo.scheduleDate}</p>
@@ -960,7 +960,7 @@ export default function ActivityAuditPage() {
                                                                 <TableBody>
                                                                     {techStats.myLogs.map(log => (
                                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                                            <TableCell className="font-bold uppercase text-xs pl-6 text-left">Week of {log.weekOf}</TableCell>
+                                                                            <TableCell className="font-bold uppercase text-xs text-left pl-6">Week of {log.weekOf}</TableCell>
                                                                             <TableCell className="text-left">
                                                                                 <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
                                                                                     {log.status}
@@ -1043,7 +1043,7 @@ export default function ActivityAuditPage() {
                                 <Badge variant="outline" className={cn("h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black", r.cls)}>
                                     {r.type}
                                 </Badge>
-                                <div className="space-y-1.5 flex-1 min-w-0">
+                                <div className="space-y-1.5 flex-1 min-w-0 text-left">
                                     <p className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors truncate">{r.label}</p>
                                     <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold leading-relaxed">{r.meta}</p>
                                 </div>
@@ -1071,6 +1071,15 @@ export default function ActivityAuditPage() {
                     @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
                 }
             `}</style>
+        </div>
+    );
+}
+
+function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
+    return (
+        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+            <Icon size={48} className="mx-auto text-text-muted mb-2" />
+            <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
         </div>
     );
 }

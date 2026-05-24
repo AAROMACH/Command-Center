@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -52,7 +53,8 @@ import {
   Type,
   FileText,
   RefreshCw,
-  Trash2
+  Trash2,
+  Lock
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -207,6 +209,7 @@ export const WorkOrdersTable = React.memo(({
       const assignmentId = `asmt-${Date.now()}`;
       const assignmentRef = doc(db, 'assignments', assignmentId);
       const woRef = doc(db, 'workOrders', selectedOrder.id);
+      const today = format(new Date(), 'MM-dd-yyyy');
 
       const assignmentData = {
           ...selectedOrder,
@@ -217,7 +220,11 @@ export const WorkOrdersTable = React.memo(({
           assignedTechnicianId: technicianId,
           status: 'assigned',
           assignedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          history: [
+            ...(selectedOrder.history || []),
+            { type: 'status_change', date: today, details: `Job assigned to ${technicians.find(t => t.id === technicianId)?.name}.`, user: currentUser?.name || 'Admin' }
+          ]
       };
 
       await setDoc(assignmentRef, assignmentData);
@@ -230,7 +237,7 @@ export const WorkOrdersTable = React.memo(({
       console.error("Assign Update Error:", e);
       toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
     }
-  }, [selectedOrder, toast]);
+  }, [selectedOrder, technicians, currentUser, toast]);
 
   const handleSaveChanges = () => {
     if (!editedOrder || !selectedOrder) return;
@@ -250,6 +257,12 @@ export const WorkOrdersTable = React.memo(({
       };
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
+
+    const today = format(new Date(), 'MM-dd-yyyy');
+    finalUpdate.history = [
+        ...(editedOrder.history || []),
+        { type: 'note', date: today, details: `Registry parameters adjusted.`, user: currentUser?.name || 'Admin' }
+    ];
 
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const docRef = doc(db, collectionName, editedOrder.id);
@@ -312,6 +325,8 @@ export const WorkOrdersTable = React.memo(({
               const techId = order.assignedTechnicianId || order.assignedTechIds?.[0] || order.techId;
               const technician = technicians.find(t => t.id === techId);
               const displayId = order.shortId || order.id;
+              const isLocked = order.status === 'completed';
+              
               return (
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
@@ -410,9 +425,15 @@ export const WorkOrdersTable = React.memo(({
                             <UserPlus size={10}/> Assign
                          </button>
                        )}
-                       <button className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => handleOpenEditDialog(order)}>
-                         <Pencil size={14} />
-                       </button>
+                       {!isLocked ? (
+                          <button className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => handleOpenEditDialog(order)}>
+                            <Pencil size={14} />
+                          </button>
+                       ) : (
+                          <div className="h-6 w-6 flex items-center justify-center text-text-muted opacity-30" title="Historical Record Locked">
+                            <Lock size={12} />
+                          </div>
+                       )}
                        <button className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => handleOpenDetail(order)}>
                          <Eye size={14} />
                        </button>

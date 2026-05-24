@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -93,7 +94,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {

@@ -85,7 +85,7 @@ import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 

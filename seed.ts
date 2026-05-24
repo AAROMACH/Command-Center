@@ -1,4 +1,3 @@
-
 /**
  * Aaromach Command Center — Firestore Seed
  * Schema v3.0.0
@@ -22,7 +21,7 @@ const db = admin.firestore();
 
 // ─── REFERENCE IDs ────────────────────────────────────────────────────────────
 
-const ADMIN_AUTH_UID  = "sK7iHJtgqBdbYrXTPT6aACzz3q52";
+const ADMIN_AUTH_UID  = "iktec1F0B8TSYhD8F4zh8dQr3mx1";
 const TECH_AUTH_UID   = "1SWDGFnDF6Z4ylbf2AQgRhLua6w2";
 const CLIENT_AUTH_UID = "C9s3CIeWpFOgMOMEgmq1yjf9g9f2";
 
@@ -439,9 +438,7 @@ const systemConfig = {
   penalties: { id: "penalties", missedAcknowledgmentPoints: 0.5, lateWeeklyLogPoints: 3, noShowPoints: 5, lateCheckInPoints: 1, reliableMax: 2.5, atRiskMax: 7.5, restrictedMin: 8 },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RUNNER
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── RUNNER ─────────────────────────────────────────────────────────────
 
 type AnyDoc = Record<string, unknown>;
 

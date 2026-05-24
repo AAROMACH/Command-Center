@@ -161,7 +161,7 @@ export default function DispatchPage() {
           try {
               const parts = (order.scheduleDate || '').split(/[-/]/);
               let woDate;
-              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate)); } 
+              if (parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate)); } 
               else { 
                 const [m, d, y] = parts;
                 if (y && m && d) {

@@ -1,9 +1,9 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { 
     Search, 
     MapPin, 
@@ -69,11 +69,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { 
@@ -86,7 +86,7 @@ import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 
@@ -98,7 +98,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {
@@ -112,8 +112,6 @@ const formatDateDisplay = (dateStr: string) => {
         return dateStr;
     }
 };
-
-type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
 export default function ActivityAuditPage() {
     const router = useRouter();
@@ -315,7 +313,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -324,7 +322,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -332,7 +330,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 const start = startOfDay(customVisitRange.from!);
                 const end = customVisitRange.to ? startOfDay(customVisitRange.to) : start;
@@ -343,7 +341,7 @@ export default function ActivityAuditPage() {
         return results.sort((a, b) => {
             const parseDate = (str: string) => {
                 const parts = str.split(/[-/]/);
-                if (parts[0].length === 4) return new Date(str).getTime();
+                if (parts[0] && parts[0].length === 4) return new Date(str).getTime();
                 const [m, d, y] = parts;
                 return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).getTime();
             };

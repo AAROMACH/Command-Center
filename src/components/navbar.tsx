@@ -36,7 +36,6 @@ type NavItem = {
 
 const adminNavItems: NavItem[] = [
   { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'manage_assignments' },
-  { href: '/admin/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assignments' },
   { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },

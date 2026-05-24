@@ -1,0 +1,133 @@
+{
+  "C9s3CIeWpFOgMOMEgmq1yjf9g9f2": {
+    "authUid": "C9s3CIeWpFOgMOMEgmq1yjf9g9f2",
+    "fullName": "Premium Brands Contact",
+    "email": "client@premiumbrands.com",
+    "phone": "555-700-1000",
+    "avatarUrl": null,
+    "role": "client",
+    "status": "active",
+    "skills": null,
+    "address": null,
+    "emergencyContact": null,
+    "availability": null,
+    "workPreferences": null,
+    "payoutPreferences": null,
+    "clientCompany": "Premium Brands",
+    "businessType": "Retail",
+    "planId": "plan_0002",
+    "subscriptionStatus": "active",
+    "billingContact": {
+      "name": "Premium Brands Contact",
+      "email": "billing@premiumbrands.com",
+      "terms": "Net 30",
+      "deliveryMethod": "email"
+    },
+    "createdAt": "2026-04-04T12:00:00Z",
+    "updatedAt": "2026-04-04T12:00:00Z",
+    "laborRate": null,
+    "userId": "usr_0003"
+  },
+  "iktec1F0B8TSYhD8F4zh8dQr3mx1": {
+    "userId": "usr_0001",
+    "authUid": "iktec1F0B8TSYhD8F4zh8dQr3mx1",
+    "fullName": "Admin",
+    "email": "admin@aaromach.com",
+    "phone": null,
+    "avatarUrl": null,
+    "status": "active",
+    "penaltyPoints30d": null,
+    "hourlyRate": null,
+    "skills": null,
+    "address": null,
+    "emergencyContact": null,
+    "availability": null,
+    "workPreferences": null,
+    "payoutPreferences": null,
+    "clientCompany": null,
+    "businessType": null,
+    "billingContact": null,
+    "createdAt": "2026-04-04T12:00:00Z",
+    "updatedAt": "2026-04-04T12:00:00Z",
+    "role": "SUPER ADMIN",
+    "roles": [
+      "super_admin"
+    ],
+    "name": "System Admin"
+  },
+  "1SWDGFnDF6Z4ylbf2AQgRhLua6w2": {
+    "userId": "usr_0002",
+    "fullName": "Corey Williams",
+    "email": "cwilliams@aaromach.com",
+    "phone": "555-200-3000",
+    "avatarUrl": null,
+    "status": "active",
+    "reliabilityScore": 0,
+    "reliabilityStatus": "reliable",
+    "penaltyPoints30d": 0,
+    "hourlyRate": 65,
+    "skills": [
+      "Cabling",
+      "Networking",
+      "Camera Systems",
+      "Low Voltage"
+    ],
+    "emergencyContact": {
+      "name": "Dana Williams",
+      "relation": "Spouse",
+      "phone": "555-200-9999"
+    },
+    "availability": {
+      "monday": {
+        "start": "08:00",
+        "end": "17:00"
+      },
+      "tuesday": {
+        "start": "08:00",
+        "end": "17:00"
+      },
+      "wednesday": {
+        "start": "08:00",
+        "end": "17:00"
+      },
+      "thursday": {
+        "start": "08:00",
+        "end": "17:00"
+      },
+      "friday": {
+        "start": "08:00",
+        "end": "17:00"
+      },
+      "saturday": null,
+      "sunday": null
+    },
+    "workPreferences": {
+      "preferredRadius": 40,
+      "maxTravelDistance": 80,
+      "preferredJobTypes": [
+        "Networking",
+        "Camera Systems"
+      ],
+      "availabilityOverride": false
+    },
+    "payoutPreferences": {
+      "method": "ach",
+      "notes": null
+    },
+    "clientCompany": null,
+    "businessType": null,
+    "planId": null,
+    "subscriptionStatus": null,
+    "billingContact": null,
+    "createdAt": "2026-04-04T12:00:00Z",
+    "updatedAt": "2026-04-04T12:00:00Z",
+    "role": "PROJECT MANAGER",
+    "name": "Corey Williams",
+    "address": "32701 Annapolis St, Wayne, MI 48184, USA",
+    "roles": [
+      "project_manager",
+      "field_technician"
+    ],
+    "authUid": "1SWDGFnDF6Z4ylbf2AQgRhLua6w2"
+  }
+}

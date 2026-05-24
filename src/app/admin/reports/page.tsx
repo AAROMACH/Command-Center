@@ -1026,13 +1026,13 @@ export default function ActivityAuditPage() {
                                             <div className="flex-1 overflow-hidden">
                                                 <Tabs defaultValue="missions" className="w-full">
                                                     <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 w-full justify-start gap-8 px-6">
-                                                        <TabsTrigger value="missions" className="tab h-full data-[state=active]:bg-brand-red">MISSION HISTORY ({techStats.myJobs.length})</TabsTrigger>
+                                                        <TabsTrigger value="missions" className="tab h-full data-[state=active]:bg-brand-red">WEEKLOG HISTORY ({techStats.myJobs.length})</TabsTrigger>
                                                         <TabsTrigger value="settlements" className="tab h-full data-[state=active]:bg-brand-red">PAYROLL LEDGER ({techStats.myLogs.length})</TabsTrigger>
                                                         <TabsTrigger value="penalties" className="tab h-full data-[state=active]:bg-brand-red">PENALTY AUDIT</TabsTrigger>
                                                     </TabsList>
 
                                                     <TabsContent value="missions" className="m-0 space-y-3">
-                                                        {renderAuditHeader("Mission Performance Ledger", sortedTechVisits.length)}
+                                                        {renderAuditHeader("Weeklog Audit Manifest", sortedTechVisits.length)}
                                                         <div className="table-wrap p-0">
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">

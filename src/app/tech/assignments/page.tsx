@@ -42,6 +42,8 @@ import { useSearchParams } from 'next/navigation';
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState } from '@/lib/utils';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -67,7 +69,7 @@ const getGPSCoordinates = (): Promise<string> => {
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(workOrders);
+    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('date');
     const [searchQuery, setSearchQuery] = useState("");
@@ -83,6 +85,19 @@ export default function TechAssignmentsPage() {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
+
+        if (userId) {
+            const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+                const orders = snap.docs
+                    .map(d => ({ ...d.data(), id: d.id } as WorkOrder))
+                    .filter(wo => 
+                        wo.assignedTechnicianId === userId || 
+                        (wo.assignedTechIds && wo.assignedTechIds.includes(userId))
+                    );
+                setAllWorkOrders(orders);
+            });
+            return () => unsubWO();
+        }
     }, []);
 
     useEffect(() => {
@@ -97,7 +112,6 @@ export default function TechAssignmentsPage() {
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
         return allWorkOrders
-            .filter(wo => wo.assignedTechnicianId === currentTechId)
             .filter(wo => {
                 const q = searchQuery.toLowerCase();
                 const matchesSearch = (
@@ -160,105 +174,84 @@ export default function TechAssignmentsPage() {
     const handleConfirm = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                return {
-                    ...wo,
-                    status: 'confirmed',
-                    isAcknowledged: true,
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-        toast({ title: "Assignment Confirmed", description: "Command Center notified of acknowledgment." });
+        // Update in Firestore
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, {
+            status: 'confirmed',
+            isAcknowledged: true,
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            toast({ title: "Assignment Confirmed", description: "Command Center notified of acknowledgment." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleStartTrip = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                return {
-                    ...wo,
-                    status: 'on-my-way',
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-        toast({ title: "Trip Started", description: "Mission status transitioned to En Route." });
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, {
+            status: 'on-my-way',
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            toast({ title: "Trip Started", description: "Mission status transitioned to En Route." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleCheckIn = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                return {
-                    ...wo,
-                    status: 'in-progress',
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-        toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, {
+            status: 'in-progress',
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleCheckOut = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                return {
-                    ...wo,
-                    status: 'completed',
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-        toast({ title: "Job Finalized", description: "Mission registry closed and moved to history." });
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, {
+            status: 'completed',
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            toast({ title: "Job Finalized", description: "Mission registry closed and moved to history." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleReopen = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
-        setAllWorkOrders(prev => prev.map(wo => {
-            if (wo.id === woId) {
-                return {
-                    ...wo,
-                    status: 'in-progress',
-                    history: [
-                        ...(wo.history || []),
-                        { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-                    ]
-                };
-            }
-            return wo;
-        }));
-        setActiveTab('active');
-        toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal for editing." });
+        const docRef = doc(db, 'workOrders', woId);
+        updateDoc(docRef, {
+            status: 'in-progress',
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            setActiveTab('active');
+            toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal for editing." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const isAudited = (woId: string) => {
-        return weeklyLogs.some(log => 
-            log.status === 'Approved' && 
-            log.items.some(item => item.workOrderId === woId)
-        );
+        // Mock audit check logic
+        return false;
     };
 
     const handleOpenDetail = (wo: WorkOrder) => {

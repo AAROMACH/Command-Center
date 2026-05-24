@@ -204,8 +204,8 @@ export const WorkOrdersTable = React.memo(({
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedOrder.pay;
-      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.pay = selectedJob.pay;
+      finalUpdate.payType = selectedJob.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -264,7 +264,8 @@ export const WorkOrdersTable = React.memo(({
           </thead>
           <tbody>
             {paginatedOrders.map((order) => {
-              const technician = technicians.find(t => t.id === order.assignedTechnicianId);
+              const techId = order.assignedTechnicianId || order.assignedTechIds?.[0];
+              const technician = technicians.find(t => t.id === techId);
               return (
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
@@ -577,7 +578,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-                                <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="h-10 bg-bg-primary text-xs" />
+                                <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="h-10 bg-bg-primary h-10 text-xs" />
                             </div>
                         </div>
 
@@ -692,8 +693,6 @@ export const WorkOrdersTable = React.memo(({
             </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
-});
-
-WorkOrdersTable.displayName = "WorkOrdersTable";
+}

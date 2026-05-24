@@ -125,10 +125,13 @@ export default function AssignmentsHubPage() {
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
+        // Support both legacy single string and modern array field for tech ID
+        const techId = wo.assignedTechnicianId || (wo.assignedTechIds && wo.assignedTechIds[0]);
+        
         // Enforce Registry Rule: Assignment terminal requires a technician allocation
-        if (wo.status === 'unassigned' || !wo.assignedTechnicianId) return false;
+        if (wo.status === 'unassigned' || !techId) return false;
 
-        const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+        const tech = technicians.find(t => t.id === techId);
         const queryStr = searchQuery.toLowerCase();
         
         const matchesSearch = (
@@ -189,8 +192,10 @@ export default function AssignmentsHubPage() {
           case 'status': return safeA.status.localeCompare(safeB.status);
           case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
-            const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
-            const techB = technicians.find(t => t.id === b.assignedTechnicianId)?.name || 'Unassigned';
+            const idA = a.assignedTechnicianId || a.assignedTechIds?.[0];
+            const idB = b.assignedTechnicianId || b.assignedTechIds?.[0];
+            const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
+            const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
             return techA.localeCompare(techB);
           case 'date':
           default:
@@ -455,7 +460,8 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {activeWorkOrders.map(wo => {
-                                const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                                const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
                                         <td className="text-left pl-6 py-4">
@@ -563,7 +569,8 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {archivedWorkOrders.map(wo => {
-                                const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
+                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                                const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
                                         <td className="text-left pl-6 py-4">
@@ -751,7 +758,7 @@ export default function AssignmentsHubPage() {
                                           type="number"
                                           value={editedOrder.blendedHourlyRate || ''}
                                           onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                          className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                          className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
                                       />
                                   </div>
                               </div>

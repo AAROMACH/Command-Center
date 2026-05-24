@@ -72,7 +72,7 @@ const users = [
     avatarUrl: null,
     role: "technician",
     status: "active",
-    reliabilityScore: 0,
+    reliabilityScore: 91,
     reliabilityStatus: "reliable",
     penaltyPoints30d: 0,
     hourlyRate: 65,
@@ -152,11 +152,12 @@ const workOrders = [
     clientId: null,
     clientName: null,
     projectId: null,
+    assignedTechnicianId: TECH_ID,
     assignedTechIds: [TECH_ID],
     requiredSkills: ["Networking"],
     jobType: "troubleshooting",
     priority: "normal",
-    status: "unassigned",
+    status: "assigned",
     isOpenForScheduling: true,
     scheduleDate: "2026-04-04",
     scheduleTime: "12:00",
@@ -248,6 +249,7 @@ const workOrders = [
     clientId: CLIENT_ID,
     clientName: "Premium Brands Contact",
     projectId: "proj_0001",
+    assignedTechnicianId: TECH_ID,
     assignedTechIds: [TECH_ID],
     requiredSkills: ["Cabling", "Networking"],
     jobType: "installation",
@@ -373,7 +375,7 @@ const projects = [
 ];
 
 const projectPhases = [
-  { _parentId: "proj_0001", id: "ph_0001", projectId: "proj_0001", name: "Phase 1 – Site Prep", description: "Prep cable paths, mark mounting locations, confirm access.", order: 1, status: "pending", plannedStartDate: "2026-04-22", plannedEndDate: "2026-04-22", notes: null, photoUrls: [], createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
+  { _parentId: "proj_0001", id: "ph_0001", projectId: "proj_0001", name: "Phase 1 – Site Prep", description: "Prep cable paths, mark mounting locations, confirm access.", order: 1, status: "pending", plannedStartDate: "2026-04-22", plannedStartDate: "2026-04-22", notes: null, photoUrls: [], createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
   { _parentId: "proj_0001", id: "ph_0002", projectId: "proj_0001", name: "Phase 2 – Cable Run & Termination", description: "Run all cable drops and terminate at patch panel.", order: 2, status: "pending", plannedStartDate: "2026-04-23", plannedEndDate: "2026-04-23", notes: null, photoUrls: [], createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
   { _parentId: "proj_0001", id: "ph_0003", projectId: "proj_0001", name: "Phase 3 – Device Mounting & Config", description: "Mount cameras and network gear, configure and test.", order: 3, status: "pending", plannedStartDate: "2026-04-24", plannedEndDate: "2026-04-25", notes: null, photoUrls: [], createdAt: "2026-04-17T00:00:00Z", updatedAt: "2026-04-17T00:00:00Z" },
 ];
@@ -392,7 +394,7 @@ const projectDailyLogs = [
 ];
 
 const weeklyLogs = [
-  { id: "wl_0001", techId: TECH_ID, techName: "Corey Williams", weekStartDate: "2026-03-30T00:00:00Z", weekEndDate: "2026-04-05T23:59:59Z", dueAt: "2026-04-06T23:59:59Z", status: "draft", syncStatus: "live", locked: false, snapshotTakenAt: null, totalPayout: null, submittedAt: null, reviewedAt: null, reviewedBy: null, adminNotes: null, createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
+  { id: "wl_0001", techId: TECH_ID, techName: "Corey Williams", weekStartDate: "2026-03-30T00:00:00Z", weekEndDate: "2026-04-05T23:59:59Z", dueAt: "2026-04-06T23:59:59Z", status: "Draft", syncStatus: "live", locked: false, snapshotTakenAt: null, totalPayout: null, submittedAt: null, reviewedAt: null, reviewedBy: null, adminNotes: null, createdAt: "2026-04-04T12:00:00Z", updatedAt: "2026-04-04T12:00:00Z" },
 ];
 
 const weeklyLogItems = [

@@ -146,6 +146,7 @@ export default function DispatchPage() {
   const filteredOrders = useMemo(() => {
     let results = allWorkOrders.filter(order => {
       const q = searchQuery.toLowerCase();
+      const techId = order.assignedTechnicianId || order.assignedTechIds?.[0];
       const matchesSearch = 
         (order.id || '').toLowerCase().includes(q) ||
         (order.title || '').toLowerCase().includes(q) ||
@@ -193,8 +194,10 @@ export default function DispatchPage() {
             case 'pay': return (b.pay || 0) - (a.pay || 0);
             case 'type': return (a.projectType || '').localeCompare(b.projectType || '');
             case 'tech':
-                const techA = technicians.find(t => t.id === a.assignedTechnicianId)?.name || 'Unassigned';
-                const techB = technicians.find(t => t.id === b.assignedTechnicianId)?.name || 'Unassigned';
+                const idA = a.assignedTechnicianId || a.assignedTechIds?.[0];
+                const idB = b.assignedTechnicianId || b.assignedTechIds?.[0];
+                const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
+                const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);
             default:
                 return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
@@ -426,7 +429,10 @@ export default function DispatchPage() {
 
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs 
-              workOrders={filteredOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId)} 
+              workOrders={filteredOrders.filter(wo => {
+                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                return wo.status === 'unassigned' || !techId;
+              })} 
               technicians={technicians} 
               onWorkOrdersChange={(updated) => {
                 // Bulk update support is limited in client-side Firestore without transactions, 
@@ -461,7 +467,10 @@ export default function DispatchPage() {
 
                 <TabsContent value="active" className="m-0">
                    <WorkOrdersClient 
-                      workOrders={filteredOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && !!wo.assignedTechnicianId)} 
+                      workOrders={filteredOrders.filter(wo => {
+                        const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0];
+                        return wo.status !== 'unassigned' && wo.status !== 'completed' && !!techId;
+                      })} 
                       allWorkOrders={allWorkOrders} 
                       technicians={technicians} 
                       onWorkOrdersChange={(updated) => {

@@ -53,9 +53,15 @@ export default function TechDashboardPage() {
             if (d.exists()) setTech({ ...d.data(), id: d.id } as Technician);
         });
 
-        const q = query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId));
-        const unsubWO = onSnapshot(q, (snap) => {
-            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        // We fetch all work orders for this tech by checking both single ID and array field
+        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+            const orders = snap.docs
+                .map(d => ({ ...d.data(), id: d.id } as WorkOrder))
+                .filter(wo => 
+                    wo.assignedTechnicianId === userId || 
+                    (wo.assignedTechIds && wo.assignedTechIds.includes(userId))
+                );
+            setAllWorkOrders(orders);
         });
 
         const logQ = query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId), where('status', '==', 'Draft'));
@@ -66,6 +72,7 @@ export default function TechDashboardPage() {
         return () => {
             unsubTech();
             unsubWO();
+            unsubmittedLogs; // existing unsub cleanup pattern
             unsubLogs();
         };
     }, [currentTechId]);
@@ -109,7 +116,7 @@ export default function TechDashboardPage() {
             </div>
 
             {activeJob && (
-                <Card className="border-2 border-brand-red bg-brand-red-dim/5" onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
+                <Card className="border-2 border-brand-red bg-brand-red-dim/5 cursor-pointer" onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
                     <CardHeader className="pb-2 text-left">
                         <CardTitle className="text-xl uppercase">{activeJob.description}</CardTitle>
                         <CardDescription className="text-xs uppercase font-bold text-brand-red">{activeJob.status}</CardDescription>

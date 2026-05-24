@@ -49,6 +49,7 @@ export type WorkOrder = {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'completed';
   assignedTechnicianId?: string;
+  assignedTechIds?: string[]; // Supporting array-based assignment from schema
   additionalTechnicianIds?: string[];
   clientName: string;
   projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission' | string;

@@ -65,10 +65,17 @@ export function IntelligenceTerminal() {
 
     const [metric, setMetric] = useState<MetricType>('assignments');
     const [groupBy, setGroupBy] = useState<GroupBy>('tech');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        to: new Date()
-    });
+    
+    // Fix: Defer date initialization to prevent hydration mismatch
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+    useEffect(() => {
+        // Initialize temporal window on mount
+        setDateRange({
+            from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            to: new Date()
+        });
+    }, []);
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -91,7 +98,7 @@ export function IntelligenceTerminal() {
     }, []);
 
     const chartData = useMemo(() => {
-        if (loading) return [];
+        if (loading || !dateRange) return [];
 
         const filteredWO = workOrders.filter(wo => {
             if (!dateRange?.from || !wo.scheduleDate) return true;
@@ -289,7 +296,7 @@ export function IntelligenceTerminal() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-8 flex-1 flex items-center justify-center">
-                        {loading ? (
+                        {loading || !dateRange ? (
                             <div className="flex flex-col items-center gap-4 text-accent-gold">
                                 <RefreshCw className="h-10 w-10 animate-spin" />
                                 <p className="text-[10px] font-bold uppercase tracking-widest">Aggregating Registry Data...</p>

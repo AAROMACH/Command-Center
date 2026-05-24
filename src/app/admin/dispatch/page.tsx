@@ -9,7 +9,7 @@ import { RequestsTabs } from "../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./components/work-orders-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown, Calendar } from "lucide-react";
+import { SlidersHorizontal, Plus, Search, Import as ImportIcon, Layers, ClipboardList, X, ArrowUpDown, Calendar, History as HistoryIcon, Wrench } from "lucide-react";
 import { NewAssignmentDialog } from "./components/new-assignment-dialog";
 import { ImportJobsDialog } from "./components/import-jobs-dialog";
 import { NewRequestDialog } from "../requests/components/new-request-dialog";
@@ -333,14 +333,40 @@ export default function DispatchPage() {
         </TabsContent>
 
         <TabsContent value="assignments" className="mt-0">
-           <WorkOrdersClient 
-              workOrders={filteredOrders.filter(wo => wo.status !== 'unassigned' && !!wo.assignedTechnicianId)} 
-              allWorkOrders={allWorkOrders} 
-              technicians={technicians} 
-              onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
-              routes={routes}
-              mode="assigned"
-           />
+            <Tabs defaultValue="active">
+                <div className="flex items-center justify-between gap-4 mb-4 bg-bg-secondary/50 p-3 rounded-lg border border-border-sub">
+                    <TabsList className="tabs !mb-0">
+                        <TabsTrigger value="active" className="tab flex items-center gap-2">
+                            <Wrench size={12} /> Active Missions
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="tab flex items-center gap-2">
+                            <HistoryIcon size={12} /> Assignment History
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="active" className="m-0">
+                   <WorkOrdersClient 
+                      workOrders={filteredOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && !!wo.assignedTechnicianId)} 
+                      allWorkOrders={allWorkOrders} 
+                      technicians={technicians} 
+                      onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+                      routes={routes}
+                      mode="assigned"
+                   />
+                </TabsContent>
+
+                <TabsContent value="history" className="m-0">
+                   <WorkOrdersClient 
+                      workOrders={filteredOrders.filter(wo => wo.status === 'completed')} 
+                      allWorkOrders={allWorkOrders} 
+                      technicians={technicians} 
+                      onWorkOrdersChange={(updated) => updated.forEach(wo => setDoc(doc(db, 'workOrders', wo.id), wo, { merge: true }))}
+                      routes={routes}
+                      mode="assigned"
+                   />
+                </TabsContent>
+            </Tabs>
         </TabsContent>
       </Tabs>
 

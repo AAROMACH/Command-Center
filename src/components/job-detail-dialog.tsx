@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -233,14 +234,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue={userIsTech ? "tactical" : "details"} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6 border-b border-border-sub bg-bg-secondary/20">
                 <TabsList className="h-10 bg-transparent p-0 gap-8 justify-start">
                     <TabsTrigger value="details" className="tab-trigger-job">Mission Briefing</TabsTrigger>
-                    {userIsTech && <TabsTrigger value="tactical" className="tab-trigger-job">Tactical Windows</TabsTrigger>}
-                    <TabsTrigger value="history" className="tab-trigger-job flex items-center gap-2">
+                    <TabsTrigger value="tactical" className="tab-trigger-job">Tactical Windows</TabsTrigger>
+                    {!userIsTech && <TabsTrigger value="history" className="tab-trigger-job flex items-center gap-2">
                         <History size={14}/> Activity Ledger
-                    </TabsTrigger>
+                    </TabsTrigger>}
                 </TabsList>
             </div>
 
@@ -421,7 +422,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                         <div className="grid grid-cols-2 gap-4">
                             <Card className="bg-bg-secondary border-border-main text-left">
                                 <CardHeader className="pb-2">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Confirmation Handshake</p>
+                                    <CardTitle className="text-[8px] font-black text-text-muted uppercase tracking-widest">Confirmation Handshake</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-3">
@@ -434,7 +435,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                             </Card>
                             <Card className="bg-bg-secondary border-border-main text-left">
                                 <CardHeader className="pb-2">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Trip Initiation</p>
+                                    <CardTitle className="text-[8px] font-black text-text-muted uppercase tracking-widest">Trip Initiation</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-3">
@@ -447,7 +448,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                             </Card>
                             <Card className="bg-bg-secondary border-border-main text-left">
                                 <CardHeader className="pb-2">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">On-Site Arrival</p>
+                                    <CardTitle className="text-[8px] font-black text-text-muted uppercase tracking-widest">On-Site Arrival</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-3">
@@ -460,7 +461,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                             </Card>
                             <Card className="bg-bg-secondary border-border-main text-left">
                                 <CardHeader className="pb-2">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Mission Finalization</p>
+                                    <CardTitle className="text-[8px] font-black text-text-muted uppercase tracking-widest">Mission Finalization</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-3">
@@ -485,7 +486,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                         )}>
                                             {entry.type === 'tech_swap' ? <RefreshCw size={14}/> : <Activity size={14}/>}
                                         </div>
-                                        <div>
+                                        <div className="text-left">
                                             <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide leading-tight">{entry.details}</p>
                                             <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
                                                 {entry.date} · Authorized by {entry.user}

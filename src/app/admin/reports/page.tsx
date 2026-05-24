@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -803,7 +804,7 @@ export default function ActivityAuditPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {sortedAllSiteVisits.map(wo => {
-                                            const linkedLog = weeklyLogs.find(log => log.items?.some(item => item.workOrderId === wo.id));
+                                            const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                             return (
                                                 <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                     <TableCell className="text-left py-4 pl-6">
@@ -1063,7 +1064,7 @@ export default function ActivityAuditPage() {
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {sortedTechVisits.map(wo => {
-                                                                        const linkedLog = weeklyLogs.find(log => log.items?.some(item => item.workOrderId === wo.id));
+                                                                        const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                                                         return (
                                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                                 <TableCell className="text-left py-4 pl-6">

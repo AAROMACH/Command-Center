@@ -5,29 +5,22 @@ import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     Check, 
     X, 
-    AlertTriangle, 
-    Clock, 
-    MapPin, 
     Calendar as CalendarIcon,
     Send,
-    CircleCheck,
     History,
     ChevronDown,
     ShieldAlert,
-    Info,
     LayoutList,
     ChevronRight,
     ArrowLeft,
     Search,
     ArrowUpDown,
-    SlidersHorizontal,
-    Hash,
-    Building2,
-    ExternalLink
+    Clock,
+    CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,7 +48,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -64,13 +57,6 @@ const DISPUTE_REASONS = [
     "Wrong date on my log",
     "This appears to be a duplicate"
 ];
-
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
-
-type SortOption = 'newest' | 'oldest' | 'status' | 'billing' | 'items';
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -96,7 +82,7 @@ export default function TechWeeklyLogPage() {
             const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId)), (snap) => {
                 setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
             });
-            const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
+            const unsubWO = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
             return () => {
@@ -206,10 +192,10 @@ export default function TechWeeklyLogPage() {
     const counts = useMemo(() => {
         if (!activeLog) return { total: 0, confirmed: 0, disputed: 0, pending: 0 };
         return {
-            total: activeLog.items.length,
-            confirmed: activeLog.items.filter(i => i.confirmationStatus === 'confirmed').length,
-            disputed: activeLog.items.filter(i => i.confirmationStatus === 'disputed').length,
-            pending: activeLog.items.filter(i => !i.confirmationStatus).length
+            total: (activeLog.items || []).length,
+            confirmed: (activeLog.items || []).filter(i => i.confirmationStatus === 'confirmed').length,
+            disputed: (activeLog.items || []).filter(i => i.confirmationStatus === 'disputed').length,
+            pending: (activeLog.items || []).filter(i => !i.confirmationStatus).length
         };
     }, [activeLog]);
 
@@ -307,7 +293,7 @@ export default function TechWeeklyLogPage() {
                                     <div className="text-left">
                                         <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
                                         <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                            <span>{log.items.length} Assignments</span>
+                                            <span>{(log.items || []).length} Assignments</span>
                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                             <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
                                         </div>
@@ -400,7 +386,7 @@ export default function TechWeeklyLogPage() {
                     )}
                 </div>
                 <div className="space-y-3">
-                    {activeLog.items.map(item => (
+                    {(activeLog.items || []).map(item => (
                         <JobAuditCard 
                             key={item.id} 
                             item={item} 

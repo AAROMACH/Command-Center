@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -757,7 +756,9 @@ export default function ActivityAuditPage() {
                                 <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
                                     <p className="text-3xl font-bold text-text-primary">{siteAuditData.visits.filter(wo => wo.status !== 'completed').length}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold">awaiting action</p>
+                                    <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? "text-accent-gold" : "text-text-green")}>
+                                        {siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? 'Active Queue' : 'Clean'}
+                                    </p>
                                 </Card>
                                 <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Strategic Value</p>
@@ -1153,7 +1154,7 @@ export default function ActivityAuditPage() {
                                                             </div>
                                                         ))}
                                                         {techStats.penalties.length === 0 && (
-                                                            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40">
+                                                            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
                                                                 <CheckCircle2 size={48} className="mx-auto text-text-green mb-2" />
                                                                 <p className="text-[10px] font-bold uppercase tracking-widest">Clean penalty registry</p>
                                                             </div>

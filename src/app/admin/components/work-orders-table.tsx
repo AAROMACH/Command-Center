@@ -148,6 +148,7 @@ export const WorkOrdersTable = React.memo(({
   }, []);
 
   const handleOpenEditDialog = useCallback((order: WorkOrder) => {
+    if (order.status === 'completed') return;
     setSelectedOrder(order);
     setEditedOrder({ ...order });
     setIsEditDialogOpen(true);

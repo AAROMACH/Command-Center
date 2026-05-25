@@ -542,15 +542,15 @@ export const assignmentTimeLogs: AssignmentTimeLog[] = [
 
 export const weeklyLogs: WeeklyLog[] = [
   {
-    id: 'wl-1',
-    technicianId: 'tech-001',
-    weekOf: '07-22-2024',
-    status: 'Submitted',
+    id: 'wl-corey-current',
+    technicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    weekOf: '04-20-2026',
+    status: 'Draft',
     items: [
-      { id: 'wli-1', workOrderId: 'wo-104', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, confirmationStatus: 'confirmed' }
+      { id: 'wli-corey-1', workOrderId: 'asmt_0001', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
     ],
     reimbursements: [],
-    totalPayout: 2150.50,
+    totalPayout: 185.00,
   }
 ];
 

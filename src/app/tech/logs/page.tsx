@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -66,7 +65,7 @@ export default function TechWeeklyLogPage() {
     const [mounted, setMounted] = useState(false);
     
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<SortOption>('newest');
+    const [sortBy, setSortBy] = useState<string>('newest');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);

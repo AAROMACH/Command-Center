@@ -33,7 +33,7 @@ const users = [
     id: ADMIN_AUTH_UID,
     userId: ADMIN_ID,
     authUid: ADMIN_AUTH_UID,
-    name: "Admin Staff",
+    name: "System Administrator",
     email: "admin@aaromach.com",
     phone: null,
     avatarUrl: null,
@@ -53,7 +53,7 @@ const users = [
     phone: "555-200-3000",
     avatarUrl: null,
     role: "technician",
-    roles: ["field_technician", "project_manager"],
+    roles: ["project_manager", "field_technician"],
     status: "active",
     reliabilityScore: 100,
     reliabilityStatus: "reliable",
@@ -124,23 +124,7 @@ const workOrders = [
     source: "field_nation",
     createdAt: "2026-04-04T12:00:00Z",
     updatedAt: "2026-04-04T12:00:00Z",
-  },
-  {
-    id: "wo_0002",
-    title: "Front Camera Offline",
-    description: "The front entrance camera is not showing video.",
-    location: "Detroit, MI",
-    clientId: CLIENT_AUTH_UID,
-    clientName: "Premium Brands",
-    status: "unassigned",
-    priority: "high",
-    projectType: "troubleshooting",
-    pay: 150,
-    payType: "fixed",
-    source: "client_portal",
-    createdAt: "2026-04-04T12:00:00Z",
-    updatedAt: "2026-04-04T12:00:00Z",
-  },
+  }
 ];
 
 const assignments = [
@@ -162,25 +146,6 @@ const assignments = [
     scheduleTime: "10:00 AM EST",
     assignedAt: "2026-04-18T10:00:00Z",
     updatedAt: "2026-04-18T10:00:00Z",
-  },
-  {
-    id: "asmt_0002",
-    workOrderId: "wo_0004",
-    techId: TECH_AUTH_UID,
-    assignedTechnicianId: TECH_AUTH_UID,
-    status: "in-progress",
-    title: "Wixom – Phase 1 Site Prep",
-    description: "Walk site, mark cable paths, and confirm lift access.",
-    location: "Wixom, MI",
-    clientName: "Premium Brands",
-    priority: "normal",
-    projectType: "installation",
-    pay: 480,
-    payType: "hourly",
-    scheduleDate: "2026-04-22",
-    scheduleTime: "08:00 AM EST",
-    assignedAt: "2026-04-17T00:00:00Z",
-    updatedAt: "2026-04-22T08:00:00Z",
   }
 ];
 

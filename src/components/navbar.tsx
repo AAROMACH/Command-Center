@@ -84,7 +84,7 @@ export function Navbar() {
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 shadow-md">
+    <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 shadow-md w-full">
       <div className="flex w-1/5 items-center">
         <Link href={dashboardHref} className="flex items-center gap-2 group">
           {logo && (

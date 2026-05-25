@@ -118,7 +118,7 @@ export default function TechWeeklyLogPage() {
 
         return filtered.sort((a, b) => {
             if (sortBy === 'newest') return (b.weekOf || '').localeCompare(a.weekOf || '');
-            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(b.weekOf || '');
+            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(a.weekOf || '');
             if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
             if (sortBy === 'billing') return (b.totalPayout || 0) - (a.totalPayout || 0);
             return 0;
@@ -294,7 +294,7 @@ export default function TechWeeklyLogPage() {
                                     <div className="text-left">
                                         <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
                                         <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                            <span>{(log.items || []).length} Assignments</span>
+                                            <span>{log.items?.length || 0} Assignments</span>
                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                             <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
                                         </div>
@@ -327,7 +327,7 @@ export default function TechWeeklyLogPage() {
                     <ArrowLeft size={14} className="mr-2"/> Back to Registry
                 </Button>
                 <div className="h-4 w-px bg-border-sub" />
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Auditing week of {activeLog.weekOf}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Auditing week of {activeLog.weekOf}</p>
             </header>
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl">
@@ -339,20 +339,20 @@ export default function TechWeeklyLogPage() {
                         <ShieldAlert size={24} />
                     </div>
                     <div className="text-left">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary">Operational Audit</h2>
+                        <div className="flex items-center gap-3 text-left">
+                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary text-left">Operational Audit</h2>
                             <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[9px] tracking-widest">
                                 {activeLog.status}
                             </Badge>
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-left">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                 <Check className="text-text-green h-3 w-3"/> {counts.confirmed} Confirmed
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                 <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest text-left">
                                 <Clock size={12} className="h-3 w-3"/> {counts.pending} Awaiting Action
                             </div>
                         </div>
@@ -379,7 +379,7 @@ export default function TechWeeklyLogPage() {
 
             <div className="space-y-4 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Tactical Assignment Registry</h3>
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
                     {!isLocked && (
                         <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
                             <Search size={12} className="mr-1.5"/> Report Missing Assignment
@@ -433,12 +433,12 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         )}>
                             {isDisputed ? <X size={24}/> : item.confirmationStatus === 'confirmed' ? <Check size={24}/> : <CalendarIcon size={24}/>}
                         </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-3">
+                        <div className="min-w-0 text-left">
+                            <div className="flex items-center gap-3 text-left">
                                 <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.description}</h4>
                                 <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
                                 <span className="flex items-center gap-1.5"><CalendarIcon size={10}/> {job.scheduleDate}</span>
                                 <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
@@ -517,14 +517,14 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label><Input name="assignmentId" className="bg-bg-primary h-10 text-xs" /></div>
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label><Input name="clientName" className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label><Input name="assignmentId" className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label><Input name="clientName" className="bg-bg-primary h-10 text-xs" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label><Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" /></div>
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label><Input name="location" required className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label><Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label><Input name="location" required className="bg-bg-primary h-10 text-xs" /></div>
                     </div>
-                    <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label><Textarea name="summary" required className="bg-bg-primary min-h-[100px] text-xs" /></div>
+                    <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label><Textarea name="summary" required className="bg-bg-primary min-h-[100px] text-xs" /></div>
                     <DialogFooter><Button type="submit" className="bg-brand-red hover:bg-brand-red-hover">Submit Inquiry</Button></DialogFooter>
                 </form>
             </DialogContent>

@@ -8,7 +8,7 @@ export default function AdminLayout({
 }) {
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f]">
         <Navbar />
         <AlertBand />
       </div>

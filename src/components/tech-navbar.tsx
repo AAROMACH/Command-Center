@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -71,7 +70,7 @@ export function TechNavbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[52px] items-center border-b border-border-main bg-[#0f0f0f] px-6">
+    <nav className="flex h-[52px] items-center border-b border-border-main bg-[#0f0f0f] px-6 w-full">
       <div className="flex w-1/4 items-center">
         <Link href="/tech/dashboard" className="flex items-center gap-2">
            {logo && (
@@ -83,7 +82,7 @@ export function TechNavbar() {
               className="object-contain"
               data-ai-hint={logo.imageHint}
               priority
-              style={{ height: '50px', width: "auto" }}
+              style={{ height: '40px', width: "auto" }}
             />
           )}
           <div className="flex flex-col">

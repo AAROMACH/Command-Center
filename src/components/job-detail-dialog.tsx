@@ -487,7 +487,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                         </div>
                                         <div className="text-left">
                                             <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide leading-tight">{entry.details}</p>
-                                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
                                                 {entry.date} · Authorized by {entry.user}
                                             </p>
                                         </div>
@@ -497,7 +497,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                             ))}
                             {(mission.history || []).length === 0 && (
                                 <div className="py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest italic">Changelog Clear</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Changelog Clear</p>
                                 </div>
                             )}
                         </div>

@@ -13,7 +13,10 @@ import {
   Banknote,
   MapPin,
   FileText,
-  Activity
+  Activity,
+  Calendar,
+  ScrollText,
+  Coins
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -41,6 +44,14 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
 ];
 
+const techNavItems: NavItem[] = [
+  { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
+  { href: '/tech/projects', label: 'Projects', icon: Briefcase, permission: 'view_assigned_projects_only' },
+  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
+  { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
+  { href: '/tech/earnings', label: 'Billing', icon: Coins, permission: 'field_logs' },
+];
+
 const clientNavItems: NavItem[] = [
   { href: '/client/tickets', label: 'Tickets', icon: ClipboardList, permission: 'client_portal' },
   { href: '/client/projects', label: 'Projects', icon: Briefcase, permission: 'client_portal' },
@@ -50,7 +61,7 @@ const clientNavItems: NavItem[] = [
 ];
 
 /**
- * @fileOverview Locked Navigation Terminal.
+ * @fileOverview Consolidated Operational Navigation Terminal.
  * Dashboard is anchored to the center position across all portals.
  * Uses live Firestore listeners to ensure permissions are synchronized.
  */
@@ -70,7 +81,6 @@ export function Navbar() {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
           } else {
-            // Fallback to static registry during transition
             const storedId = localStorage.getItem('currentUserId');
             const registryUser = technicians.find(t => t.id === fbUser.uid || t.id === storedId);
             setCurrentUser(registryUser);
@@ -90,13 +100,16 @@ export function Navbar() {
 
   if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full opacity-0" />;
 
+  const isTechPortal = pathname.startsWith('/tech');
   const isClientPortal = pathname.startsWith('/client');
-  const navItems = isClientPortal ? clientNavItems : adminNavItems;
-  const dashboardHref = isClientPortal ? '/client/dashboard' : '/admin/dashboard';
+  
+  const navItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
+  const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
   
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
-  const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
+  // Determine Dashboard Center Anchor
+  const dashboardIndex = visibleItems.findIndex(i => i.href === dashboardHref);
   let leftItems: NavItem[] = [];
   let centerItem: NavItem | null = null;
   let rightItems: NavItem[] = [];
@@ -108,6 +121,11 @@ export function Navbar() {
   } else {
     leftItems = visibleItems;
   }
+
+  const isActive = (href: string) => {
+    if (href.endsWith('/dashboard')) return pathname === href;
+    return pathname.startsWith(href);
+  };
 
   return (
     <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full">
@@ -128,7 +146,7 @@ export function Navbar() {
           <div className="flex flex-col text-left">
             <span className="font-mono text-base font-bold uppercase tracking-tight text-white leading-none">Aaromach</span>
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-red">
-                {isClientPortal ? 'Client Portal' : 'Command Center'}
+                {isClientPortal ? 'Client Portal' : isTechPortal ? 'Field Terminal' : 'Command Center'}
             </span>
           </div>
         </Link>
@@ -141,7 +159,7 @@ export function Navbar() {
             href={item.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap',
-              pathname === item.href ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
+              isActive(item.href) ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <item.icon className="h-3.5 w-3.5" />
@@ -154,7 +172,7 @@ export function Navbar() {
             href={centerItem.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all border border-transparent',
-              pathname === centerItem.href ? 'bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'text-white bg-bg-tertiary hover:bg-bg-elevated'
+              isActive(centerItem.href) ? 'bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'text-white bg-bg-tertiary hover:bg-bg-elevated'
             )}
           >
             <centerItem.icon className="h-4 w-4" />
@@ -168,7 +186,7 @@ export function Navbar() {
             href={item.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap',
-              pathname === item.href ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
+              isActive(item.href) ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <item.icon className="h-3.5 w-3.5" />

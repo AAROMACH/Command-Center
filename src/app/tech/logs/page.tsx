@@ -419,7 +419,7 @@ export default function TechWeeklyLogPage() {
             </div>
 
             <div className="space-y-4 max-w-4xl mx-auto">
-                <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
+                <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
                     {!isLocked && (
                         <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
@@ -430,7 +430,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={item.id || `${item.workOrderId}-${itemIdx}`} 
+                            key={`${item.workOrderId}-${item.id || itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -462,6 +462,8 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
     const [isDisputing, setIsDisputing] = useState(false);
     const [reason, setReason] = useState(item.disputeReason || "");
 
+    const displayId = (item.workOrderId || 'N/A').toUpperCase();
+
     if (!job) {
         return (
             <Card className="bg-bg-secondary border-border-main border-dashed opacity-50 p-4">
@@ -470,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
                         </div>
                     </div>
                     {!isLocked && (

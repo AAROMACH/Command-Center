@@ -78,13 +78,12 @@ import { DateRange } from "react-day-picker";
 import { 
     penaltyEvents,
     assignmentTimeLogs,
-    technicians as mockTechnicians,
 } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
-import type { Technician, WorkOrder, WeeklyLog, Expense, TimeOffRequest, AssignmentTimeLog, Project, AdminMessage, Invoice } from '@/lib/types';
-import { format, parseISO, subDays, isAfter, isBefore, addHours, addDays, addWeeks, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
+import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, SiteRequest, AdminMessage, Invoice } from '@/lib/types';
+import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
@@ -681,7 +680,7 @@ export default function ActivityAuditPage() {
                         </div>
                     </PopoverTrigger>
                     <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                        <div className="p-3 border-b border-border-sub bg-bg-tertiary flex justify-between items-center">
+                        <div className="p-3 border-b border-border-sub bg-bg-tertiary flex justify-between items-center text-left">
                             <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Temporal constraints</p>
                             <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[9px] font-bold text-brand-red hover:underline">Reset</button>
                         </div>
@@ -801,7 +800,7 @@ export default function ActivityAuditPage() {
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
-                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
+                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -869,7 +868,7 @@ export default function ActivityAuditPage() {
                              </div>
                         </TabsContent>
 
-                        <TabsContent value="billing" className="m-0 space-y-4">
+                        <TabsContent value="billing" className="m-0 space-y-4 text-left">
                             <div className="table-wrap p-0">
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
@@ -884,7 +883,7 @@ export default function ActivityAuditPage() {
                                     <TableBody>
                                         {siteAuditData.invoices.map(inv => (
                                             <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6">INV-{inv.invoiceNumber}</TableCell>
+                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">INV-{inv.invoiceNumber}</TableCell>
                                                 <TableCell className="text-xs uppercase font-bold text-text-primary text-left">
                                                     {inv.projectId ? `Project: ${inv.projectId.toUpperCase()}` : inv.workOrderId ? `Job: ${inv.workOrderId.toUpperCase()}` : 'General Settlement'}
                                                 </TableCell>
@@ -1072,8 +1071,8 @@ export default function ActivityAuditPage() {
                                                                                 <TableCell className="text-left py-4 pl-6">
                                                                                     <div className="flex flex-col gap-0.5">
                                                                                         <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none">{(wo.id || '').toUpperCase()}</span>
-                                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
-                                                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5">{wo.clientName}</p>
+                                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>
+                                                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5 text-left">{wo.clientName}</p>
                                                                                     </div>
                                                                                 </TableCell>
                                                                                 <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
@@ -1136,7 +1135,7 @@ export default function ActivityAuditPage() {
                                                         </div>
                                                     </TabsContent>
 
-                                                    <TabsContent value="penalties" className="m-0 space-y-3">
+                                                    <TabsContent value="penalties" className="m-0 space-y-3 text-left">
                                                         {techStats.penalties.map(p => (
                                                             <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
                                                                 <div className="flex items-center gap-4 text-left">
@@ -1186,7 +1185,7 @@ export default function ActivityAuditPage() {
                                     <div className="space-y-2">
                                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
                                             <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 text-left">
                                                 <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Field Verification Anomaly</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase">
                                                     Operational discrepancy detected in <code>project_daily_logs</code> registry. Potential temporal ghosting.

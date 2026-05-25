@@ -33,6 +33,10 @@ const navItems: NavItem[] = [
   { href: '/tech/earnings', label: 'Billing', icon: Coins, permission: 'field_logs' },
 ];
 
+/**
+ * @fileOverview Field Terminal Locked Navigation.
+ * Dashboard is anchored to the center position.
+ */
 export function TechNavbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
@@ -72,20 +76,20 @@ export function TechNavbar() {
   return (
     <nav className="flex h-[52px] items-center border-b border-border-main bg-[#0f0f0f] px-6 w-full">
       <div className="flex w-1/4 items-center">
-        <Link href="/tech/dashboard" className="flex items-center gap-2">
+        <Link href="/tech/dashboard" className="flex items-center gap-2 group">
            {logo && (
             <Image 
               src={logo.imageUrl} 
               alt="Aaromach Logo" 
               width={100} 
               height={50} 
-              className="object-contain"
+              className="object-contain transition-opacity group-hover:opacity-80"
               data-ai-hint={logo.imageHint}
               priority
               style={{ height: '40px', width: "auto" }}
             />
           )}
-          <div className="flex flex-col">
+          <div className="flex flex-col text-left">
             <span className="font-mono text-lg font-bold uppercase leading-none text-text-primary">Aaromach</span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-brand-red">Technician Portal</span>
           </div>
@@ -98,7 +102,7 @@ export function TechNavbar() {
             key={item.href}
             href={item.href}
             className={cn(
-              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all',
+              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all whitespace-nowrap',
               isActive(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
@@ -112,7 +116,7 @@ export function TechNavbar() {
             href={centerItem.href}
             className={cn(
               'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#888888] transition-all border border-transparent',
-              isActive(centerItem.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
+              isActive(centerItem.href) ? 'active bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'hover:bg-bg-tertiary hover:text-text-primary text-white bg-bg-tertiary'
             )}
           >
             <centerItem.icon className="h-4 w-4" />
@@ -125,7 +129,7 @@ export function TechNavbar() {
             key={item.href}
             href={item.href}
             className={cn(
-              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all',
+              'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] transition-all whitespace-nowrap',
               isActive(item.href) ? 'active bg-brand-red text-white' : 'hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >

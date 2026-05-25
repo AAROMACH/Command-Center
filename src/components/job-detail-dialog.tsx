@@ -70,6 +70,10 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
+/**
+ * @fileOverview Mission Detail Terminal.
+ * Enforces Read-Only state for finalized assignments to ensure audit integrity.
+ */
 export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }: JobDetailDialogProps) {
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -152,6 +156,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
   };
 
   const handleAssign = (technicianId: string) => {
+    if (isCompleted) return;
     const docRef = doc(db, 'assignments', mission.id);
     const targetTech = technicians.find(t => t.id === technicianId);
     const today = format(new Date(), 'MM-dd-yyyy');

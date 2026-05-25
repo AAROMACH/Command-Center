@@ -47,6 +47,10 @@ const clientNavItems: NavItem[] = [
   { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
 ];
 
+/**
+ * @fileOverview Locked Navigation Terminal.
+ * Dashboard is anchored to the center position across all portals.
+ */
 export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
@@ -65,7 +69,6 @@ export function Navbar() {
 
   const isClientPortal = pathname.startsWith('/client');
   const navItems = isClientPortal ? clientNavItems : adminNavItems;
-  const portalLabel = isClientPortal ? TERMINOLOGY.CLIENT : TERMINOLOGY.PORTAL.ADMIN;
   const dashboardHref = isClientPortal ? '/client/dashboard' : '/admin/dashboard';
   
   const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
@@ -99,7 +102,7 @@ export function Navbar() {
               style={{ height: '40px', width: 'auto' }}
             />
           )}
-          <div className="flex flex-col">
+          <div className="flex flex-col text-left">
             <span className="font-mono text-base font-bold uppercase tracking-tight text-white leading-none">Aaromach</span>
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand-red">
                 {isClientPortal ? 'Client Portal' : 'Command Center'}

@@ -1,6 +1,10 @@
 import { Navbar } from '@/components/navbar';
 import { AlertBand } from '@/components/alert-band';
 
+/**
+ * @fileOverview Admin Portal Core Layout.
+ * Enforces a high-priority fixed header registry to prevent navigation disappearing.
+ */
 export default function AdminLayout({
   children,
 }: {
@@ -8,7 +12,7 @@ export default function AdminLayout({
 }) {
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f]">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f] border-b border-border-main shadow-xl">
         <Navbar />
         <AlertBand />
       </div>

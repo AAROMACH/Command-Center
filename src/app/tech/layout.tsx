@@ -1,6 +1,10 @@
 import { TechNavbar } from '@/components/tech-navbar';
 import { AlertBand } from '@/components/alert-band';
 
+/**
+ * @fileOverview Field Technician Portal Core Layout.
+ * Enforces a high-priority fixed header registry to prevent navigation disappearing.
+ */
 export default function TechPortalLayout({
   children,
 }: {
@@ -8,7 +12,7 @@ export default function TechPortalLayout({
 }) {
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f]">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f] border-b border-border-main shadow-xl">
         <TechNavbar />
         <AlertBand />
       </div>

@@ -291,9 +291,9 @@ export default function TechWeeklyLogPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
-                    {filteredAndSortedLogs.map(log => (
+                    {filteredAndSortedLogs.map((log, logIdx) => (
                         <Card 
-                            key={log.id} 
+                            key={`log-${log.id || logIdx}`} 
                             className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
                             onClick={() => handleLogSelection(log)}
                         >
@@ -425,9 +425,9 @@ export default function TechWeeklyLogPage() {
                     )}
                 </div>
                 <div className="space-y-3">
-                    {(activeLog.items || []).map(item => (
+                    {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={item.id} 
+                            key={`audit-item-${item.id || itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}

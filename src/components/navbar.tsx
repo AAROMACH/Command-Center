@@ -21,7 +21,9 @@ import { useState, useEffect } from 'react';
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { hasPermission, type Permission } from '@/lib/permissions';
-import { TERMINOLOGY } from '@/lib/constants';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 type NavItem = {
   href: string;
@@ -50,6 +52,7 @@ const clientNavItems: NavItem[] = [
 /**
  * @fileOverview Locked Navigation Terminal.
  * Dashboard is anchored to the center position across all portals.
+ * Uses live Firestore listeners to ensure permissions are synchronized.
  */
 export function Navbar() {
   const pathname = usePathname();
@@ -59,13 +62,33 @@ export function Navbar() {
 
   useEffect(() => {
     setMounted(true);
-    const userId = localStorage.getItem('currentUserId');
-    if (userId) {
-      setCurrentUser(technicians.find(t => t.id === userId));
-    }
+    
+    // Establish Real-time Identity Registry Link
+    const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) {
+        const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+          if (snap.exists()) {
+            setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+          } else {
+            // Fallback to static registry during transition
+            const storedId = localStorage.getItem('currentUserId');
+            const registryUser = technicians.find(t => t.id === fbUser.uid || t.id === storedId);
+            setCurrentUser(registryUser);
+          }
+        });
+        return () => unsubUser();
+      } else {
+        const storedId = localStorage.getItem('currentUserId');
+        if (storedId) {
+            setCurrentUser(technicians.find(t => t.id === storedId));
+        }
+      }
+    });
+
+    return () => unsubAuth();
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full opacity-0" />;
 
   const isClientPortal = pathname.startsWith('/client');
   const navItems = isClientPortal ? clientNavItems : adminNavItems;
@@ -99,7 +122,7 @@ export function Navbar() {
               className="object-contain transition-opacity group-hover:opacity-80"
               data-ai-hint={logo.imageHint}
               priority
-              style={{ height: '40px', width: 'auto' }}
+              style={{ height: '36px', width: 'auto' }}
             />
           )}
           <div className="flex flex-col text-left">

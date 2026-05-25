@@ -99,35 +99,39 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
 
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
   if (!user) return false;
+  
   const userRoles: AppRole[] = [...(user.roles || [])];
   
-  const legacyRole = user.role.toLowerCase().replace(/ /g, '_') as AppRole;
-  if (legacyRole === 'lead_field_technician' as any) userRoles.push('project_lead');
-  else if (legacyRole === 'field_technician' as any) userRoles.push('field_technician');
-  else if (user.role.toLowerCase() === 'admin') userRoles.push('super_admin');
-  else if (user.role.toLowerCase() === 'dispatcher') userRoles.push('dispatch_admin');
+  const currentRole = user.role?.toLowerCase() || '';
+  if (currentRole.includes('admin')) userRoles.push('super_admin');
+  if (currentRole.includes('dispatcher')) userRoles.push('dispatch_admin');
+  if (currentRole.includes('client')) userRoles.push('client');
+  if (currentRole.includes('lead')) userRoles.push('project_lead');
+  if (currentRole.includes('tech')) userRoles.push('field_technician');
 
-  return userRoles.some(role => ROLE_PERMISSIONS[role]?.includes(permission));
+  const uniqueRoles = Array.from(new Set(userRoles));
+  return uniqueRoles.some(role => ROLE_PERMISSIONS[role as AppRole]?.includes(permission));
 }
 
 export function isAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
   const userRoles: AppRole[] = user.roles || [];
-  const isLegacyAdmin = ['admin', 'dispatcher'].includes(user.role.toLowerCase());
+  const currentRole = user.role?.toLowerCase() || '';
+  const isLegacyAdmin = currentRole.includes('admin') || currentRole.includes('dispatcher') || currentRole.includes('manager');
   return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
 }
 
 export function isSuperAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
-  return userRoles.includes('super_admin') || user.role.toLowerCase() === 'admin';
+  return userRoles.includes('super_admin') || (user.role?.toLowerCase() || '').includes('admin');
 }
 
 export function isDispatchAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
-  return userRoles.includes('dispatch_admin') || user.role.toLowerCase() === 'dispatcher';
+  return userRoles.includes('dispatch_admin') || (user.role?.toLowerCase() || '').includes('dispatcher');
 }
 
 export function isPayAdmin(user: Technician | null | undefined): boolean {
@@ -139,15 +143,15 @@ export function isTech(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const techRoles: AppRole[] = ['project_lead', 'field_technician'];
   const userRoles: AppRole[] = user.roles || [];
-  const isLegacyTech = user.role.toLowerCase().includes('tech') || 
-                       user.role.toLowerCase().includes('specialist') || 
-                       user.role.toLowerCase().includes('integrator');
+  const currentRole = user.role?.toLowerCase() || '';
+  const isLegacyTech = currentRole.includes('tech') || currentRole.includes('lead') || currentRole.includes('operative');
   return isLegacyTech || userRoles.some(role => techRoles.includes(role));
 }
 
 export function isClient(user: Technician | null | undefined): boolean {
   if (!user) return false;
-  return user.roles?.includes('client') || user.role.toLowerCase().includes('client');
+  const currentRole = user.role?.toLowerCase() || '';
+  return user.roles?.includes('client') || currentRole.includes('client');
 }
 
 export function getAvailablePortals(user: Technician | null | undefined): Portal[] {

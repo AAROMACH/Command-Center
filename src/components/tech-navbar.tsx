@@ -17,6 +17,9 @@ import { useState, useEffect } from 'react';
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 type NavItem = {
   href: string;
@@ -36,6 +39,7 @@ const navItems: NavItem[] = [
 /**
  * @fileOverview Field Terminal Locked Navigation.
  * Dashboard is anchored to the center position.
+ * Uses live Firestore listeners to ensure permissions are synchronized.
  */
 export function TechNavbar() {
   const pathname = usePathname();
@@ -45,10 +49,30 @@ export function TechNavbar() {
 
   useEffect(() => {
     setMounted(true);
-    const userId = localStorage.getItem('currentUserId');
-    if (userId) {
-      setCurrentUser(technicians.find(t => t.id === userId));
-    }
+    
+    // Establish Real-time Identity Registry Link
+    const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) {
+        const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+          if (snap.exists()) {
+            setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+          } else {
+            // Fallback to static registry during transition
+            const storedId = localStorage.getItem('currentUserId');
+            const registryUser = technicians.find(t => t.id === fbUser.uid || t.id === storedId);
+            setCurrentUser(registryUser);
+          }
+        });
+        return () => unsubUser();
+      } else {
+        const storedId = localStorage.getItem('currentUserId');
+        if (storedId) {
+            setCurrentUser(technicians.find(t => t.id === storedId));
+        }
+      }
+    });
+
+    return () => unsubAuth();
   }, []);
   
   const isActive = (href: string) => {
@@ -56,9 +80,9 @@ export function TechNavbar() {
     return pathname.startsWith(href);
   };
 
-  const visibleItems = mounted 
-    ? navItems.filter(item => hasPermission(currentUser, item.permission))
-    : [];
+  if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-main bg-[#0f0f0f] px-6 w-full opacity-0" />;
+
+  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
 
   const dashboardIndex = visibleItems.findIndex(i => i.label === 'Dashboard');
   let leftItems: NavItem[] = [];
@@ -86,7 +110,7 @@ export function TechNavbar() {
               className="object-contain transition-opacity group-hover:opacity-80"
               data-ai-hint={logo.imageHint}
               priority
-              style={{ height: '40px', width: "auto" }}
+              style={{ height: '36px', width: "auto" }}
             />
           )}
           <div className="flex flex-col text-left">
@@ -115,7 +139,7 @@ export function TechNavbar() {
           <Link
             href={centerItem.href}
             className={cn(
-              'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#888888] transition-all border border-transparent',
+              'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all border border-transparent',
               isActive(centerItem.href) ? 'active bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'hover:bg-bg-tertiary hover:text-text-primary text-white bg-bg-tertiary'
             )}
           >

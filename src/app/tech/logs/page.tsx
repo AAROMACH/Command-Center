@@ -21,7 +21,9 @@ import {
     ArrowUpDown,
     Clock,
     CheckCircle2,
-    Plus
+    Plus,
+    AlertTriangle,
+    MapPin
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -391,7 +393,7 @@ export default function TechWeeklyLogPage() {
                                 <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest text-left">
-                                <Clock size={12} className="h-3 w-3"/> {counts.pending} Awaiting Action
+                                <Clock size={12} className="h-3 w-3"/> {(activeLog.items || []).filter(i => !i.confirmationStatus).length} Awaiting Action
                             </div>
                         </div>
                     </div>
@@ -427,7 +429,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={`audit-item-${item.id || itemIdx}`} 
+                            key={`${item.id}-${item.workOrderId}-${itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -459,7 +461,52 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
     const [isDisputing, setIsDisputing] = useState(false);
     const [reason, setReason] = useState(item.disputeReason || "");
 
-    if (!job) return null;
+    if (!job) {
+        return (
+            <Card className="bg-bg-secondary border-border-main border-dashed opacity-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 text-left">
+                        <AlertTriangle className="text-accent-gold" />
+                        <div className="text-left">
+                            <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId.toUpperCase()}</p>
+                        </div>
+                    </div>
+                    {!isLocked && (
+                         <Button 
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-4 uppercase text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                            onClick={() => setIsDisputing(!isDisputing)}
+                        >
+                            <X size={16} className="mr-1.5"/> Dispute Missing Record
+                        </Button>
+                    )}
+                </div>
+                {isDisputing && (
+                    <div className="mt-4 pt-4 border-t border-border-sub animate-in slide-in-from-top-2 duration-300">
+                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Missing Record</p>
+                            <RadioGroup 
+                                value={reason} 
+                                onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
+                                className="grid grid-cols-1 md:grid-cols-2 gap-2"
+                                disabled={isLocked}
+                            >
+                                {DISPUTE_REASONS.map((r, idx) => (
+                                    <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
+                                        <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
+                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1">{r}</Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        </div>
+                    </div>
+                )}
+            </Card>
+        );
+    }
+
     const isDisputed = item.confirmationStatus === 'disputed';
 
     return (

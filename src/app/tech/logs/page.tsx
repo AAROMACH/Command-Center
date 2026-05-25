@@ -472,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
                         </div>
                     </div>
                     {!isLocked && (
@@ -624,5 +624,4 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 </form>
             </DialogContent>
         </Dialog>
-    );
 }

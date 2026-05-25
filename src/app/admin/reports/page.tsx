@@ -82,7 +82,7 @@ import {
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
-import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, SiteRequest, AdminMessage, Invoice } from '@/lib/types';
+import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, SiteRequest, AdminMessage, Invoice, Project } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -93,7 +93,7 @@ const formatDateDisplay = (dateStr: string) => {
     try {
         const parts = dateStr.split(/[-/]/);
         let d;
-        if (parts[0] && parts[0].length === 4) { d = new Date(dateStr); } 
+        if (parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
             if (y && m && day) {
@@ -464,8 +464,6 @@ export default function ActivityAuditPage() {
         }
     };
 
-    // ── RENDERERS ────────────────────────────────────────────────────────
-
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
@@ -578,7 +576,6 @@ export default function ActivityAuditPage() {
                 </div>
             </div>
 
-            {/* BROADCAST DIALOG */}
             <Dialog open={isBroadcasting} onOpenChange={setIsBroadcasting}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
@@ -622,7 +619,7 @@ export default function ActivityAuditPage() {
                                 placeholder="Clear, concise directive..." 
                                 value={newMessage.subject}
                                 onChange={e => setNewMessage({...newMessage, subject: e.target.value})}
-                                className="h-10 bg-bg-primary border-border-sub text-xs uppercase font-bold"
+                                className="h-10 bg-bg-primary border-border-sub text-xs font-bold uppercase tracking-wide"
                             />
                         </div>
                         <div className="space-y-2 text-left">
@@ -937,7 +934,6 @@ export default function ActivityAuditPage() {
             </header>
 
             <div className="space-y-6">
-                {/* GLOBAL SEARCH TERMINAL */}
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted group-focus-within:text-brand-red transition-colors" />
                     <Input 

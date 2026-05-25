@@ -60,11 +60,6 @@ const clientNavItems: NavItem[] = [
   { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
 ];
 
-/**
- * @fileOverview Consolidated Operational Navigation Terminal.
- * Dashboard is anchored to the center position across all portals.
- * Uses live Firestore listeners to ensure permissions are synchronized.
- */
 export function Navbar() {
   const pathname = usePathname();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
@@ -73,8 +68,6 @@ export function Navbar() {
 
   useEffect(() => {
     setMounted(true);
-    
-    // Establish Real-time Identity Registry Link
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
@@ -94,7 +87,6 @@ export function Navbar() {
         }
       }
     });
-
     return () => unsubAuth();
   }, []);
 
@@ -103,12 +95,11 @@ export function Navbar() {
   const isTechPortal = pathname.startsWith('/tech');
   const isClientPortal = pathname.startsWith('/client');
   
-  const navItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
+  const rawItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
   const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
   
-  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission));
+  const visibleItems = rawItems.filter(item => hasPermission(currentUser, item.permission));
 
-  // Determine Dashboard Center Anchor
   const dashboardIndex = visibleItems.findIndex(i => i.href === dashboardHref);
   let leftItems: NavItem[] = [];
   let centerItem: NavItem | null = null;

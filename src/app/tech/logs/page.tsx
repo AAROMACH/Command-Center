@@ -23,7 +23,8 @@ import {
     CheckCircle2,
     Plus,
     AlertTriangle,
-    MapPin
+    MapPin,
+    Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -113,9 +114,9 @@ export default function TechWeeklyLogPage() {
                 try {
                     const parts = log.weekOf.split('-');
                     let logDate;
-                    if (parts[2].length === 4) { // MM-dd-yyyy
+                    if (parts[2]?.length === 4) { 
                         logDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
-                    } else { // yyyy-MM-dd
+                    } else { 
                         logDate = startOfDay(parseISO(log.weekOf));
                     }
                     const start = startOfDay(dateRange.from!);
@@ -469,7 +470,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId.toUpperCase()}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
                         </div>
                     </div>
                     {!isLocked && (
@@ -496,7 +497,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                                 {DISPUTE_REASONS.map((r, idx) => (
                                     <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
                                         <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1">{r}</Label>
+                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
                                     </div>
                                 ))}
                             </RadioGroup>
@@ -573,7 +574,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                                 {DISPUTE_REASONS.map((r, idx) => (
                                     <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
                                         <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1">{r}</Label>
+                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
                                     </div>
                                 ))}
                             </RadioGroup>

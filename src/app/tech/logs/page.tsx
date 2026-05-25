@@ -489,7 +489,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                 {isDisputing && (
                     <div className="mt-4 pt-4 border-t border-border-sub animate-in slide-in-from-top-2 duration-300">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Missing Record</p>
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Reason</p>
                             <RadioGroup 
                                 value={reason} 
                                 onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
@@ -624,4 +624,5 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 </form>
             </DialogContent>
         </Dialog>
+    );
 }

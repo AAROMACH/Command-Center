@@ -202,7 +202,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
       <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default flex flex-col p-0 max-h-[90vh] shadow-2xl">
         <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-left">
                 <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono text-left">ID: {mission.id.toUpperCase()}</span>
                 <Badge variant={mission.status === 'completed' ? 'active' : mission.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="h-5 uppercase text-[9px] tracking-widest">
                     {mission.status}
@@ -226,7 +226,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 <MapPin size={12} className="text-brand-red shrink-0 group-hover/loc:scale-110 transition-transform" />
                 <span>{mission.location}</span>
              </a>
-             <span className="flex items-center gap-1.5">
+             <span className="flex items-center gap-1.5 text-left">
                 <Calendar size={12} className="text-text-muted shrink-0" />
                 <span>{mission.scheduleDate}</span>
              </span>
@@ -265,7 +265,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                 </a>
                               )}
                             </div>
-                            <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase text-left">
+                            <div className="p-4 rounded-lg bg-accent-gold-dim/5 border border-accent-gold/20 italic text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">
                                 {mission.description}
                             </div>
                         </div>

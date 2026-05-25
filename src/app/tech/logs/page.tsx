@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport } from '@/lib/types';
+import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -132,7 +133,7 @@ export default function TechWeeklyLogPage() {
 
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
-        const updatedItems = activeLog.items.map(item => 
+        const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
                 ? { ...item, confirmationStatus: 'confirmed' as const, disputeReason: undefined, disputeNotes: undefined } 
                 : item
@@ -147,7 +148,7 @@ export default function TechWeeklyLogPage() {
 
     const handleDispute = async (itemId: string, reason: string, notes?: string) => {
         if (!activeLog || isLocked) return;
-        const updatedItems = activeLog.items.map(item => 
+        const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
                 ? { ...item, confirmationStatus: 'disputed' as const, disputeReason: reason, disputeNotes: notes } 
                 : item
@@ -190,11 +191,12 @@ export default function TechWeeklyLogPage() {
 
     const counts = useMemo(() => {
         if (!activeLog) return { total: 0, confirmed: 0, disputed: 0, pending: 0 };
+        const items = activeLog.items || [];
         return {
-            total: (activeLog.items || []).length,
-            confirmed: (activeLog.items || []).filter(i => i.confirmationStatus === 'confirmed').length,
-            disputed: (activeLog.items || []).filter(i => i.confirmationStatus === 'disputed').length,
-            pending: (activeLog.items || []).filter(i => !i.confirmationStatus).length
+            total: items.length,
+            confirmed: items.filter(i => i.confirmationStatus === 'confirmed').length,
+            disputed: items.filter(i => i.confirmationStatus === 'disputed').length,
+            pending: items.filter(i => !i.confirmationStatus).length
         };
     }, [activeLog]);
 

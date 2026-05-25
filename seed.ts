@@ -184,6 +184,20 @@ const assignments = [
   }
 ];
 
+const weeklyLogs = [
+  {
+    id: 'wl-corey-current',
+    technicianId: TECH_AUTH_UID,
+    weekOf: '04-20-2026',
+    status: 'Draft',
+    items: [
+      { id: 'wli-corey-1', workOrderId: 'asmt_0001', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+    ],
+    reimbursements: [],
+    totalPayout: 185.00,
+  }
+];
+
 async function writeFlat(collection: string, docs: any[]) {
   for (const doc of docs) {
     const { id, ...data } = doc;
@@ -197,6 +211,7 @@ async function seed() {
   await writeFlat("users", users);
   await writeFlat("workOrders", workOrders);
   await writeFlat("assignments", assignments);
+  await writeFlat("weeklyLogs", weeklyLogs);
   console.log("\n✅  Seed complete.\n");
   process.exit(0);
 }

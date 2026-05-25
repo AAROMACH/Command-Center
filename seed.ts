@@ -108,44 +108,86 @@ const users = [
   },
 ];
 
-const workOrders = [
-  {
-    id: "wo_0001",
-    title: "Network Equipment Issues",
-    description: "On-site troubleshooting of network equipment at client location.",
-    location: "Grosse Pointe, MI 48230",
-    clientId: CLIENT_AUTH_UID,
-    clientName: "Premium Brands",
-    status: "unassigned",
-    priority: "normal",
-    projectType: "troubleshooting",
-    pay: 185,
-    payType: "fixed",
-    source: "field_nation",
-    createdAt: "2026-04-04T12:00:00Z",
-    updatedAt: "2026-04-04T12:00:00Z",
-  }
-];
-
 const assignments = [
   {
-    id: "asmt_0001",
-    workOrderId: "wo_0001",
+    id: "asmt-1779643575487",
+    workOrderId: "asmt-1779643575487",
     techId: TECH_AUTH_UID,
     assignedTechnicianId: TECH_AUTH_UID,
-    status: "assigned",
-    title: "Network Equipment Issues",
-    description: "On-site troubleshooting of network equipment at client location.",
-    location: "Grosse Pointe, MI 48230",
+    status: "completed",
+    title: "Network Optimization",
+    description: "Optimize network routing and firewall rules.",
+    location: "100 Renaissance Center, Detroit, MI 48243",
     clientName: "Premium Brands",
-    priority: "normal",
-    projectType: "troubleshooting",
-    pay: 185,
+    priority: "high",
+    projectType: "Troubleshooting",
+    pay: 250.00,
     payType: "fixed",
     scheduleDate: "2026-04-20",
-    scheduleTime: "10:00 AM EST",
+    scheduleTime: "08:00 AM EST",
+    source: "Imported",
     assignedAt: "2026-04-18T10:00:00Z",
-    updatedAt: "2026-04-18T10:00:00Z",
+    updatedAt: "2026-04-20T17:00:00Z",
+  },
+  {
+    id: "asmt-1779646123386",
+    workOrderId: "asmt-1779646123386",
+    techId: TECH_AUTH_UID,
+    assignedTechnicianId: TECH_AUTH_UID,
+    status: "completed",
+    title: "CCTV Expansion",
+    description: "Install 4 additional IP cameras and configure NVR.",
+    location: "100 Renaissance Center, Detroit, MI 48243",
+    clientName: "Premium Brands",
+    priority: "medium",
+    projectType: "Installation",
+    pay: 350.00,
+    payType: "fixed",
+    scheduleDate: "2026-04-21",
+    scheduleTime: "10:00 AM EST",
+    source: "Imported",
+    assignedAt: "2026-04-18T11:00:00Z",
+    updatedAt: "2026-04-21T18:00:00Z",
+  },
+  {
+    id: "asmt-1779646128334",
+    workOrderId: "asmt-1779646128334",
+    techId: TECH_AUTH_UID,
+    assignedTechnicianId: TECH_AUTH_UID,
+    status: "completed",
+    title: "Fiber Patching",
+    description: "Patch fiber uplinks for floor 12 switch stack.",
+    location: "100 Renaissance Center, Detroit, MI 48243",
+    clientName: "Premium Brands",
+    priority: "high",
+    projectType: "Repair",
+    pay: 180.00,
+    payType: "fixed",
+    scheduleDate: "2026-04-22",
+    scheduleTime: "09:00 AM EST",
+    source: "Imported",
+    assignedAt: "2026-04-18T12:00:00Z",
+    updatedAt: "2026-04-22T17:30:00Z",
+  },
+  {
+    id: "asmt-1779663113690",
+    workOrderId: "asmt-1779663113690",
+    techId: TECH_AUTH_UID,
+    assignedTechnicianId: TECH_AUTH_UID,
+    status: "completed",
+    title: "Site Wireless Audit",
+    description: "Comprehensive heat map and coverage audit.",
+    location: "100 Renaissance Center, Detroit, MI 48243",
+    clientName: "Premium Brands",
+    priority: "low",
+    projectType: "Survey",
+    pay: 300.00,
+    payType: "fixed",
+    scheduleDate: "2026-04-23",
+    scheduleTime: "01:00 PM EST",
+    source: "Imported",
+    assignedAt: "2026-04-18T13:00:00Z",
+    updatedAt: "2026-04-23T16:00:00Z",
   }
 ];
 
@@ -156,10 +198,13 @@ const weeklyLogs = [
     weekOf: '04-20-2026',
     status: 'Draft',
     items: [
-      { id: 'wli-corey-1', workOrderId: 'asmt_0001', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+      { id: 'wli-1', workOrderId: 'asmt-1779643575487', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-2', workOrderId: 'asmt-1779646123386', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-3', workOrderId: 'asmt-1779646128334', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-4', workOrderId: 'asmt-1779663113690', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
     ],
     reimbursements: [],
-    totalPayout: 185.00,
+    totalPayout: 1080.00,
   }
 ];
 
@@ -174,7 +219,6 @@ async function writeFlat(collection: string, docs: any[]) {
 async function seed() {
   console.log("\n🚀  Aaromach seed starting…\n");
   await writeFlat("users", users);
-  await writeFlat("workOrders", workOrders);
   await writeFlat("assignments", assignments);
   await writeFlat("weeklyLogs", weeklyLogs);
   console.log("\n✅  Seed complete.\n");

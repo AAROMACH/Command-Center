@@ -296,7 +296,7 @@ export default function TechWeeklyLogPage() {
                 <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
                     {filteredAndSortedLogs.map((log, logIdx) => (
                         <Card 
-                            key={`log-${log.id || logIdx}`} 
+                            key={log.id || `log-${logIdx}`} 
                             className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
                             onClick={() => handleLogSelection(log)}
                         >
@@ -430,7 +430,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={`${item.id}-${item.workOrderId}-${itemIdx}`} 
+                            key={item.id || `${item.workOrderId}-${itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -470,7 +470,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
                         </div>
                     </div>
                     {!isLocked && (

@@ -129,44 +129,72 @@ export const technicians: Technician[] = [
 
 export const workOrders: WorkOrder[] = [
   {
-    id: 'wo-103',
-    title: 'Smart Thermostat Deployment',
-    description: 'Install new smart thermostat and verify network connectivity.',
-    location: '789 Pine Ave, Dearborn, MI 48124',
-    requiredSkills: ['Electrical', 'Smart Home'],
-    priority: 'low',
-    status: 'unassigned',
-    clientName: 'Smart Home Solutions',
-    projectType: 'Installation',
-    scheduleDate: '2026-04-25', 
-    scheduleTime: '10:00 AM EST',
-    pay: 120.00,
+    id: 'asmt-1779643575487',
+    title: 'Network Optimization',
+    description: 'Optimize network routing and firewall rules.',
+    location: '100 Renaissance Center, Detroit, MI 48243',
+    requiredSkills: ['Networking', 'Cybersecurity'],
+    priority: 'high',
+    status: 'completed',
+    clientName: 'Premium Brands',
+    projectType: 'Troubleshooting',
+    scheduleDate: '2026-04-20',
+    scheduleTime: '08:00 AM EST',
+    pay: 250.00,
     payType: 'fixed',
-    source: 'Manual',
+    source: 'Imported',
+  },
+  {
+    id: 'asmt-1779646123386',
+    title: 'CCTV Expansion',
+    description: 'Install 4 additional IP cameras and configure NVR.',
+    location: '100 Renaissance Center, Detroit, MI 48243',
+    requiredSkills: ['Low Voltage', 'Networking'],
+    priority: 'medium',
+    status: 'completed',
+    clientName: 'Premium Brands',
+    projectType: 'Installation',
+    scheduleDate: '2026-04-21',
+    scheduleTime: '10:00 AM EST',
+    pay: 350.00,
+    payType: 'fixed',
+    source: 'Imported',
+  },
+  {
+    id: 'asmt-1779646128334',
+    title: 'Fiber Patching',
+    description: 'Patch fiber uplinks for floor 12 switch stack.',
+    location: '100 Renaissance Center, Detroit, MI 48243',
+    requiredSkills: ['Fiber Optics'],
+    priority: 'high',
+    status: 'completed',
+    clientName: 'Premium Brands',
+    projectType: 'Repair',
+    scheduleDate: '2026-04-22',
+    scheduleTime: '09:00 AM EST',
+    pay: 180.00,
+    payType: 'fixed',
+    source: 'Imported',
+  },
+  {
+    id: 'asmt-1779663113690',
+    title: 'Site Wireless Audit',
+    description: 'Comprehensive heat map and coverage audit.',
+    location: '100 Renaissance Center, Detroit, MI 48243',
+    requiredSkills: ['Wireless', 'Survey'],
+    priority: 'low',
+    status: 'completed',
+    clientName: 'Premium Brands',
+    projectType: 'Survey',
+    scheduleDate: '2026-04-23',
+    scheduleTime: '01:00 PM EST',
+    pay: 300.00,
+    payType: 'fixed',
+    source: 'Imported',
   }
 ];
 
-export const assignments: WorkOrder[] = [
-  {
-    id: 'asmt-001',
-    workOrderId: 'wo-101',
-    title: 'Fiber Splicing - Rack 4',
-    description: 'Emergency Fiber Splicing - Rack 4. Restoration of critical uplinks.',
-    location: '100 Renaissance Center, Detroit, MI 48243',
-    requiredSkills: ['Fiber Optics', 'Networking'],
-    priority: 'high',
-    status: 'assigned',
-    assignedTechnicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
-    clientName: 'Premium Brands',
-    projectType: 'Repair',
-    scheduleDate: '2026-04-20',
-    scheduleTime: '09:00 AM EST',
-    pay: 450.00,
-    payType: 'fixed',
-    isAcknowledged: false,
-    source: 'Manual',
-  }
-];
+export const assignments: WorkOrder[] = [...workOrders];
 
 export const projects: Project[] = [];
 export const projectDocuments: ProjectDocument[] = [];
@@ -181,10 +209,13 @@ export const weeklyLogs: WeeklyLog[] = [
     weekOf: '04-20-2026',
     status: 'Draft',
     items: [
-      { id: 'wli-corey-1', workOrderId: 'asmt-001', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+      { id: 'wli-1', workOrderId: 'asmt-1779643575487', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-2', workOrderId: 'asmt-1779646123386', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-3', workOrderId: 'asmt-1779646128334', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
+      { id: 'wli-4', workOrderId: 'asmt-1779663113690', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
     ],
     reimbursements: [],
-    totalPayout: 450.00,
+    totalPayout: 1080.00,
   }
 ];
 

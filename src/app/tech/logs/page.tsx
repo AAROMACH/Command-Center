@@ -430,7 +430,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={`${item.workOrderId}-${item.id || itemIdx}`} 
+                            key={item.id || `${item.workOrderId}-${itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -472,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
                         </div>
                     </div>
                     {!isLocked && (
@@ -619,7 +619,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label><Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" /></div>
                         <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label><Input name="location" required className="bg-bg-primary h-10 text-xs" /></div>
                     </div>
-                    <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label><Textarea name="summary" required className="bg-bg-primary min-h-[100px] text-xs" /></div>
+                    <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label><Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs" /></div>
                     <DialogFooter><Button type="submit" className="bg-brand-red hover:bg-brand-red-hover">Submit Inquiry</Button></DialogFooter>
                 </form>
             </DialogContent>

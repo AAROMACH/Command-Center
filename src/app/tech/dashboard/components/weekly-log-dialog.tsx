@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { WeeklyLog, FinancialRecord, ProjectDailyLog } from '@/lib/types';
+import type { WeeklyLog, FinancialRecord } from '@/lib/types';
 import { workOrders } from '@/lib/data';
 import { 
   Dialog, 
@@ -84,13 +84,13 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {log.items.map(item => {
+                                    {log.items.map((item, index) => {
                                         const wo = workOrderDetails(item.workOrderId);
                                         return (
-                                            <TableRow key={item.id} className="border-border-sub">
+                                            <TableRow key={item.id || `item-${index}`} className="border-border-sub">
                                                 <TableCell className="py-2">
-                                                    <div className="text-xs font-bold">{wo?.id.toUpperCase()}</div>
-                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px]">{wo?.description}</div>
+                                                    <div className="text-xs font-bold uppercase">{(wo?.id || item.workOrderId).toUpperCase()}</div>
+                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase">{wo?.description || 'Assignment Detail Restricted'}</div>
                                                 </TableCell>
                                                 <TableCell className="py-2">
                                                     <Badge variant="active" className="text-[9px] uppercase tracking-widest h-5">Verified</Badge>
@@ -118,7 +118,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                         
                         <div className="space-y-2">
                             {log.reimbursements.map((item, index) => (
-                                <div key={item.id} className="flex gap-2 items-center p-2 rounded bg-bg-primary border border-border-sub">
+                                <div key={item.id || `reimb-${index}`} className="flex gap-2 items-center p-2 rounded bg-bg-primary border border-border-sub">
                                     <Input 
                                         placeholder="Description (e.g., Parking, Materials)" 
                                         value={item.description}

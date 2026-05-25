@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport } from '@/lib/types';
-import { technicians } from '@/lib/data';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,14 +19,15 @@ import {
     Search,
     ArrowUpDown,
     Clock,
-    CheckCircle2
+    CheckCircle2,
+    Plus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { format, parseISO, isSameDay, startOfDay } from 'date-fns';
+import { format, parseISO, isSameDay, startOfDay, startOfWeek } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -48,7 +48,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -70,6 +70,8 @@ export default function TechWeeklyLogPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
+    const [isCreateLogOpen, setIsCreateLogOpen] = useState(false);
+    const [newLogDate, setNewLogDate] = useState<Date | undefined>(new Date());
 
     const { toast } = useToast();
 
@@ -106,19 +108,23 @@ export default function TechWeeklyLogPage() {
         if (dateRange?.from) {
             filtered = filtered.filter(log => {
                 try {
-                    const [m, d, y] = log.weekOf.split('-');
-                    const logDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
-                    if (dateRange.from && dateRange.to) {
-                        return logDate >= startOfDay(dateRange.from) && logDate <= startOfDay(dateRange.to);
+                    const parts = log.weekOf.split('-');
+                    let logDate;
+                    if (parts[2].length === 4) { // MM-dd-yyyy
+                        logDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
+                    } else { // yyyy-MM-dd
+                        logDate = startOfDay(parseISO(log.weekOf));
                     }
-                    return isSameDay(logDate, dateRange.from!);
+                    const start = startOfDay(dateRange.from!);
+                    const end = dateRange.to ? startOfDay(dateRange.to) : start;
+                    return isWithinInterval(logDate, { start, end });
                 } catch(e) { return true; }
             });
         }
 
         return filtered.sort((a, b) => {
             if (sortBy === 'newest') return (b.weekOf || '').localeCompare(a.weekOf || '');
-            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(a.weekOf || '');
+            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(b.weekOf || '');
             if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
             if (sortBy === 'billing') return (b.totalPayout || 0) - (a.totalPayout || 0);
             return 0;
@@ -130,6 +136,35 @@ export default function TechWeeklyLogPage() {
     };
 
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
+
+    const handleCreateLog = async () => {
+        if (!newLogDate || !currentTechId) return;
+        
+        const monday = startOfWeek(newLogDate, { weekStartsOn: 1 });
+        const weekOf = format(monday, 'MM-dd-yyyy');
+        
+        if (weeklyLogs.some(l => l.weekOf === weekOf)) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: `A log for the week of ${weekOf} already exists.` });
+            return;
+        }
+
+        const newLog: Omit<WeeklyLog, 'id'> = {
+            technicianId: currentTechId,
+            weekOf,
+            status: 'Draft',
+            items: [],
+            reimbursements: [],
+            totalPayout: 0
+        };
+
+        try {
+            await addDoc(collection(db, 'weeklyLogs'), newLog);
+            toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
+            setIsCreateLogOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Write Failed', description: e.message });
+        }
+    };
 
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
@@ -211,6 +246,9 @@ export default function TechWeeklyLogPage() {
                         <h1 className="page-title">Weekly Log Registry</h1>
                         <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1">Audit terminal for assignment verification and billing.</p>
                     </div>
+                    <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                        <Plus size={16} className="mr-2" /> Initialize New Log
+                    </Button>
                 </header>
 
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6">
@@ -225,28 +263,6 @@ export default function TechWeeklyLogPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <div className={cn(
-                                    "flex items-center h-10 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
-                                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                                )}>
-                                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                                        dateRange?.from ? "text-text-primary" : "text-text-muted"
-                                    )}>
-                                        {dateRange?.from ? (
-                                            dateRange.to ? <>{format(dateRange.from, "MM-dd")} – {format(dateRange.to, "MM-dd")}</> : format(dateRange.from, "MM-dd")
-                                        ) : "Period Window"}
-                                    </span>
-                                </div>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                            </PopoverContent>
-                        </Popover>
-
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                                 <SelectValue placeholder="Status" />
@@ -268,7 +284,6 @@ export default function TechWeeklyLogPage() {
                                 <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
                                 <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
                                 <SelectItem value="billing" className="text-[10px] uppercase font-bold">By Settlement</SelectItem>
-                                <SelectItem value="items" className="text-[10px] uppercase font-bold">By Count</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -294,7 +309,7 @@ export default function TechWeeklyLogPage() {
                                     <div className="text-left">
                                         <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
                                         <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                            <span>{log.items?.length || 0} Assignments</span>
+                                            <span>{(log.items || []).length} Assignments</span>
                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                             <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
                                         </div>
@@ -316,6 +331,28 @@ export default function TechWeeklyLogPage() {
                         </div>
                     )}
                 </div>
+
+                <Dialog open={isCreateLogOpen} onOpenChange={setIsCreateLogOpen}>
+                    <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-2xl">
+                        <DialogHeader className="text-left">
+                            <DialogTitle className="uppercase tracking-widest font-bold">Initialize Weekly Log</DialogTitle>
+                            <DialogDescription className="text-xs">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-6 flex justify-center border-y border-border-sub my-4">
+                            <Calendar 
+                                mode="single" 
+                                selected={newLogDate} 
+                                onSelect={setNewLogDate} 
+                                initialFocus
+                                className="bg-bg-primary rounded-md border border-border-sub"
+                            />
+                        </div>
+                        <DialogFooter className="gap-3">
+                            <Button variant="outline" onClick={() => setIsCreateLogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
+                            <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Initialize Manifest</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }
@@ -397,6 +434,13 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                         />
                     ))}
+                    {(activeLog.items || []).length === 0 && (
+                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                            <LayoutList size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments in this week's manifest</p>
+                            {!isLocked && <p className="text-[9px] text-text-muted uppercase mt-1">Use the "Report Missing" tool to manually add job references.</p>}
+                        </div>
+                    )}
                 </div>
             </div>
 

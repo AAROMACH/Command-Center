@@ -78,6 +78,7 @@ import { DateRange } from "react-day-picker";
 import { 
     penaltyEvents,
     assignmentTimeLogs,
+    technicians as mockTechnicians,
 } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';

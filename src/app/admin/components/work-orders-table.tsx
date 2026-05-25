@@ -556,7 +556,7 @@ export const WorkOrdersTable = React.memo(({
                                     </Avatar>
                                     <div className="text-left">
                                         <div className="flex items-center gap-2">
-                                            <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors">{tech.name}</p>
+                                            <p className="text-xs font-bold uppercase text-text-primary group-hover:border-brand-red transition-colors text-left">{tech.name}</p>
                                             <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
                                         </div>
                                         <div className="flex items-center gap-3 mt-1">

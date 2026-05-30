@@ -1,3 +1,4 @@
+
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, ReliabilityEvent, ProjectDailyLog, Expense, Report, Invoice, AdminMessage } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -269,10 +270,10 @@ export const weeklyLogs: WeeklyLog[] = [
     weekOf: '04-20-2026',
     status: 'Draft',
     items: [
-      { id: 'wli-1', workOrderId: 'asmt-1779643575487', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
-      { id: 'wli-2', workOrderId: 'asmt-1779646123386', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
-      { id: 'wli-3', workOrderId: 'asmt-1779646128334', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false },
-      { id: 'wli-4', workOrderId: 'asmt-1779663113690', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false }
+      { id: 'wli-1', workOrderId: 'asmt-1779643575487', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, jobPay: 250, confirmationStatus: 'confirmed' },
+      { id: 'wli-2', workOrderId: 'asmt-1779646123386', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, jobPay: 350, confirmationStatus: 'confirmed' },
+      { id: 'wli-3', workOrderId: 'asmt-1779646128334', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, jobPay: 180, confirmationStatus: 'confirmed' },
+      { id: 'wli-4', workOrderId: 'asmt-1779663113690', outcomeCode: 'worked_completed', isComplete: true, isAdminReviewed: false, jobPay: 300, confirmationStatus: 'confirmed' }
     ],
     reimbursements: [],
     totalPayout: 1080.00,

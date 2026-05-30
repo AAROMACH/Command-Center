@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -351,7 +350,7 @@ export default function TechAssignmentsPage() {
     return (
         <div className="space-y-6">
             <header className="page-header">
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <Wrench size={12} />
                         Service Assignment Console

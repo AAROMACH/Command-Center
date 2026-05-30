@@ -1,4 +1,3 @@
-
 export type AppRole = 
   | 'super_admin' 
   | 'dispatch_admin' 
@@ -43,9 +42,9 @@ export type ReliabilityEvent = {
 
 export type WorkOrder = {
   id: string;
-  workOrderId?: string;   // Cross-reference for assignment docs
-  shortId?: string;       // Human-readable ID e.g. ASM-001
-  techId?: string;        // Technician UID for assignment docs
+  workOrderId?: string;
+  shortId?: string;
+  techId?: string;
   title: string;
   description: string;
   location: string;
@@ -277,7 +276,7 @@ export type WeeklyLogItem = {
   outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';
   isComplete: boolean;
   isAdminReviewed: boolean;
-  jobPay: number; // Snapshot of pay at time of completion
+  jobPay: number;
 };
 
 export type MissingAssignmentReport = {
@@ -376,4 +375,16 @@ export type Invoice = {
   subtotal: number;
   tax: number;
   total: number;
+};
+
+export type PlanTier = {
+  id: string;
+  name: string;
+  clientName?: string;
+  price: number;
+  billingPeriod: 'monthly' | 'quarterly' | 'annual';
+  features: string[];
+  siteLimit: number;
+  responseTime: string;
+  type: 'standard' | 'custom';
 };

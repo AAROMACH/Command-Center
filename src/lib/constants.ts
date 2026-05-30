@@ -14,20 +14,22 @@ export const TERMINOLOGY = {
     OPERATIVE: "Field Technician",
     ASSIGNMENT: "Assignment",
     PROJECT: "Project",
-    INTAKE: "Service Intake",
-    MISSION: "Mission",
-    LEDGER: "Historical Ledger",
-    BRIEFING: "Operational Briefing",
+    INTAKE: "Service Request",
+    WORK_ORDER: "Work Order",
+    CLIENT: "Client",
+    LEDGER: "Record History",
+    SCOPE: "Scope of Work",
+    SITE: "Site",
   },
   ACTIONS: {
-    AUDIT: "Payroll Review",
-    DISPATCH: "Tech Assignment",
-    SETTLE: "Payment Settlement",
+    REVIEW: "Review Assignment",
+    APPROVE: "Approve Assignment",
+    DISPATCH: "Dispatch",
+    Payroll: "Review Payroll",
+    SETTLE: "Payout",
   },
   CONFIG: {
-    NOTIFICATIONS: "Notifications",
-    SECURITY: "Security",
-    INTEGRATIONS: "Integrations",
+    SETTINGS: "Settings", 
   },
 } as const;
 
@@ -35,7 +37,7 @@ export const PRIORITY_LABELS = {
   low: "Routine",
   medium: "Standard",
   high: "Priority",
-  critical: "Emergency Dispatch",
+  critical: "CRITICAL",
 } as const;
 
 export const STATUS_LABELS = {
@@ -45,7 +47,6 @@ export const STATUS_LABELS = {
   confirmed: "Confirmed",
   "on-my-way": "En Route",
   "in-progress": "On Site",
-  "checked-out": "Checked Out",
   completed: "Closed",
   scheduled: "Scheduled",
   checked_in: "Checked In",
@@ -75,11 +76,11 @@ export const STATUS_LABELS = {
 } as const;
 
 export const RELIABILITY_TIERS = {
-  ELITE: { label: 'Elite', min: 95, max: 100, variant: 'active' },
-  RELIABLE: { label: 'Reliable', min: 85, max: 94, variant: 'active' },
-  MONITORED: { label: 'Monitored', min: 70, max: 84, variant: 'onhold' },
-  RESTRICTED: { label: 'Restricted', min: 50, max: 69, variant: 'high' },
-  SUSPENDED: { label: 'Suspended Review', min: 0, max: 49, variant: 'missed' },
+  PREFERRED: { label: 'Preferred', min: 95, max: 100, variant: 'active' },
+  QUALIFIED: { label: 'Qualified', min: 85, max: 94, variant: 'active' },
+  RELIABLE: { label: 'Reliable', min: 70, max: 84, variant: 'onhold' },
+  MONITORED: { label: 'Monitored', min: 50, max: 69, variant: 'high' },
+  RESTRICTED: { label: 'Restricted', min: 0, max: 49, variant: 'missed' },
 } as const;
 
 export const RELIABILITY_EVENT_TYPES = {
@@ -99,18 +100,18 @@ export const RELIABILITY_EVENT_TYPES = {
     POOR_COMMUNICATION: { type: 'poor_communication', label: 'Poor Communication', scoreChange: -4, category: 'operational_friction', isAutomatic: false },
   },
   RECOVERY: {
-    COMPLETED_NO_ISSUE: { type: 'completed_assignment_no_issue', label: 'Completed No Issue', scoreChange: 1, category: 'positive_recovery', isAutomatic: true },
     TEN_STREAK: { type: 'ten_assignment_streak_no_issue', label: '10 Job Streak', scoreChange: 3, category: 'positive_recovery', isAutomatic: true },
+    ACK_STREAK: { type: 'consistent_acknowledgment_streak', label: 'Acknowledgment Streak', scoreChange: 1, category: 'positive_recovery', isAutomatic: true },
+    CLEAN_30_DAY_RECORD: { type: 'clean_30_day_record', label: '30-Day Clean Record', scoreChange: 3, category: 'positive_recovery', isAutomatic: true },
     DIFFICULT_COMPLETED: { type: 'difficult_assignment_completed', label: 'Difficult Job Completed', scoreChange: 3, category: 'positive_recovery', isAutomatic: false },
-    POSITIVE_FEEDBACK: { type: 'positive_client_feedback', label: 'Positive Feedback', scoreChange: 2, category: 'positive_recovery', isAutomatic: true },
-    ACK_STREAK: { type: 'consistent_acknowledgment_streak', label: 'Ack Streak', scoreChange: 2, category: 'positive_recovery', isAutomatic: true },
+    POSITIVE_FEEDBACK: { type: 'positive_client_feedback', label: 'Positive Feedback', scoreChange: 2, category: 'positive_recovery', isAutomatic: false },
   }
 } as const;
 
 export const PAY_TYPE_LABELS = {
-  fixed: "Fixed",
+  fixed: "Fixed Rate",
   hourly: "Hourly",
-  blended: "Blended",
+  blended: "Blended Rate",
 } as const;
 
 export const OUTCOME_CODE_LABELS = {
@@ -146,4 +147,24 @@ export const NOTIFICATION_TYPE_LABELS = {
   assignment_update: "Work Order Update",
   payment_update: "Payment Update",
   system_alert: "System Alert",
+} as const;
+
+export const ID_PREFIXES = {
+  // Collections
+  WEEKLY_LOG:       'wlog',
+  WEEKLY_LOG_ITEM:  'wli',
+  ASSIGNMENT:       'asmt',
+  WORK_ORDER:       'wo',
+  PROJECT:          'prj',
+  CLIENT:           'cli',
+  CLIENT_REQUEST:   'creq',
+  SITE:             'site',
+  SITE_REQUEST:     'sreq',
+  INVOICE:          'inv',
+  FINANCIAL_RECORD: 'fnr',
+  IMPORT_BATCH:     'batch',
+  TIME_OFF_REQUEST: 'tor',
+  USER:             'usr',
+  REIMBURSEMENT:    'reimb',
+  MISSING_REPORT:   'msr',
 } as const;

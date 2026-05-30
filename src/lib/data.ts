@@ -42,7 +42,7 @@ export const technicians: Technician[] = [
     currentLocation: 'Detroit, MI',
     reliabilityScore: 100,
     reliabilityTier: 'Elite',
-    currentWorkload: 2,
+    currentWorkload: 4,
     skills: ['Cabling', 'Networking', 'Camera Systems', 'Low Voltage'],
     avatarUrl: getImageUrl('technician-6'),
     availability: {
@@ -79,7 +79,7 @@ export const technicians: Technician[] = [
     currentLocation: 'Detroit, MI',
     reliabilityScore: 100,
     reliabilityTier: 'Elite',
-    currentWorkload: 3,
+    currentWorkload: 0,
     skills: ['HVAC', 'Plumbing', 'Electrical', 'Cabling'],
     avatarUrl: getImageUrl('technician-1'),
     availability: {
@@ -127,7 +127,28 @@ export const technicians: Technician[] = [
   }
 ];
 
+// REGISTRY SEPARATION: workOrders contains only unassigned missions
 export const workOrders: WorkOrder[] = [
+  {
+    id: 'wo-189372',
+    title: 'IDF Rack Stabilization',
+    description: 'Mount secondary stabilization rails for core switch racks in IDF-4.',
+    location: '2000 Town Center, Southfield, MI 48075',
+    requiredSkills: ['Rack & Stack', 'Low Voltage'],
+    priority: 'medium',
+    status: 'unassigned',
+    clientName: 'Town Center Management',
+    projectType: 'Installation',
+    scheduleDate: '2026-05-30',
+    scheduleTime: '10:00 AM EST',
+    pay: 150.00,
+    payType: 'fixed',
+    source: 'Manual',
+  }
+];
+
+// assignments contains missions already tech-allocated
+export const assignments: WorkOrder[] = [
   {
     id: 'asmt-1779643575487',
     title: 'Network Optimization',
@@ -136,6 +157,8 @@ export const workOrders: WorkOrder[] = [
     requiredSkills: ['Networking', 'Cybersecurity'],
     priority: 'high',
     status: 'completed',
+    techId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    assignedTechnicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
     clientName: 'Premium Brands',
     projectType: 'Troubleshooting',
     scheduleDate: '2026-04-20',
@@ -152,6 +175,8 @@ export const workOrders: WorkOrder[] = [
     requiredSkills: ['Low Voltage', 'Networking'],
     priority: 'medium',
     status: 'completed',
+    techId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    assignedTechnicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
     clientName: 'Premium Brands',
     projectType: 'Installation',
     scheduleDate: '2026-04-21',
@@ -168,6 +193,8 @@ export const workOrders: WorkOrder[] = [
     requiredSkills: ['Fiber Optics'],
     priority: 'high',
     status: 'completed',
+    techId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    assignedTechnicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
     clientName: 'Premium Brands',
     projectType: 'Repair',
     scheduleDate: '2026-04-22',
@@ -184,6 +211,8 @@ export const workOrders: WorkOrder[] = [
     requiredSkills: ['Wireless', 'Survey'],
     priority: 'low',
     status: 'completed',
+    techId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    assignedTechnicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
     clientName: 'Premium Brands',
     projectType: 'Survey',
     scheduleDate: '2026-04-23',
@@ -194,9 +223,6 @@ export const workOrders: WorkOrder[] = [
   }
 ];
 
-export const assignments: WorkOrder[] = [...workOrders];
-
-export const projects: Project[] = [];
 export const projectDocuments: ProjectDocument[] = [];
 export const timesheetLogs: TimesheetLog[] = [];
 export const serviceRequests: ServiceRequest[] = [];

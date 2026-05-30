@@ -311,8 +311,8 @@ export default function TechWeeklyLogPage() {
                                         <CalendarIcon size={20} />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors">Week of {log.weekOf}</p>
-                                        <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                        <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                        <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                             <span>{(log.items || []).length} Assignments</span>
                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                             <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
@@ -442,7 +442,7 @@ export default function TechWeeklyLogPage() {
                         <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
                             <LayoutList size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments in this week's manifest</p>
-                            {!isLocked && <p className="text-[9px] text-text-muted uppercase mt-1">Use the "Report Missing" tool to manually add job references.</p>}
+                            {!isLocked && <p className="text-[9px] text-text-muted uppercase mt-1 text-center">Use the "Report Missing" tool to manually add job references.</p>}
                         </div>
                     )}
                 </div>
@@ -472,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {displayId}</p>
                         </div>
                     </div>
                     {!isLocked && (
@@ -566,7 +566,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                 {(isDisputing || (isLocked && isDisputed)) && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Reason</p>
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Reason</p>
                             <RadioGroup 
                                 value={reason} 
                                 onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
@@ -608,19 +608,43 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default">
                 <DialogHeader className="text-left">
-                    <DialogTitle className="uppercase tracking-widest font-bold">Report Missing Assignment</DialogTitle>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <Search className="text-brand-red h-5 w-5" />
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Report Missing Assignment</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label><Input name="assignmentId" className="bg-bg-primary h-10 text-xs" /></div>
-                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label><Input name="clientName" className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label>
+                            <Input name="assignmentId" className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
+                            <Input name="clientName" className="bg-bg-primary h-10 text-xs" />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label><Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" /></div>
-                        <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label><Input name="location" required className="bg-bg-primary h-10 text-xs" /></div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
+                            <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label>
+                            <Input name="location" required className="bg-bg-primary h-10 text-xs" />
+                        </div>
                     </div>
-                    <div className="space-y-2 text-left"><Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label><Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs" /></div>
-                    <DialogFooter><Button type="submit" className="bg-brand-red hover:bg-brand-red-hover">Submit Inquiry</Button></DialogFooter>
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label>
+                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed" placeholder="Document site activity and terminal outcomes..." />
+                    </div>
+                    <DialogFooter className="pt-4 border-t border-border-sub">
+                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover h-10 px-10 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                            <Send size={14} className="mr-2" /> Submit Inquiry
+                        </Button>
+                    </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>

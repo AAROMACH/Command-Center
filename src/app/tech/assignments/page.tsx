@@ -22,8 +22,7 @@ import {
   FileCheck,
   RotateCcw,
   X,
-  CheckCircle2,
-  Check as CheckIcon
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -45,7 +44,7 @@ import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -66,6 +65,24 @@ const getGPSCoordinates = (): Promise<string> => {
       { timeout: 5000 }
     );
   });
+};
+
+const formatDateStr = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    try {
+        const parts = dateStr.split(/[-/]/);
+        if (parts[0].length === 4) {
+            return format(parseISO(dateStr), "MM-dd-yyyy");
+        } else {
+            const [m, d, y] = parts;
+            if (y && m && d) {
+                return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
+            }
+        }
+        return dateStr;
+    } catch (e) {
+        return dateStr;
+    }
 };
 
 export default function TechAssignmentsPage() {
@@ -480,7 +497,7 @@ export default function TechAssignmentsPage() {
                                                           Check back in
                                                       </Button>
                                                       <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
-                                                          <CheckIcon size={14} className="mr-2"/>
+                                                          <CheckCircle2 size={14} className="mr-2"/>
                                                           Mark Complete
                                                       </Button>
                                                   </>
@@ -532,7 +549,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="flex flex-col items-center justify-center text-center">
                                                   <div className="cell-desc-title">{wo.title || wo.description}</div>
                                                   <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
-                                                      <CircleCheck size={12}/> COMPLETED
+                                                      <CheckCircle2 size={12}/> COMPLETED
                                                   </div>
                                                 </div>
                                             </td>

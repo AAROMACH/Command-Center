@@ -348,7 +348,7 @@ export default function TechWeeklyLogPage() {
                     <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-2xl">
                         <DialogHeader className="text-left">
                             <DialogTitle className="uppercase tracking-widest font-bold">Initialize Weekly Log</DialogTitle>
-                            <DialogDescription className="text-xs">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
+                            <DialogDescription className="text-xs text-left">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
                         </DialogHeader>
                         <div className="py-6 flex justify-center border-y border-border-sub my-4">
                             <Calendar 
@@ -536,7 +536,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         </div>
                         <div className="min-w-0 text-left">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title || job.description}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title}</h4>
                                 <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
@@ -618,7 +618,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default">
+            <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader className="text-left">
                     <div className="flex items-center gap-2 mb-1 text-left">
                         <Search className="text-brand-red h-5 w-5" />
@@ -649,7 +649,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                     </div>
                     <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label>
-                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed" placeholder="Document site activity and terminal outcomes..." />
+                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed uppercase font-medium" placeholder="Document site activity and terminal outcomes..." />
                     </div>
                     <DialogFooter className="pt-4 border-t border-border-sub">
                         <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>

@@ -243,7 +243,7 @@ export default function TechDashboardPage() {
                         {activeJob.status === 'checked-out' && (
                             <>
                                 <Button variant="outline" className="border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                    <RotateCcw size={16} className="mr-2"/> Reopen
+                                    <RotateCcw size={16} className="mr-2"/> Check back in
                                 </Button>
                                 <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
                                     <CheckCircle2 size={16} className="mr-2"/> Mark Complete

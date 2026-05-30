@@ -51,7 +51,7 @@ export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
-    const [sortBy, setSortBy] = useState<SortOption>('date');
+    const [sortBy, setSortBy] = useState<string>('date');
     const [searchQuery, setSearchQuery] = useState("");
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
@@ -516,9 +516,9 @@ export default function TechAssignmentsPage() {
                                               )}
                                               {wo.status === 'checked-out' && (
                                                   <>
-                                                      <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                                      <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleCheckIn(wo.id)}>
                                                           <RotateCcw size={14} className="mr-2"/>
-                                                          Reopen
+                                                          Check back in
                                                       </Button>
                                                       <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
                                                           <CheckCircle2 size={14} className="mr-2"/>

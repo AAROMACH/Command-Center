@@ -48,43 +48,6 @@ import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, 
 
 type SortOption = 'date' | 'priority' | 'pay';
 
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
-
-const getGPSCoordinates = (): Promise<string> => {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      resolve("GPS Unavailable");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
-      () => resolve("GPS Restricted"),
-      { timeout: 5000 }
-    );
-  });
-};
-
-const formatDateStr = (dateStr: string) => {
-    if (!dateStr) return 'TBD';
-    try {
-        const parts = dateStr.split(/[-/]/);
-        if (parts[0].length === 4) {
-            return format(parseISO(dateStr), "MM-dd-yyyy");
-        } else {
-            const [m, d, y] = parts;
-            if (y && m && d) {
-                return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
-            }
-        }
-        return dateStr;
-    } catch (e) {
-        return dateStr;
-    }
-};
-
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -121,6 +84,24 @@ export default function TechAssignmentsPage() {
     const currentTech = useMemo(() => 
         currentTechId ? technicians.find(t => t.id === currentTechId) : null
     , [currentTechId]);
+
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split(/[-/]/);
+            if (parts[0].length === 4) {
+                return format(parseISO(dateStr), "MM-dd-yyyy");
+            } else {
+                const [m, d, y] = parts;
+                if (y && m && d) {
+                    return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
+                }
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
@@ -183,6 +164,25 @@ export default function TechAssignmentsPage() {
         techWorkOrders.filter(wo => wo.status === 'completed')
             .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || '')),
     [techWorkOrders]);
+
+    const getFieldNationLink = (id: string) => {
+      const cleanId = id.replace(/^wo-/, '');
+      return `https://app.fieldnation.com/workorders/${cleanId}`;
+    };
+
+    const getGPSCoordinates = (): Promise<string> => {
+      return new Promise((resolve) => {
+        if (typeof window === 'undefined' || !navigator.geolocation) {
+          resolve("GPS Unavailable");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
+          () => resolve("GPS Restricted"),
+          { timeout: 5000 }
+        );
+      });
+    };
 
     const handleConfirm = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');

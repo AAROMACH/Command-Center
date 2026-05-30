@@ -87,7 +87,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                                     {(log.items || []).map((item, index) => {
                                         const wo = workOrderDetails(item.workOrderId);
                                         return (
-                                            <TableRow key={item.id || item.workOrderId || index} className="border-border-sub">
+                                            <TableRow key={item.id || item.workOrderId || `log-item-${index}`} className="border-border-sub">
                                                 <TableCell className="py-2 text-left">
                                                     <div className="text-xs font-bold uppercase">{(wo?.id || item.workOrderId || 'N/A').toUpperCase()}</div>
                                                     <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase text-left">{wo?.description || 'Assignment Detail Restricted'}</div>

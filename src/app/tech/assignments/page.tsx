@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder, Technician } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,11 +41,11 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { useSearchParams } from 'next/navigation';
-import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
+import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 
 type SortOption = 'date' | 'priority' | 'pay';
 
@@ -89,7 +89,6 @@ export default function TechAssignmentsPage() {
         setCurrentTechId(userId);
 
         if (userId) {
-            // ACTIVE ASSIGNMENTS LIVE IN THE ASSIGNMENTS COLLECTION
             const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
                 setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
@@ -177,10 +176,8 @@ export default function TechAssignmentsPage() {
             isAcknowledged: true,
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
-        }).then(() => {
-            toast({ title: "Assignment Confirmed", description: "Command Center notified of acknowledgment." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
@@ -192,10 +189,8 @@ export default function TechAssignmentsPage() {
             status: 'on-my-way',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
-        }).then(() => {
-            toast({ title: "Trip Started", description: "Assignment status transitioned to En Route." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
@@ -209,8 +204,6 @@ export default function TechAssignmentsPage() {
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
                 { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
-        }).then(() => {
-            toast({ title: "Check In Successful", description: "GPS-verified arrival confirmed." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
@@ -224,15 +217,54 @@ export default function TechAssignmentsPage() {
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
                 { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
-        }).then(() => {
-            toast({ title: "Checked Out", description: "Session ended. Mission remains active until finalized." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+    };
+
+    const syncToWeeklyLog = async (woId: string) => {
+        if (!currentTechId) return;
+
+        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const weekOf = format(monday, 'MM-dd-yyyy');
+        
+        const logQuery = query(
+            collection(db, 'weeklyLogs'),
+            where('technicianId', '==', currentTechId),
+            where('weekOf', '==', weekOf),
+            where('status', '==', 'Draft')
+        );
+
+        const snap = await getDocs(logQuery);
+        const newItem: WeeklyLogItem = {
+            id: `wli-${Date.now()}`,
+            workOrderId: woId,
+            outcomeCode: 'worked_completed',
+            isComplete: true,
+            isAdminReviewed: false
+        };
+
+        if (!snap.empty) {
+            const logDoc = snap.docs[0];
+            updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
+                items: arrayUnion(newItem)
+            });
+        } else {
+            const newLog: Omit<WeeklyLog, 'id'> = {
+                technicianId: currentTechId,
+                weekOf,
+                status: 'Draft',
+                items: [newItem],
+                reimbursements: [],
+                totalPayout: 0
+            };
+            addDoc(collection(db, 'weeklyLogs'), newLog);
+        }
     };
 
     const handleMarkComplete = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
         const docRef = doc(db, 'assignments', woId);
+        
         updateDoc(docRef, {
             status: 'completed',
             history: [
@@ -240,7 +272,8 @@ export default function TechAssignmentsPage() {
                 { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).then(() => {
-            toast({ title: "Mission Finalized", description: "Mission moved to historical registry." });
+            syncToWeeklyLog(woId);
+            toast({ title: "Mission Finalized", description: "Mission moved to historical registry and weekly log." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
@@ -260,29 +293,9 @@ export default function TechAssignmentsPage() {
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
-    const isAudited = (woId: string) => {
-        return false;
-    };
-
     const handleOpenDetail = (wo: WorkOrder) => {
         setSelectedJob(wo);
         setIsDetailOpen(true);
-    };
-
-    const formatDateStr = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split(/[-/]/);
-            if (parts.length === 3) {
-                const [m, d, y] = parts;
-                if (m.length === 2 && d.length === 2) {
-                    return `${m}-${d}-${y}`;
-                }
-            }
-            return dateStr;
-        } catch (e) {
-            return dateStr;
-        }
     };
 
     if (!mounted || !currentTechId) {
@@ -500,7 +513,6 @@ export default function TechAssignmentsPage() {
                             </thead>
                             <tbody>
                                 {completedAssignments.map((wo) => {
-                                    const audited = isAudited(wo.id);
                                     return (
                                         <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleOpenDetail(wo)}>
                                             <td>
@@ -532,33 +544,21 @@ export default function TechAssignmentsPage() {
                                             </td>
                                             <td>
                                                 <div className="text-center">
-                                                  <div className="text-xs text-text-secondary">{formatDateStr(wo.scheduleDate)}</div>
+                                                  <div className="text-xs text-text-secondary">{wo.scheduleDate}</div>
                                                   <div className="mt-1">
-                                                    {audited ? (
-                                                        <Badge variant="completed" className="uppercase text-[7px] h-3.5 px-1.5">
-                                                            <FileCheck size={10} className="mr-1"/>
-                                                            Audited
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="pending" className="uppercase text-[7px] h-3.5 px-1.5">
-                                                            Awaiting Audit
-                                                        </Badge>
-                                                    )}
+                                                    <Badge variant="active" className="uppercase text-[7px] h-3.5 px-1.5">
+                                                        <FileCheck size={10} className="mr-1"/>
+                                                        Logged
+                                                    </Badge>
                                                   </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                                                    {audited ? (
-                                                        <Button variant="ghost" size="sm" className="h-8 !text-[10px] uppercase font-bold text-text-muted cursor-default" disabled>
-                                                            <CheckCircle2 size={14} className="mr-2 text-text-green"/> Locked
-                                                        </Button>
-                                                    ) : (
-                                                        <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
-                                                            <RotateCcw size={14} className="mr-2"/>
-                                                            Check back in
-                                                        </Button>
-                                                    )}
+                                                    <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                                        <RotateCcw size={14} className="mr-2"/>
+                                                        Check back in
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>

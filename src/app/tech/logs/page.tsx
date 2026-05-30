@@ -296,7 +296,7 @@ export default function TechWeeklyLogPage() {
                 <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
                     {filteredAndSortedLogs.map((log, logIdx) => (
                         <Card 
-                            key={log.id || `log-${logIdx}`} 
+                            key={log.id || `log-list-${logIdx}`} 
                             className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
                             onClick={() => handleLogSelection(log)}
                         >
@@ -472,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
                         </div>
                     </div>
                     {!isLocked && (

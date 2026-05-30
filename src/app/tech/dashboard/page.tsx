@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
-import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
+import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { technicians as mockTechnicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -55,7 +55,6 @@ export default function TechDashboardPage() {
         
         setCurrentTechId(userId);
 
-        // Pre-populate from mock data to avoid loading hang while Firestore syncs
         const initialTech = mockTechnicians.find(t => t.id === userId);
         if (initialTech) setTech(initialTech);
 
@@ -67,7 +66,6 @@ export default function TechDashboardPage() {
             console.warn("Personnel registry handshake restricted:", err);
         });
 
-        // ACTIVE ASSIGNMENTS LIVE IN THE ASSIGNMENTS COLLECTION
         const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
             setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
@@ -88,6 +86,46 @@ export default function TechDashboardPage() {
         allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed' || wo.status === 'checked-out'),
     [allWorkOrders]);
 
+    const syncToWeeklyLog = async (woId: string) => {
+        if (!currentTechId) return;
+
+        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const weekOf = format(monday, 'MM-dd-yyyy');
+        
+        const logQuery = query(
+            collection(db, 'weeklyLogs'),
+            where('technicianId', '==', currentTechId),
+            where('weekOf', '==', weekOf),
+            where('status', '==', 'Draft')
+        );
+
+        const snap = await getDocs(logQuery);
+        const newItem: WeeklyLogItem = {
+            id: `wli-${Date.now()}`,
+            workOrderId: woId,
+            outcomeCode: 'worked_completed',
+            isComplete: true,
+            isAdminReviewed: false
+        };
+
+        if (!snap.empty) {
+            const logDoc = snap.docs[0];
+            updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
+                items: arrayUnion(newItem)
+            });
+        } else {
+            const newLog: Omit<WeeklyLog, 'id'> = {
+                technicianId: currentTechId,
+                weekOf,
+                status: 'Draft',
+                items: [newItem],
+                reimbursements: [],
+                totalPayout: 0
+            };
+            addDoc(collection(db, 'weeklyLogs'), newLog);
+        }
+    };
+
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
         const today = format(new Date(), 'MM-dd-yyyy');
         const nowTime = format(new Date(), 'HH:mm');
@@ -106,7 +144,12 @@ export default function TechDashboardPage() {
                 history: [...(activeJob?.history || []), historyEntry]
             });
             
-            toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
+            if (newStatus === 'completed') {
+                syncToWeeklyLog(woId);
+                toast({ title: "Mission Finalized", description: "Mission moved to historical registry and weekly log." });
+            } else {
+                toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
+            }
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
         }

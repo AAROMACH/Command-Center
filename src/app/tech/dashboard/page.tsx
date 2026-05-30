@@ -86,6 +86,23 @@ export default function TechDashboardPage() {
         allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed' || wo.status === 'checked-out'),
     [allWorkOrders]);
 
+    const removeFromWeeklyLogs = async (woId: string) => {
+        if (!currentTechId) return;
+        const logQuery = query(
+            collection(db, 'weeklyLogs'),
+            where('technicianId', '==', currentTechId),
+            where('status', '==', 'Draft')
+        );
+        const snap = await getDocs(logQuery);
+        for (const logDoc of snap.docs) {
+            const data = logDoc.data() as WeeklyLog;
+            const updatedItems = (data.items || []).filter(item => item.workOrderId !== woId);
+            if (updatedItems.length !== (data.items || []).length) {
+                await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updatedItems });
+            }
+        }
+    };
+
     const syncToWeeklyLog = async (woId: string) => {
         if (!currentTechId) return;
 
@@ -110,7 +127,7 @@ export default function TechDashboardPage() {
 
         if (!snap.empty) {
             const logDoc = snap.docs[0];
-            updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
+            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
                 items: arrayUnion(newItem)
             });
         } else {
@@ -122,7 +139,7 @@ export default function TechDashboardPage() {
                 reimbursements: [],
                 totalPayout: 0
             };
-            addDoc(collection(db, 'weeklyLogs'), newLog);
+            await addDoc(collection(db, 'weeklyLogs'), newLog);
         }
     };
 
@@ -139,14 +156,19 @@ export default function TechDashboardPage() {
                 user: tech?.name || 'Field Operative' 
             };
             
+            if (newStatus === 'in-progress') {
+                await removeFromWeeklyLogs(woId);
+            }
+
             await updateDoc(docRef, { 
                 status: newStatus,
                 history: [...(activeJob?.history || []), historyEntry]
             });
             
             if (newStatus === 'completed') {
-                syncToWeeklyLog(woId);
-                toast({ title: "Mission Finalized", description: "Mission moved to historical registry and weekly log." });
+                await removeFromWeeklyLogs(woId);
+                await syncToWeeklyLog(woId);
+                toast({ title: "Mission Finalized", description: "Mission moved to historical registry and current weekly log." });
             } else {
                 toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
             }

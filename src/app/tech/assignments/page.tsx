@@ -184,6 +184,23 @@ export default function TechAssignmentsPage() {
       });
     };
 
+    const removeFromWeeklyLogs = async (woId: string) => {
+        if (!currentTechId) return;
+        const logQuery = query(
+            collection(db, 'weeklyLogs'),
+            where('technicianId', '==', currentTechId),
+            where('status', '==', 'Draft')
+        );
+        const snap = await getDocs(logQuery);
+        for (const logDoc of snap.docs) {
+            const data = logDoc.data() as WeeklyLog;
+            const updatedItems = (data.items || []).filter(item => item.workOrderId !== woId);
+            if (updatedItems.length !== (data.items || []).length) {
+                await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updatedItems });
+            }
+        }
+    };
+
     const handleConfirm = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
@@ -261,7 +278,7 @@ export default function TechAssignmentsPage() {
 
         if (!snap.empty) {
             const logDoc = snap.docs[0];
-            updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
+            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
                 items: arrayUnion(newItem)
             });
         } else {
@@ -273,7 +290,7 @@ export default function TechAssignmentsPage() {
                 reimbursements: [],
                 totalPayout: 0
             };
-            addDoc(collection(db, 'weeklyLogs'), newLog);
+            await addDoc(collection(db, 'weeklyLogs'), newLog);
         }
     };
 
@@ -282,32 +299,41 @@ export default function TechAssignmentsPage() {
         const coords = await getGPSCoordinates();
         const docRef = doc(db, 'assignments', woId);
         
-        updateDoc(docRef, {
-            status: 'completed',
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-            ]
-        }).then(() => {
-            syncToWeeklyLog(woId);
-            toast({ title: "Mission Finalized", description: "Mission moved to historical registry and weekly log." });
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+        try {
+            await removeFromWeeklyLogs(woId);
+            await updateDoc(docRef, {
+                status: 'completed',
+                history: [
+                    ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                ]
+            });
+            await syncToWeeklyLog(woId);
+            toast({ title: "Mission Finalized", description: "Mission moved to historical registry and current weekly log." });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
     };
 
     const handleReopen = async (woId: string) => {
         const now = format(new Date(), 'HH:mm');
         const coords = await getGPSCoordinates();
         const docRef = doc(db, 'assignments', woId);
-        updateDoc(docRef, {
-            status: 'in-progress',
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
-            ]
-        }).then(() => {
+        
+        try {
+            await removeFromWeeklyLogs(woId);
+            await updateDoc(docRef, {
+                status: 'in-progress',
+                history: [
+                    ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                ]
+            });
             setActiveTab('active');
-            toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal for editing." });
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+            toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal and removed from weekly log." });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
     };
 
     const handleOpenDetail = (wo: WorkOrder) => {

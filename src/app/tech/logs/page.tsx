@@ -24,7 +24,8 @@ import {
     Plus,
     AlertTriangle,
     MapPin,
-    Lock
+    Lock,
+    Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,7 +53,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -472,7 +473,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {displayId}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
                         </div>
                     </div>
                     {!isLocked && (

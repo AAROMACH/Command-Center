@@ -438,7 +438,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={`${item.id || itemIdx}-${item.workOrderId}`} 
+                            key={item.id || item.workOrderId || `item-${itemIdx}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -536,13 +536,15 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         </div>
                         <div className="min-w-0 text-left">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title || job.description}</h4>
                                 <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
                                 <span className="flex items-center gap-1.5"><CalendarIcon size={10}/> {job.scheduleDate}</span>
-                                <span className="font-mono text-brand-red">ID: {job.id.toUpperCase()}</span>
+                            </div>
+                            <div className="mt-0.5">
+                                <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest">ID: {(job.id || '').toUpperCase()}</span>
                             </div>
                         </div>
                     </div>

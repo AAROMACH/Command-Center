@@ -22,7 +22,8 @@ import {
   FileCheck,
   RotateCcw,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Check as CheckIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -218,13 +219,28 @@ export default function TechAssignmentsPage() {
         const coords = await getGPSCoordinates();
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
+            status: 'checked-out',
+            history: [
+                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+            ]
+        }).then(() => {
+            toast({ title: "Checked Out", description: "Session ended. Mission remains active until finalized." });
+        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+    };
+
+    const handleMarkComplete = async (woId: string) => {
+        const now = format(new Date(), 'HH:mm');
+        const coords = await getGPSCoordinates();
+        const docRef = doc(db, 'assignments', woId);
+        updateDoc(docRef, {
             status: 'completed',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).then(() => {
-            toast({ title: "Job Finalized", description: "Mission registry closed and moved to history." });
+            toast({ title: "Mission Finalized", description: "Mission moved to historical registry." });
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
@@ -385,6 +401,7 @@ export default function TechAssignmentsPage() {
                                                     wo.status === 'in-progress' ? 'inprogress' : 
                                                     wo.status === 'on-my-way' ? 'pending' : 
                                                     wo.status === 'confirmed' ? 'active' :
+                                                    wo.status === 'checked-out' ? 'checked-out' :
                                                     'scheduled'
                                                 } 
                                                 className="capitalize text-[8px] h-4 px-1.5"
@@ -418,7 +435,7 @@ export default function TechAssignmentsPage() {
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                                               {wo.status === 'assigned' && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                                       <Check size={14} className="mr-2"/>
@@ -442,6 +459,18 @@ export default function TechAssignmentsPage() {
                                                       <LogOut size={14} className="mr-2"/>
                                                       Check Out
                                                   </Button>
+                                              )}
+                                              {wo.status === 'checked-out' && (
+                                                  <>
+                                                      <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                                          <RotateCcw size={14} className="mr-2"/>
+                                                          Check back in
+                                                      </Button>
+                                                      <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                                          <CheckIcon size={14} className="mr-2"/>
+                                                          Mark Complete
+                                                      </Button>
+                                                  </>
                                               )}
                                             </div>
                                         </td>

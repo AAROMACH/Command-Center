@@ -45,6 +45,7 @@ export const STATUS_LABELS = {
   confirmed: "Confirmed",
   "on-my-way": "En Route",
   "in-progress": "On Site",
+  "checked-out": "Checked Out",
   completed: "Closed",
   scheduled: "Scheduled",
   checked_in: "Checked In",

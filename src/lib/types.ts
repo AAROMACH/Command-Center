@@ -50,7 +50,7 @@ export type WorkOrder = {
   location: string;
   requiredSkills: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'completed';
+  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed';
   assignedTechnicianId?: string;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];

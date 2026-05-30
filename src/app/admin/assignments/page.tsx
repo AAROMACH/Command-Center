@@ -202,7 +202,7 @@ export default function AssignmentsHubPage() {
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => (wo.status === 'assigned' || wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way')),
+    filteredWorkOrders.filter(wo => wo.status !== 'completed'),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() => 
@@ -471,12 +471,12 @@ export default function AssignmentsHubPage() {
                                                     </a>
                                                     )}
                                                 </div>
-                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
+                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                             </div>
                                         </td>
                                         <td className="text-left pl-0 py-4">
                                             <div className="flex flex-col min-w-0">
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal">{wo.title || wo.description}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{wo.clientName}</p>
                                             </div>
                                         </td>
@@ -789,6 +789,7 @@ export default function AssignmentsHubPage() {
                                   <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
                                   <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
                                   <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
+                                  <SelectItem value="checked-out" className="text-xs uppercase font-bold">CHECKED OUT</SelectItem>
                                   <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
                                 </SelectContent>
                               </Select>

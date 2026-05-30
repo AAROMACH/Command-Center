@@ -14,7 +14,9 @@ import {
   ClipboardList,
   Receipt,
   LogOut,
-  Navigation
+  Navigation,
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +28,7 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -82,13 +85,27 @@ export default function TechDashboardPage() {
     }, [router]);
 
     const activeJob = useMemo(() => 
-        allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed'),
+        allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed' || wo.status === 'checked-out'),
     [allWorkOrders]);
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
+        const today = format(new Date(), 'MM-dd-yyyy');
+        const nowTime = format(new Date(), 'HH:mm');
+        
         try {
             const docRef = doc(db, 'assignments', woId);
-            await updateDoc(docRef, { status: newStatus });
+            const historyEntry = { 
+                type: 'status_change', 
+                date: today, 
+                details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}.`, 
+                user: tech?.name || 'Field Operative' 
+            };
+            
+            await updateDoc(docRef, { 
+                status: newStatus,
+                history: [...(activeJob?.history || []), historyEntry]
+            });
+            
             toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
@@ -127,15 +144,45 @@ export default function TechDashboardPage() {
             </div>
 
             {activeJob && (
-                <Card className="border-2 border-brand-red bg-brand-red-dim/5 cursor-pointer" onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
+                <Card className={cn(
+                    "border-2 bg-bg-secondary cursor-pointer transition-all",
+                    activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_rgba(31,138,85,0.1)]" : "border-brand-red bg-brand-red-dim/5"
+                )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
                     <CardHeader className="pb-2 text-left">
-                        <CardTitle className="text-xl uppercase">{activeJob.description}</CardTitle>
-                        <CardDescription className="text-xs uppercase font-bold text-brand-red">{activeJob.status}</CardDescription>
+                        <div className="flex justify-between items-start">
+                            <CardTitle className="text-xl uppercase">{activeJob.description}</CardTitle>
+                            <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
+                                {activeJob.status.replace(/-/g, ' ').toUpperCase()}
+                            </Badge>
+                        </div>
+                        <CardDescription className="text-xs uppercase font-bold text-text-muted">{activeJob.clientName}</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex justify-end pt-4">
-                        {activeJob.status === 'confirmed' && <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>Start Trip</Button>}
-                        {activeJob.status === 'on-my-way' && <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>Check In</Button>}
-                        {activeJob.status === 'in-progress' && <Button variant="destructive" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>Check Out</Button>}
+                    <CardContent className="flex justify-end gap-3 pt-4">
+                        {activeJob.status === 'confirmed' && (
+                            <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>
+                                <Navigation size={16} className="mr-2"/> Start Trip
+                            </Button>
+                        )}
+                        {activeJob.status === 'on-my-way' && (
+                            <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                <Play size={16} className="mr-2 fill-current"/> Check In
+                            </Button>
+                        )}
+                        {activeJob.status === 'in-progress' && (
+                            <Button variant="destructive" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                                <LogOut size={16} className="mr-2"/> Check Out
+                            </Button>
+                        )}
+                        {activeJob.status === 'checked-out' && (
+                            <>
+                                <Button variant="outline" className="border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                    <RotateCcw size={16} className="mr-2"/> Check back in
+                                </Button>
+                                <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                    <Check size={16} className="mr-2"/> Finalize & Close
+                                </Button>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             )}

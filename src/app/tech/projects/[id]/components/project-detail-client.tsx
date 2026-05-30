@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -7,7 +6,7 @@ import Link from 'next/link';
 import {
   ChevronLeft,
   MapPin,
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   Users,
   ChevronDown,
@@ -621,7 +620,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                         </div>
                         <div className="pdh-meta">
                             <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
-                            <div className="pdh-meta-item"><Calendar size={12}/> Started {formatDateDisplay(project.startDate)}</div>
+                            <div className="pdh-meta-item"><CalendarIcon size={12}/> Started {formatDateDisplay(project.startDate)}</div>
                             <div className="pdh-meta-item"><Clock size={12}/> Est. {project.estimatedDuration}</div>
                             <div className="pdh-meta-item"><Users size={12}/> {(project.team || []).length} Team Members</div>
                         </div>

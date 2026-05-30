@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Project, Technician } from '@/lib/types';
 import { Briefcase, Search } from 'lucide-react';
 import { ProjectsClient } from './components/projects-client';
@@ -17,15 +17,20 @@ export default function TechProjectsPage() {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
 
-        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
-            setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
-        });
+        if (userId) {
+            // Live listener for projects where this tech is part of the team
+            const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+                const projects = snap.docs.map(d => ({ ...d.data(), id: d.id } as Project));
+                // We filter client-side for immediate reactivity to team changes
+                setAllProjects(projects);
+            });
 
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-            setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-        });
+            const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+                setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+            });
 
-        return () => { unsubProj(); unsubTech(); };
+            return () => { unsubProj(); unsubTech(); };
+        }
     }, []);
 
     const techProjects = useMemo(() => {

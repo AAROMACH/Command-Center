@@ -165,7 +165,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
             status: 'assigned',
             history: [
                 ...(mission.history || []),
-                { type: 'tech_swap', date: today, details: `Lead swap: -> ${targetTech?.name}.`, user: currentUser?.name || 'Admin' }
+                { type: 'status_change', date: today, details: `Lead swap: -> ${targetTech?.name}.`, user: currentUser?.name || 'Admin' }
             ]
         };
     } else {
@@ -175,7 +175,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
             additionalTechnicianIds: [...currentSupport, technicianId],
             history: [
                 ...(mission.history || []),
-                { type: 'tech_add', date: today, details: `Added support: ${targetTech?.name}.`, user: currentUser?.name || 'Admin' }
+                { type: 'note', date: today, details: `Added support: ${targetTech?.name}.`, user: currentUser?.name || 'Admin' }
             ]
         };
     }

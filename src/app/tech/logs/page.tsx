@@ -430,7 +430,7 @@ export default function TechWeeklyLogPage() {
                 <div className="space-y-3">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
-                            key={item.id || `${item.workOrderId}-${itemIdx}`} 
+                            key={`${item.id || itemIdx}-${item.workOrderId}`} 
                             item={item} 
                             isLocked={isLocked}
                             workOrders={workOrders}
@@ -472,7 +472,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {displayId}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
                         </div>
                     </div>
                     {!isLocked && (

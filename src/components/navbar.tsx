@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { hasPermission, type Permission } from '@/lib/permissions';
@@ -83,35 +83,38 @@ export function Navbar() {
       } else {
         const storedId = localStorage.getItem('currentUserId');
         if (storedId) {
-            setCurrentUser(technicians.find(t => t.id === storedId));
+            const registryUser = technicians.find(t => t.id === storedId);
+            setCurrentUser(registryUser);
         }
       }
     });
     return () => unsubAuth();
   }, []);
 
+  const { leftItems, dashboardItem, rightItems } = useMemo(() => {
+    if (!mounted) return { leftItems: [], dashboardItem: null, rightItems: [] };
+
+    const isTechPortal = pathname.startsWith('/tech');
+    const isClientPortal = pathname.startsWith('/client');
+    const rawItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
+    const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
+    
+    const visibleItems = rawItems.filter(item => hasPermission(currentUser, item.permission));
+    const dIndex = visibleItems.findIndex(i => i.href === dashboardHref);
+
+    if (dIndex === -1) return { leftItems: visibleItems, dashboardItem: null, rightItems: [] };
+
+    return {
+      leftItems: visibleItems.slice(0, dIndex),
+      dashboardItem: visibleItems[dIndex],
+      rightItems: visibleItems.slice(dIndex + 1),
+    };
+  }, [mounted, pathname, currentUser]);
+
   if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full opacity-0" />;
 
-  const isTechPortal = pathname.startsWith('/tech');
   const isClientPortal = pathname.startsWith('/client');
-  
-  const rawItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavItems;
-  const dashboardHref = isTechPortal ? '/tech/dashboard' : isClientPortal ? '/client/dashboard' : '/admin/dashboard';
-  
-  const visibleItems = rawItems.filter(item => hasPermission(currentUser, item.permission));
-
-  const dashboardIndex = visibleItems.findIndex(i => i.href === dashboardHref);
-  let leftItems: NavItem[] = [];
-  let centerItem: NavItem | null = null;
-  let rightItems: NavItem[] = [];
-
-  if (dashboardIndex !== -1) {
-    leftItems = visibleItems.slice(0, dashboardIndex);
-    centerItem = visibleItems[dashboardIndex];
-    rightItems = visibleItems.slice(dashboardIndex + 1);
-  } else {
-    leftItems = visibleItems;
-  }
+  const isTechPortal = pathname.startsWith('/tech');
 
   const isActive = (href: string) => {
     if (href.endsWith('/dashboard')) return pathname === href;
@@ -121,7 +124,7 @@ export function Navbar() {
   return (
     <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full">
       <div className="flex w-1/4 items-center">
-        <Link href={dashboardHref} className="flex items-center gap-2 group">
+        <Link href={dashboardItem?.href || '/'} className="flex items-center gap-2 group">
           {logo && (
             <Image 
               src={logo.imageUrl} 
@@ -158,16 +161,16 @@ export function Navbar() {
           </Link>
         ))}
 
-        {centerItem && (
+        {dashboardItem && (
           <Link
-            href={centerItem.href}
+            href={dashboardItem.href}
             className={cn(
-              'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all border border-transparent',
-              isActive(centerItem.href) ? 'bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'text-white bg-bg-tertiary hover:bg-bg-elevated'
+              'nav-item flex cursor-pointer items-center gap-2 rounded-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all border border-transparent mx-2',
+              isActive(dashboardItem.href) ? 'bg-brand-red text-white shadow-[0_0_15px_rgba(204,34,0,0.3)]' : 'text-white bg-bg-tertiary hover:bg-bg-elevated'
             )}
           >
-            <centerItem.icon className="h-4 w-4" />
-            <span>{centerItem.label}</span>
+            <dashboardItem.icon className="h-4 w-4" />
+            <span>{dashboardItem.label}</span>
           </Link>
         )}
 

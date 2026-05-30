@@ -36,7 +36,10 @@ import {
   ExternalLink,
   X,
   Check,
-  Eye
+  Eye,
+  Activity,
+  RotateCcw,
+  Timer
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -63,13 +66,13 @@ import {
 } from '@/components/ui/select';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- HELPERS ---
 function getProgress(project: Project): number {
@@ -100,8 +103,8 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
             <div className="lg:col-span-2 space-y-6">
                 <section className="field-group">
                     <h3 className="field-group-title"><FileText size={14}/> Operational Scope</h3>
-                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
-                        <div className="space-y-1 text-left">
+                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
+                        <div className="space-y-1">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Objective</p>
                             <p className="text-sm text-text-primary leading-relaxed uppercase font-medium">{project.scope}</p>
                         </div>
@@ -111,14 +114,14 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                 <section className="field-group">
                     <h3 className="field-group-title"><MapPin size={14}/> Site Logistics</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
-                            <div className="space-y-1 text-left">
+                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
+                            <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Access Instructions</p>
                                 <p className="text-xs text-text-secondary leading-relaxed">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
                             </div>
                         </div>
-                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
-                            <div className="space-y-1 text-left">
+                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
+                            <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">On-Site Contact</p>
                                 <p className="text-xs font-bold text-text-primary uppercase">
                                     {project.onsiteContactName} {project.onsiteContactPhone && `(${project.onsiteContactPhone})`}
@@ -250,8 +253,8 @@ const TimesheetsTab = ({
     dailyLogs: ProjectDailyLog[], 
     technicians: Technician[], 
     onCheckIn: () => void, 
-    onCheckOut: () => void, 
-    activeSession: any, 
+    onCheckOut: (logId: string) => void, 
+    activeSession: ProjectDailyLog | undefined, 
     isReadOnly: boolean,
     project: Project
 }) => {
@@ -259,10 +262,11 @@ const TimesheetsTab = ({
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (activeSession) {
+        if (activeSession && activeSession.checkInTime) {
+            const start = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
             interval = setInterval(() => {
                 const now = new Date();
-                const diff = now.getTime() - activeSession.startTime.getTime();
+                const diff = now.getTime() - start.getTime();
                 const hours = Math.floor(diff / (1000 * 60 * 60));
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -291,123 +295,120 @@ const TimesheetsTab = ({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-brand-red-dim rounded-lg border border-brand-red/20 text-brand-red">
-                        <Clock size={20} />
+            {/* TACTICAL SESSION TERMINAL - COMPACT STRIP */}
+            <div className={cn(
+                "p-3 rounded-xl border flex items-center justify-between transition-all shadow-lg overflow-hidden",
+                activeSession ? "bg-brand-red-dim border-brand-red/40" : "bg-bg-secondary border-border-main"
+            )}>
+                <div className="flex items-center gap-6">
+                    <div className={cn(
+                        "p-2 rounded-lg border",
+                        activeSession ? "bg-brand-red text-white" : "bg-bg-tertiary text-text-muted border-border-sub"
+                    )}>
+                        {activeSession ? <Activity size={20} className="animate-pulse" /> : <Timer size={20} />}
                     </div>
-                    <div className="text-left">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Master Project Tally</p>
-                        <p className="text-xl font-mono font-bold text-text-primary">{(project.actualHours || 0).toFixed(1)} Total Hours Logged</p>
+                    
+                    <div className="text-left space-y-0.5">
+                        <div className="flex items-center gap-2">
+                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">
+                                {activeSession ? "Live Field Session" : "Session Terminal"}
+                             </p>
+                             {activeSession ? (
+                                <Badge variant="active" className="h-4 px-1.5 text-[7px] animate-pulse">ACTIVE</Badge>
+                             ) : isReadOnly ? (
+                                <Badge variant="outline" className="h-4 px-1.5 text-[7px] opacity-60">LOCKED</Badge>
+                             ) : (
+                                <Badge variant="outline" className="h-4 px-1.5 text-[7px]">STANDBY</Badge>
+                             )}
+                        </div>
+                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+                            {activeSession ? `Checked In: ${activeSession.checkInTime}` : `Master Tally: ${(project.actualHours || 0).toFixed(1)}h`}
+                        </p>
                     </div>
+
+                    {activeSession && (
+                        <div className="flex items-center gap-10 border-l border-border-sub/30 pl-8">
+                            <div className="text-left">
+                                <p className="text-[8px] font-black text-text-muted uppercase">Duration</p>
+                                <p className="text-lg font-mono font-bold text-brand-red leading-none">{elapsedTime}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {isReadOnly ? (
+                        <p className="text-[9px] font-black text-text-muted uppercase pr-4">Registry Archived</p>
+                    ) : !activeSession ? (
+                        <Button className="h-9 px-8 bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest shadow-lg" onClick={onCheckIn}>
+                            <Play size={14} className="mr-2 fill-current" /> Initialize Session
+                        </Button>
+                    ) : (
+                        <Button variant="destructive" className="h-9 px-8 text-[10px] font-bold uppercase tracking-widest shadow-lg" onClick={() => onCheckOut(activeSession.id)}>
+                            <LogOut size={14} className="mr-2" /> Finalize Registry
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-                <section className="field-group border-2 border-brand-red/30 bg-brand-red-dim/5">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="field-group-title !mb-0"><Clock size={14}/> Session Terminal</h3>
-                        <div className="flex items-center gap-3">
-                            {activeSession ? (
-                                <Badge variant="active" className="animate-pulse">LIVE SESSION</Badge>
-                            ) : isReadOnly ? (
-                                <Badge variant="active" className="bg-green-dim border-green-border text-text-green">PROJECT FINALIZED</Badge>
-                            ) : (
-                                <Badge variant="outline" className="text-text-muted">IDLE</Badge>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className="p-6 rounded-xl bg-bg-primary border border-border-sub flex flex-col items-center text-center space-y-6">
-                        {isReadOnly ? (
-                            <>
-                                <div className="p-4 bg-bg-tertiary rounded-full border border-border-sub text-text-green">
-                                    <FileCheck size={32} />
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Registry Locked</p>
-                                    <p className="text-xs text-text-muted max-w-xs uppercase">This project has been marked as complete.</p>
-                                </div>
-                            </>
-                        ) : !activeSession ? (
-                            <>
-                                <div className="p-4 bg-bg-tertiary rounded-full border border-border-sub text-text-muted">
-                                    <MapPin size={32} />
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Awaiting On-Site Verification</p>
-                                    <p className="text-xs text-text-muted max-w-xs">GPS-verified check-in is required to initiate a billable session.</p>
-                                </div>
-                                <Button className="w-full max-w-sm h-12 bg-brand-red hover:bg-brand-red-hover text-sm font-bold uppercase tracking-widest" onClick={onCheckIn}>
-                                    <Play size={18} className="mr-2 fill-current" /> Initialize Session
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <div className="grid grid-cols-2 gap-12 w-full max-w-sm">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Started At</p>
-                                        <p className="text-xl font-mono font-bold text-text-green">{format(activeSession.startTime, 'hh:mm:ss a')}</p>
+            <section className="space-y-3">
+                <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Daily Activity Registry</h3>
+                    <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red">
+                        <Download size={10} className="mr-1"/> Export Audit
+                    </Button>
+                </div>
+                {groupedByDate.length > 0 ? (
+                    <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-2">
+                        {groupedByDate.map(group => (
+                            <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-lg overflow-hidden bg-bg-secondary shadow-sm">
+                                <AccordionTrigger className="px-4 py-2 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
+                                    <div className="flex items-center gap-3">
+                                        <CalendarIcon size={14} className="text-brand-red" />
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.date}</span>
+                                        <Badge variant="outline" className="text-[8px] bg-bg-tertiary h-4">{group.logs.length} LOGS</Badge>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
-                                        <p className="text-xl font-mono font-bold text-text-primary">{elapsedTime}</p>
-                                    </div>
-                                </div>
-                                <div className="w-full space-y-4">
-                                    <Button variant="destructive" className="w-full h-12 text-sm font-bold uppercase tracking-widest" onClick={onCheckOut}>
-                                        <LogOut size={18} className="mr-2" /> Finalize & Check-Out
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </section>
-
-                <section className="space-y-3">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Daily Activity Registry</h3>
-                    {groupedByDate.length > 0 ? (
-                        <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-2">
-                            {groupedByDate.map(group => (
-                                <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-lg overflow-hidden bg-bg-secondary">
-                                    <AccordionTrigger className="px-4 py-2 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
-                                        <div className="flex items-center gap-3">
-                                            <CalendarIcon size={14} className="text-brand-red" />
-                                            <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.date}</span>
-                                            <Badge variant="outline" className="text-[8px] bg-bg-tertiary h-4">{group.logs.length} LOGS</Badge>
-                                        </div>
-                                        <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Daily Hours: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="p-2 space-y-1 bg-bg-primary/20">
-                                        {group.logs.map(log => {
-                                            const tech = technicians.find(t => t.id === log.technicianId);
-                                            return (
-                                                <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary space-y-2 text-left">
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-2">
-                                                            <Avatar className="h-5 w-5 border border-border-sub">
-                                                                <AvatarFallback className="text-[8px]">{tech?.name.charAt(0)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</span>
-                                                        </div>
-                                                        <span className="text-[10px] font-mono font-bold text-text-green">{log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`}</span>
+                                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Daily Hours: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-2 space-y-1 bg-bg-primary/20">
+                                    {group.logs.map(log => {
+                                        const tech = technicians.find(t => t.id === log.technicianId);
+                                        const isLive = !log.checkOutTime;
+                                        return (
+                                            <div key={log.id} className={cn(
+                                                "p-3 rounded-lg border space-y-2 text-left transition-all",
+                                                isLive ? "bg-brand-red-dim/5 border-brand-red shadow-sm" : "bg-bg-secondary border-border-sub"
+                                            )}>
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-5 w-5 border border-border-sub">
+                                                            <AvatarFallback className="text-[8px]">{tech?.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</span>
+                                                        {isLive && <Badge variant="active" className="h-3 px-1 text-[6px] animate-pulse">RECORDING</Badge>}
                                                     </div>
-                                                    <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+                                                    <span className={cn("text-[10px] font-mono font-bold", isLive ? "text-brand-red" : "text-text-green")}>
+                                                        {isLive ? 'ACTIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
+                                                    </span>
                                                 </div>
-                                            )
-                                        })}
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    ) : (
-                        <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                            <History size={48} className="mx-auto text-text-muted mb-2" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">No site activity reported yet</p>
-                        </div>
-                    )}
-                </section>
-            </div>
+                                                <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+                                                <div className="flex items-center gap-4 text-[8px] font-bold uppercase text-text-muted tracking-widest">
+                                                    <span className="flex items-center gap-1"><Clock size={10}/> {log.checkInTime} — {log.checkOutTime || 'Present'}</span>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                ) : (
+                    <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                        <History size={48} className="mx-auto text-text-muted mb-2" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest">No site activity reported yet</p>
+                    </div>
+                )}
+            </section>
         </div>
     );
 };
@@ -424,7 +425,6 @@ const PhaseBlock = ({
   isReadOnly: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const { toast } = useToast();
   
   const completedTasks = (phase.tasks || []).filter((t) => t.isCompleted).length;
   const totalTasks = (phase.tasks || []).length;
@@ -510,10 +510,15 @@ const PhaseBlock = ({
 // --- MAIN COMPONENT ---
 export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [activeTab, setActiveTab] = useState('overview');
-    const [activeSession, setActiveSession] = useState<any>(null);
     const { toast } = useToast();
 
+    const currentUserId = useMemo(() => typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null, []);
     const isReadOnly = project.status === 'completed';
+
+    // Active session is derived from logs with no checkOutTime for the current tech
+    const activeSession = useMemo(() => 
+        dailyLogs.find(log => log.technicianId === currentUserId && !log.checkOutTime),
+    [dailyLogs, currentUserId]);
 
     const progress = useMemo(() => {
         const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
@@ -551,34 +556,18 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         }
     };
 
-    const handleCheckIn = () => {
-        if (isReadOnly) return;
-        setActiveSession({
-            startTime: new Date(),
-            location: project.location
-        });
-        toast({ title: 'Checked In', description: 'GPS verified. Project session initialized.' });
-    };
-
-    const handleCheckOut = async () => {
-        if (!activeSession) return;
-        const now = new Date();
-        const diffMs = now.getTime() - activeSession.startTime.getTime();
-        const totalMinutes = Math.floor(diffMs / (1000 * 60));
-        const h = Math.floor(totalMinutes / 60);
-        const m = totalMinutes % 60;
+    const handleCheckIn = async () => {
+        if (isReadOnly || !currentUserId) return;
         
-        const hoursWorked = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
-
+        const now = new Date();
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
-            technicianId: localStorage.getItem('currentUserId') || 'unknown',
+            technicianId: currentUserId,
             date: format(now, 'yyyy-MM-dd'),
-            hoursWorked,
-            totalHours: `${h}h ${m}m`,
-            checkInTime: format(activeSession.startTime, 'HH:mm'),
-            checkOutTime: format(now, 'HH:mm'),
-            workSummary: 'Automated field session closure.',
+            hoursWorked: 0,
+            totalHours: '0h 0m',
+            checkInTime: format(now, 'HH:mm'),
+            workSummary: 'ACTIVE FIELD SESSION INITIALIZED',
             taskIdsProgressed: [],
             taskIdsCompleted: [],
             phaseIdsWorked: [],
@@ -588,13 +577,37 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
+            toast({ title: 'Checked In', description: 'GPS verified. Project session initialized in cloud registry.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        }
+    };
+
+    const handleCheckOut = async (logId: string) => {
+        if (!activeSession) return;
+        const now = new Date();
+        
+        try {
+            const startTime = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
+            const diffMs = now.getTime() - startTime.getTime();
+            const totalMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
+            const hoursWorked = parseFloat((totalMinutes / 60).toFixed(1));
+
+            const logRef = doc(db, 'projectDailyLogs', logId);
+            await updateDoc(logRef, {
+                checkOutTime: format(now, 'HH:mm'),
+                hoursWorked,
+                totalHours: `${h}h ${m}m`,
+                workSummary: 'Automated field session closure verified.'
+            });
             
             const projectRef = doc(db, 'projects', project.id);
             await updateDoc(projectRef, {
                 actualHours: (project.actualHours || 0) + hoursWorked
             });
 
-            setActiveSession(null);
             toast({ title: 'Session Finalized', description: 'Timesheet log committed to project registry.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });

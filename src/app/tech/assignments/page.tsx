@@ -602,7 +602,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                                     <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                                         <RotateCcw size={14} className="mr-2"/>
-                                                        Reopen
+                                                        Check back in
                                                     </Button>
                                                 </div>
                                             </td>

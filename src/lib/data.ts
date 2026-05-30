@@ -1,4 +1,3 @@
-
 import type { Technician, WorkOrder, Project, ProjectDocument, TimesheetLog, ServiceRequest, AssignmentTimeLog, WeeklyLog, FinancialRecord, TimeOffRequest, SiteRequest, ReliabilityEvent, ProjectDailyLog, Expense, Report, Invoice, AdminMessage } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -222,41 +221,7 @@ export const assignments: WorkOrder[] = [
   }
 ];
 
-export const projects: Project[] = [
-  {
-    id: 'proj-0001',
-    name: 'Renaissance Center Phase II',
-    client: 'Premium Brands',
-    location: '100 Renaissance Center, Detroit, MI 48243',
-    status: 'active',
-    startDate: '2026-04-01',
-    estimatedDuration: '3 months',
-    assignedTechnicianIds: ['1SWDGFnDF6Z4ylbf2AQgRhLua6w2'],
-    team: [
-      { technicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2', role: 'Project Manager' }
-    ],
-    phases: [
-      {
-        id: 'ph-1',
-        phaseNumber: 1,
-        name: 'Fiber Backhaul Deployment',
-        tasks: [
-          { id: 'task-1', name: 'Mount Rack Rails', isCompleted: true, requiresPhoto: true },
-          { id: 'task-2', name: 'Pull Fiber 12-Strand', isCompleted: false, requiresPhoto: true }
-        ]
-      }
-    ],
-    scope: 'Expansion of existing network infrastructure to the 12th floor.',
-    onsiteContactName: 'Robert House',
-    onsiteContactPhone: '555-900-1122',
-    siteAccessInstructions: 'Enter via loading dock B. Code 5592.',
-    siteHazardNotes: [{ id: 'n1', text: 'Hard Hat Required in Zone 4', type: 'danger' }],
-    projectBudget: 15000,
-    estimatedHours: 120,
-    actualBudget: 4200,
-    actualHours: 32.5
-  }
-];
+export const projects: Project[] = [];
 
 export const projectDocuments: ProjectDocument[] = [];
 export const timesheetLogs: TimesheetLog[] = [];

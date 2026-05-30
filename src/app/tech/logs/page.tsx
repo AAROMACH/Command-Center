@@ -448,7 +448,7 @@ export default function TechWeeklyLogPage() {
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
                             <LayoutList size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments in this week's manifest</p>
                             {!isLocked && <p className="text-[9px] text-text-muted uppercase mt-1 text-center">Use the "Report Missing" tool to manually add job references.</p>}

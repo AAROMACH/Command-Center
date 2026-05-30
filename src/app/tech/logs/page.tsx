@@ -253,7 +253,7 @@ export default function TechWeeklyLogPage() {
     if (!activeLog) {
         return (
             <div className="space-y-6">
-                <header className="page-header">
+                <header className="page-header text-left">
                     <div className="text-left">
                         <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Billing Audit</p>
                         <h1 className="page-title">Weekly Log Registry</h1>
@@ -481,7 +481,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                     <div className="flex items-center gap-4 text-left">
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
-                            <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
+                            <p className="text-xs font-bold uppercase text-text-primary text-left">Linked mission data unavailable</p>
                             <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
                         </div>
                     </div>

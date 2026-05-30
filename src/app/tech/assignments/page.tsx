@@ -61,6 +61,24 @@ export default function TechAssignmentsPage() {
 
     const { toast } = useToast();
 
+    const formatDateStr = (dateStr: string) => {
+        if (!dateStr) return 'TBD';
+        try {
+            const parts = dateStr.split(/[-/]/);
+            if (parts[0].length === 4) {
+                return format(parseISO(dateStr), "MM-dd-yyyy");
+            } else {
+                const [m, d, y] = parts;
+                if (y && m && d) {
+                    return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
+                }
+            }
+            return dateStr;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     useEffect(() => {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
@@ -82,24 +100,6 @@ export default function TechAssignmentsPage() {
     const currentTech = useMemo(() => 
         currentTechId ? technicians.find(t => t.id === currentTechId) : null
     , [currentTechId]);
-
-    const formatDateStr = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split(/[-/]/);
-            if (parts[0].length === 4) {
-                return format(parseISO(dateStr), "MM-dd-yyyy");
-            } else {
-                const [m, d, y] = parts;
-                if (y && m && d) {
-                    return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
-                }
-            }
-            return dateStr;
-        } catch (e) {
-            return dateStr;
-        }
-    };
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
@@ -349,7 +349,7 @@ export default function TechAssignmentsPage() {
 
     return (
         <div className="space-y-6">
-            <header className="page-header">
+            <header className="page-header text-left">
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <Wrench size={12} />
@@ -602,7 +602,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                                     <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                                         <RotateCcw size={14} className="mr-2"/>
-                                                        Check back in
+                                                        Reopen
                                                     </Button>
                                                 </div>
                                             </td>

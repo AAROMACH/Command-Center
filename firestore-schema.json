@@ -1,7 +1,6 @@
-
 {
   "firestore_schema": {
-    "version": "3.2.0",
+    "version": "3.3.0",
     "_id_system": {
       "prefixes": {
         "usr_"   : "users",
@@ -42,6 +41,15 @@
               "isAdminReviewed": "boolean"
             }
           }
+        }
+      },
+      "projects": {
+        "fields": {
+          "id": "string",
+          "name": "string",
+          "client": "string",
+          "team": "array of {technicianId: string, role: string}",
+          "status": "string"
         }
       }
     }

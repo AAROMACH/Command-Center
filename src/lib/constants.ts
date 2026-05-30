@@ -76,11 +76,11 @@ export const STATUS_LABELS = {
 } as const;
 
 export const RELIABILITY_TIERS = {
-  PREFERRED: { label: 'Preferred', min: 95, max: 100, variant: 'active' },
-  QUALIFIED: { label: 'Qualified', min: 85, max: 94, variant: 'active' },
-  RELIABLE: { label: 'Reliable', min: 70, max: 84, variant: 'onhold' },
-  MONITORED: { label: 'Monitored', min: 50, max: 69, variant: 'high' },
-  RESTRICTED: { label: 'Restricted', min: 0, max: 49, variant: 'missed' },
+  ELITE: { label: 'Elite', min: 95, max: 100, variant: 'active' },
+  RELIABLE: { label: 'Reliable', min: 80, max: 94, variant: 'active' },
+  MONITORED: { label: 'Monitored', min: 60, max: 79, variant: 'onhold' },
+  RESTRICTED: { label: 'Restricted', min: 30, max: 59, variant: 'high' },
+  SUSPENDED: { label: 'Suspended Review', min: 0, max: 29, variant: 'missed' },
 } as const;
 
 export const RELIABILITY_EVENT_TYPES = {

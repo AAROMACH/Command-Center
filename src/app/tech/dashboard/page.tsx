@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -157,7 +156,7 @@ export default function TechDashboardPage() {
         try {
             const docRef = doc(db, 'assignments', woId);
             const historyEntry = { 
-                type: 'status_change', 
+                type: 'status_change' as const, 
                 date: today, 
                 details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}.`, 
                 user: tech?.name || 'Field Operative' 
@@ -241,7 +240,7 @@ export default function TechDashboardPage() {
                             </Button>
                         )}
                         {activeJob.status === 'in-progress' && (
-                            <Button variant="destructive" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                            <Button variant="outline" className="border-text-red text-text-red hover:bg-brand-red-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
                                 <LogOut size={16} className="mr-2"/> Check Out
                             </Button>
                         )}

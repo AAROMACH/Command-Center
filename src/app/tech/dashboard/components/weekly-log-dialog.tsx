@@ -90,7 +90,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                                             <TableRow key={item.id || item.workOrderId || `log-item-${index}`} className="border-border-sub">
                                                 <TableCell className="py-2 text-left">
                                                     <div className="text-xs font-bold uppercase">{(wo?.id || item.workOrderId || 'N/A').toUpperCase()}</div>
-                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase text-left">{wo?.description || 'Assignment Detail Restricted'}</div>
+                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase text-left">{wo?.title || wo?.description || 'Assignment Detail Restricted'}</div>
                                                 </TableCell>
                                                 <TableCell className="py-2">
                                                     <Badge variant="active" className="text-[9px] uppercase tracking-widest h-5">Verified</Badge>

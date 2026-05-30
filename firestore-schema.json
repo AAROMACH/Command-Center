@@ -1,3 +1,4 @@
+
 {
   "firestore_schema": {
     "version": "3.1.0",
@@ -406,7 +407,9 @@
               "displayLocationText": "string — denormalized",
               "displayScheduledDate": "timestamp",
               "didWork": "boolean",
-              "isCompleted": "boolean",
+              "isComplete": "boolean",
+              "jobPay": "number (snapshot at completion)",
+              "confirmationStatus": "string (confirmed | disputed) | null",
               "outcomeCode": "string (worked_completed | worked_revisit_same_work_order | did_not_work | other) | null",
               "didNotWorkReasonCode": "string | null",
               "incompleteReasonCode": "string (revisit_same_work_order | pending_parts | site_not_ready | other) | null",

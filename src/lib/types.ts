@@ -1,3 +1,4 @@
+
 export type AppRole = 
   | 'super_admin' 
   | 'dispatch_admin' 
@@ -276,6 +277,7 @@ export type WeeklyLogItem = {
   outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';
   isComplete: boolean;
   isAdminReviewed: boolean;
+  jobPay: number; // Snapshot of pay at time of completion
 };
 
 export type MissingAssignmentReport = {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -108,6 +109,9 @@ export default function TechDashboardPage() {
     const syncToWeeklyLog = async (woId: string) => {
         if (!currentTechId) return;
 
+        const wo = allWorkOrders.find(w => w.id === woId);
+        if (!wo) return;
+
         const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
         const weekOf = format(monday, 'MM-dd-yyyy');
         
@@ -122,6 +126,7 @@ export default function TechDashboardPage() {
         const newItem: WeeklyLogItem = {
             id: `wli-${Date.now()}`,
             workOrderId: woId,
+            jobPay: wo.pay,
             outcomeCode: 'worked_completed',
             isComplete: true,
             isAdminReviewed: false

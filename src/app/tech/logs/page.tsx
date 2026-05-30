@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -27,7 +28,8 @@ import {
     Lock,
     Settings,
     Building2,
-    ExternalLink
+    ExternalLink,
+    Circle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -263,7 +265,7 @@ export default function TechWeeklyLogPage() {
                     </Button>
                 </header>
 
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6 text-left">
                     <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
                         <Search className="h-4 w-4" />
                         <input 
@@ -379,7 +381,7 @@ export default function TechWeeklyLogPage() {
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Auditing week of {activeLog.weekOf}</p>
             </header>
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl text-left">
                 <div className="flex items-center gap-6">
                     <div className={cn(
                         "p-3 rounded-xl border",
@@ -395,10 +397,10 @@ export default function TechWeeklyLogPage() {
                             </Badge>
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-left">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green uppercase tracking-widest text-left">
                                 <Check className="text-text-green h-3 w-3"/> {counts.confirmed} Confirmed
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-red uppercase tracking-widest text-left">
                                 <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest text-left">
@@ -535,7 +537,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         )}>
                             {isDisputed ? <X size={20}/> : isConfirmed ? <Check size={20}/> : <CalendarIcon size={20}/>}
                         </div>
-                        <div className="min-w-0 text-left">
+                        <div className="min-w-0 text-left flex-1">
                             {/* Line 1: Title + Badge */}
                             <div className="flex items-center gap-3 text-left">
                                 <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[300px]">{job.title || job.description}</h4>
@@ -550,6 +552,11 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                             <div className="mt-1 text-left">
                                 <span className="font-mono text-brand-red font-bold text-[10px] uppercase tracking-widest">ID: {(job.id || '').toUpperCase()}</span>
                             </div>
+                        </div>
+
+                        <div className="text-right px-4 border-l border-border-sub/30">
+                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Job Settlement</p>
+                            <p className="text-sm font-mono font-bold text-text-green">${(item.jobPay || job.pay || 0).toFixed(2)}</p>
                         </div>
                     </div>
 

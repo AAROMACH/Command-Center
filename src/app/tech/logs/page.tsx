@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -467,18 +467,21 @@ export default function TechWeeklyLogPage() {
 
 function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
-    const [isDisputing, setIsDisputing] = useState(false);
+    const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
+
+    const isConfirmed = item.confirmationStatus === 'confirmed';
+    const isDisputed = item.confirmationStatus === 'disputed';
 
     if (!job) {
         return (
             <Card className="bg-bg-secondary border-border-main border-dashed opacity-50 p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 text-left">
                     <div className="flex items-center gap-4 text-left">
                         <AlertTriangle className="text-accent-gold" />
                         <div className="text-left">
                             <p className="text-xs font-bold uppercase text-text-primary">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {item.workOrderId?.toUpperCase() || 'N/A'}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
                         </div>
                     </div>
                     {!isLocked && (
@@ -495,7 +498,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                 {isDisputing && (
                     <div className="mt-4 pt-4 border-t border-border-sub animate-in slide-in-from-top-2 duration-300">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em]">Dispute Reason</p>
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Reason</p>
                             <RadioGroup 
                                 value={reason} 
                                 onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
@@ -516,13 +519,11 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
         );
     }
 
-    const isDisputed = item.confirmationStatus === 'disputed';
-
     return (
         <Card className={cn(
             "bg-bg-secondary border-border-main overflow-hidden transition-all",
             isDisputed ? "border-brand-red ring-1 ring-brand-red/20" : 
-            item.confirmationStatus === 'confirmed' ? "border-green-border" : "hover:border-text-muted"
+            isConfirmed ? "border-green-border" : "hover:border-text-muted"
         )}>
             <CardContent className="p-0">
                 <div className="p-4 flex items-center justify-between gap-6">
@@ -530,21 +531,24 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <div className={cn(
                             "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
-                            item.confirmationStatus === 'confirmed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
+                            isConfirmed ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
                         )}>
-                            {isDisputed ? <X size={20}/> : item.confirmationStatus === 'confirmed' ? <Check size={20}/> : <CalendarIcon size={20}/>}
+                            {isDisputed ? <X size={20}/> : isConfirmed ? <Check size={20}/> : <CalendarIcon size={20}/>}
                         </div>
                         <div className="min-w-0 text-left">
+                            {/* Line 1: Title + Badge */}
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title || job.description}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[300px]">{job.title || job.description}</h4>
                                 <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
                             </div>
+                            {/* Line 2: Location + Date */}
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {job.location}</span>
-                                <span className="flex items-center gap-1.5"><CalendarIcon size={10}/> {job.scheduleDate}</span>
+                                <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
+                                <span className="flex items-center gap-1.5"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}</span>
                             </div>
-                            <div className="mt-0.5">
-                                <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest">ID: {(job.id || '').toUpperCase()}</span>
+                            {/* Line 3: ID */}
+                            <div className="mt-1 text-left">
+                                <span className="font-mono text-brand-red font-bold text-[10px] uppercase tracking-widest">ID: {(job.id || '').toUpperCase()}</span>
                             </div>
                         </div>
                     </div>
@@ -552,24 +556,24 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                     {!isLocked && (
                         <div className="flex items-center gap-2">
                             <Button 
-                                variant={item.confirmationStatus === 'confirmed' ? 'default' : 'outline'}
+                                variant={isConfirmed ? 'default' : 'outline'}
                                 size="sm"
-                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", item.confirmationStatus === 'confirmed' ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim")}
+                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isConfirmed ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim")}
                                 onClick={() => { onConfirm(item.id); setIsDisputing(false); }}
                             >
                                 <Check size={14} className="mr-1.5"/> Confirm
                             </Button>
                             <Button 
-                                variant={isDisputed ? 'default' : 'outline'}
+                                variant={isDisputing ? 'default' : 'outline'}
                                 size="sm"
-                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isDisputed ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim")}
+                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isDisputing ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim")}
                                 onClick={() => setIsDisputing(!isDisputing)}
                             >
                                 <X size={14} className="mr-1.5"/> Dispute
                             </Button>
                         </div>
                     )}
-                    {isLocked && item.confirmationStatus === 'confirmed' && (
+                    {isLocked && isConfirmed && (
                         <div className="flex items-center gap-2 text-text-green">
                             <CheckCircle2 size={16} />
                             <span className="text-[9px] font-black uppercase tracking-widest">Verified</span>

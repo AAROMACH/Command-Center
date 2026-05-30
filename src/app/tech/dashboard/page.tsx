@@ -16,7 +16,8 @@ import {
   LogOut,
   Navigation,
   Check,
-  RotateCcw
+  RotateCcw,
+  CheckCircle2
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +30,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export default function TechDashboardPage() {
                 user: tech?.name || 'Field Operative' 
             };
             
-            if (newStatus === 'in-progress') {
+            if (newStatus === 'in-progress' || newStatus === 'checked-out') {
                 await removeFromWeeklyLogs(woId);
             }
 
@@ -170,7 +172,7 @@ export default function TechDashboardPage() {
                 await syncToWeeklyLog(woId);
                 toast({ title: "Mission Finalized", description: "Mission moved to historical registry and current weekly log." });
             } else {
-                toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus}.` });
+                toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus.replace(/-/g, ' ')}.` });
             }
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
@@ -215,7 +217,7 @@ export default function TechDashboardPage() {
                 )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
                     <CardHeader className="pb-2 text-left">
                         <div className="flex justify-between items-start">
-                            <CardTitle className="text-xl uppercase">{activeJob.description}</CardTitle>
+                            <CardTitle className="text-xl uppercase">{activeJob.title || activeJob.description}</CardTitle>
                             <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
                                 {activeJob.status.replace(/-/g, ' ').toUpperCase()}
                             </Badge>
@@ -241,10 +243,10 @@ export default function TechDashboardPage() {
                         {activeJob.status === 'checked-out' && (
                             <>
                                 <Button variant="outline" className="border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                    <RotateCcw size={16} className="mr-2"/> Check back in
+                                    <RotateCcw size={16} className="mr-2"/> Reopen
                                 </Button>
                                 <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                    <Check size={16} className="mr-2"/> Finalize & Close
+                                    <CheckCircle2 size={16} className="mr-2"/> Mark Complete
                                 </Button>
                             </>
                         )}

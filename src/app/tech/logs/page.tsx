@@ -25,11 +25,13 @@ import {
     AlertTriangle,
     MapPin,
     Lock,
-    Settings
+    Settings,
+    Building2,
+    ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, isSameDay, startOfDay, startOfWeek, isWithinInterval } from 'date-fns';
@@ -62,6 +64,11 @@ const DISPUTE_REASONS = [
     "Wrong date on my log",
     "This appears to be a duplicate"
 ];
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -463,8 +470,6 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
     const [isDisputing, setIsDisputing] = useState(false);
     const [reason, setReason] = useState(item.disputeReason || "");
 
-    const displayId = (item.workOrderId || 'N/A').toUpperCase();
-
     if (!job) {
         return (
             <Card className="bg-bg-secondary border-border-main border-dashed opacity-50 p-4">
@@ -520,18 +525,18 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
             item.confirmationStatus === 'confirmed' ? "border-green-border" : "hover:border-text-muted"
         )}>
             <CardContent className="p-0">
-                <div className="p-5 flex items-center justify-between gap-6">
+                <div className="p-4 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-6 flex-1 min-w-0 text-left">
                         <div className={cn(
-                            "h-12 w-12 rounded-xl border flex items-center justify-center shrink-0",
+                            "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                             item.confirmationStatus === 'confirmed' ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
                         )}>
-                            {isDisputed ? <X size={24}/> : item.confirmationStatus === 'confirmed' ? <Check size={24}/> : <CalendarIcon size={24}/>}
+                            {isDisputed ? <X size={20}/> : item.confirmationStatus === 'confirmed' ? <Check size={20}/> : <CalendarIcon size={20}/>}
                         </div>
                         <div className="min-w-0 text-left">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.description}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{job.title || job.description}</h4>
                                 <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
@@ -547,19 +552,25 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                             <Button 
                                 variant={item.confirmationStatus === 'confirmed' ? 'default' : 'outline'}
                                 size="sm"
-                                className={cn("h-9 px-4 uppercase text-[10px] tracking-widest", item.confirmationStatus === 'confirmed' ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim")}
+                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", item.confirmationStatus === 'confirmed' ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim")}
                                 onClick={() => { onConfirm(item.id); setIsDisputing(false); }}
                             >
-                                <Check size={16} className="mr-1.5"/> Confirm
+                                <Check size={14} className="mr-1.5"/> Confirm
                             </Button>
                             <Button 
                                 variant={isDisputed ? 'default' : 'outline'}
                                 size="sm"
-                                className={cn("h-9 px-4 uppercase text-[10px] tracking-widest", isDisputed ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim")}
+                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isDisputed ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim")}
                                 onClick={() => setIsDisputing(!isDisputing)}
                             >
-                                <X size={16} className="mr-1.5"/> Dispute
+                                <X size={14} className="mr-1.5"/> Dispute
                             </Button>
+                        </div>
+                    )}
+                    {isLocked && item.confirmationStatus === 'confirmed' && (
+                        <div className="flex items-center gap-2 text-text-green">
+                            <CheckCircle2 size={16} />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Verified</span>
                         </div>
                     )}
                 </div>

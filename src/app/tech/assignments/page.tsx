@@ -10,7 +10,7 @@ import {
   Calendar as CalendarIcon, 
   MapPin, 
   Clock, 
-  CircleCheck, 
+  CheckCircle2, 
   Wrench, 
   ArrowUpDown,
   Search,
@@ -22,7 +22,7 @@ import {
   FileCheck,
   RotateCcw,
   X,
-  CheckCircle2
+  History
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -45,8 +45,6 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
-
-type SortOption = 'date' | 'priority' | 'pay';
 
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
@@ -323,7 +321,7 @@ export default function TechAssignmentsPage() {
         try {
             await removeFromWeeklyLogs(woId);
             await updateDoc(docRef, {
-                status: 'in-progress',
+                status: 'checked-out',
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
                     { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
@@ -520,7 +518,7 @@ export default function TechAssignmentsPage() {
                                                   <>
                                                       <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                                           <RotateCcw size={14} className="mr-2"/>
-                                                          Check back in
+                                                          Reopen
                                                       </Button>
                                                       <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
                                                           <CheckCircle2 size={14} className="mr-2"/>
@@ -600,7 +598,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                                     <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                                         <RotateCcw size={14} className="mr-2"/>
-                                                        Check back in
+                                                        Reopen
                                                     </Button>
                                                 </div>
                                             </td>

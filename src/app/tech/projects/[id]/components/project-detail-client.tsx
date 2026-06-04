@@ -69,7 +69,7 @@ import {
 } from "@/components/ui/accordion";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
+import { cn, formatCityState, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
@@ -112,6 +112,38 @@ const displayTime = (timeStr?: string) => {
     } catch (e) {
         return timeStr;
     }
+};
+
+const ProximityDisplay = ({ lat, lng, project, label }: { lat?: number, lng?: number, project: Project, label: string }) => {
+    const [cityName, setCityName] = useState<string>("");
+    
+    useEffect(() => {
+        if (lat && lng) {
+            reverseGeocode(lat, lng).then(setCityName);
+        }
+    }, [lat, lng]);
+
+    if (!lat || !lng) return <span className="text-[8px] text-text-muted italic uppercase">GPS Unavailable</span>;
+
+    let status = "";
+    
+    if (project.lat && project.lng) {
+        const dist = calculateDistance(lat, lng, project.lat, project.lng);
+        const isOnsite = dist < 0.2;
+        status = isOnsite ? "Onsite" : `Offsite (${dist.toFixed(1)}mi)`;
+    }
+
+    return (
+        <span className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase tracking-tight">
+            <MapPin size={10} className="text-accent-gold" />
+            <span className="text-text-primary">{label}: {cityName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}</span>
+            {status && (
+                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className="h-3.5 px-1 text-[7px] tracking-tighter">
+                    {status}
+                </Badge>
+            )}
+        </span>
+    );
 };
 
 // --- SUB-COMPONENTS ---
@@ -286,7 +318,7 @@ const MilestonesTab = ({ project, onTaskToggle, isReadOnly }: { project: Project
                     <PhaseBlock 
                         key={phase.id} 
                         phase={phase} 
-                        onTaskToggle={handleTaskToggle} 
+                        onTaskToggle={onTaskToggle} 
                         documents={[]} 
                         isReadOnly={isReadOnly} 
                     />
@@ -344,14 +376,13 @@ const TimesheetsTab = ({
         return () => clearInterval(interval);
     }, [activeSession]);
 
-    const handleSaveLiveNotes = async () => {
-        if (!activeSession) return;
+    const handleSaveLiveNotes = async (logId: string, notes: string) => {
         setIsSavingNotes(true);
         try {
-            await updateDoc(doc(db, 'projectDailyLogs', activeSession.id), {
-                workSummary: liveNotes
+            await updateDoc(doc(db, 'projectDailyLogs', logId), {
+                workSummary: notes
             });
-            toast({ title: "Registry Synced", description: "Field notes committed to current session log." });
+            toast({ title: "Registry Synced", description: "Field notes committed to registry." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Sync Failure', description: e.message });
         } finally {
@@ -371,6 +402,8 @@ const TimesheetsTab = ({
             .map(([date, data]) => ({ date, ...data }))
             .sort((a, b) => b.date.localeCompare(a.date));
     }, [dailyLogs]);
+
+    const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -434,7 +467,7 @@ const TimesheetsTab = ({
                                 <Textarea 
                                     value={liveNotes}
                                     onChange={e => setLiveNotes(e.target.value)}
-                                    onBlur={handleSaveLiveNotes}
+                                    onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
                                     placeholder="Document site conditions, task completion details, and field obstacles..."
                                     className="min-h-[120px] bg-bg-primary border-border-sub text-xs leading-relaxed uppercase font-medium focus:border-brand-red transition-all shadow-inner"
                                 />
@@ -448,10 +481,7 @@ const TimesheetsTab = ({
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase">Verified Site Presence</p>
-                                            <div className="flex items-center gap-2 text-text-primary">
-                                                <LocateFixed size={14} className="text-text-green" />
-                                                <p className="text-xs font-bold uppercase tracking-tight">{activeSession.workSummary.match(/\[(.*?)\]/)?.[1] || 'Detroit, MI'}</p>
-                                            </div>
+                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="In" />
                                         </div>
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase">Handshake Verification</p>
@@ -498,7 +528,8 @@ const TimesheetsTab = ({
                                     {group.logs.map(log => {
                                         const tech = technicians.find(t => t.id === log.technicianId);
                                         const isLive = !log.checkOutTime;
-                                        const siteLoc = log.workSummary.match(/\[(.*?)\]/)?.[1] || 'Unknown Site';
+                                        const canEditNotes = !isReadOnly && log.technicianId === currentUserId;
+
                                         return (
                                             <div key={log.id} className={cn(
                                                 "p-4 rounded-xl border space-y-3 text-left transition-all",
@@ -511,16 +542,12 @@ const TimesheetsTab = ({
                                                         </Avatar>
                                                         <div className="text-left">
                                                             <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-0.5">
                                                                 <span className="text-[9px] text-text-muted font-bold flex items-center gap-1">
                                                                     <Clock size={10} className="text-brand-red"/>
                                                                     {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
                                                                 </span>
-                                                                <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1 text-left">
-                                                                    <MapPin size={10} className="text-accent-gold shrink-0"/>
-                                                                    <span className="truncate max-w-[200px]">{siteLoc}</span>
-                                                                </span>
+                                                                <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -531,10 +558,22 @@ const TimesheetsTab = ({
                                                         {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] mt-1.5 animate-pulse uppercase">RECORDING</Badge>}
                                                     </div>
                                                 </div>
-                                                <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
-                                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">
-                                                        {log.workSummary.split(' | ')[0].replace(/ACTIVE FIELD SESSION INITIALIZED AT \d{1,2}:\d{2} (?:AM|PM)\. IDENTIFIED SITE LOCATION: \[.*?\]./, '').trim() || 'No activity summary provided.'}
-                                                    </p>
+                                                <div className="space-y-1 text-left">
+                                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest ml-1">Activity Notes</p>
+                                                    {canEditNotes ? (
+                                                        <Textarea 
+                                                            defaultValue={log.workSummary}
+                                                            onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
+                                                            className="min-h-[60px] bg-bg-primary/50 border-border-sub text-[10px] uppercase font-medium leading-relaxed italic"
+                                                            placeholder="Click to add field notes..."
+                                                        />
+                                                    ) : (
+                                                        <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
+                                                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">
+                                                                {log.workSummary || 'No activity summary provided.'}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )
@@ -599,9 +638,19 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         if (isReadOnly || !currentUserId) return;
         
         const now = new Date();
-        const city = await getTacticalLocation();
-        const checkInDisplayTime = format(now, 'h:mm a');
+        let lat = 0;
+        let lng = 0;
         
+        try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+        } catch (e) {
+            console.warn("GPS Handshake Restricted");
+        }
+
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
             technicianId: currentUserId,
@@ -609,7 +658,9 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             hoursWorked: 0,
             totalHours: '0h 0m',
             checkInTime: format(now, 'HH:mm'),
-            workSummary: `ACTIVE FIELD SESSION INITIALIZED AT ${checkInDisplayTime}. IDENTIFIED SITE LOCATION: [${city}].`,
+            checkInLat: lat,
+            checkInLng: lng,
+            workSummary: "",
             taskIdsProgressed: [],
             taskIdsCompleted: [],
             phaseIdsWorked: [],
@@ -619,7 +670,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
-            toast({ title: 'Check In Validated', description: `Location verified: [${city}]. Registry initialized.` });
+            toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -628,8 +679,18 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const handleCheckOut = async (logId: string) => {
         if (!activeSession) return;
         const now = new Date();
-        const city = await getTacticalLocation();
-        const checkoutDisplayTime = format(now, 'h:mm a');
+        let lat = 0;
+        let lng = 0;
+        
+        try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+        } catch (e) {
+            console.warn("GPS Handshake Restricted");
+        }
         
         try {
             const startTime = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
@@ -642,9 +703,10 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             const logRef = doc(db, 'projectDailyLogs', logId);
             await updateDoc(logRef, {
                 checkOutTime: format(now, 'HH:mm'),
+                checkOutLat: lat,
+                checkOutLng: lng,
                 hoursWorked,
                 totalHours: `${h}h ${m}m`,
-                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${checkoutDisplayTime}. EXIT LOCATION: [${city}].`
             });
             
             const projectRef = doc(db, 'projects', project.id);
@@ -652,7 +714,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 actualHours: (project.actualHours || 0) + hoursWorked
             });
 
-            toast({ title: 'Check Out Confirmed', description: `Session manifest committed to registry at ${checkoutDisplayTime}.` });
+            toast({ title: 'Check Out Confirmed', description: `Session manifest committed to registry.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -700,7 +762,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="tab-content">
                 {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} />}
-                {activeTab === 'documents' && <DocumentsTab documents={documents} />}
+                {change === 'documents' && <DocumentsTab documents={documents} />}
                 {activeTab === 'timesheets' && (
                     <TimesheetsTab 
                         dailyLogs={dailyLogs} 

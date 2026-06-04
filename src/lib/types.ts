@@ -148,6 +148,8 @@ export type Project = {
   name: string;
   client: string;
   location: string;
+  lat?: number;
+  lng?: number;
   status: 'active' | 'on-hold' | 'completed';
   startDate: string;
   startTime?: string;
@@ -199,6 +201,10 @@ export type ProjectDailyLog = {
   totalHours: string;
   checkInTime?: string;
   checkOutTime?: string;
+  checkInLat?: number;
+  checkInLng?: number;
+  checkOutLat?: number;
+  checkOutLng?: number;
   workSummary: string;
   taskIdsProgressed: string[];
   taskIdsCompleted: string[];

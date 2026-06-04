@@ -65,12 +65,9 @@ export function IntelligenceTerminal() {
 
     const [metric, setMetric] = useState<MetricType>('assignments');
     const [groupBy, setGroupBy] = useState<GroupBy>('tech');
-    
-    // Fix: Defer date initialization to prevent hydration mismatch
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
     useEffect(() => {
-        // Initialize temporal window on mount
         setDateRange({
             from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
             to: new Date()
@@ -78,7 +75,7 @@ export function IntelligenceTerminal() {
     }, []);
 
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+        const unsubWO = onSnapshot(collection(db, 'assignments'), (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
         const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
@@ -114,8 +111,13 @@ export function IntelligenceTerminal() {
         const filteredWeekly = weeklyLogs.filter(log => {
             if (!dateRange?.from || !log.weekOf) return true;
             try {
-                const [m, d, y] = log.weekOf.split('-');
-                const logDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                const parts = log.weekOf.split('-');
+                let logDate;
+                if (parts[2]?.length === 4) { 
+                    logDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
+                } else { 
+                    logDate = startOfDay(parseISO(log.weekOf));
+                }
                 const start = startOfDay(dateRange.from);
                 const end = dateRange.to ? startOfDay(dateRange.to) : start;
                 return isWithinInterval(logDate, { start, end });
@@ -137,12 +139,12 @@ export function IntelligenceTerminal() {
                 .filter(t => !t.roles?.includes('client'))
                 .map(tech => {
                     let value = 0;
-                    if (metric === 'reliability') value = tech.reliabilityScore;
+                    if (metric === 'reliability') value = tech.reliabilityScore || 0;
                     else if (metric === 'assignments') value = filteredWO.filter(wo => wo.assignedTechnicianId === tech.id).length;
                     else if (metric === 'payouts') value = filteredWeekly.filter(l => l.technicianId === tech.id).reduce((acc, curr) => acc + (curr.totalPayout || 0), 0);
                     else if (metric === 'hours') value = filteredDaily.filter(l => l.technicianId === tech.id).reduce((acc, curr) => acc + (curr.hoursWorked || 0), 0);
 
-                    return { name: tech.name, value: parseFloat(value.toFixed(2)) };
+                    return { name: tech.name, value: parseFloat((value || 0).toFixed(2)) };
                 })
                 .sort((a, b) => b.value - a.value);
         }
@@ -157,7 +159,7 @@ export function IntelligenceTerminal() {
                 else if (metric === 'payouts') value = clientJobs.reduce((acc, curr) => acc + (curr.pay || 0), 0);
                 else if (metric === 'hours') value = 0; 
 
-                return { name, value: parseFloat(value.toFixed(2)) };
+                return { name, value: parseFloat((value || 0).toFixed(2)) };
             }).sort((a, b) => b.value - a.value);
         }
 
@@ -188,7 +190,7 @@ export function IntelligenceTerminal() {
             <div className="space-y-4">
                 <Card className="bg-bg-secondary border-border-main shadow-lg">
                     <CardHeader className="pb-3 border-b border-border-sub bg-bg-tertiary/30">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 text-left">
                             <Filter size={14} className="text-brand-red" />
                             Analysis Constraints
                         </CardTitle>
@@ -272,7 +274,7 @@ export function IntelligenceTerminal() {
                                 <TrendingUp size={16} className="text-brand-red" />
                                 <p className="text-[9px] font-black uppercase text-text-primary tracking-widest">Analysis Mode</p>
                             </div>
-                            <p className="text-[9px] text-text-muted leading-relaxed uppercase font-medium">
+                            <p className="text-[9px] text-text-muted leading-relaxed uppercase font-medium text-left">
                                 Currently aggregating data for <span className="text-brand-red">{metric}</span> grouped by <span className="text-brand-red">{groupBy}</span>.
                             </p>
                         </div>

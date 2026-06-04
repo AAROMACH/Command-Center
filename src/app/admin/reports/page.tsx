@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -92,9 +92,9 @@ const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
         const parts = dateStr.split(/[-/]/);
-        let d;
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
-        else { 
+        if (parts[0].length === 4) {
+            return format(parseISO(dateStr), "MM-dd-yyyy");
+        } else {
             const [m, day, y] = parts;
             if (y && m && day) {
                 d = new Date(`${y}-${m}-${day}T12:00:00`);
@@ -1037,7 +1037,7 @@ export default function ActivityAuditPage() {
                                             </div>
 
                                             <div className="flex-1 overflow-hidden">
-                                                <Tabs defaultValue="weeklogs" className="w-full">
+                                                <Tabs defaultValue="assignments" className="w-full">
                                                     <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 w-full justify-start gap-8 px-6">
                                                         <TabsTrigger value="assignments" className="tab h-full data-[state=active]:bg-brand-red">ASSIGNMENT HISTORY ({techStats.myJobs.length})</TabsTrigger>
                                                         <TabsTrigger value="weeklogs" className="tab h-full data-[state=active]:bg-brand-red">WEEKLOG HISTORY ({techStats.myLogs.length})</TabsTrigger>

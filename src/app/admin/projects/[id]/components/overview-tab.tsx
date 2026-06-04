@@ -53,7 +53,6 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
         });
     }, [project]);
 
-    // DIRTY CHECK LOGIC: Only show actions if data changed
     const isDirty = useMemo(() => {
         return localProjectData.scope !== project.scope ||
                localProjectData.onsiteContactName !== project.onsiteContactName ||
@@ -61,7 +60,6 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                localProjectData.siteAccessInstructions !== project.siteAccessInstructions;
     }, [localProjectData, project]);
 
-    // ECONOMIC CALCULATION ENGINE
     const projectEconomics = useMemo(() => {
         const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
         const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
@@ -386,7 +384,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                                             </div>
                                             <div className="p-3 mt-2 rounded bg-bg-primary border border-border-sub flex items-start gap-2">
                                                 <Info size={12} className="text-text-muted shrink-0 mt-0.5" />
-                                                <p className="text-[9px] text-text-muted leading-relaxed uppercase">
+                                                <p className="text-[9px] text-text-muted leading-relaxed uppercase text-left">
                                                     Economics are aggregated from project-linked work orders, time logs, and finalized invoices.
                                                 </p>
                                             </div>
@@ -423,8 +421,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                                             <AvatarFallback>{tech.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 text-left overflow-hidden">
-                                            <p className="font-bold text-xs text-text-primary uppercase truncate">{tech.name}</p>
-                                            <p className="text-xs text-text-muted uppercase font-bold text-[9px] tracking-widest">{member.role}</p>
+                                            <p className="font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</p>
+                                            <p className="text-xs text-text-muted uppercase font-bold text-[9px] tracking-widest text-left">{member.role}</p>
                                         </div>
                                     </div>
                                 )

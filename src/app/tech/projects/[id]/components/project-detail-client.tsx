@@ -37,7 +37,8 @@ import {
   Loader2,
   ShieldCheck,
   ChevronUp,
-  FolderOpen
+  FolderOpen,
+  Pencil
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -464,13 +465,16 @@ const TimesheetsTab = ({
                                          <p className="text-[8px] text-text-muted font-bold uppercase tracking-tighter">Autosave Enabled</p>
                                     </div>
                                 </div>
-                                <Textarea 
-                                    value={liveNotes}
-                                    onChange={e => setLiveNotes(e.target.value)}
-                                    onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
-                                    placeholder="Document site conditions, task completion details, and field obstacles..."
-                                    className="min-h-[120px] bg-bg-primary border-border-sub text-xs leading-relaxed uppercase font-medium focus:border-brand-red transition-all shadow-inner"
-                                />
+                                <div className="relative group/live-note">
+                                    <Textarea 
+                                        value={liveNotes}
+                                        onChange={e => setLiveNotes(e.target.value)}
+                                        onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
+                                        placeholder="Document site conditions, task completion details, and field obstacles..."
+                                        className="min-h-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 text-xs leading-relaxed uppercase font-medium resize-none p-0"
+                                    />
+                                    <Pencil size={12} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
+                                </div>
                              </div>
                              <div className="space-y-4">
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub shadow-inner space-y-4">
@@ -561,12 +565,15 @@ const TimesheetsTab = ({
                                                 <div className="space-y-1 text-left">
                                                     <p className="text-[8px] font-black text-text-muted uppercase tracking-widest ml-1">Activity Notes</p>
                                                     {canEditNotes ? (
-                                                        <Textarea 
-                                                            defaultValue={log.workSummary}
-                                                            onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                            className="min-h-[60px] bg-bg-primary/50 border-border-sub text-[10px] uppercase font-medium leading-relaxed italic"
-                                                            placeholder="Click to add field notes..."
-                                                        />
+                                                        <div className="relative group/hist-note">
+                                                            <Textarea 
+                                                                defaultValue={log.workSummary}
+                                                                onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
+                                                                className="min-h-[60px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] uppercase font-medium leading-relaxed italic resize-none p-0"
+                                                                placeholder="Click to add field notes..."
+                                                            />
+                                                            <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
+                                                        </div>
                                                     ) : (
                                                         <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
                                                             <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">

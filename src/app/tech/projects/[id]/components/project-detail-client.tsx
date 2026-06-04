@@ -60,33 +60,12 @@ import {
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, parse } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
-
-// --- HELPERS ---
-function getProgress(project: Project): number {
-    const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
-    if (allTasks.length === 0) return 0;
-    const completedTasks = allTasks.filter(task => task.isCompleted).length;
-    return (completedTasks / allTasks.length) * 100;
-}
-
-const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr) return 'TBD';
-    try {
-        const parts = dateStr.split(/[-/]/);
-        let d;
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
-        else { d = parseISO(dateStr); }
-        return format(d, 'MM-dd-yyyy');
-    } catch (e) {
-        return dateStr;
-    }
-};
 
 // --- SUB-COMPONENTS ---
 
@@ -168,67 +147,48 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
     );
 };
 
-const MilestonesTab = ({ project, onTaskToggle, documents }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[] }) => {
-    return (
-        <div className="space-y-4 animate-in fade-in duration-300">
-            {(project.phases || []).map(phase => (
-                <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} isReadOnly={project.status === 'completed'} />
-            ))}
-            {(project.phases || []).length === 0 && (
-                <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                    <History size={48} className="mx-auto text-text-muted mb-2" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest">No milestones defined for this mission registry</p>
-                </div>
-            )}
-        </div>
-    );
-};
+const PhaseBlock = ({ 
+    phase, 
+    onTaskToggle, 
+    documents, 
+    isReadOnly 
+}: { 
+    phase: any, 
+    onTaskToggle: (pid: string, tid: string) => void, 
+    documents: ProjectDocument[], 
+    isReadOnly: boolean 
+}) => {
+    const completedTasks = (phase.tasks || []).filter((t: any) => t.isCompleted).length;
+    const totalTasks = (phase.tasks || []).length;
+    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
-    const { toast } = useToast();
     return (
-        <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="flex justify-between items-center mb-4 px-1">
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{documents.length} Site Assets Registry</p>
-            </div>
-            <div className="space-y-2">
-                {documents.map(doc => (
-                    <Card key={doc.id} className="bg-bg-secondary border-border-sub hover:border-text-muted transition-all group">
-                        <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-6">
-                                <div className={cn(
-                                    "p-2.5 rounded border flex items-center justify-center",
-                                    doc.type === 'pdf' ? "bg-brand-red-dim border-brand-red text-text-red" :
-                                    doc.type === 'img' ? "bg-green-dim border-green-border text-text-green" :
-                                    "bg-bg-tertiary border-border-sub text-text-muted"
-                                )}>
-                                    {doc.type === 'img' ? <ImageIcon size={20}/> : <FileText size={20}/>}
-                                </div>
-                                <div className="min-w-0 text-left">
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[400px]">{doc.name}</p>
-                                    <div className="flex items-center gap-4 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                                        <span>{doc.size}</span>
-                                        <span>•</span>
-                                        <span className="flex items-center gap-1"><User size={10}/> {doc.uploader}</span>
-                                        <span>•</span>
-                                        <span>{doc.uploadDate}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-primary" onClick={() => toast({ title: "Handshake Initiated", description: `${doc.name} download in progress.`})}>
-                                    <Download size={18} />
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-                {documents.length === 0 && (
-                    <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                        <FileText size={48} className="mx-auto text-text-muted mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">Project document registry is empty</p>
+        <div className="phase-block">
+            <header className="phase-header">
+                <div className="flex items-center gap-2.5 flex-1">
+                    <div className="phase-num">{phase.phaseNumber}</div>
+                    <h3 className="phase-name">{phase.name}</h3>
+                </div>
+                <div className="phase-meta">
+                    <span>{totalTasks} targets</span>
+                    <Badge variant={progress === 100 ? 'active' : 'onhold'}>{Math.round(progress)}%</Badge>
+                </div>
+            </header>
+            <div className="tasks-list">
+                {(phase.tasks || []).map((task: any) => (
+                    <div key={task.id} className="task-row group/task">
+                        <Checkbox 
+                            id={`task-${task.id}`} 
+                            checked={task.isCompleted} 
+                            onCheckedChange={() => onTaskToggle(phase.id, task.id)} 
+                            className="task-check" 
+                            disabled={isReadOnly} 
+                        />
+                        <div className="flex-1 min-w-0 text-left">
+                            <label htmlFor={`task-${task.id}`} className={cn("task-name", task.isCompleted && 'done')}>{task.name}</label>
+                        </div>
                     </div>
-                )}
+                ))}
             </div>
         </div>
     );
@@ -256,7 +216,6 @@ const TimesheetsTab = ({
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (activeSession && activeSession.checkInTime) {
-            // Internal logic still uses 24h for parsing, UI will show 12h
             const start = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
             interval = setInterval(() => {
                 const now = new Date();
@@ -416,9 +375,6 @@ const TimesheetsTab = ({
     );
 };
 
-// ... existing PhaseBlock sub-component ...
-
-// --- MAIN COMPONENT ---
 export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [activeTab, setActiveTab] = useState('overview');
     const { toast } = useToast();
@@ -430,13 +386,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         dailyLogs.find(log => log.technicianId === currentUserId && !log.checkOutTime),
     [dailyLogs, currentUserId]);
 
-    const progress = useMemo(() => {
-        const allTasks = (project.phases || []).flatMap(phase => phase.tasks || []);
-        if (allTasks.length === 0) return 0;
-        const completedTasks = allTasks.filter(task => task.isCompleted).length;
-        return (completedTasks / allTasks.length) * 100;
-    }, [project.phases]);
-
+    const progress = getProgress(project);
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
     const handleTaskToggle = async (phaseId: string, taskId: string) => {
@@ -478,7 +428,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             date: format(now, 'yyyy-MM-dd'),
             hoursWorked: 0,
             totalHours: '0h 0m',
-            checkInTime: format(now, 'HH:mm'), // Machine readable 24h
+            checkInTime: format(now, 'HH:mm'),
             workSummary: `ACTIVE FIELD SESSION INITIALIZED. IDENTIFIED SITE LOCATION: [${location}].`,
             taskIdsProgressed: [],
             taskIdsCompleted: [],
@@ -511,7 +461,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
             const logRef = doc(db, 'projectDailyLogs', logId);
             await updateDoc(logRef, {
-                checkOutTime: format(now, 'HH:mm'), // Machine readable 24h
+                checkOutTime: format(now, 'HH:mm'),
                 hoursWorked,
                 totalHours: `${h}h ${m}m`,
                 workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${checkoutDisplayTime}. EXIT LOCATION: [${location}].`
@@ -528,5 +478,61 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         }
     };
 
-    // ... existing rest of ProjectDetailClient ...
+    return (
+        <div>
+            <div className="detail-nav">
+                <Link href="/tech/projects" className="detail-back">
+                    <ChevronLeft size={16} />
+                    Back to Terminal
+                </Link>
+                <div className="detail-breadcrumb">/ <span>{project.name}</span></div>
+            </div>
+
+            <div className="project-detail-header">
+                <div className="pdh-top">
+                    <div className="text-left">
+                        <div className="flex items-center gap-3 mb-1">
+                            <h1 className="pdh-title">{project.name}</h1>
+                             <Badge variant={project.status} className="capitalize">{project.status}</Badge>
+                        </div>
+                        <div className="pdh-meta">
+                            <div className="pdh-meta-item"><MapPin size={12}/>{project.location}</div>
+                            <div className="pdh-meta-item"><CalendarIcon size={12}/>Started {formatDateDisplay(project.startDate)}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="pdh-progress">
+                    <div className="pdh-progress-label">Overall Progress</div>
+                    <div className="progress-wrap !flex-1">
+                        <div className="progress-track !h-[10px]"><div className={`progress-fill flashy ${progressColor}`} style={{ width: `${progress}%` }}></div></div>
+                        <div className={`progress-pct !text-lg !text-${progressColor}`}>{Math.round(progress)}%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="detail-tabs justify-center">
+                <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Briefing</button>
+                <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Tasks</button>
+                <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Assets</button>
+                <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
+            </div>
+
+            <div className="tab-content">
+                {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
+                {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} />}
+                {activeTab === 'documents' && <DocumentsTab documents={documents} />}
+                {activeTab === 'timesheets' && (
+                    <TimesheetsTab 
+                        dailyLogs={dailyLogs} 
+                        technicians={technicians} 
+                        onCheckIn={handleCheckIn} 
+                        onCheckOut={handleCheckOut} 
+                        activeSession={activeSession}
+                        isReadOnly={isReadOnly}
+                        project={project}
+                    />
+                )}
+            </div>
+        </div>
+    );
 }

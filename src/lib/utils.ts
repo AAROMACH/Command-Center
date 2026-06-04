@@ -52,9 +52,15 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   
   const geocoder = new window.google.maps.Geocoder();
   try {
-    const response = await geocoder.geocode({ location: { lat, lng } });
-    if (response.results && response.results[0]) {
-      return formatCityState(response.results[0].formatted_address);
+    const response = await new Promise<any>((resolve, reject) => {
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === 'OK') resolve(results);
+        else reject(status);
+      });
+    });
+    
+    if (response && response[0]) {
+      return formatCityState(response[0].formatted_address);
     }
   } catch (e) {
     console.warn("Tactical resolution failed:", e);

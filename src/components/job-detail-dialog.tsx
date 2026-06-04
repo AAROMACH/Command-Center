@@ -53,7 +53,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn, formatCityState } from '@/lib/utils';
 import { isAdmin, isTech } from '@/lib/permissions';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { getRecommendation } from '@/app/admin/dispatch/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -194,8 +194,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
   const getTacticalTime = (type: string) => {
       const entry = (mission.history || []).find(h => h.details.toLowerCase().includes(type.toLowerCase()));
       if (!entry) return 'N/A';
-      const timeMatch = entry.details.match(/\d{2}:\d{2}/);
-      return timeMatch ? timeMatch[0] : 'LOGGED';
+      // Standardized to find either 24h or 12h formats
+      const timeMatch = entry.details.match(/\d{1,2}:\d{2}\s?(?:AM|PM)?/i);
+      return timeMatch ? timeMatch[0].trim() : 'LOGGED';
   };
 
   return (
@@ -224,7 +225,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 hover:text-brand-red hover:underline transition-all cursor-pointer group/loc"
              >
-                <MapPin size={12} className="text-brand-red shrink-0 group-hover/loc:scale-110 transition-transform" />
+                <MapPin size={12} className="text-brand-red shrink-0 group/loc:scale-110 transition-transform" />
                 <span>{mission.location}</span>
              </a>
              <span className="flex items-center gap-1.5 text-left">
@@ -465,7 +466,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted">
+                                        <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-muted">
                                             <LogOut size={18} />
                                         </div>
                                         <p className="text-xl font-mono font-bold text-text-primary">{getTacticalTime('finalized')}</p>

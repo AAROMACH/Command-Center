@@ -40,3 +40,45 @@ export function formatCityState(location: string) {
   
   return location;
 }
+
+/**
+ * High-fidelity Reverse Geocoding Utility.
+ * Resolves raw coordinates into tactical city/state anchors.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; // Fallback to coords if API restricted
+  }
+  
+  const geocoder = new window.google.maps.Geocoder();
+  try {
+    const response = await geocoder.geocode({ location: { lat, lng } });
+    if (response.results && response.results[0]) {
+      return formatCityState(response.results[0].formatted_address);
+    }
+  } catch (e) {
+    console.warn("Tactical resolution failed:", e);
+  }
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+
+/**
+ * Operative Location Retrieval.
+ * Returns verified city location or raw coords if geocoding is restricted.
+ */
+export async function getTacticalLocation(): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      resolve("GPS Unavailable");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        resolve(city);
+      },
+      () => resolve("GPS Restricted"),
+      { timeout: 5000 }
+    );
+  });
+}

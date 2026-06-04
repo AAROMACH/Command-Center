@@ -30,7 +30,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, getTacticalLocation } from '@/lib/utils';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -151,14 +151,15 @@ export default function TechDashboardPage() {
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
         const today = format(new Date(), 'MM-dd-yyyy');
-        const nowTime = format(new Date(), 'HH:mm');
+        const nowTime = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         
         try {
             const docRef = doc(db, 'assignments', woId);
             const historyEntry = { 
                 type: 'status_change' as const, 
                 date: today, 
-                details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}.`, 
+                details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}. Location: [${location}].`, 
                 user: tech?.name || 'Field Operative' 
             };
             

@@ -24,11 +24,12 @@ import {
   Loader2,
   ShieldCheck,
   LocateFixed,
-  AlertCircle
+  AlertCircle,
+  Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { cn, reverseGeocode } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -43,7 +44,7 @@ type CheckInDialogProps = {
 type GeoLocation = {
     lat: number;
     lng: number;
-    accuracy?: number;
+    city?: string;
 };
 
 export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: CheckInDialogProps) {
@@ -61,11 +62,12 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
             setIsLocating(true);
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
+                    async (position) => {
+                        const city = await reverseGeocode(position.coords.latitude, position.coords.longitude);
                         setUserLocation({
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
-                            accuracy: position.coords.accuracy
+                            city
                         });
                         setIsLocating(false);
                         setSimulatedDistance(Math.random() > 0.7 ? 1.4 : 0.4);
@@ -129,12 +131,12 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
             toast({
                 variant: "destructive",
                 title: "Check In Flagged",
-                description: `Location flagged: You are ${simulatedDistance}mi from site. Entry recorded with range discrepancy.`,
+                description: `Location discrepancy: You are identified at ${userLocation.city}, which is ${simulatedDistance}mi from site. Entry recorded for audit.`,
             });
         } else {
             toast({
                 title: "Check In Successful",
-                description: "On-site session initiated. GPS monitoring active at coordinates.",
+                description: `Site presence verified at ${userLocation.city}. On-site session initiated.`,
             });
         }
         setIsOpen(false);
@@ -148,54 +150,53 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         <Navigation className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Check In Terminal</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">GPS-verified on-site reporting for assignments and projects.</DialogDescription>
+                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">High-fidelity site verification for assignments and projects.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-                    {/* Live GPS Status */}
+                    {/* Identified Location */}
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
                                 <LocateFixed size={12} className={userLocation ? "text-text-green" : "text-text-red"}/>
-                                Coordinates
+                                Identified Site Location
                             </h3>
                             {isLocating ? (
                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-accent-gold uppercase animate-pulse">
-                                    <Loader2 size={10} className="animate-spin" /> Retrieving GPS...
+                                    <Loader2 size={10} className="animate-spin" /> Verifying Position...
                                 </div>
                             ) : (
                                 <Badge 
                                     variant={selectedId && !isOutOfRange ? "active" : "outline"} 
                                     className={cn("text-[9px] h-5 uppercase tracking-widest px-2", !selectedId || isOutOfRange ? "bg-bg-tertiary text-text-muted border-border-sub" : "")}
                                 >
-                                    {selectedId && !isOutOfRange ? "On Site" : "GPS Locked"}
+                                    {selectedId && !isOutOfRange ? "On Site" : "GPS Validated"}
                                 </Badge>
                             )}
                         </div>
                         {userLocation ? (
-                            <div className="grid grid-cols-2 gap-4 text-left">
-                                <div className="space-y-0.5">
-                                    <p className="text-[9px] uppercase font-bold text-text-muted">Latitude</p>
-                                    <p className="text-xs font-mono font-bold text-text-primary">{userLocation.lat.toFixed(6)}</p>
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="p-2 bg-bg-secondary rounded border border-border-sub text-brand-red">
+                                    <MapPin size={18} />
                                 </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-[9px] uppercase font-bold text-text-muted">Longitude</p>
-                                    <p className="text-xs font-mono font-bold text-text-primary">{userLocation.lng.toFixed(6)}</p>
+                                <div className="text-left">
+                                    <p className="text-sm font-bold text-text-primary uppercase tracking-tight">{userLocation.city}</p>
+                                    <p className="text-[9px] font-mono text-text-muted uppercase">Coordinate Signature Locked</p>
                                 </div>
                             </div>
                         ) : (
                             <div className="text-[10px] text-text-red uppercase font-bold tracking-widest italic py-1 text-left">
-                                Awaiting location sensor input...
+                                Awaiting sensor handshake...
                             </div>
                         )}
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select job Registry</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Select Assignment / Project</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                             <Input 
-                                placeholder="Search by ID, Title, or Location..." 
+                                placeholder="Search by mission ID or location..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
@@ -234,7 +235,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     )
                                 }) : (
                                     <div className="text-center py-12">
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No matches found</p>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">Registry clear: No matching missions</p>
                                     </div>
                                 )}
                             </div>
@@ -250,30 +251,22 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     : "bg-bg-secondary/50 border-border-sub"
                              )}>
                                 <div className="space-y-1 text-left">
-                                    <p className="text-[10px] uppercase font-bold text-text-muted">Verification Status</p>
+                                    <p className="text-[10px] uppercase font-bold text-text-muted">Proximity Audit</p>
                                     {isOutOfRange ? (
                                         <p className="text-[10px] font-bold text-text-red uppercase flex items-center gap-1.5">
-                                            <AlertCircle size={12}/> Flagged: Out of Range ({simulatedDistance}mi)
+                                            <AlertCircle size={12}/> Flagged: Distance Discrepancy ({simulatedDistance}mi)
                                         </p>
                                     ) : (
                                         <p className="text-[10px] font-bold text-text-green uppercase flex items-center gap-1.5">
-                                            <ShieldCheck size={12}/> Proximity Verified (On Site)
+                                            <ShieldCheck size={12}/> Handshake Verified (On Site)
                                         </p>
                                     )}
                                 </div>
                                 <div className="text-right">
-                                     <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest">Target Location</p>
+                                     <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest">Registry Coordinates</p>
                                      <p className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[150px]">{selectedItem.location}</p>
                                 </div>
                              </div>
-
-                             {isOutOfRange && (
-                                <div className="p-2.5 rounded bg-brand-red-dim/20 border border-brand-red/20 text-center">
-                                    <p className="text-[9px] text-text-red font-bold uppercase tracking-wider">
-                                        Note: Checking in while flagged will notify operations for manual review.
-                                    </p>
-                                </div>
-                             )}
 
                              {/* Location Preview */}
                              <div className="relative aspect-video w-full bg-bg-primary rounded-lg overflow-hidden border border-border-sub">
@@ -288,7 +281,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                 ></iframe>
                                 <div className="absolute top-2 left-2 z-10">
                                     <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
-                                        <Navigation size={10} className="animate-pulse text-brand-red" /> Live Site Feed
+                                        <Navigation size={10} className="animate-pulse text-brand-red" /> Tactical Feed
                                     </div>
                                 </div>
                              </div>
@@ -303,13 +296,13 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     <Button 
                         onClick={handleCheckIn} 
                         className={cn(
-                            "h-10 flex-1 uppercase font-bold text-[10px] tracking-widest",
+                            "h-10 flex-1 uppercase font-bold text-[10px] tracking-widest shadow-lg",
                             isOutOfRange ? "bg-accent-gold hover:bg-accent-gold/80" : "bg-brand-red hover:bg-brand-red-hover"
                         )}
                         disabled={!selectedId || !userLocation}
                     >
                         <Play size={14} className="mr-2 fill-current" /> 
-                        {isOutOfRange ? "Override & Confirm" : "Confirm Check In"}
+                        {isOutOfRange ? "Override & Transmit" : "Confirm Check In"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

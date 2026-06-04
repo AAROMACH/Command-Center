@@ -145,7 +145,7 @@ export function NotificationBell() {
                                                 <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
                                                 {msg.isLocked && <Lock size={10} className="text-brand-red" />}
                                             </div>
-                                            <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'HH:mm')}</span>
+                                            <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'h:mm a')}</span>
                                         </div>
                                         <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2 text-left">{msg.body}</p>
                                         <div className="flex items-center gap-1.5 pt-1.5 opacity-60">

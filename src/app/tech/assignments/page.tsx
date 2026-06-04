@@ -42,7 +42,7 @@ import { DateRange } from "react-day-picker";
 import { useSearchParams } from 'next/navigation';
 import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
 
@@ -168,20 +168,6 @@ export default function TechAssignmentsPage() {
       return `https://app.fieldnation.com/workorders/${cleanId}`;
     };
 
-    const getGPSCoordinates = (): Promise<string> => {
-      return new Promise((resolve) => {
-        if (typeof window === 'undefined' || !navigator.geolocation) {
-          resolve("GPS Unavailable");
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
-          () => resolve("GPS Restricted"),
-          { timeout: 5000 }
-        );
-      });
-    };
-
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
         const logQuery = query(
@@ -200,54 +186,54 @@ export default function TechAssignmentsPage() {
     };
 
     const handleConfirm = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'confirmed',
             isAcknowledged: true,
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleStartTrip = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'on-my-way',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleCheckIn = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'in-progress',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
     const handleCheckOut = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         updateDoc(docRef, {
             status: 'checked-out',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -297,8 +283,8 @@ export default function TechAssignmentsPage() {
     };
 
     const handleMarkComplete = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         
         try {
@@ -307,7 +293,7 @@ export default function TechAssignmentsPage() {
                 status: 'completed',
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
                 ]
             });
             await syncToWeeklyLog(woId);
@@ -318,8 +304,8 @@ export default function TechAssignmentsPage() {
     };
 
     const handleReopen = async (woId: string) => {
-        const now = format(new Date(), 'HH:mm');
-        const coords = await getGPSCoordinates();
+        const now = format(new Date(), 'h:mm a');
+        const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
         
         try {
@@ -328,7 +314,7 @@ export default function TechAssignmentsPage() {
                 status: 'checked-out',
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. GPS: [${coords}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
                 ]
             });
             setActiveTab('active');

@@ -59,7 +59,7 @@ import {
 } from '@/components/ui/select';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -256,6 +256,7 @@ const TimesheetsTab = ({
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (activeSession && activeSession.checkInTime) {
+            // Internal logic still uses 24h for parsing, UI will show 12h
             const start = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
             interval = setInterval(() => {
                 const now = new Date();
@@ -286,6 +287,15 @@ const TimesheetsTab = ({
             .sort((a, b) => b.date.localeCompare(a.date));
     }, [dailyLogs]);
 
+    const displayTime = (timeStr?: string) => {
+        if (!timeStr) return '';
+        try {
+            return format(parse(`2024-01-01T${timeStr}`, "yyyy-MM-dd'T'HH:mm", new Date()), 'h:mm a');
+        } catch (e) {
+            return timeStr;
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* TACTICAL SESSION TERMINAL - COMPACT STRIP */}
@@ -315,7 +325,7 @@ const TimesheetsTab = ({
                              )}
                         </div>
                         <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
-                            {activeSession ? `Checked In: ${activeSession.checkInTime}` : `Master Tally: ${(project.actualHours || 0).toFixed(1)}h`}
+                            {activeSession ? `Checked In: ${displayTime(activeSession.checkInTime)}` : `Master Tally: ${(project.actualHours || 0).toFixed(1)}h`}
                         </p>
                     </div>
 
@@ -386,7 +396,7 @@ const TimesheetsTab = ({
                                                 </div>
                                                 <p className="text-[11px] text-text-secondary leading-relaxed italic text-left">&quot;{log.workSummary}&quot;</p>
                                                 <div className="flex items-center gap-4 text-[8px] font-bold uppercase text-text-muted tracking-widest">
-                                                    <span className="flex items-center gap-1"><Clock size={10}/> {log.checkInTime} — {log.checkOutTime || 'Present'}</span>
+                                                    <span className="flex items-center gap-1"><Clock size={10}/> {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Present'}</span>
                                                 </div>
                                             </div>
                                         )
@@ -406,99 +416,7 @@ const TimesheetsTab = ({
     );
 };
 
-const PhaseBlock = ({
-  phase,
-  onTaskToggle,
-  documents,
-  isReadOnly
-}: {
-  phase: Project['phases'][0];
-  onTaskToggle: (phaseId: string, taskId: string) => void;
-  documents: ProjectDocument[];
-  isReadOnly: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(true);
-  
-  const completedTasks = (phase.tasks || []).filter((t) => t.isCompleted).length;
-  const totalTasks = (phase.tasks || []).length;
-  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  const status =
-    progress === 100 ? 'completed' : progress > 0 ? 'inprogress' : 'pending';
-
-  const findPhotosForTask = (taskId: string) => {
-    return documents.filter(doc => doc.taskId === taskId && doc.type === 'img');
-  };
-
-  return (
-    <div className="phase-block">
-      <header className="phase-header" onClick={() => setIsOpen(!isOpen)}>
-        <div className="phase-num">{phase.phaseNumber}</div>
-        <h3 className="phase-name">{phase.name}</h3>
-        <div className="phase-meta">
-          <span>{totalTasks} task{totalTasks !== 1 && 's'}</span>
-          <Badge variant={status}>{status}</Badge>
-        </div>
-        <div className={cn("phase-chevron transition-transform", isOpen ? "rotate-180" : "")}>
-          <ChevronDown size={16}/>
-        </div>
-      </header>
-      {isOpen && (
-        <>
-          <div className="phase-progress">
-            <div className="progress-wrap !mb-2">
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-              </div>
-              <div className="progress-pct">{Math.round(progress)}%</div>
-            </div>
-          </div>
-          <div className="tasks-list">
-            {(phase.tasks || []).map((task) => {
-              const taskPhotos = findPhotosForTask(task.id);
-              return (
-                <div key={task.id} className="p-3 border-b border-border-sub hover:bg-bg-tertiary/50 transition-colors">
-                  <div className="flex items-start gap-2.5">
-                    <Checkbox
-                      id={`task-${task.id}`}
-                      checked={task.isCompleted}
-                      onCheckedChange={() => !isReadOnly && onTaskToggle(phase.id, task.id)}
-                      className="mt-1"
-                      disabled={isReadOnly}
-                    />
-                    <div className="flex-1 min-w-0 text-left">
-                        <label
-                          htmlFor={`task-${task.id}`}
-                          className={cn("text-[13px] font-semibold text-text-primary block cursor-pointer text-left", task.isCompleted ? 'text-text-muted line-through' : '')}
-                        >
-                          {task.name}
-                        </label>
-                        
-                        <div className="flex flex-wrap gap-1 mt-1.5 text-left">
-                            {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
-                            {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
-                        </div>
-
-                        {taskPhotos.length > 0 && (
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                                {taskPhotos.map(photo => (
-                                    <div key={photo.id} className="relative group aspect-video rounded border border-border-sub overflow-hidden bg-bg-primary">
-                                        <Image src={photo.url || ''} alt={photo.name} fill className="object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
+// ... existing PhaseBlock sub-component ...
 
 // --- MAIN COMPONENT ---
 export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
@@ -508,7 +426,6 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const currentUserId = useMemo(() => typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null, []);
     const isReadOnly = project.status === 'completed';
 
-    // Active session is derived from logs with no checkOutTime for the current tech
     const activeSession = useMemo(() => 
         dailyLogs.find(log => log.technicianId === currentUserId && !log.checkOutTime),
     [dailyLogs, currentUserId]);
@@ -522,20 +439,6 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
-    const getGPSCoordinates = (): Promise<string> => {
-      return new Promise((resolve) => {
-        if (typeof window === 'undefined' || !navigator.geolocation) {
-          resolve("GPS Unavailable");
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
-          () => resolve("GPS Restricted"),
-          { timeout: 5000 }
-        );
-      });
-    };
-
     const handleTaskToggle = async (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
         
@@ -567,7 +470,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         if (isReadOnly || !currentUserId) return;
         
         const now = new Date();
-        const coords = await getGPSCoordinates();
+        const location = await getTacticalLocation();
         
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
@@ -575,8 +478,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             date: format(now, 'yyyy-MM-dd'),
             hoursWorked: 0,
             totalHours: '0h 0m',
-            checkInTime: format(now, 'HH:mm'),
-            workSummary: `ACTIVE FIELD SESSION INITIALIZED. GPS VERIFIED: [${coords}].`,
+            checkInTime: format(now, 'HH:mm'), // Machine readable 24h
+            workSummary: `ACTIVE FIELD SESSION INITIALIZED. IDENTIFIED SITE LOCATION: [${location}].`,
             taskIdsProgressed: [],
             taskIdsCompleted: [],
             phaseIdsWorked: [],
@@ -586,7 +489,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
-            toast({ title: 'Checked In', description: `GPS verified at [${coords}]. Session initialized.` });
+            toast({ title: 'Checked In', description: `Location verified: [${location}]. Session initialized.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -595,7 +498,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const handleCheckOut = async (logId: string) => {
         if (!activeSession) return;
         const now = new Date();
-        const coords = await getGPSCoordinates();
+        const location = await getTacticalLocation();
+        const checkoutDisplayTime = format(now, 'h:mm a');
         
         try {
             const startTime = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
@@ -607,10 +511,10 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
             const logRef = doc(db, 'projectDailyLogs', logId);
             await updateDoc(logRef, {
-                checkOutTime: format(now, 'HH:mm'),
+                checkOutTime: format(now, 'HH:mm'), // Machine readable 24h
                 hoursWorked,
                 totalHours: `${h}h ${m}m`,
-                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${format(now, 'HH:mm')}. EXIT GPS: [${coords}].`
+                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${checkoutDisplayTime}. EXIT LOCATION: [${location}].`
             });
             
             const projectRef = doc(db, 'projects', project.id);
@@ -624,79 +528,5 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         }
     };
 
-    return (
-        <div className="animate-in fade-in duration-500">
-            <div className="detail-nav">
-                <Link href="/tech/projects" className="detail-back">
-                    <ChevronLeft size={16} />
-                    Back to Projects
-                </Link>
-                <div className="detail-breadcrumb">/ <span>{project.id.toUpperCase()}</span> / <span className="text-text-primary">{project.name}</span></div>
-            </div>
-
-            <div className="project-detail-header">
-                <div className="pdh-top">
-                    <div className="text-left">
-                        <div className="flex items-center gap-3 mb-1 text-left">
-                            <h1 className="pdh-title text-left">{project.name}</h1>
-                             <Badge variant={project.status} className="capitalize">{project.status}</Badge>
-                        </div>
-                        <div className="pdh-meta text-left">
-                            <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
-                            <div className="pdh-meta-item"><CalendarIcon size={12}/> Started {formatDateDisplay(project.startDate)}</div>
-                            <div className="pdh-meta-item"><Clock size={12}/> Est. {project.estimatedDuration}</div>
-                            <div className="pdh-meta-item"><Users size={12}/> {(project.team || []).length} Team Members</div>
-                        </div>
-                    </div>
-                </div>
-                 <div className="pdh-progress">
-                    <div className="pdh-progress-label">Phase Progress</div>
-                    <div className="progress-wrap !flex-1">
-                        <div className="progress-track !h-[10px]"><div className={cn("progress-fill flashy", progressColor)} style={{ width: `${progress}%` }}></div></div>
-                        <div className={cn("progress-pct font-mono font-bold text-lg", `text-${progressColor}`)}>{Math.round(progress)}%</div>
-                    </div>
-                </div>
-            </div>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex justify-center border-b border-border-main mb-6">
-                    <TabsList className="tabs bg-transparent p-0 h-auto gap-8">
-                        <TabsTrigger value="overview" className="tab-trigger-tech">Project Overview</TabsTrigger>
-                        <TabsTrigger value="milestones" className="tab-trigger-tech">Milestones</TabsTrigger>
-                        <TabsTrigger value="documents" className="tab-trigger-tech">Documents</TabsTrigger>
-                        <TabsTrigger value="timesheets" className="tab-trigger-tech">Timesheets</TabsTrigger>
-                    </TabsList>
-                </div>
-
-                <div className="min-h-[400px]">
-                    <TabsContent value="overview" className="m-0">
-                        <OverviewTab project={project} technicians={technicians} />
-                    </TabsContent>
-                    <TabsContent value="milestones" className="m-0">
-                        <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} />
-                    </TabsContent>
-                    <TabsContent value="documents" className="m-0">
-                        <DocumentsTab documents={documents} />
-                    </TabsContent>
-                    <TabsContent value="timesheets" className="m-0">
-                        <TimesheetsTab 
-                            dailyLogs={dailyLogs} 
-                            technicians={technicians} 
-                            onCheckIn={handleCheckIn} 
-                            onCheckOut={handleCheckOut} 
-                            activeSession={activeSession}
-                            isReadOnly={isReadOnly}
-                            project={project}
-                        />
-                    </TabsContent>
-                </div>
-            </Tabs>
-
-            <style jsx global>{`
-                .tab-trigger-tech {
-                    @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
-        </div>
-    );
+    // ... existing rest of ProjectDetailClient ...
 }

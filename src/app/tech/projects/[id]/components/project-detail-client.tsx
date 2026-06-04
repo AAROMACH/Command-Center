@@ -425,7 +425,7 @@ const TimesheetsTab = ({
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
-                                {activeSession ? `ID: ${activeSession.id.toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
+                                {activeSession ? `ID: ${activeSession.id.split('-').pop()?.toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
                     </div>
@@ -762,7 +762,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="tab-content">
                 {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} />}
-                {change === 'documents' && <DocumentsTab documents={documents} />}
+                {activeTab === 'documents' && <DocumentsTab documents={documents} />}
                 {activeTab === 'timesheets' && (
                     <TimesheetsTab 
                         dailyLogs={dailyLogs} 

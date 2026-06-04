@@ -70,7 +70,7 @@ import {
 } from "@/components/ui/accordion";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { cn, formatCityState, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';
+import { cn, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
@@ -134,15 +134,15 @@ const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?
         status = isOnsite ? "Onsite" : `Offsite (${dist.toFixed(1)}mi)`;
     }
 
-    const textClass = size === 'large' ? 'text-[11px]' : 'text-[9px]';
-    const iconSize = size === 'large' ? 12 : 10;
+    const textClass = size === 'large' ? 'text-[13px]' : 'text-[11px]';
+    const iconSize = size === 'large' ? 14 : 12;
 
     return (
-        <span className={cn("flex items-center gap-1.5 font-bold text-text-muted uppercase tracking-tight", textClass)}>
-            <MapPin size={iconSize} className="text-accent-gold" />
+        <span className={cn("flex items-center gap-2 font-black uppercase tracking-tight", textClass)}>
+            <MapPin size={iconSize} className="text-brand-red shrink-0" />
             <span className="text-text-primary">{label}: {cityName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}</span>
             {status && (
-                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className={cn("px-1 text-[7px] tracking-tighter", size === 'large' ? 'h-4' : 'h-3.5')}>
+                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className={cn("px-2 font-black uppercase tracking-widest", size === 'large' ? 'h-5 text-[9px]' : 'h-4 text-[8px]')}>
                     {status}
                 </Badge>
             )}
@@ -411,7 +411,7 @@ const TimesheetsTab = ({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* TACTICAL SESSION TERMINAL - COMPACT STRIP */}
+            {/* TACTICAL SESSION TERMINAL */}
             <div className={cn(
                 "rounded-xl border shadow-xl overflow-hidden transition-all duration-500",
                 activeSession ? "bg-bg-secondary border-brand-red ring-1 ring-brand-red/20" : "bg-bg-tertiary/20 border-border-sub"
@@ -429,7 +429,7 @@ const TimesheetsTab = ({
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
-                                {activeSession ? `ID: ${activeSession.id.split('-').pop()?.toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
+                                {activeSession ? `ID: ${activeSession.id?.split('-').pop()?.toUpperCase() || 'LIVE'} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
                     </div>
@@ -438,7 +438,7 @@ const TimesheetsTab = ({
                         {activeSession && (
                             <div className="flex flex-col items-end">
                                 <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
-                                <p className="text-2xl font-mono font-bold text-text-primary tabular-nums tracking-tighter">{elapsedTime}</p>
+                                <p className="text-3xl font-mono font-bold text-text-primary tabular-nums tracking-tighter">{elapsedTime}</p>
                             </div>
                         )}
                         {isReadOnly ? (
@@ -493,14 +493,14 @@ const TimesheetsTab = ({
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase">Handshake Verification</p>
                                             <div className="flex items-center gap-2 text-text-primary">
-                                                <Clock size={14} className="text-brand-red" />
-                                                <p className="text-sm font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
+                                                <Clock size={16} className="text-brand-red" />
+                                                <p className="text-2xl font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-xl border border-dashed border-border-sub bg-bg-tertiary/20 text-center">
-                                     <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed italic">
+                                     <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed italic text-left">
                                          Terminal Note: All field notes are synchronized with the Command Center in real-time. Finalize all Milestones before checking out.
                                      </p>
                                 </div>
@@ -531,63 +531,74 @@ const TimesheetsTab = ({
                                     </div>
                                     <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
                                 </AccordionTrigger>
-                                <AccordionContent className="p-3 space-y-2 bg-bg-primary/10">
-                                    {group.logs.map(log => {
-                                        const tech = technicians.find(t => t.id === log.technicianId);
-                                        const isLive = !log.checkOutTime;
-                                        const canEditNotes = !isReadOnly && log.technicianId === currentUserId;
+                                <AccordionContent className="p-3 bg-bg-primary/10">
+                                    <div className="space-y-2">
+                                        {group.logs.map(log => {
+                                            const tech = technicians.find(t => t.id === log.technicianId);
+                                            const isLive = !log.checkOutTime;
+                                            const canEditNotes = !isReadOnly && log.technicianId === currentUserId;
 
-                                        return (
-                                            <div key={log.id} className={cn(
-                                                "p-4 rounded-xl border space-y-3 text-left transition-all",
-                                                isLive ? "bg-brand-red-dim/5 border-brand-red ring-1 ring-brand-red/10" : "bg-bg-secondary border-border-sub"
-                                            )}>
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-6 w-6 border border-border-sub shadow-sm">
-                                                            <AvatarFallback className="text-[8px] font-bold">{(tech?.name || 'U').charAt(0)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="text-left">
-                                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
-                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-0.5">
-                                                                <span className="text-[11px] text-text-muted font-bold flex items-center gap-1">
-                                                                    <Clock size={12} className="text-brand-red"/>
-                                                                    {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
-                                                                </span>
-                                                                <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" size="large" />
+                                            return (
+                                                <div key={log.id} className={cn(
+                                                    "p-4 rounded-xl border space-y-4 text-left transition-all",
+                                                    isLive ? "bg-brand-red-dim/5 border-brand-red ring-1 ring-brand-red/10" : "bg-bg-secondary border-border-sub"
+                                                )}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex items-center gap-4">
+                                                            <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
+                                                                <AvatarFallback className="text-[10px] font-bold">{(tech?.name || 'U').charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="text-left space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-[11px] font-black uppercase text-text-primary tracking-tight">{tech?.name}</p>
+                                                                    {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] animate-pulse uppercase font-black">RECORDING</Badge>}
+                                                                </div>
+                                                                <div className="flex flex-col gap-2">
+                                                                    <span className="text-[13px] text-text-primary font-black uppercase tracking-widest flex items-center gap-2">
+                                                                        <Clock size={14} className="text-brand-red"/>
+                                                                        {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
+                                                                    </span>
+                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                        <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" size="large" />
+                                                                        {log.checkOutTime && <ProximityDisplay lat={log.checkOutLat} lng={log.checkOutLng} project={project} label="Check-Out" size="large" />}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className={cn("text-lg font-mono font-bold leading-none", isLive ? "text-brand-red" : "text-text-green")}>
-                                                            {isLive ? 'LIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
-                                                        </p>
-                                                        {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] mt-1.5 animate-pulse uppercase">RECORDING</Badge>}
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1 text-left">
-                                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest ml-1">Activity Notes</p>
-                                                    {canEditNotes ? (
-                                                        <div className="relative group/hist-note">
-                                                            <Textarea 
-                                                                defaultValue={log.workSummary}
-                                                                onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                                className="min-h-[60px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[9px] uppercase font-medium leading-relaxed italic resize-none p-0"
-                                                                placeholder="Click to add field notes..."
-                                                            />
-                                                            <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
-                                                            <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic">
-                                                                {log.workSummary || 'No activity summary provided.'}
+                                                        <div className="text-right">
+                                                            <p className={cn("text-2xl font-mono font-bold leading-none tracking-tighter", isLive ? "text-brand-red" : "text-text-green")}>
+                                                                {isLive ? 'LIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
                                                             </p>
+                                                            <p className="text-[8px] font-black text-text-muted uppercase mt-1">Registry Log</p>
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                    <div className="space-y-1.5 text-left border-t border-border-sub/30 pt-3">
+                                                        <div className="flex items-center gap-2 text-text-muted mb-1">
+                                                            <FileText size={12}/>
+                                                            <p className="text-[9px] font-black uppercase tracking-widest">Field Activity Report</p>
+                                                        </div>
+                                                        {canEditNotes ? (
+                                                            <div className="relative group/hist-note">
+                                                                <Textarea 
+                                                                    defaultValue={log.workSummary}
+                                                                    onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
+                                                                    className="min-h-[40px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[9px] uppercase font-medium leading-relaxed italic resize-none p-0"
+                                                                    placeholder="Click to add field notes..."
+                                                                />
+                                                                <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
+                                                                <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic">
+                                                                    {log.workSummary || 'No activity summary provided.'}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )
-                                    })}
+                                            )
+                                        })}
+                                    </div>
                                 </AccordionContent>
                             </AccordionItem>
                         ))}

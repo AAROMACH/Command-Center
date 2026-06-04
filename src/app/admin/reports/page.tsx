@@ -97,12 +97,11 @@ const formatDateDisplay = (dateStr: string) => {
         } else {
             const [m, day, y] = parts;
             if (y && m && day) {
-                d = new Date(`${y}-${m}-${day}T12:00:00`);
+                return format(new Date(`${y}-${m}-${day}T12:00:00`), 'MM-dd-yyyy');
             } else {
                 return dateStr;
             }
         }
-        return format(d, 'MM-dd-yyyy');
     } catch (e) {
         return dateStr;
     }
@@ -253,7 +252,14 @@ export default function ActivityAuditPage() {
         const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
         const reliability = Math.max(0, 100 - (points * 5));
         
-        const myLogs = weeklyLogs.filter(log => log.technicianId === selectedTechId);
+        const myLogs = weeklyLogs.filter(log => log.technicianId === selectedTechId)
+            .sort((a, b) => {
+                const [am, ad, ay] = a.weekOf.split('-');
+                const [bm, bd, by] = b.weekOf.split('-');
+                return new Date(parseInt(by), parseInt(bm)-1, parseInt(bd)).getTime() - 
+                       new Date(parseInt(ay), parseInt(am)-1, parseInt(ad)).getTime();
+            });
+
         const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
 
         return { 
@@ -736,7 +742,7 @@ export default function ActivityAuditPage() {
                     <Tabs defaultValue="overview" className="w-full">
                         <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10">
                             <TabsTrigger value="overview" className="tab !px-8 h-full data-[state=active]:bg-brand-red">TACTICAL OVERVIEW</TabsTrigger>
-                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">WEEKLOG HISTORY ({siteAuditData.visits.length})</TabsTrigger>
+                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">ASSIGNMENT HISTORY ({siteAuditData.visits.length})</TabsTrigger>
                             <TabsTrigger value="projects" className="tab !px-8 h-full data-[state=active]:bg-brand-red">PROJECT FOLDERS ({siteAuditData.projects.length})</TabsTrigger>
                             <TabsTrigger value="billing" className="tab !px-8 h-full data-[state=active]:bg-brand-red">FINANCIAL AUDIT</TabsTrigger>
                         </TabsList>
@@ -791,7 +797,7 @@ export default function ActivityAuditPage() {
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Weeklog Identification</TableHead>
+                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>

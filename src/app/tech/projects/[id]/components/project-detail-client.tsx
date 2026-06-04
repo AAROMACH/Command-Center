@@ -467,9 +467,9 @@ const TimesheetsTab = ({
                                         onChange={e => setLiveNotes(e.target.value)}
                                         onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
                                         placeholder="Document site conditions, task completion details, and field obstacles..."
-                                        className="min-h-[80px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] leading-relaxed uppercase font-medium resize-none p-0"
+                                        className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0 text-left"
                                     />
-                                    <Pencil size={12} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
+                                    <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
                                 </div>
                              </div>
                              <div className="space-y-4">

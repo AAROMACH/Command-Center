@@ -40,7 +40,8 @@ import {
     User,
     ClipboardCheck,
     Gauge,
-    Activity as ActivityIcon
+    Activity as ActivityIcon,
+    DollarSign
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -288,6 +289,19 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                                   <p className="text-3xl font-bold text-text-primary">{person.currentWorkload || 0}</p>
                                                   <p className="text-[9px] text-text-muted uppercase">Assignments</p>
                                               </div>
+                                          </div>
+                                          {/* HOURLY RATE ACTION SECTION */}
+                                          <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between mt-4">
+                                            <div className="text-left">
+                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Project Base Rate</p>
+                                                <div className="flex items-center gap-2">
+                                                    <DollarSign size={14} className="text-text-green"/>
+                                                    <p className="text-xl font-mono font-bold text-text-green">${(person.hourlyRate || 0).toFixed(2)} / hr</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="outline" size="sm" className="h-8 !text-[9px] font-bold uppercase tracking-widest" onClick={onEdit}>
+                                                <Pencil size={12} className="mr-1.5"/> Update Rate
+                                            </Button>
                                           </div>
                                       </div>
                                       <div className="space-y-3">

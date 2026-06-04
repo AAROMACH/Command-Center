@@ -25,7 +25,8 @@ import {
   Users,
   Save,
   MapPin,
-  SearchCode
+  SearchCode,
+  DollarSign
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { technicians } from '@/lib/data';
@@ -193,6 +194,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
   }, [formData.roles]);
 
   const isClientRole = formData.roles?.includes('client');
+  const isFieldTech = formData.roles?.some(r => r.includes('tech') || r.includes('lead'));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -260,9 +262,26 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
           </section>
 
           <section className="space-y-6">
-             <div className="flex items-center gap-2 text-brand-red mb-2">
-                <Lock size={16} />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-brand-red mb-2">
+                    <Lock size={16} />
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
+                </div>
+                {isFieldTech && (
+                    <div className="space-y-1 text-right">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Project Base Rate ($/hr)</Label>
+                        <div className="relative w-32 ml-auto">
+                            <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
+                            <Input 
+                                type="number" 
+                                value={formData.hourlyRate || ''} 
+                                onChange={e => setFormData({...formData, hourlyRate: parseFloat(e.target.value) || 0})}
+                                className="bg-bg-primary h-9 pl-8 text-xs font-mono font-bold text-text-green text-right"
+                                placeholder="0.00"
+                            />
+                        </div>
+                    </div>
+                )}
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

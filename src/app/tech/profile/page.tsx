@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote, History, CheckCircle2, Lock } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote, History, CheckCircle2, Lock, Key } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +22,7 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/rel
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 
 export default function TechProfilePage() {
     const searchParams = useSearchParams();
@@ -34,6 +35,7 @@ export default function TechProfilePage() {
     const { toast } = useToast();
     
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -131,7 +133,7 @@ export default function TechProfilePage() {
                         Identity & Field Readiness
                     </p>
                     <h1 className="page-title">Technician Profile</h1>
-                    <p className="page-subtitle">Master field record for {tech.name}. Restricted terminal access.</p>
+                    <p className="page-subtitle text-left">Master field record for {tech.name}. Restricted terminal access.</p>
                 </div>
                  <div className="page-header-right items-center">
                     <div className="search-wrap">
@@ -170,8 +172,8 @@ export default function TechProfilePage() {
 
                 <div className="mt-6">
                     {/* IDENTITY */}
-                    <TabsContent value="identity" className="m-0">
-                        <Card className="max-w-4xl">
+                    <TabsContent value="identity" className="m-0 space-y-6">
+                        <Card className="max-w-4xl text-left">
                             <CardHeader>
                                 <CardTitle>Technician Identity</CardTitle>
                                 <CardDescription>Official low voltage personnel records and contact credentials.</CardDescription>
@@ -202,11 +204,29 @@ export default function TechProfilePage() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        <Card className="max-w-4xl text-left">
+                            <CardHeader>
+                                <CardTitle>Security Registry</CardTitle>
+                                <CardDescription>Manage credentials and Command Center access keys.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
+                                    <div className="text-left">
+                                        <p className="text-xs font-bold uppercase tracking-wider">Update Access Key</p>
+                                        <p className="text-[10px] text-text-muted">Modify your terminal login credentials.</p>
+                                    </div>
+                                    <Button variant="outline" size="sm" className="h-8" onClick={() => setIsPasswordDialogOpen(true)}>
+                                        <Key size={14} className="mr-2"/> Change Password
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
 
                     {/* BILLING PREFERENCES */}
                     <TabsContent value="billing" className="m-0">
-                        <Card className="max-w-4xl">
+                        <Card className="max-w-4xl text-left">
                             <CardHeader>
                                 <CardTitle>Billing Preferences</CardTitle>
                                 <CardDescription>Configure how you prefer to receive field payouts and reimbursements.</CardDescription>
@@ -251,7 +271,7 @@ export default function TechProfilePage() {
                     
                     {/* AVAILABILITY */}
                     <TabsContent value="availability" className="m-0 space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
                                     <CardTitle>Recurring Job availability</CardTitle>
@@ -283,7 +303,7 @@ export default function TechProfilePage() {
 
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                                    <div>
+                                    <div className="text-left">
                                         <CardTitle>Exceptions</CardTitle>
                                         <CardDescription>Time off requests.</CardDescription>
                                     </div>
@@ -294,12 +314,12 @@ export default function TechProfilePage() {
                                         <div className="text-[10px] text-center p-8 border border-dashed border-border-main rounded-md text-text-muted uppercase tracking-widest">No active exceptions</div>
                                     ) : (
                                         myTimeOff.map(req => (
-                                            <div key={req.id} className="p-3 rounded-md bg-bg-primary border border-border-subtle">
+                                            <div key={req.id} className="p-3 rounded-md bg-bg-primary border border-border-subtle text-left">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <Badge variant={req.status === 'approved' ? 'active' : req.status === 'denied' ? 'missed' : 'pending'} className="text-[9px] uppercase tracking-widest">
                                                         {req.status}
                                                     </Badge>
-                                                    <span className="text-[10px] font-bold text-text-muted">{req.type}</span>
+                                                    <span className="text-[10px] font-bold text-text-muted uppercase">{req.type}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[11px] font-bold text-text-primary">
                                                     <CalendarIcon size={12} className="text-brand-red"/>
@@ -315,7 +335,7 @@ export default function TechProfilePage() {
 
                     {/* WORK PREFERENCES */}
                     <TabsContent value="preferences" className="m-0">
-                        <Card className="max-w-4xl">
+                        <Card className="max-w-4xl text-left">
                             <CardHeader>
                                 <CardTitle>Job Constraints</CardTitle>
                                 <CardDescription>Define your low voltage job limits for automated assignment logic.</CardDescription>
@@ -323,7 +343,7 @@ export default function TechProfilePage() {
                             <CardContent className="space-y-10">
                                 <div className="space-y-6">
                                     <div className="flex justify-between items-end">
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 text-left">
                                             <Label className="text-[10px] uppercase tracking-widest font-bold text-text-primary">Preferred Work Radius</Label>
                                             <p className="text-xs text-text-muted">Target distance for daily field jobs.</p>
                                         </div>
@@ -342,7 +362,7 @@ export default function TechProfilePage() {
 
                     {/* RELIABILITY */}
                     <TabsContent value="reliability" className="m-0 space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
                             <Card className="bg-bg-secondary border-border-main shadow-sm">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="flex items-center gap-2 text-[10px] tracking-[0.15em] text-text-muted uppercase">
@@ -366,7 +386,7 @@ export default function TechProfilePage() {
                             <Card className="lg:col-span-2">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 text-left">
                                             <CardTitle className="flex items-center gap-2">
                                                 <History size={16} className="text-accent-gold" />
                                                 Operational History
@@ -383,7 +403,7 @@ export default function TechProfilePage() {
                                                 const isCritical = event.category === 'critical_failure';
                                                 return (
                                                     <div key={event.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub flex items-center justify-between">
-                                                        <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-4 text-left">
                                                             <div className={cn(
                                                                 "p-2 rounded border",
                                                                 isPositive ? "bg-green-dim border-green-border text-text-green" : 
@@ -425,7 +445,7 @@ export default function TechProfilePage() {
                         <DialogTitle className="text-text-primary uppercase tracking-wider font-bold">Request absence</DialogTitle>
                         <DialogDescription>Submit specific dates for vacation or maintenance leave.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleRequestTimeOff} className="space-y-4 py-4">
+                    <form onSubmit={handleRequestTimeOff} className="space-y-4 py-4 text-left">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase tracking-widest text-text-muted">Start Date</Label>
@@ -458,6 +478,11 @@ export default function TechProfilePage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <ChangePasswordDialog 
+                isOpen={isPasswordDialogOpen} 
+                setIsOpen={setIsPasswordDialogOpen} 
+            />
         </div>
     );
 }

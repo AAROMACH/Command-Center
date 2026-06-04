@@ -15,22 +15,26 @@ import {
     Banknote,
     Mail,
     FileText,
-    Clock
+    Clock,
+    Key
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 
 export default function ClientProfilePage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
-        setCurrentUserId(localStorage.getItem('currentUserId'));
+        const userId = localStorage.getItem('currentUserId');
+        setCurrentUserId(userId);
     }, []);
 
     const user = useMemo(() => 
@@ -46,7 +50,7 @@ export default function ClientProfilePage() {
     return (
         <div className="max-w-5xl mx-auto space-y-8">
             <header className="page-header">
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <User size={12} />
                         Client Identity
@@ -54,7 +58,7 @@ export default function ClientProfilePage() {
                     <h1 className="page-title">Personal Profile</h1>
                     <p className="page-subtitle">Official portal credentials and organizational context.</p>
                 </div>
-                <div className="page-header-right items-center">
+                <div className="page-header-right items-center text-left">
                     <div className="search-wrap">
                         <Search />
                         <input 
@@ -72,7 +76,7 @@ export default function ClientProfilePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* LEFT: Identity Card */}
-                <div className="space-y-6">
+                <div className="space-y-6 text-left">
                     <Card className="bg-bg-secondary border-border-main text-center">
                         <CardContent className="pt-8 pb-8 space-y-4">
                             <div className="flex justify-center">
@@ -89,22 +93,34 @@ export default function ClientProfilePage() {
                     </Card>
 
                     <Card className="bg-bg-tertiary/30 border-border-sub">
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-3 text-left">
                             <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <ShieldCheck size={14} className="text-text-green"/> Authorization Level
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="p-3 rounded bg-bg-primary border border-border-sub space-y-1">
+                            <div className="p-3 rounded bg-bg-primary border border-border-sub space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase">Portal Access</p>
                                 <p className="text-xs font-bold text-text-primary uppercase tracking-tight">Full Strategic Visibility</p>
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Card className="text-left">
+                        <CardHeader>
+                            <CardTitle>Security Registry</CardTitle>
+                            <CardDescription>Manage credentials and portal access keys.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                                <Key size={14} className="mr-2"/> Change Access Key
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* RIGHT: Detailed Information */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-6 text-left">
                     <Card>
                         <CardHeader>
                             <CardTitle>Personal Contact</CardTitle>
@@ -112,11 +128,11 @@ export default function ClientProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Email</Label>
                                     <Input defaultValue={user.email} className="bg-bg-primary" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Direct Line</Label>
                                     <Input defaultValue={user.phone} className="bg-bg-primary" />
                                 </div>
@@ -134,7 +150,7 @@ export default function ClientProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Contact Name</Label>
                                     <Input 
                                         placeholder="Accounts Payable / Name" 
@@ -142,7 +158,7 @@ export default function ClientProfilePage() {
                                         className="bg-bg-primary h-11 text-xs" 
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Email Address</Label>
                                     <div className="relative">
                                         <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -153,7 +169,7 @@ export default function ClientProfilePage() {
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Payment Terms</Label>
                                     <Select defaultValue={user.billingDetails?.terms || 'Net 30'}>
                                         <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
@@ -167,7 +183,7 @@ export default function ClientProfilePage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted">Invoice Delivery Mode</Label>
                                     <Select defaultValue={user.billingDetails?.deliveryMethod || 'Portal'}>
                                         <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
@@ -193,7 +209,7 @@ export default function ClientProfilePage() {
                                 <div className="p-4 bg-bg-tertiary rounded-lg border border-border-sub text-brand-red">
                                     <Building2 size={32} />
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-left">
                                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Affiliated Organization</p>
                                     <h3 className="text-xl font-bold text-text-primary uppercase tracking-wide">{user.clientCompany || 'Independent'}</h3>
                                     <p className="text-xs text-accent-gold font-black uppercase tracking-widest">{user.businessType || 'Service Partner'}</p>
@@ -203,6 +219,11 @@ export default function ClientProfilePage() {
                     </Card>
                 </div>
             </div>
+
+            <ChangePasswordDialog 
+                isOpen={isPasswordDialogOpen} 
+                setIsOpen={setIsPasswordDialogOpen} 
+            />
         </div>
     );
 }

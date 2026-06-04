@@ -61,6 +61,12 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
@@ -84,7 +90,13 @@ function getProgress(project: Project): number {
 function formatDateDisplay(dateStr: string) {
     if (!dateStr) return 'TBD';
     try {
-        return format(parseISO(dateStr), "MM/dd/yyyy");
+        const parts = dateStr.split(/[-/]/);
+        if (parts[0].length === 4) {
+            return format(parseISO(dateStr), "MM/dd/yyyy");
+        } else {
+            const [m, d, y] = parts;
+            return `${m.padStart(2, '0')}/${d.padStart(2, '0')}/${y}`;
+        }
     } catch (e) {
         return dateStr;
     }
@@ -212,7 +224,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                                 <div key={member.technicianId} className="flex items-center gap-3 p-3 rounded-lg bg-bg-primary border border-border-sub">
                                     <Avatar className="h-8 w-8 border border-border-sub">
                                         <AvatarImage src={t?.avatarUrl} />
-                                        <AvatarFallback>{t?.name.charAt(0)}</AvatarFallback>
+                                        <AvatarFallback>{t?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 text-left">
                                         <p className="text-xs font-bold text-text-primary uppercase truncate">{t?.name}</p>
@@ -274,7 +286,7 @@ const MilestonesTab = ({ project, onTaskToggle, isReadOnly }: { project: Project
                     <PhaseBlock 
                         key={phase.id} 
                         phase={phase} 
-                        onTaskToggle={onTaskToggle} 
+                        onTaskToggle={handleTaskToggle} 
                         documents={[]} 
                         isReadOnly={isReadOnly} 
                     />
@@ -380,7 +392,7 @@ const TimesheetsTab = ({
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
-                                {activeSession ? `ID: ${(activeSession.id.includes('-') ? activeSession.id.split('-')[1] : activeSession.id).toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
+                                {activeSession ? `ID: ${activeSession.id.toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
                     </div>

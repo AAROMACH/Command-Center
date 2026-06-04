@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import {
   ChevronLeft,
   MapPin,
@@ -34,7 +34,10 @@ import {
   LocateFixed,
   Download,
   Save,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  ChevronUp,
+  FolderOpen
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,7 +96,6 @@ function formatDateDisplay(dateStr: string) {
 const displayTime = (timeStr?: string) => {
     if (!timeStr) return '';
     try {
-        // Handle HH:mm input
         const [h, m] = timeStr.split(':');
         const d = new Date();
         d.setHours(parseInt(h), parseInt(m), 0);
@@ -104,6 +106,52 @@ const displayTime = (timeStr?: string) => {
 };
 
 // --- SUB-COMPONENTS ---
+
+const PhaseBlock = ({ 
+    phase, 
+    onTaskToggle, 
+    isReadOnly 
+}: { 
+    phase: any, 
+    onTaskToggle: (pid: string, tid: string) => void, 
+    documents: any[], 
+    isReadOnly: boolean 
+}) => {
+    const [isOpen, setIsOpen] = useState(true);
+    const completedTasks = (phase.tasks || []).filter((t: any) => t.isCompleted).length;
+    const totalTasks = (phase.tasks || []).length;
+    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    const status = progress === 100 ? 'completed' : progress > 0 ? 'inprogress' : 'pending';
+
+    return (
+        <div className="phase-block">
+            <header className="phase-header" onClick={() => setIsOpen(!isOpen)}>
+                <div className="phase-num">{phase.phaseNumber}</div>
+                <h3 className="phase-name">{phase.name}</h3>
+                <div className="phase-meta">
+                    <span>{totalTasks} tasks</span>
+                    <Badge variant={status}>{status}</Badge>
+                </div>
+                <div className={cn("phase-chevron transition-transform", isOpen && "rotate-180")}><ChevronDown size={14}/></div>
+            </header>
+            {isOpen && (
+                <div className="tasks-list">
+                    {(phase.tasks || []).map((task: any) => (
+                        <div key={task.id} className="task-row">
+                            <Checkbox 
+                                checked={task.isCompleted} 
+                                onCheckedChange={() => !isReadOnly && onTaskToggle(phase.id, task.id)}
+                                disabled={isReadOnly}
+                            />
+                            <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
+                            {task.requiresPhoto && <Camera size={12} className="text-text-muted" />}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const OverviewTab = ({ project, technicians }: { project: Project, technicians: Technician[] }) => {
     return (
@@ -317,7 +365,7 @@ const TimesheetsTab = ({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* TACTICAL SESSION TERMINAL - PERSISTENT STRIP */}
+            {/* TACTICAL SESSION TERMINAL - COMPACT STRIP */}
             <div className={cn(
                 "rounded-xl border shadow-xl overflow-hidden transition-all duration-500",
                 activeSession ? "bg-bg-secondary border-brand-red ring-1 ring-brand-red/20" : "bg-bg-tertiary/20 border-border-sub"
@@ -363,11 +411,11 @@ const TimesheetsTab = ({
 
                 {activeSession && (
                     <div className="p-6 bg-bg-secondary space-y-4 animate-in slide-in-from-top-4 duration-500">
-                        <div className="grid grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                              <div className="space-y-2 text-left">
                                 <div className="flex items-center justify-between px-1">
                                     <Label className="text-[10px] font-black uppercase text-text-muted tracking-widest flex items-center gap-2">
-                                        <FileText size={14} className="text-brand-red"/> Field activity Notes
+                                        <FileText size={14} className="text-brand-red"/> Field Activity Notes
                                     </Label>
                                     <div className="flex items-center gap-2">
                                          {isSavingNotes && <Loader2 size={10} className="animate-spin text-accent-gold"/>}
@@ -476,7 +524,7 @@ const TimesheetsTab = ({
                                                 </div>
                                                 <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
                                                     <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">
-                                                        {log.workSummary.split(' | ')[0].replace(/IDENTIFIED SITE LOCATION: \[.*?\]\./, '').trim() || 'No activity summary provided.'}
+                                                        {log.workSummary.split(' | ')[0].replace(/ACTIVE FIELD SESSION INITIALIZED AT \d{1,2}:\d{2} (?:AM|PM)\. IDENTIFIED SITE LOCATION: \[.*?\]./, '').trim() || 'No activity summary provided.'}
                                                     </p>
                                                 </div>
                                             </div>

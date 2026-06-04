@@ -53,7 +53,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   const geocoder = new window.google.maps.Geocoder();
   try {
     const response = await new Promise<any>((resolve, reject) => {
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
         if (status === 'OK') resolve(results);
         else reject(status);
       });

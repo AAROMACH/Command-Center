@@ -115,7 +115,7 @@ const displayTime = (timeStr?: string) => {
     }
 };
 
-const ProximityDisplay = ({ lat, lng, project, label }: { lat?: number, lng?: number, project: Project, label: string }) => {
+const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?: number, lng?: number, project: Project, label: string, size?: 'default' | 'large' }) => {
     const [cityName, setCityName] = useState<string>("");
     
     useEffect(() => {
@@ -134,12 +134,15 @@ const ProximityDisplay = ({ lat, lng, project, label }: { lat?: number, lng?: nu
         status = isOnsite ? "Onsite" : `Offsite (${dist.toFixed(1)}mi)`;
     }
 
+    const textClass = size === 'large' ? 'text-[11px]' : 'text-[9px]';
+    const iconSize = size === 'large' ? 12 : 10;
+
     return (
-        <span className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase tracking-tight">
-            <MapPin size={10} className="text-accent-gold" />
+        <span className={cn("flex items-center gap-1.5 font-bold text-text-muted uppercase tracking-tight", textClass)}>
+            <MapPin size={iconSize} className="text-accent-gold" />
             <span className="text-text-primary">{label}: {cityName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}</span>
             {status && (
-                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className="h-3.5 px-1 text-[7px] tracking-tighter">
+                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className={cn("px-1 text-[7px] tracking-tighter", size === 'large' ? 'h-4' : 'h-3.5')}>
                     {status}
                 </Badge>
             )}
@@ -471,7 +474,7 @@ const TimesheetsTab = ({
                                         onChange={e => setLiveNotes(e.target.value)}
                                         onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
                                         placeholder="Document site conditions, task completion details, and field obstacles..."
-                                        className="min-h-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 text-xs leading-relaxed uppercase font-medium resize-none p-0"
+                                        className="min-h-[100px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] leading-relaxed uppercase font-medium resize-none p-0"
                                     />
                                     <Pencil size={12} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
                                 </div>
@@ -485,13 +488,13 @@ const TimesheetsTab = ({
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase">Verified Site Presence</p>
-                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="In" />
+                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="In" size="large" />
                                         </div>
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase">Handshake Verification</p>
                                             <div className="flex items-center gap-2 text-text-primary">
                                                 <Clock size={14} className="text-brand-red" />
-                                                <p className="text-xs font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
+                                                <p className="text-sm font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -547,11 +550,11 @@ const TimesheetsTab = ({
                                                         <div className="text-left">
                                                             <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
                                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-0.5">
-                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                                    <Clock size={10} className="text-brand-red"/>
+                                                                <span className="text-[11px] text-text-muted font-bold flex items-center gap-1">
+                                                                    <Clock size={12} className="text-brand-red"/>
                                                                     {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
                                                                 </span>
-                                                                <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" />
+                                                                <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" size="large" />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -569,14 +572,14 @@ const TimesheetsTab = ({
                                                             <Textarea 
                                                                 defaultValue={log.workSummary}
                                                                 onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                                className="min-h-[60px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] uppercase font-medium leading-relaxed italic resize-none p-0"
+                                                                className="min-h-[60px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[9px] uppercase font-medium leading-relaxed italic resize-none p-0"
                                                                 placeholder="Click to add field notes..."
                                                             />
                                                             <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
                                                         </div>
                                                     ) : (
                                                         <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
-                                                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">
+                                                            <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic">
                                                                 {log.workSummary || 'No activity summary provided.'}
                                                             </p>
                                                         </div>

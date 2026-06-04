@@ -12,21 +12,12 @@ import {
   ChevronDown,
   Camera,
   Plus,
-  Paperclip,
-  Send,
   FileText,
-  Hash,
-  ListTodo,
-  Signature,
-  Upload,
   User,
   Trash2,
   Info,
   AlertTriangle,
   Building2,
-  FileCheck,
-  ShieldAlert,
-  Download,
   ImageIcon,
   History,
   Circle,
@@ -39,7 +30,9 @@ import {
   Eye,
   Activity,
   RotateCcw,
-  Timer
+  Timer,
+  Navigation,
+  LocateFixed
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +41,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -67,12 +59,12 @@ import {
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCityState } from '@/lib/utils';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
 // --- HELPERS ---
 function getProgress(project: Project): number {
@@ -104,7 +96,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                 <section className="field-group">
                     <h3 className="field-group-title"><FileText size={14}/> Operational Scope</h3>
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-left">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Objective</p>
                             <p className="text-sm text-text-primary leading-relaxed uppercase font-medium">{project.scope}</p>
                         </div>
@@ -115,13 +107,13 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <h3 className="field-group-title"><MapPin size={14}/> Site Logistics</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Access Instructions</p>
                                 <p className="text-xs text-text-secondary leading-relaxed">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
                             </div>
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">On-Site Contact</p>
                                 <p className="text-xs font-bold text-text-primary uppercase">
                                     {project.onsiteContactName} {project.onsiteContactPhone && `(${project.onsiteContactPhone})`}
@@ -314,7 +306,7 @@ const TimesheetsTab = ({
                                 {activeSession ? "Live Field Session" : "Session Terminal"}
                              </p>
                              {activeSession ? (
-                                <Badge variant="active" className="h-4 px-1.5 text-[7px] animate-pulse">ACTIVE</Badge>
+                                <Badge variant="active" className="h-4 px-1.5 text-[7px] animate-pulse">RECORDING</Badge>
                              ) : isReadOnly ? (
                                 <Badge variant="outline" className="h-4 px-1.5 text-[7px] opacity-60">LOCKED</Badge>
                              ) : (
@@ -338,14 +330,14 @@ const TimesheetsTab = ({
 
                 <div className="flex items-center gap-3">
                     {isReadOnly ? (
-                        <p className="text-[9px] font-black text-text-muted uppercase pr-4">Registry Archived</p>
+                        <p className="text-[9px] font-black text-text-muted uppercase pr-4 text-right">Registry Archived</p>
                     ) : !activeSession ? (
                         <Button className="h-9 px-8 bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest shadow-lg" onClick={onCheckIn}>
-                            <Play size={14} className="mr-2 fill-current" /> Initialize Session
+                            <Play size={14} className="mr-2 fill-current" /> Check In
                         </Button>
                     ) : (
                         <Button variant="destructive" className="h-9 px-8 text-[10px] font-bold uppercase tracking-widest shadow-lg" onClick={() => onCheckOut(activeSession.id)}>
-                            <LogOut size={14} className="mr-2" /> Finalize Registry
+                            <LogOut size={14} className="mr-2" /> Check Out
                         </Button>
                     )}
                 </div>
@@ -353,7 +345,7 @@ const TimesheetsTab = ({
 
             <section className="space-y-3">
                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Daily Activity Registry</h3>
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Daily Activity Registry</h3>
                     <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red">
                         <Download size={10} className="mr-1"/> Export Audit
                     </Button>
@@ -391,7 +383,7 @@ const TimesheetsTab = ({
                                                         {isLive ? 'ACTIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+                                                <p className="text-[11px] text-text-secondary leading-relaxed italic text-left">&quot;{log.workSummary}&quot;</p>
                                                 <div className="flex items-center gap-4 text-[8px] font-bold uppercase text-text-muted tracking-widest">
                                                     <span className="flex items-center gap-1"><Clock size={10}/> {log.checkInTime} — {log.checkOutTime || 'Present'}</span>
                                                 </div>
@@ -405,7 +397,7 @@ const TimesheetsTab = ({
                 ) : (
                     <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                         <History size={48} className="mx-auto text-text-muted mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">No site activity reported yet</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-center">No site activity reported yet</p>
                     </div>
                 )}
             </section>
@@ -475,12 +467,12 @@ const PhaseBlock = ({
                     <div className="flex-1 min-w-0 text-left">
                         <label
                           htmlFor={`task-${task.id}`}
-                          className={cn("text-[13px] font-semibold text-text-primary block cursor-pointer", task.isCompleted ? 'text-text-muted line-through' : '')}
+                          className={cn("text-[13px] font-semibold text-text-primary block cursor-pointer text-left", task.isCompleted ? 'text-text-muted line-through' : '')}
                         >
                           {task.name}
                         </label>
                         
-                        <div className="flex flex-wrap gap-1 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-1.5 text-left">
                             {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
                             {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
                         </div>
@@ -529,6 +521,20 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
+    const getGPSCoordinates = (): Promise<string> => {
+      return new Promise((resolve) => {
+        if (typeof window === 'undefined' || !navigator.geolocation) {
+          resolve("GPS Unavailable");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`),
+          () => resolve("GPS Restricted"),
+          { timeout: 5000 }
+        );
+      });
+    };
+
     const handleTaskToggle = async (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
         
@@ -560,6 +566,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         if (isReadOnly || !currentUserId) return;
         
         const now = new Date();
+        const coords = await getGPSCoordinates();
+        
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
             technicianId: currentUserId,
@@ -567,7 +575,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             hoursWorked: 0,
             totalHours: '0h 0m',
             checkInTime: format(now, 'HH:mm'),
-            workSummary: 'ACTIVE FIELD SESSION INITIALIZED',
+            workSummary: `ACTIVE FIELD SESSION INITIALIZED. GPS VERIFIED: [${coords}].`,
             taskIdsProgressed: [],
             taskIdsCompleted: [],
             phaseIdsWorked: [],
@@ -577,7 +585,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
-            toast({ title: 'Checked In', description: 'GPS verified. Project session initialized in cloud registry.' });
+            toast({ title: 'Checked In', description: `GPS verified at [${coords}]. Session initialized.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -586,6 +594,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const handleCheckOut = async (logId: string) => {
         if (!activeSession) return;
         const now = new Date();
+        const coords = await getGPSCoordinates();
         
         try {
             const startTime = new Date(`${activeSession.date}T${activeSession.checkInTime}`);
@@ -600,7 +609,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 checkOutTime: format(now, 'HH:mm'),
                 hoursWorked,
                 totalHours: `${h}h ${m}m`,
-                workSummary: 'Automated field session closure verified.'
+                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${format(now, 'HH:mm')}. EXIT GPS: [${coords}].`
             });
             
             const projectRef = doc(db, 'projects', project.id);
@@ -627,11 +636,11 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="project-detail-header">
                 <div className="pdh-top">
                     <div className="text-left">
-                        <div className="flex items-center gap-3 mb-1">
-                            <h1 className="pdh-title">{project.name}</h1>
+                        <div className="flex items-center gap-3 mb-1 text-left">
+                            <h1 className="pdh-title text-left">{project.name}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>
-                        <div className="pdh-meta">
+                        <div className="pdh-meta text-left">
                             <div className="pdh-meta-item"><MapPin size={12}/> {project.location}</div>
                             <div className="pdh-meta-item"><CalendarIcon size={12}/> Started {formatDateDisplay(project.startDate)}</div>
                             <div className="pdh-meta-item"><Clock size={12}/> Est. {project.estimatedDuration}</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
 import Link from 'next/link';
 import {
@@ -33,7 +33,9 @@ import {
   Timer,
   Navigation,
   LocateFixed,
-  Download
+  Download,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -88,6 +90,19 @@ function formatDateDisplay(dateStr: string) {
         return dateStr;
     }
 }
+
+const displayTime = (timeStr?: string) => {
+    if (!timeStr) return '';
+    try {
+        // Handle HH:mm input
+        const [h, m] = timeStr.split(':');
+        const d = new Date();
+        d.setHours(parseInt(h), parseInt(m), 0);
+        return format(d, 'h:mm a');
+    } catch (e) {
+        return timeStr;
+    }
+};
 
 // --- SUB-COMPONENTS ---
 
@@ -169,20 +184,37 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
     );
 };
 
-const MilestoneDocuments = ({ 
-    phase, 
-    documents, 
-    onDelete, 
-    onUpload,
-    onDownload
-}: { 
-    phase: any, 
-    documents: ProjectDocument[], 
-    onDelete: (id: string) => void, 
-    onUpload: (file: File, phaseId?: string, taskId?: string) => void,
-    onDownload: (doc: ProjectDocument) => void
-}) => {
-    return null; // Implemented in standard DocumentsTab for brevity
+const PhaseBlock = ({ phase, onTaskToggle, isReadOnly }: { phase: any, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean }) => {
+    const completedTasks = (phase.tasks || []).filter((t: any) => t.isCompleted).length;
+    const totalTasks = (phase.tasks || []).length;
+    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    
+    return (
+        <div className="phase-block bg-bg-secondary border border-border-main rounded-lg overflow-hidden">
+            <header className="phase-header flex items-center justify-between p-3 bg-bg-tertiary/30 border-b border-border-sub">
+                <div className="flex items-center gap-3">
+                    <div className="h-5 w-5 rounded-full bg-brand-red text-white flex items-center justify-center text-[10px] font-bold">{phase.phaseNumber}</div>
+                    <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide">{phase.name}</h4>
+                </div>
+                <Badge variant={progress === 100 ? 'active' : 'onhold'} className="text-[8px] uppercase">{Math.round(progress)}%</Badge>
+            </header>
+            <div className="p-3 space-y-1">
+                {(phase.tasks || []).map((task: any) => (
+                    <div key={task.id} className="flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors group">
+                        <Checkbox 
+                            id={task.id} 
+                            checked={task.isCompleted} 
+                            onCheckedChange={() => onTaskToggle(phase.id, task.id)}
+                            disabled={isReadOnly}
+                        />
+                        <Label htmlFor={task.id} className={cn("text-[11px] font-medium cursor-pointer flex-1", task.isCompleted && "text-text-muted line-through")}>
+                            {task.name}
+                        </Label>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 };
 
 const TimesheetsTab = ({ 
@@ -203,6 +235,15 @@ const TimesheetsTab = ({
     project: Project
 }) => {
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
+    const [liveNotes, setLiveNotes] = useState("");
+    const [isSavingNotes, setIsSavingNotes] = useState(false);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (activeSession) {
+            setLiveNotes(activeSession.workSummary || "");
+        }
+    }, [activeSession]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -224,6 +265,21 @@ const TimesheetsTab = ({
         return () => clearInterval(interval);
     }, [activeSession]);
 
+    const handleSaveLiveNotes = async () => {
+        if (!activeSession) return;
+        setIsSavingNotes(true);
+        try {
+            await updateDoc(doc(db, 'projectDailyLogs', activeSession.id), {
+                workSummary: liveNotes
+            });
+            toast({ title: "Registry Synced", description: "Field notes committed to current session log." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Sync Failure', description: e.message });
+        } finally {
+            setIsSavingNotes(false);
+        }
+    };
+
     const groupedByDate = useMemo(() => {
         const groups = dailyLogs.reduce((acc, log) => {
             if (!acc[log.date]) acc[log.date] = { logs: [], total: 0 };
@@ -237,101 +293,169 @@ const TimesheetsTab = ({
             .sort((a, b) => b.date.localeCompare(a.date));
     }, [dailyLogs]);
 
-    const displayTime = (timeStr?: string) => {
-        if (!timeStr) return '';
-        try {
-            return format(parse(`2024-01-01T${timeStr}`, "yyyy-MM-dd'T'HH:mm", new Date()), 'h:mm a');
-        } catch (e) {
-            return timeStr;
-        }
-    };
-
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* TACTICAL SESSION TERMINAL - COMPACT STRIP */}
+            {/* TACTICAL SESSION TERMINAL - PERSISTENT STRIP */}
             <div className={cn(
-                "p-2 rounded-lg border flex items-center justify-between transition-all shadow-sm overflow-hidden",
-                activeSession ? "bg-brand-red-dim border-brand-red/40" : "bg-bg-secondary border-border-main"
+                "rounded-xl border shadow-xl overflow-hidden transition-all duration-500",
+                activeSession ? "bg-bg-secondary border-brand-red ring-1 ring-brand-red/20" : "bg-bg-tertiary/20 border-border-sub"
             )}>
-                <div className="flex items-center gap-4">
-                    <div className={cn(
-                        "p-1.5 rounded bg-bg-tertiary text-text-muted border border-border-sub",
-                        activeSession && "bg-brand-red text-white border-brand-red"
-                    )}>
-                        {activeSession ? <Activity size={16} className="animate-pulse" /> : <Timer size={16} />}
-                    </div>
-                    
-                    <div className="text-left">
-                        <div className="flex items-center gap-2">
-                             <p className="text-[9px] font-black uppercase tracking-widest text-text-primary">
-                                {activeSession ? "Live Session" : "Session Terminal"}
-                             </p>
-                             {activeSession && <Badge variant="active" className="h-3.5 px-1 text-[6px] animate-pulse">LIVE</Badge>}
+                <div className="p-4 flex items-center justify-between bg-bg-tertiary/30 border-b border-border-sub">
+                    <div className="flex items-center gap-4">
+                        <div className={cn(
+                            "p-2 rounded-lg border shadow-inner",
+                            activeSession ? "bg-brand-red text-white border-brand-red" : "bg-bg-primary text-text-muted border-border-sub"
+                        )}>
+                            {activeSession ? <Activity size={20} className="animate-pulse" /> : <Timer size={20} />}
                         </div>
-                        <p className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">
-                            {activeSession ? `In: ${displayTime(activeSession.checkInTime)} · Active: ${elapsedTime}` : `Tally: ${(project.actualHours || 0).toFixed(1)}h`}
-                        </p>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">
+                                {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
+                            </p>
+                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
+                                {activeSession ? `ID: ${activeSession.id.split('-')[1].toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        {activeSession && (
+                            <div className="flex flex-col items-end">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
+                                <p className="text-2xl font-mono font-bold text-text-primary tabular-nums tracking-tighter">{elapsedTime}</p>
+                            </div>
+                        )}
+                        {isReadOnly ? (
+                            <Badge variant="outline" className="h-6 px-4 uppercase font-black text-[9px] tracking-widest">REGISTRY LOCKED</Badge>
+                        ) : !activeSession ? (
+                            <Button onClick={onCheckIn} className="bg-brand-red hover:bg-brand-red-hover h-11 px-10 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                                <Play size={16} className="mr-2 fill-current" /> Check In
+                            </Button>
+                        ) : (
+                            <Button variant="destructive" onClick={() => onCheckOut(activeSession.id)} className="h-11 px-10 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                                <LogOut size={16} className="mr-2" /> Check Out
+                            </Button>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {isReadOnly ? (
-                        <p className="text-[8px] font-black text-text-muted uppercase pr-2">Archived</p>
-                    ) : !activeSession ? (
-                        <Button size="sm" className="h-7 px-4 bg-brand-red hover:bg-brand-red-hover text-[8px] font-bold uppercase tracking-widest shadow-lg" onClick={onCheckIn}>
-                            <Play size={12} className="mr-1 fill-current" /> Check In
-                        </Button>
-                    ) : (
-                        <Button variant="destructive" size="sm" className="h-7 px-4 text-[8px] font-bold uppercase tracking-widest shadow-lg" onClick={() => onCheckOut(activeSession.id)}>
-                            <LogOut size={12} className="mr-1" /> Check Out
-                        </Button>
-                    )}
-                </div>
+                {activeSession && (
+                    <div className="p-6 bg-bg-secondary space-y-4 animate-in slide-in-from-top-4 duration-500">
+                        <div className="grid grid-cols-2 gap-8">
+                             <div className="space-y-2 text-left">
+                                <div className="flex items-center justify-between px-1">
+                                    <Label className="text-[10px] font-black uppercase text-text-muted tracking-widest flex items-center gap-2">
+                                        <FileText size={14} className="text-brand-red"/> Field activity Notes
+                                    </Label>
+                                    <div className="flex items-center gap-2">
+                                         {isSavingNotes && <Loader2 size={10} className="animate-spin text-accent-gold"/>}
+                                         <p className="text-[8px] text-text-muted font-bold uppercase tracking-tighter">Autosave Enabled</p>
+                                    </div>
+                                </div>
+                                <Textarea 
+                                    value={liveNotes}
+                                    onChange={e => setLiveNotes(e.target.value)}
+                                    onBlur={handleSaveLiveNotes}
+                                    placeholder="Document site conditions, task completion details, and field obstacles..."
+                                    className="min-h-[120px] bg-bg-primary border-border-sub text-xs leading-relaxed uppercase font-medium focus:border-brand-red transition-all shadow-inner"
+                                />
+                             </div>
+                             <div className="space-y-4">
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub shadow-inner space-y-4">
+                                    <div className="flex items-center justify-between border-b border-border-sub/50 pb-2">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Session Metadata</p>
+                                        <ShieldCheck size={14} className="text-text-green" />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div className="space-y-1 text-left">
+                                            <p className="text-[8px] font-black text-text-muted uppercase">Verified Site Presence</p>
+                                            <div className="flex items-center gap-2 text-text-primary">
+                                                <LocateFixed size={14} className="text-text-green" />
+                                                <p className="text-xs font-bold uppercase tracking-tight">{activeSession.workSummary.match(/\[(.*?)\]/)?.[1] || 'Detroit, MI'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 text-left">
+                                            <p className="text-[8px] font-black text-text-muted uppercase">Handshake Verification</p>
+                                            <div className="flex items-center gap-2 text-text-primary">
+                                                <Clock size={14} className="text-brand-red" />
+                                                <p className="text-xs font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 rounded-xl border border-dashed border-border-sub bg-bg-tertiary/20 text-center">
+                                     <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed italic">
+                                         Terminal Note: All field notes are synchronized with the Command Center in real-time. Finalize all Milestones before checking out.
+                                     </p>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <section className="space-y-3">
+            <section className="space-y-4">
                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Daily Activity Registry</h3>
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Historical Session Ledger</h3>
                     <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red">
-                        <Download size={10} className="mr-1"/> Export Audit
+                        <Download size={10} className="mr-1"/> Export Audit manifest
                     </Button>
                 </div>
                 {groupedByDate.length > 0 ? (
-                    <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-2">
+                    <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-3">
                         {groupedByDate.map(group => (
-                            <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-lg overflow-hidden bg-bg-secondary shadow-sm">
-                                <AccordionTrigger className="px-4 py-2 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
+                            <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-xl overflow-hidden bg-bg-secondary shadow-sm">
+                                <AccordionTrigger className="px-5 py-3 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
                                     <div className="flex items-center gap-3">
-                                        <CalendarIcon size={14} className="text-brand-red" />
-                                        <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.date}</span>
-                                        <Badge variant="outline" className="text-[8px] bg-bg-tertiary h-4">{group.logs.length} LOGS</Badge>
+                                        <div className="p-1.5 bg-bg-primary rounded text-brand-red border border-border-sub">
+                                            <CalendarIcon size={16} />
+                                        </div>
+                                        <span className="text-sm font-black uppercase tracking-widest text-text-primary">{group.date}</span>
+                                        <Badge variant="outline" className="text-[8px] bg-bg-primary h-4 px-2 tracking-tighter">{group.logs.length} SESSION(S)</Badge>
                                     </div>
-                                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">Daily Hours: <span className="text-text-primary font-mono text-xs">{group.total.toFixed(1)}h</span></span>
+                                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
                                 </AccordionTrigger>
-                                <AccordionContent className="p-2 space-y-1 bg-bg-primary/20">
+                                <AccordionContent className="p-3 space-y-2 bg-bg-primary/10">
                                     {group.logs.map(log => {
                                         const tech = technicians.find(t => t.id === log.technicianId);
                                         const isLive = !log.checkOutTime;
+                                        const siteLoc = log.workSummary.match(/\[(.*?)\]/)?.[1] || 'Unknown Site';
                                         return (
                                             <div key={log.id} className={cn(
-                                                "p-3 rounded-lg border space-y-2 text-left transition-all",
-                                                isLive ? "bg-brand-red-dim/5 border-brand-red shadow-sm" : "bg-bg-secondary border-border-sub"
+                                                "p-4 rounded-xl border space-y-3 text-left transition-all",
+                                                isLive ? "bg-brand-red-dim/5 border-brand-red ring-1 ring-brand-red/10" : "bg-bg-secondary border-border-sub"
                                             )}>
-                                                <div className="flex justify-between items-center">
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="h-5 w-5 border border-border-sub">
-                                                            <AvatarFallback className="text-[8px]">{tech?.name.charAt(0)}</AvatarFallback>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-6 w-6 border border-border-sub shadow-sm">
+                                                            <AvatarFallback className="text-[8px] font-bold">{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                         </Avatar>
-                                                        <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</span>
-                                                        {isLive && <Badge variant="active" className="h-3 px-1 text-[6px] animate-pulse">RECORDING</Badge>}
+                                                        <div className="text-left">
+                                                            <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">{tech?.name}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1">
+                                                                    <Clock size={10} className="text-brand-red"/>
+                                                                    {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
+                                                                </span>
+                                                                <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1">
+                                                                    <MapPin size={10} className="text-accent-gold"/>
+                                                                    {siteLoc}
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <span className={cn("text-[10px] font-mono font-bold", isLive ? "text-brand-red" : "text-text-green")}>
-                                                        {isLive ? 'ACTIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
-                                                    </span>
+                                                    <div className="text-right">
+                                                        <p className={cn("text-lg font-mono font-bold leading-none", isLive ? "text-brand-red" : "text-text-green")}>
+                                                            {isLive ? 'LIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
+                                                        </p>
+                                                        {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] mt-1.5 animate-pulse uppercase">RECORDING</Badge>}
+                                                    </div>
                                                 </div>
-                                                <p className="text-[11px] text-text-secondary leading-relaxed italic text-left">&quot;{log.workSummary}&quot;</p>
-                                                <div className="flex items-center gap-4 text-[8px] font-bold uppercase text-text-muted tracking-widest">
-                                                    <span className="flex items-center gap-1"><Clock size={10}/> {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Present'}</span>
+                                                <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
+                                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">
+                                                        {log.workSummary.split(' | ')[0].replace(/IDENTIFIED SITE LOCATION: \[.*?\]\./, '').trim() || 'No activity summary provided.'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )
@@ -341,58 +465,15 @@ const TimesheetsTab = ({
                         ))}
                     </Accordion>
                 ) : (
-                    <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                        <History size={48} className="mx-auto text-text-muted mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-center">No site activity reported yet</p>
+                    <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
+                        <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-center italic">Session ledger clear for this mission registry</p>
                     </div>
                 )}
             </section>
         </div>
     );
 };
-
-const MilestonesTab = ({ project, onTaskToggle, documents, isReadOnly }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean }) => (
-    <div className="space-y-4 max-w-3xl mx-auto">
-        {(project.phases || []).map(phase => (
-            <PhaseBlock key={phase.id} phase={phase} onTaskToggle={onTaskToggle} documents={documents} isReadOnly={isReadOnly} />
-        ))}
-    </div>
-);
-
-const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => (
-    <div className="space-y-6 max-w-4xl mx-auto text-left">
-        <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Project Asset Registry</h3>
-            <Button className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase font-bold text-[10px] tracking-widest">
-                <Plus size={14} className="mr-1.5"/> Upload Asset
-            </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {documents.map(doc => (
-                <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
-                    <div className="flex items-center gap-4 text-left">
-                        <div className="p-2.5 rounded-lg border bg-bg-primary text-brand-red border-border-sub group-hover:bg-brand-red group-hover:text-white transition-all">
-                            <FileText size={18} />
-                        </div>
-                        <div className="text-left">
-                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px]">{doc.name}</p>
-                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-0.5">{doc.size} • {doc.uploadDate}</p>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-text-muted hover:text-text-primary">
-                        <Download size={18} />
-                    </Button>
-                </div>
-            ))}
-            {documents.length === 0 && (
-                <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30 opacity-40">
-                    <FolderOpen size={48} className="mx-auto text-text-muted mb-4" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest">No site assets synchronized</p>
-                </div>
-            )}
-        </div>
-    </div>
-);
 
 export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
     const [activeTab, setActiveTab] = useState('overview');
@@ -439,7 +520,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         if (isReadOnly || !currentUserId) return;
         
         const now = new Date();
-        const location = await getTacticalLocation();
+        const city = await getTacticalLocation();
         const checkInDisplayTime = format(now, 'h:mm a');
         
         const newLog: Omit<ProjectDailyLog, 'id'> = {
@@ -449,7 +530,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             hoursWorked: 0,
             totalHours: '0h 0m',
             checkInTime: format(now, 'HH:mm'),
-            workSummary: `ACTIVE FIELD SESSION INITIALIZED AT ${checkInDisplayTime}. IDENTIFIED SITE LOCATION: [${location}].`,
+            workSummary: `ACTIVE FIELD SESSION INITIALIZED AT ${checkInDisplayTime}. IDENTIFIED SITE LOCATION: [${city}].`,
             taskIdsProgressed: [],
             taskIdsCompleted: [],
             phaseIdsWorked: [],
@@ -459,7 +540,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         try {
             await addDoc(collection(db, 'projectDailyLogs'), newLog);
-            toast({ title: 'Checked In', description: `Location verified: [${location}]. Session initialized at ${checkInDisplayTime}.` });
+            toast({ title: 'Check In Validated', description: `Location verified: [${city}]. Registry initialized.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -468,7 +549,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const handleCheckOut = async (logId: string) => {
         if (!activeSession) return;
         const now = new Date();
-        const location = await getTacticalLocation();
+        const city = await getTacticalLocation();
         const checkoutDisplayTime = format(now, 'h:mm a');
         
         try {
@@ -484,7 +565,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 checkOutTime: format(now, 'HH:mm'),
                 hoursWorked,
                 totalHours: `${h}h ${m}m`,
-                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${checkoutDisplayTime}. EXIT LOCATION: [${location}].`
+                workSummary: `${activeSession.workSummary} | FIELD SESSION FINALIZED AT ${checkoutDisplayTime}. EXIT LOCATION: [${city}].`
             });
             
             const projectRef = doc(db, 'projects', project.id);
@@ -492,7 +573,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 actualHours: (project.actualHours || 0) + hoursWorked
             });
 
-            toast({ title: 'Session Finalized', description: `Handshake complete at ${checkoutDisplayTime}. Log committed to project registry.` });
+            toast({ title: 'Check Out Confirmed', description: `Session manifest committed to registry at ${checkoutDisplayTime}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
+import { useState, useMemo, useEffect } from 'react';
+import type { Project, ProjectDailyLog, Technician, ProjectDocument } from '@/lib/types';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -55,13 +55,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
-} from '@/components/ui/select';
 import {
   Accordion,
   AccordionContent,
@@ -474,7 +467,7 @@ const TimesheetsTab = ({
                                         onChange={e => setLiveNotes(e.target.value)}
                                         onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
                                         placeholder="Document site conditions, task completion details, and field obstacles..."
-                                        className="min-h-[100px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] leading-relaxed uppercase font-medium resize-none p-0"
+                                        className="min-h-[80px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] leading-relaxed uppercase font-medium resize-none p-0"
                                     />
                                     <Pencil size={12} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
                                 </div>
@@ -582,7 +575,7 @@ const TimesheetsTab = ({
                                                                 <Textarea 
                                                                     defaultValue={log.workSummary}
                                                                     onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                                    className="min-h-[40px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[9px] uppercase font-medium leading-relaxed italic resize-none p-0"
+                                                                    className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0"
                                                                     placeholder="Click to add field notes..."
                                                                 />
                                                                 <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />

@@ -96,8 +96,6 @@ export const RELIABILITY_EVENT_TYPES = {
     LATE_WEEKLY_LOG: { type: 'late_weekly_log', label: 'Late Weekly Log', scoreChange: -5, category: 'operational_friction', isAutomatic: true },
     WEEKLY_LOG_MISSING: { type: 'weekly_log_not_submitted', label: 'Weekly Log Missing', scoreChange: -10, category: 'operational_friction', isAutomatic: true },
     MISSING_PHOTOS: { type: 'missing_required_photos', label: 'Missing Required Photos', scoreChange: -3, category: 'operational_friction', isAutomatic: true },
-    WEEKLY_LOG_MISSING: { type: 'weekly_log_not_submitted', label: 'Weekly Log Missing', scoreChange: -10, category: 'operational_friction', isAutomatic: true },
-    MISSING_PHOTOS: { type: 'missing_required_photos', label: 'Missing Required Photos', scoreChange: -3, category: 'operational_friction', isAutomatic: true },
     DELAYED_STATUS: { type: 'delayed_status_update', label: 'Delayed Status Update', scoreChange: -3, category: 'operational_friction', isAutomatic: true },
     POOR_COMMUNICATION: { type: 'poor_communication', label: 'Poor Communication', scoreChange: -4, category: 'operational_friction', isAutomatic: false },
   },

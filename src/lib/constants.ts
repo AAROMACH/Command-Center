@@ -30,6 +30,9 @@ export const TERMINOLOGY = {
   },
   CONFIG: {
     SETTINGS: "Settings", 
+    SECURITY: "Security Registry",
+    NOTIFICATIONS: "Alert Protocols",
+    INTEGRATIONS: "System Handshakes"
   },
 } as const;
 

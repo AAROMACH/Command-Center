@@ -1,4 +1,3 @@
-
 'use client';
 import type { Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -16,9 +15,7 @@ import {
     TrendingUp,
     ChevronDown,
     ChevronUp,
-    Clock,
-    Activity,
-    Landmark
+    Activity
 } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -56,12 +53,19 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
         });
     }, [project]);
 
+    // DIRTY CHECK LOGIC: Only show actions if data changed
+    const isDirty = useMemo(() => {
+        return localProjectData.scope !== project.scope ||
+               localProjectData.onsiteContactName !== project.onsiteContactName ||
+               localProjectData.onsiteContactPhone !== project.onsiteContactPhone ||
+               localProjectData.siteAccessInstructions !== project.siteAccessInstructions;
+    }, [localProjectData, project]);
+
     // ECONOMIC CALCULATION ENGINE
     const projectEconomics = useMemo(() => {
         const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
         const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
 
-        // Master tally from project schema
         const loggedHours = project.actualHours || 0;
 
         let estimatedHours = project.estimatedHours || 0;
@@ -70,7 +74,6 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
         , 0);
         if (taskEstSum > 0) estimatedHours = taskEstSum;
 
-        // CALCULATE LABOR COST FROM RATES
         const laborCost = dailyLogs.reduce((acc, log) => {
             const tech = allTechnicians.find(t => t.id === log.technicianId);
             const rate = tech?.hourlyRate || 0;
@@ -95,11 +98,10 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
             ? projectInvoices.reduce((acc, i) => acc + i.total, 0)
             : (project.projectBudget || 0);
             
-        const isActualProfit = projectInvoices.length > 0;
         const profit = revenue - actualCost;
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-
         const remainingBudget = (project.projectBudget || 0) - actualCost;
+        
         let budgetStatus: 'On Budget' | 'Near Limit' | 'Over Budget' | 'Not Enough Data' = 'On Budget';
         if (!project.projectBudget) budgetStatus = 'Not Enough Data';
         else if (remainingBudget < 0) budgetStatus = 'Over Budget';
@@ -115,7 +117,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
             actualCost,
             remainingBudget,
             profit,
-            isActualProfit,
+            isActualProfit: projectInvoices.length > 0,
             margin,
             budgetStatus,
             revenue
@@ -163,7 +165,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
     };
 
     const handleSaveChanges = async () => {
-        if (isReadOnly) return;
+        if (isReadOnly || !isDirty) return;
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, {
@@ -399,7 +401,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                 <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><Users className="text-brand-red h-4 w-4"/> Project Team</h3>
+                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><Users size={14} className="text-brand-red h-4 w-4"/> Project Team</h3>
                             <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -435,8 +437,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                 </div>
             </div>
 
-            {!isReadOnly && (
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-sub">
+            {!isReadOnly && isDirty && (
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-sub animate-in fade-in slide-in-from-top-2 duration-300">
                     <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={handleCancelChanges}>Discard Changes</Button>
                     <Button variant="default" className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={handleSaveChanges}>Commit Updates</Button>
                 </div>

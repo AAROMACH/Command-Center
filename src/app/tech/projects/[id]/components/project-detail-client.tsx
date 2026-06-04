@@ -199,8 +199,8 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <h3 className="field-group-title"><FileText size={14}/> Operational Scope</h3>
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
                         <div className="space-y-1 text-left">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Primary Objective</p>
-                            <p className="text-sm text-text-primary leading-relaxed uppercase font-medium">{project.scope}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Primary Objective</p>
+                            <p className="text-sm text-text-primary leading-relaxed uppercase font-medium text-left">{project.scope}</p>
                         </div>
                     </div>
                 </section>
@@ -210,14 +210,14 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Access Instructions</p>
-                                <p className="text-xs text-text-secondary leading-relaxed">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Access Instructions</p>
+                                <p className="text-xs text-text-secondary leading-relaxed text-left">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
                             </div>
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">On-Site Contact</p>
-                                <p className="text-xs font-bold text-text-primary uppercase">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">On-Site Contact</p>
+                                <p className="text-xs font-bold text-text-primary uppercase text-left">
                                     {project.onsiteContactName} {project.onsiteContactPhone && `(${project.onsiteContactPhone})`}
                                 </p>
                             </div>
@@ -256,8 +256,8 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                                         <AvatarFallback>{t?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 text-left">
-                                        <p className="text-xs font-bold text-text-primary uppercase truncate">{t?.name}</p>
-                                        <p className="text-[9px] text-text-muted uppercase tracking-widest">{member.role}</p>
+                                        <p className="text-xs font-bold text-text-primary uppercase truncate text-left">{t?.name}</p>
+                                        <p className="text-[9px] text-text-muted uppercase tracking-widest text-left">{member.role}</p>
                                     </div>
                                 </div>
                             )
@@ -283,8 +283,8 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                                 <FileText size={18} />
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{doc.name}</p>
-                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{doc.size} · Uploaded {doc.uploadDate}</p>
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{doc.name}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5 text-left">{doc.size} · Uploaded {doc.uploadDate}</p>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
@@ -421,7 +421,7 @@ const TimesheetsTab = ({
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
-                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
+                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5 text-left">
                                 {activeSession ? `ID: ${activeSession.id?.split('-').pop()?.toUpperCase() || 'LIVE'} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
@@ -480,11 +480,11 @@ const TimesheetsTab = ({
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[8px] font-black text-text-muted uppercase">Verified Site Presence</p>
+                                            <p className="text-[8px] font-black text-text-muted uppercase text-left">Verified Site Presence</p>
                                             <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="In" size="large" />
                                         </div>
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[8px] font-black text-text-muted uppercase">Handshake Verification</p>
+                                            <p className="text-[8px] font-black text-text-muted uppercase text-left">Handshake Verification</p>
                                             <div className="flex items-center gap-2 text-text-primary">
                                                 <Clock size={16} className="text-brand-red" />
                                                 <p className="text-2xl font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
@@ -514,13 +514,13 @@ const TimesheetsTab = ({
                     <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-3">
                         {groupedByDate.map(group => (
                             <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-xl overflow-hidden bg-bg-secondary shadow-sm">
-                                <AccordionTrigger className="px-5 py-3 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
+                                <AccordionTrigger className="px-5 py-3 hover:bg-bg-tertiary transition-colors hover:no-underline border-none text-left">
                                     <div className="flex items-center gap-3 text-left">
                                         <div className="p-1.5 bg-bg-primary rounded text-brand-red border border-border-sub">
                                             <CalendarIcon size={16} />
                                         </div>
                                         <span className="text-sm font-black uppercase tracking-widest text-text-primary">{group.date}</span>
-                                        <Badge variant="outline" className="text-[8px] bg-bg-primary h-4 px-2 tracking-tighter">{group.logs.length} SESSION(S)</Badge>
+                                        <Badge variant="outline" className="text-[8px] bg-bg-primary h-4 px-2 tracking-tighter">{(group.logs || []).length} SESSION(S)</Badge>
                                     </div>
                                     <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
                                 </AccordionTrigger>
@@ -537,21 +537,21 @@ const TimesheetsTab = ({
                                                     isLive ? "bg-brand-red-dim/5 border-brand-red ring-1 ring-brand-red/10" : "bg-bg-secondary border-border-sub"
                                                 )}>
                                                     <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-4 text-left">
                                                             <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                                                 <AvatarFallback className="text-[10px] font-bold">{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="text-left space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-[11px] font-black uppercase text-text-primary tracking-tight">{tech?.name}</p>
+                                                                <div className="flex items-center gap-2 text-left">
+                                                                    <p className="text-[11px] font-black uppercase text-text-primary tracking-tight text-left">{tech?.name}</p>
                                                                     {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] animate-pulse uppercase font-black">RECORDING</Badge>}
                                                                 </div>
-                                                                <div className="flex flex-col gap-2">
-                                                                    <span className="text-[13px] text-text-primary font-black uppercase tracking-widest flex items-center gap-2">
+                                                                <div className="flex flex-col gap-2 text-left">
+                                                                    <span className="text-[13px] text-text-primary font-black uppercase tracking-widest flex items-center gap-2 text-left">
                                                                         <Clock size={14} className="text-brand-red"/>
                                                                         {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
                                                                     </span>
-                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                    <div className="flex flex-wrap items-center gap-3 text-left">
                                                                         <ProximityDisplay lat={log.checkInLat} lng={log.checkInLng} project={project} label="Check-In" size="large" />
                                                                         {log.checkOutTime && <ProximityDisplay lat={log.checkOutLat} lng={log.checkOutLng} project={project} label="Check-Out" size="large" />}
                                                                     </div>
@@ -566,23 +566,23 @@ const TimesheetsTab = ({
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1.5 text-left border-t border-border-sub/30 pt-3">
-                                                        <div className="flex items-center gap-2 text-text-muted mb-1">
+                                                        <div className="flex items-center gap-2 text-text-muted mb-1 text-left">
                                                             <FileText size={12}/>
-                                                            <p className="text-[9px] font-black uppercase tracking-widest">Field Activity Report</p>
+                                                            <p className="text-[9px] font-black uppercase tracking-widest text-left">Field Activity Report</p>
                                                         </div>
                                                         {canEditNotes ? (
-                                                            <div className="relative group/hist-note">
+                                                            <div className="relative group/hist-note text-left">
                                                                 <Textarea 
                                                                     defaultValue={log.workSummary}
                                                                     onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                                    className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0"
+                                                                    className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0 text-left"
                                                                     placeholder="Click to add field notes..."
                                                                 />
                                                                 <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
                                                             </div>
                                                         ) : (
-                                                            <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50">
-                                                                <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic">
+                                                            <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50 text-left">
+                                                                <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">
                                                                     {log.workSummary || 'No activity summary provided.'}
                                                                 </p>
                                                             </div>
@@ -747,13 +747,13 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="project-detail-header">
                 <div className="pdh-top">
                     <div className="text-left">
-                        <div className="flex items-center gap-3 mb-1">
-                            <h1 className="pdh-title">{project.name}</h1>
+                        <div className="flex items-center gap-3 mb-1 text-left">
+                            <h1 className="pdh-title text-left">{project.name}</h1>
                              <Badge variant={project.status} className="capitalize">{project.status}</Badge>
                         </div>
-                        <div className="pdh-meta">
-                            <div className="pdh-meta-item"><MapPin size={12}/>{project.location}</div>
-                            <div className="pdh-meta-item"><CalendarIcon size={12}/>Started {formatDateDisplay(project.startDate)}</div>
+                        <div className="pdh-meta text-left">
+                            <div className="pdh-meta-item text-left"><MapPin size={12}/>{project.location}</div>
+                            <div className="pdh-meta-item text-left"><CalendarIcon size={12}/>Started {formatDateDisplay(project.startDate)}</div>
                         </div>
                     </div>
                 </div>

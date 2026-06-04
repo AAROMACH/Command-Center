@@ -46,6 +46,24 @@ import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
 
+const formatDateStr = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    try {
+        const parts = dateStr.split(/[-/]/);
+        if (parts[0].length === 4) {
+            return format(parseISO(dateStr), "MM-dd-yyyy");
+        } else {
+            const [m, d, y] = parts;
+            if (y && m && d) {
+                return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
+            }
+        }
+        return dateStr;
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -60,24 +78,6 @@ export default function TechAssignmentsPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const { toast } = useToast();
-
-    const formatDateStr = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-            const parts = dateStr.split(/[-/]/);
-            if (parts[0].length === 4) {
-                return format(parseISO(dateStr), "MM-dd-yyyy");
-            } else {
-                const [m, d, y] = parts;
-                if (y && m && d) {
-                    return `${m.padStart(2, '0')}-${d.padStart(2, '0')}-${y}`;
-                }
-            }
-            return dateStr;
-        } catch (e) {
-            return dateStr;
-        }
-    };
 
     useEffect(() => {
         setMounted(true);
@@ -569,7 +569,7 @@ export default function TechAssignmentsPage() {
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-center gap-1.5 text-[10px] text-text-secondary text-center">
-                                                    <MapPin className="h-3 w-3 text-text-muted shrink-0" />
+                                                    <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                                     <span className="max-w-[150px] truncate">{formatCityState(wo.location)}</span>
                                                 </div>
                                             </td>

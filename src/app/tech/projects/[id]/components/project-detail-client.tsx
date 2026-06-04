@@ -18,7 +18,6 @@ import {
   Info,
   AlertTriangle,
   Building2,
-  ImageIcon,
   History,
   Circle,
   Play,
@@ -62,7 +61,7 @@ import {
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
-import { format, parseISO, parse } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -184,33 +183,56 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
     );
 };
 
-const PhaseBlock = ({ phase, onTaskToggle, isReadOnly }: { phase: any, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean }) => {
-    const completedTasks = (phase.tasks || []).filter((t: any) => t.isCompleted).length;
-    const totalTasks = (phase.tasks || []).length;
-    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-    
+const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     return (
-        <div className="phase-block bg-bg-secondary border border-border-main rounded-lg overflow-hidden">
-            <header className="phase-header flex items-center justify-between p-3 bg-bg-tertiary/30 border-b border-border-sub">
-                <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 rounded-full bg-brand-red text-white flex items-center justify-center text-[10px] font-bold">{phase.phaseNumber}</div>
-                    <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide">{phase.name}</h4>
-                </div>
-                <Badge variant={progress === 100 ? 'active' : 'onhold'} className="text-[8px] uppercase">{Math.round(progress)}%</Badge>
-            </header>
-            <div className="p-3 space-y-1">
-                {(phase.tasks || []).map((task: any) => (
-                    <div key={task.id} className="flex items-center gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors group">
-                        <Checkbox 
-                            id={task.id} 
-                            checked={task.isCompleted} 
-                            onCheckedChange={() => onTaskToggle(phase.id, task.id)}
-                            disabled={isReadOnly}
-                        />
-                        <Label htmlFor={task.id} className={cn("text-[11px] font-medium cursor-pointer flex-1", task.isCompleted && "text-text-muted line-through")}>
-                            {task.name}
-                        </Label>
+        <div className="space-y-4 animate-in fade-in duration-300">
+             <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Project Asset Registry</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {documents.map(doc => (
+                    <div key={doc.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                        <div className="flex items-center gap-4 text-left">
+                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-brand-red">
+                                <FileText size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{doc.name}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{doc.size} · Uploaded {doc.uploadDate}</p>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                            <Download size={16}/>
+                        </Button>
                     </div>
+                ))}
+                {documents.length === 0 && (
+                    <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
+                        <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-center italic">No technical assets found in project folder</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const MilestonesTab = ({ project, onTaskToggle, isReadOnly }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean }) => {
+    return (
+        <div className="space-y-4 animate-in fade-in duration-300">
+             <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Mission Objectives</h3>
+                <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">{(project.phases || []).length} PHASES</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                {(project.phases || []).map(phase => (
+                    <PhaseBlock 
+                        key={phase.id} 
+                        phase={phase} 
+                        onTaskToggle={onTaskToggle} 
+                        documents={[]} 
+                        isReadOnly={isReadOnly} 
+                    />
                 ))}
             </div>
         </div>
@@ -313,7 +335,7 @@ const TimesheetsTab = ({
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5">
-                                {activeSession ? `ID: ${activeSession.id.split('-')[1].toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
+                                {activeSession ? `ID: ${(activeSession.id.includes('-') ? activeSession.id.split('-')[1] : activeSession.id).toUpperCase()} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
                     </div>

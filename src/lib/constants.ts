@@ -89,7 +89,7 @@ export const RELIABILITY_EVENT_TYPES = {
     SITE_ABANDONMENT: { type: 'site_abandonment', label: 'Site Abandonment', scoreChange: -35, category: 'critical_failure', isAutomatic: false },
     FALSIFIED_LOG: { type: 'falsified_log', label: 'Falsified Log', scoreChange: -50, category: 'critical_failure', isAutomatic: false },
     UNAUTHORIZED_CANCELLATION: { type: 'unauthorized_cancellation', label: 'Unauthorized Cancellation', scoreChange: -20, category: 'critical_failure', isAutomatic: false },
-    SAFETY_VIOLATION: { type: 'safety_violation', label: 'Safety Violation', scoreChange: -30, category: 'critical_failure', isAutomatic: false },
+    SITE_SAFETY_VIOLATION: { type: 'site_safety_violation', label: 'Safety Violation', scoreChange: -30, category: 'critical_failure', isAutomatic: false },
   },
   OPERATIONAL: {
     MISSED_ACKNOWLEDGMENT: { type: 'missed_acknowledgment', label: 'Missed Acknowledgment', scoreChange: -2, category: 'operational_friction', isAutomatic: true },

@@ -32,7 +32,8 @@ import {
   RotateCcw,
   Timer,
   Navigation,
-  LocateFixed
+  LocateFixed,
+  Download
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 
 // --- HELPERS ---
 function getProgress(project: Project): number {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Project, ProjectDailyLog, Task, Technician, ProjectDocument } from '@/lib/types';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import {
   ChevronLeft,
   MapPin,
@@ -65,9 +65,6 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 
@@ -476,7 +473,7 @@ const TimesheetsTab = ({
                         {groupedByDate.map(group => (
                             <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-xl overflow-hidden bg-bg-secondary shadow-sm">
                                 <AccordionTrigger className="px-5 py-3 hover:bg-bg-tertiary transition-colors hover:no-underline border-none">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 text-left">
                                         <div className="p-1.5 bg-bg-primary rounded text-brand-red border border-border-sub">
                                             <CalendarIcon size={16} />
                                         </div>
@@ -508,9 +505,9 @@ const TimesheetsTab = ({
                                                                     {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
                                                                 </span>
                                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1">
-                                                                    <MapPin size={10} className="text-accent-gold"/>
-                                                                    {siteLoc}
+                                                                <span className="text-[9px] text-text-muted font-bold flex items-center gap-1 text-left">
+                                                                    <MapPin size={10} className="text-accent-gold shrink-0"/>
+                                                                    <span className="truncate max-w-[200px]">{siteLoc}</span>
                                                                 </span>
                                                             </div>
                                                         </div>

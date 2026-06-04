@@ -242,7 +242,7 @@ export default function LoginPage() {
                       <SelectContent>
                         {registryUsers.map(t => (
                           <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
-                            {t.name || t.fullName} ({t.roles?.[0]?.replace(/_/g, ' ') || t.role})
+                            {t.name || t.fullName} ({t.roles ? t.roles.map((r: string) => r.replace(/_/g, ' ')).join(' / ') : t.role})
                           </SelectItem>
                         ))}
                       </SelectContent>

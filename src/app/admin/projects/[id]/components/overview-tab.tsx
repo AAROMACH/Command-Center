@@ -15,7 +15,8 @@ import {
     TrendingUp,
     ChevronDown,
     ChevronUp,
-    Activity
+    Activity,
+    Pencil
 } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';

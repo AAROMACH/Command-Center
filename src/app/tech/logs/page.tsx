@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';

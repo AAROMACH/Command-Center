@@ -119,9 +119,8 @@ export const PAY_TYPE_LABELS = {
 
 export const OUTCOME_CODE_LABELS = {
   worked_completed: "Completed",
-  worked_revisit_same_work_order: "Revisit Required",
-  worked_revisit_new_work_order: "New Work Order Needed",
-  did_not_work: "No Work Performed",
+  worked_revisit: "Revisit Required",
+  other: "No Work Performed",
 } as const;
 
 export const PENALTY_TYPE_LABELS = {

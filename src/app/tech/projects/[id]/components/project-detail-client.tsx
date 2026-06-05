@@ -527,7 +527,7 @@ const TimesheetsTab = ({
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase text-left">Verified Site Presence</p>
-                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="In" size="large" />
+                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="Check-In" size="large" />
                                         </div>
                                         <div className="space-y-1 text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase text-left">Handshake Verification</p>

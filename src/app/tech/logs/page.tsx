@@ -188,7 +188,7 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
-                ? { ...item, confirmationStatus: 'confirmed' as const, disputeReason: undefined, disputeNotes: undefined } 
+                ? { ...item, confirmationStatus: 'confirmed' as const, outcomeCode: 'worked_completed' as const, disputeReason: undefined, disputeNotes: undefined } 
                 : item
         );
         try {
@@ -203,7 +203,7 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
-                ? { ...item, confirmationStatus: 'disputed' as const, disputeReason: reason, disputeNotes: notes } 
+                ? { ...item, confirmationStatus: 'disputed' as const, outcomeCode: 'worked_revisit' as const, disputeReason: reason, disputeNotes: notes } 
                 : item
         );
         try {

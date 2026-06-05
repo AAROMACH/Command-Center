@@ -116,7 +116,7 @@ export function IntelligenceTerminal() {
                 if (parts[2]?.length === 4) { 
                     logDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
                 } else { 
-                    logDate = startOfDay(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+                    logDate = startOfDay(parseISO(log.weekOf));
                 }
                 const start = startOfDay(dateRange.from);
                 const end = dateRange.to ? startOfDay(dateRange.to) : start;

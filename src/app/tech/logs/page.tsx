@@ -73,7 +73,7 @@ const getFieldNationLink = (id: string) => {
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [activeLog, setActiveLog] = useState<WeeklyLog | null>(null);
+    const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
@@ -105,6 +105,11 @@ export default function TechWeeklyLogPage() {
             };
         }
     }, []);
+
+    const activeLog = useMemo(() => {
+        if (!selectedLogId) return null;
+        return weeklyLogs.find(l => l.id === selectedLogId) || null;
+    }, [weeklyLogs, selectedLogId]);
 
     const filteredAndSortedLogs = useMemo(() => {
         let filtered = weeklyLogs;
@@ -145,7 +150,7 @@ export default function TechWeeklyLogPage() {
     }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange]);
 
     const handleLogSelection = (log: WeeklyLog) => {
-        setActiveLog(log);
+        setSelectedLogId(log.id);
     };
 
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
@@ -231,7 +236,7 @@ export default function TechWeeklyLogPage() {
                 title: "Log Submitted",
                 description: "Weekly assignments manifest has been transmitted for audit.",
             });
-            setActiveLog(null);
+            setSelectedLogId(null);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Submission Failed", description: e.message });
         }
@@ -373,7 +378,7 @@ export default function TechWeeklyLogPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <header className="flex items-center gap-4 mb-4">
-                <Button variant="ghost" size="sm" onClick={() => setActiveLog(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary">
                     <ArrowLeft size={14} className="mr-2"/> Back to Registry
                 </Button>
                 <div className="h-4 w-px bg-border-sub" />
@@ -413,7 +418,7 @@ export default function TechWeeklyLogPage() {
                     {isLocked ? (
                         <div className="flex flex-col items-end">
                             <p className="text-[10px] font-black text-text-green uppercase tracking-widest">Terminal Locked</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, HH:mm') : 'N/A'}</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
                         </div>
                     ) : (
                         <Button 

@@ -192,6 +192,38 @@ const PhaseBlock = ({
 };
 
 const OverviewTab = ({ project, technicians }: { project: Project, technicians: Technician[] }) => {
+    const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
+    const { toast } = useToast();
+
+    useEffect(() => {
+        setLocalProjectData({
+            scope: project.scope,
+            onsiteContactName: project.onsiteContactName,
+            onsiteContactPhone: project.onsiteContactPhone,
+            siteAccessInstructions: project.siteAccessInstructions
+        });
+    }, [project]);
+
+    const isDirty = useMemo(() => {
+        return localProjectData.scope !== project.scope ||
+               localProjectData.onsiteContactName !== project.onsiteContactName ||
+               localProjectData.onsiteContactPhone !== project.onsiteContactPhone ||
+               localProjectData.siteAccessInstructions !== project.siteAccessInstructions;
+    }, [localProjectData, project]);
+
+    const isReadOnly = project.status === 'completed';
+
+    const handleSaveChanges = async () => {
+        if (isReadOnly || !isDirty) return;
+        try {
+            const docRef = doc(db, 'projects', project.id);
+            await updateDoc(docRef, { ...localProjectData });
+            toast({ title: "Registry Updated", description: "Operational briefing changes have been committed." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
             <div className="lg:col-span-2 space-y-6">
@@ -200,7 +232,12 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
                         <div className="space-y-1 text-left">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Primary Objective</p>
-                            <p className="text-sm text-text-primary leading-relaxed uppercase font-medium text-left">{project.scope}</p>
+                            <Textarea 
+                                disabled={isReadOnly}
+                                className="field-textarea h-24" 
+                                value={localProjectData.scope || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                            />
                         </div>
                     </div>
                 </section>
@@ -211,35 +248,44 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Access Instructions</p>
-                                <p className="text-xs text-text-secondary leading-relaxed text-left">{project.siteAccessInstructions || 'No special instructions provided.'}</p>
+                                <Textarea 
+                                    disabled={isReadOnly}
+                                    className="field-textarea h-20" 
+                                    value={localProjectData.siteAccessInstructions || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                                />
                             </div>
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
-                            <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">On-Site Contact</p>
-                                <p className="text-xs font-bold text-text-primary uppercase text-left">
-                                    {project.onsiteContactName} {project.onsiteContactPhone && `(${project.onsiteContactPhone})`}
-                                </p>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">On-Site Contact</Label>
+                                <Input 
+                                    disabled={isReadOnly}
+                                    className="h-8 text-xs font-bold uppercase"
+                                    value={localProjectData.onsiteContactName || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                />
+                                <Input 
+                                    disabled={isReadOnly}
+                                    className="h-8 text-xs"
+                                    value={localProjectData.onsiteContactPhone || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                />
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {(project.siteHazardNotes || []).length > 0 && (
-                    <section className="field-group">
-                        <h3 className="field-group-title"><ShieldAlert size={14}/> Site Intelligence</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {project.siteHazardNotes.map(note => (
-                                <div key={note.id} className={cn(
-                                    "px-3 py-2 rounded border flex items-center gap-2",
-                                    note.type === 'danger' ? "bg-brand-red-dim/20 border-brand-red text-text-red" : "bg-accent-gold-dim/20 border-accent-gold text-accent-gold"
-                                )}>
-                                    {note.type === 'danger' ? <AlertTriangle size={14}/> : <Info size={14}/>}
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">{note.text}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                {isDirty && !isReadOnly && (
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="outline" className="h-9 px-6 uppercase text-[10px] font-bold tracking-widest" onClick={() => setLocalProjectData({
+                            scope: project.scope,
+                            onsiteContactName: project.onsiteContactName,
+                            onsiteContactPhone: project.onsiteContactPhone,
+                            siteAccessInstructions: project.siteAccessInstructions
+                        })}>Discard Changes</Button>
+                        <Button className="h-9 px-8 uppercase text-[10px] font-bold tracking-widest bg-brand-red" onClick={handleSaveChanges}>Commit Updates</Button>
+                    </div>
                 )}
             </div>
 
@@ -418,7 +464,7 @@ const TimesheetsTab = ({
                             {activeSession ? <Activity size={20} className="animate-pulse" /> : <Timer size={20} />}
                         </div>
                         <div className="text-left">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary text-left">
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5 text-left">

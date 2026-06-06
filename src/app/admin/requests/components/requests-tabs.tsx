@@ -17,37 +17,30 @@ type RequestsTabsProps = {
 };
 
 export function RequestsTabs({ serviceRequests, workOrders = [] }: RequestsTabsProps) {
-  // ORGANIZATIONAL LOGIC: Always sort New requests by Critical Priority first
-  const newRequests = serviceRequests
-    .filter(p => p.status === 'new')
+  // ORGANIZATIONAL LOGIC: Group 'new' and 'reviewed' into 'Requested'
+  const requestedRequests = serviceRequests
+    .filter(p => p.status === 'new' || p.status === 'reviewed')
     .sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
     
-  const reviewedRequests = serviceRequests.filter(p => p.status === 'reviewed');
   const approvedRequests = serviceRequests.filter(p => p.status === 'approved');
   const closedRequests = serviceRequests.filter(p => p.status === 'closed' || p.status === 'rejected');
 
   return (
-    <Tabs defaultValue="new" className="w-full">
+    <Tabs defaultValue="requested" className="w-full">
         <TabsList className="tabs">
-          <TabsTrigger value="new" className="tab">
-            New <span className="tab-count">({newRequests.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="reviewed" className="tab">
-            Reviewed <span className="tab-count">({reviewedRequests.length})</span>
+          <TabsTrigger value="requested" className="tab">
+            Requested <span className="tab-count">({requestedRequests.length})</span>
           </TabsTrigger>
           <TabsTrigger value="approved" className="tab">
             Approved <span className="tab-count">({approvedRequests.length})</span>
           </TabsTrigger>
            <TabsTrigger value="closed" className="tab">
-            Closed / Rejected <span className="tab-count">({closedRequests.length})</span>
+            resolved/closed <span className="tab-count">({closedRequests.length})</span>
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="new" className="mt-0">
-          <RequestsClient requests={newRequests} workOrders={workOrders} />
-        </TabsContent>
-        <TabsContent value="reviewed" className="mt-0">
-          <RequestsClient requests={reviewedRequests} workOrders={workOrders} />
+        <TabsContent value="requested" className="mt-0">
+          <RequestsClient requests={requestedRequests} workOrders={workOrders} />
         </TabsContent>
         <TabsContent value="approved" className="mt-0">
           <RequestsClient requests={approvedRequests} workOrders={workOrders} />

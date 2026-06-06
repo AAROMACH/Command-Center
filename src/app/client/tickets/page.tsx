@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -196,17 +195,22 @@ export default function ClientTicketsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="active" className="w-full">
+            <Tabs defaultValue="requested" className="w-full">
                 <TabsList className="tabs !bg-bg-tertiary p-0 h-10 mb-8">
-                    <TabsTrigger value="active" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Active Activity</TabsTrigger>
-                    <TabsTrigger value="resolved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Resolved / Closed</TabsTrigger>
+                    <TabsTrigger value="requested" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Requested</TabsTrigger>
+                    <TabsTrigger value="approved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Approved</TabsTrigger>
+                    <TabsTrigger value="closed" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">resolved/closed</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="active" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => r.status !== 'closed' && r.status !== 'rejected')} />
+                <TabsContent value="requested" className="space-y-4 mt-0">
+                    <TicketList requests={myRequests.filter(r => r.status === 'new' || r.status === 'reviewed')} />
                 </TabsContent>
                 
-                <TabsContent value="resolved" className="space-y-4 mt-0">
+                <TabsContent value="approved" className="space-y-4 mt-0">
+                    <TicketList requests={myRequests.filter(r => r.status === 'approved')} />
+                </TabsContent>
+
+                <TabsContent value="closed" className="space-y-4 mt-0">
                     <TicketList requests={myRequests.filter(r => r.status === 'closed' || r.status === 'rejected')} />
                 </TabsContent>
             </Tabs>

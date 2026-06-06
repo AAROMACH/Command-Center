@@ -223,10 +223,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const item = (localLog.items || []).find(i => i.id === itemId);
         if (!item) return;
 
-        // CRITICAL: Firestore does not accept undefined. Use null for reset state.
+        // CRITICAL: Use null instead of undefined for Firestore sync
         const nextStatus = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
         const updatedItems = (localLog.items || []).map(i => 
-            i.id === itemId ? { ...i, confirmationStatus: nextStatus as any, isAdminReviewed: !!nextStatus } : i
+            i.id === itemId ? { ...i, confirmationStatus: nextStatus, isAdminReviewed: !!nextStatus } : i
         );
         
         try {
@@ -234,7 +234,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             await updateDoc(logRef, { items: updatedItems });
             
             const woRef = doc(db, 'assignments', workOrderId);
-            await updateDoc(woRef, { isAudited: !!nextStatus, auditedAt: nextStatus ? new Date().toISOString() : null, auditedBy: nextStatus ? 'Admin' : null });
+            await updateDoc(woRef, { 
+                isAudited: !!nextStatus, 
+                auditedAt: nextStatus ? new Date().toISOString() : null, 
+                auditedBy: nextStatus ? 'Admin' : null 
+            });
 
             setLocalLog({ ...localLog, items: updatedItems });
             toast({ title: nextStatus ? "Item Verified" : "Review Reset", description: "Audit trail synchronized with registry." });
@@ -401,14 +405,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Assignment Identification Pending'}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
                                                                 <div className="flex items-center gap-1.5 text-left">
-                                                                  <span className="text-brand-red font-mono text-left">{wo?.id.toUpperCase()}</span>
+                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || '').toUpperCase()}</span>
                                                                   {isImported && wo && (
                                                                     <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
                                                                       <ExternalLink size={10} />
@@ -428,11 +432,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <div className="flex items-center justify-end gap-8">
                                                                 <div className="text-right">
                                                                     <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
-                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">{getHoursOnsite(wo!.id)}</p>
+                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
+                                                                        {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                    </p>
                                                                 </div>
                                                                 <div className="text-right min-w-[70px]">
                                                                     <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                                    <p className="text-sm font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
+                                                                    <p className="text-sm font-mono font-bold text-text-primary">
+                                                                        ${(wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0).toFixed(2)}
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -488,15 +496,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </div>
                                                             <div className="space-y-0.5 text-left">
                                                                 <div className="flex items-center gap-2 text-left">
-                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{wo?.id.toUpperCase()}</span>
+                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{(wo?.id || '').toUpperCase()}</span>
                                                                     <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
                                                                 </div>
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description}</p>
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description || 'Identification Awaiting Audit'}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                            <p className="text-sm font-mono font-bold text-text-red">${wo?.pay.toFixed(2)}</p>
+                                                            <p className="text-sm font-mono font-bold text-text-red">${(wo?.pay || 0).toFixed(2)}</p>
                                                         </div>
                                                     </div>
                                                     <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">

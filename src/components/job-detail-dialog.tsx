@@ -21,8 +21,10 @@ import {
   Lock,
   Check,
   AlertTriangle,
-  Coins,
-  History,
+  DollarSign,
+  Users,
+  FileText,
+  Activity,
   Navigation,
   Play,
   LogOut,
@@ -30,7 +32,10 @@ import {
   ListTodo,
   Circle,
   Briefcase,
-  Users
+  History,
+  RotateCcw,
+  RefreshCw,
+  Pencil
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -38,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, formatCityState } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // ─── Sub-components for the new UI ───────────────────────────────────────────
 
@@ -105,6 +111,11 @@ function TimelineEntry({
     </div>
   );
 }
+
+const getFieldNationLink = (id: string) => {
+  const cleanId = id.replace(/^wo-/, '');
+  return `https://app.fieldnation.com/workorders/${cleanId}`;
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -262,7 +273,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                              </div>
                              <div className="flex justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
                                 <span className="text-[9px] font-black text-text-muted uppercase">Settlement</span>
-                                <span className="text-[10px] font-mono font-bold text-text-green">${mission.pay.toFixed(2)} {PAY_TYPE_LABELS[mission.payType]}</span>
+                                <span className="text-[10px] font-mono font-bold text-text-green">${mission.pay.toFixed(2)} {PAY_TYPE_LABELS[mission.payType as keyof typeof PAY_TYPE_LABELS]}</span>
                              </div>
                         </div>
                     </div>
@@ -304,28 +315,28 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         time="APR 10 · 9:52 AM"
                         title="Acknowledgment received"
                         note="Technician confirmed receipt of assignment via Field Terminal."
-                        by="TECH YEAH — FIELD TERMINAL"
+                        by="FIELD TECH — FIELD TERMINAL"
                     />
                     <TimelineEntry 
                         dot="gold"
                         time="APR 10 · 10:03 AM"
                         title="En route — status update"
                         note="Technician set status to On My Way. GPS ping recorded."
-                        by="TECH YEAH — FIELD TERMINAL"
+                        by="FIELD TECH — FIELD TERMINAL"
                     />
                     <TimelineEntry 
                         dot="green"
                         time="APR 10 · 10:18 AM"
                         title="Check-in — on site"
-                        note="Technician checked in at job location. GPS: 42.4651° N, 83.3765° W."
-                        by="TECH YEAH — FIELD TERMINAL"
+                        note="Technician checked in at job location. GPS coordinates verified."
+                        by="FIELD TECH — FIELD TERMINAL"
                     />
                     <TimelineEntry 
                         dot="green"
                         time="APR 10 · 12:21 PM"
                         title="Check-out — work complete"
                         note="2h 03m on-site. Outcome: Worked — Completed. No revisit required."
-                        by="TECH YEAH — FIELD TERMINAL"
+                        by="FIELD TECH — FIELD TERMINAL"
                     />
                     <TimelineEntry 
                         dot="blue"
@@ -398,6 +409,16 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                 </div>
                             )}
                         </div>
+
+                        <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-4">
+                            <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
+                            <div className="space-y-1 text-left">
+                                <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Temporal Log Protocol</p>
+                                <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium">
+                                    Audit data is aggregated from the rolling reliability ledger and submitted technician manifests.
+                                </p>
+                            </div>
+                        </div>
                     </>
                 )}
             </TabsContent>
@@ -419,11 +440,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         </div>
 
       </DialogContent>
-      <style jsx global>{`
-        .tab-trigger-job {
-            @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-        }
-      `}</style>
     </Dialog>
   );
 }

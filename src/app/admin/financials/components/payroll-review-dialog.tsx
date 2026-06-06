@@ -35,7 +35,8 @@ import {
     Pencil,
     Activity as ActivityIcon,
     Info,
-    ChevronRight
+    ChevronRight,
+    MapPin
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -112,18 +113,6 @@ function ImportedJobAudit({
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
-                            type="number"
-                            value={reimbursement}
-                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -131,6 +120,18 @@ function ImportedJobAudit({
                             type="number"
                             value={overhead}
                             onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
+                    <div className="relative text-left">
+                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={reimbursement}
+                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
                             className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
@@ -147,12 +148,12 @@ function ImportedJobAudit({
                     <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-brand-red uppercase text-left">Aaromach</p>
-                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-left">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[5px] font-black text-text-green uppercase text-right">Payout</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-right">${techPayout.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
+                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -520,7 +521,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
 
-                                                    <div className="flex-1 flex items-center justify-between gap-8">
+                                                    <div className="flex-1 flex flex-col gap-2">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -661,6 +662,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </div>
                     </Tabs>
+
+                    <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-4 mx-6 mb-4">
+                        <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
+                        <div className="space-y-1 text-left">
+                            <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Audit Terminal Protocol</p>
+                            <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium">
+                                Registry verification is required for all mission line items before financial disbursement authorization.
+                            </p>
+                        </div>
+                    </div>
 
                     <DialogFooter className="p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-row items-center gap-3 shrink-0">
                         {localLog?.status === 'Submitted' ? (

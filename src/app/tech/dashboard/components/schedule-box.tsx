@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -94,6 +93,10 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
         end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 }),
     }), [currentDate]);
 
+    /**
+     * System-wide Session Monitor.
+     * Ensures only one assignment can be "In Progress" at any time.
+     */
     const activeSession = useMemo(() => {
         return workOrders.find(wo => wo.status === 'in-progress');
     }, [workOrders]);
@@ -181,7 +184,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
             <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-main">
                     <div>
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
                             <CalendarIcon size={14} className="text-brand-red"/>
                             Operational Schedule
                         </h3>
@@ -199,7 +202,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                 <div className="cal-controls !mb-6">
                     <div className="cal-nav">
                         <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
-                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest text-center">
+                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest text-center font-bold">
                             {viewMode === 'week' 
                                 ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
                                 : format(currentDate, 'MMMM yyyy')
@@ -282,7 +285,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                 <div className="job-card-inner">
                                     <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
                                     <div className="job-body !p-3">
-                                        <div className="job-left">
+                                        <div className="job-left text-left">
                                             <div className="flex items-center gap-2 mb-1 w-full justify-start text-left">
                                                 <Badge variant="outline" className="text-[7px] uppercase h-3.5 px-1 bg-bg-tertiary">
                                                     {wo.projectType === 'Project' ? <Briefcase size={8} className="mr-1"/> : <Wrench size={8} className="mr-1"/>}
@@ -294,9 +297,9 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                                 <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>
                                             </div>
                                             <div className="job-meta !gap-3 !justify-start text-left">
-                                                <div className="job-meta-item !text-[10px]"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
-                                                <div className="job-meta-item !text-[10px]"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
-                                                <div className="job-meta-item !text-[10px]"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>
+                                                <div className="job-meta-item !text-[10px] text-left"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
+                                                <div className="job-meta-item !text-[10px] text-left"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
+                                                <div className="job-meta-item !text-[10px] text-left"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>
                                             </div>
                                         </div>
                                         <div className="job-right shrink-0">
@@ -308,7 +311,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                                 </button>
                                             ) : (
                                                 <button 
-                                                    className="h-7 px-3 rounded bg-brand-red text-white text-[10px] uppercase font-bold hover:bg-brand-red-hover"
+                                                    className="h-7 px-3 rounded bg-brand-red text-white text-[10px] uppercase font-bold hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
                                                     disabled={!!activeSession}
                                                     onClick={(e) => handleCheckIn(e, wo.id)}
                                                 >

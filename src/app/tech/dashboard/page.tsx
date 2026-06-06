@@ -113,6 +113,14 @@ export default function TechDashboardPage() {
         return upcoming[0] || null;
     }, [allWorkOrders]);
 
+    /**
+     * System-wide Session Monitor.
+     * Ensures only one assignment can be "In Progress" at any time.
+     */
+    const hasActiveSession = useMemo(() => {
+        return allWorkOrders.some(wo => wo.status === 'in-progress');
+    }, [allWorkOrders]);
+
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
         const logQuery = query(
@@ -295,7 +303,11 @@ export default function TechDashboardPage() {
                                 </Button>
                             )}
                             {activeJob.status === 'on-my-way' && (
-                                <Button className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                <Button 
+                                    disabled={hasActiveSession}
+                                    className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" 
+                                    onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}
+                                >
                                     <Play size={14} className="mr-2 fill-current"/> Check In
                                 </Button>
                             )}
@@ -306,7 +318,12 @@ export default function TechDashboardPage() {
                             )}
                             {activeJob.status === 'checked-out' && (
                                 <div className="flex gap-2">
-                                    <Button variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                    <Button 
+                                        disabled={hasActiveSession}
+                                        variant="outline" 
+                                        className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" 
+                                        onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}
+                                    >
                                         <RotateCcw size={14} className="mr-2"/> Resume
                                     </Button>
                                     <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>

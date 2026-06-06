@@ -23,6 +23,7 @@ import {
   Calendar,
   Clock,
   Lock,
+  Unlock,
   ExternalLink,
   ChevronRight,
   Check,
@@ -156,8 +157,8 @@ function MetaBox({ icon: Icon, value }: { icon: any; value: string }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] whitespace-nowrap">
+    <div className="flex items-center gap-3 mb-4 text-left">
+      <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] whitespace-nowrap text-left">
         {children}
       </p>
       <div className="flex-1 h-px bg-border-sub/30" />
@@ -170,8 +171,8 @@ function InfoGrid({ items }: { items: { label: string; value: React.ReactNode }[
     <div className="grid grid-cols-2 gap-2 mb-5">
       {items.map(({ label, value }) => (
         <div key={label} className="bg-bg-tertiary border border-border-sub rounded-xl p-3 text-left">
-          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.16em] mb-1">{label}</p>
-          <p className="text-[12px] font-bold text-text-primary uppercase">{value}</p>
+          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.16em] mb-1 text-left">{label}</p>
+          <p className="text-[12px] font-bold text-text-primary uppercase text-left">{value}</p>
         </div>
       ))}
     </div>
@@ -210,12 +211,12 @@ function TimelineEntry({
         {!isLast && <div className="w-px flex-1 bg-border-sub/30 mt-2 mb-2 min-h-[20px]" />}
       </div>
       <div className="pb-6 flex-1 min-w-0 text-left">
-        <div className="flex flex-col gap-1">
-          <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{time}</p>
-          <p className="text-xs font-black text-text-primary uppercase tracking-wide leading-tight">{title}</p>
+        <div className="flex flex-col gap-1 text-left">
+          <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-left">{time}</p>
+          <p className="text-xs font-black text-text-primary uppercase tracking-wide leading-tight text-left">{title}</p>
         </div>
-        <p className="text-[11px] text-text-secondary mt-2 leading-relaxed font-medium">{note}</p>
-        <p className="text-[8px] font-black text-text-muted/60 uppercase tracking-[0.2em] mt-2">
+        <p className="text-[11px] text-text-secondary mt-2 leading-relaxed font-medium text-left">{note}</p>
+        <p className="text-[8px] font-black text-text-muted/60 uppercase tracking-[0.2em] mt-2 text-left">
           BY: {by}
         </p>
       </div>
@@ -314,12 +315,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                     </div>
                 </div>
                )}
-               <button 
-                  onClick={() => setIsOpen(false)}
-                  className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
-                >
-                  <X size={18}/>
-                </button>
             </div>
           </div>
 
@@ -327,7 +322,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <Badge variant={mission.status === 'completed' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[9px] font-black tracking-widest mb-2">
                 {mission.status}
             </Badge>
-            <h2 className="text-2xl font-black uppercase tracking-wide text-text-primary leading-tight">
+            <h2 className="text-2xl font-black uppercase tracking-wide text-text-primary leading-tight text-left">
                 {mission.title || mission.description}
             </h2>
             <DialogDescription className="hidden">Detailed mission audit terminal for assignment oversight.</DialogDescription>
@@ -358,13 +353,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         </DialogHeader>
 
         {/* ── Body ──────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
-          <Tabs value={activeTab} className="w-full h-full">
+        <div className="flex-1 overflow-y-auto px-8 py-6 text-left">
+          <Tabs value={activeTab} className="w-full h-full text-left">
             
             {/* ══ Overview ════════════════════════════════════════════════════ */}
-            <TabsContent value="Overview" className="m-0 space-y-8 animate-in fade-in duration-300">
+            <TabsContent value="Overview" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 <div className="grid grid-cols-2 gap-8 text-left">
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-left">
                         <SectionLabel>Assignment Logic</SectionLabel>
                         <InfoGrid items={[
                             { label: 'Job Type', value: mission.projectType || '—' },
@@ -373,18 +368,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                             { label: 'Registry', value: mission.source || 'Manual' },
                         ]} />
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-left">
                         <SectionLabel>Lead Allocation</SectionLabel>
-                        <div className="space-y-4">
+                        <div className="space-y-4 text-left">
                           {leadTech ? (
-                              <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
+                              <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm text-left">
                                   <Avatar className="h-10 w-10 border border-border-sub">
                                       <AvatarImage src={leadTech.avatarUrl}/>
                                       <AvatarFallback>{leadTech.name.charAt(0)}</AvatarFallback>
                                   </Avatar>
                                   <div className="text-left">
-                                      <p className="text-xs font-black text-text-primary uppercase tracking-tight">{leadTech.name}</p>
-                                      <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{leadTech.role}</p>
+                                      <p className="text-xs font-black text-text-primary uppercase tracking-tight text-left">{leadTech.name}</p>
+                                      <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">{leadTech.role}</p>
                                   </div>
                               </div>
                           ) : (
@@ -392,21 +387,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
                               </div>
                           )}
-                          <div className="p-4 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-3">
-                               <Info size={16} className="text-accent-gold shrink-0 mt-0.5" />
-                               <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed text-left">
-                                   Personnel allocation is restricted to authorized Command Center administrators.
-                               </p>
-                          </div>
                         </div>
                     </div>
                 </div>
             </TabsContent>
 
             {/* ══ Scope ════════════════════════════════════════════════════ */}
-            <TabsContent value="Scope" className="m-0 space-y-8 animate-in fade-in duration-300">
+            <TabsContent value="Scope" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 <div className="text-left">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 text-left">
                         <SectionLabel>Operational Briefing</SectionLabel>
                         {mission.source === 'Imported' && (
                             <a 
@@ -427,7 +416,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 {Array.isArray(mission.requiredSkills) && mission.requiredSkills.length > 0 && (
                   <div className="text-left">
                     <SectionLabel>Requirement Assets</SectionLabel>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 text-left">
                       {mission.requiredSkills.map((skill, idx) => (
                         <Badge key={idx} variant="outline" className="bg-bg-secondary text-[9px] uppercase tracking-widest px-3 py-1">
                           {skill}
@@ -439,7 +428,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </TabsContent>
 
             {/* ══ Activity Ledger ═════════════════════════════════════════════════ */}
-            <TabsContent value="Activity Ledger" className="m-0 space-y-6 animate-in fade-in duration-300">
+            <TabsContent value="Activity Ledger" className="m-0 space-y-6 animate-in fade-in duration-300 text-left">
                 <SectionLabel>Operational Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
                     {timeline.length > 0 ? (
@@ -477,7 +466,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </TabsContent>
 
             {/* ══ Admin Review ═════════════════════════════════════════════════ */}
-            <TabsContent value="Admin Review" className="m-0 space-y-8 animate-in fade-in duration-300">
+            <TabsContent value="Admin Review" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 {loadingAdmin ? (
                     <div className="py-24 text-center space-y-4">
                         <RefreshCw className="h-10 w-10 animate-spin mx-auto text-brand-red opacity-30" />
@@ -488,7 +477,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         <div className="space-y-4 text-left">
                             <SectionLabel>Settlement Manifest</SectionLabel>
                             {adminData.weeklyLog ? (
-                                <Card className="bg-bg-secondary border-border-sub overflow-hidden shadow-inner">
+                                <Card className="bg-bg-secondary border-border-sub overflow-hidden shadow-inner text-left">
                                     <div className="p-4 flex items-center justify-between border-b border-border-sub bg-bg-tertiary/20">
                                         <div className="text-left">
                                             <p className="text-[8px] font-black text-text-muted uppercase mb-1">Final Disbursement</p>
@@ -512,7 +501,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
                         <div className="space-y-4 text-left">
                             <SectionLabel>Field Session Registry</SectionLabel>
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 {adminData.sessionLogs.length > 0 ? adminData.sessionLogs.map(log => (
                                     <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
                                         <div className="flex items-center gap-4 text-left">
@@ -530,7 +519,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                                         <Badge variant="inprogress" className="text-[7px] h-3.5 px-1.5 uppercase animate-pulse">Live Session</Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
                                                     {log.minutesWorked ? `${(log.minutesWorked / 60).toFixed(1)}h Logged` : 'Recording Duration'} · {log.location}
                                                 </p>
                                             </div>
@@ -554,7 +543,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         {/* ── Footer ────────────────────────────────────────────────────── */}
         <div className="shrink-0 px-8 py-6 border-t border-border-sub bg-bg-tertiary/30 flex items-center justify-between">
            <div className="flex items-center gap-3 text-text-muted opacity-40">
-                <Lock size={12}/>
+                {isLocked ? <Lock size={12}/> : <Unlock size={12}/>}
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">
                   {isLocked ? 'Terminal Locked' : 'Terminal Active'}
                 </span>

@@ -231,6 +231,15 @@ export default function FinancialsPage() {
         setIsReviewDialogOpen(true);
     };
 
+    const handleUpdateLogStatus = (logId: string, status: WeeklyLog['status'], total?: number) => {
+        toast({
+            title: `Audit Finalized: ${status}`,
+            description: `Manifest for log ${logId.split('-').pop()?.toUpperCase()} updated. Final settlement: $${total?.toFixed(2) || '0.00'}`
+        });
+        setIsReviewDialogOpen(false);
+        setSelectedLog(null);
+    };
+
     const handleExecuteExport = () => {
         if (exportConfig.types.length === 0) {
             toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category.' });

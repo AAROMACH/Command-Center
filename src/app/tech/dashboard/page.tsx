@@ -17,7 +17,10 @@ import {
   Navigation,
   Check,
   RotateCcw,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  MapPin,
+  Activity
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
@@ -173,7 +176,6 @@ export default function TechDashboardPage() {
                 history: [...(activeJob?.history || []), historyEntry]
             });
             
-            // Notify Admin Staff on critical status changes
             if (newStatus === 'in-progress' || newStatus === 'completed') {
                 const adminIds = mockTechnicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
                 await NotificationService.broadcast(
@@ -229,45 +231,61 @@ export default function TechDashboardPage() {
 
             {activeJob && (
                 <Card className={cn(
-                    "border-2 bg-bg-secondary cursor-pointer transition-all",
+                    "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",
                     activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_rgba(31,138,85,0.1)]" : "border-brand-red bg-brand-red-dim/5"
                 )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
-                    <CardHeader className="pb-2 text-left">
-                        <div className="flex justify-between items-start">
-                            <CardTitle className="text-xl uppercase">{activeJob.title || activeJob.description}</CardTitle>
-                            <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
-                                {activeJob.status.replace(/-/g, ' ').toUpperCase()}
-                            </Badge>
+                    <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="text-left space-y-2 flex-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">{(activeJob.id || '').toUpperCase()}</span>
+                                <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
+                                    {activeJob.status.replace(/-/g, ' ').toUpperCase()}
+                                </Badge>
+                            </div>
+                            <h3 className="text-lg font-black uppercase tracking-tight text-text-primary leading-tight truncate">
+                                {activeJob.title || activeJob.description}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                    <Building2 size={12}/> {activeJob.clientName}
+                                </p>
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px]">
+                                    <MapPin size={12} className="text-brand-red"/> {activeJob.location}
+                                </p>
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                    <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
+                                </p>
+                            </div>
                         </div>
-                        <CardDescription className="text-xs uppercase font-bold text-text-muted">{activeJob.clientName}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-end gap-3 pt-4">
-                        {activeJob.status === 'confirmed' && (
-                            <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }}>
-                                <Navigation size={16} className="mr-2"/> Start Trip
-                            </Button>
-                        )}
-                        {activeJob.status === 'on-my-way' && (
-                            <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                <Play size={16} className="mr-2 fill-current"/> Check In
-                            </Button>
-                        )}
-                        {activeJob.status === 'in-progress' && (
-                            <Button variant="outline" className="border-text-red text-text-red hover:bg-brand-red-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
-                                <LogOut size={16} className="mr-2"/> Check Out
-                            </Button>
-                        )}
-                        {activeJob.status === 'checked-out' && (
-                            <>
-                                <Button variant="outline" className="border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                    <RotateCcw size={16} className="mr-2"/> Check back in
+                        
+                        <div className="flex gap-2 shrink-0 self-start md:self-center">
+                            {activeJob.status === 'confirmed' && (
+                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                    <Navigation size={14} className="mr-2"/> Start Trip
                                 </Button>
-                                <Button className="bg-text-green hover:bg-text-green/90" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                    <CheckCircle2 size={16} className="mr-2"/> Mark Complete
+                            )}
+                            {activeJob.status === 'on-my-way' && (
+                                <Button className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                    <Play size={14} className="mr-2 fill-current"/> Check In
                                 </Button>
-                            </>
-                        )}
-                    </CardContent>
+                            )}
+                            {activeJob.status === 'in-progress' && (
+                                <Button variant="outline" className="h-9 px-6 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                                    <LogOut size={14} className="mr-2"/> Check Out
+                                </Button>
+                            )}
+                            {activeJob.status === 'checked-out' && (
+                                <div className="flex gap-2">
+                                    <Button variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                        <RotateCcw size={14} className="mr-2"/> Resume
+                                    </Button>
+                                    <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                        <CheckCircle2 size={14} className="mr-2"/> Finalize
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </Card>
             )}
 

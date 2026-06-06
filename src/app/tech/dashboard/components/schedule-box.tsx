@@ -26,12 +26,15 @@ import {
   List, 
   MapPin, 
   Clock, 
-  CircleCheck
+  CircleCheck,
+  Building2,
+  Briefcase
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { Badge } from '@/components/ui/badge';
 
 type ViewMode = 'week' | 'month';
 
@@ -253,36 +256,43 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                     </div>
                 )}
 
-                <div className="space-y-2 mt-4">
+                <div className="space-y-3 mt-4">
                     {assignmentsForSelectedDays.length > 0 ? (
                         assignmentsForSelectedDays.map(wo => (
                             <div key={wo.id} 
-                                className={cn("job-card !mb-0 cursor-pointer", { 'active': wo.status === 'in-progress'})}
+                                className={cn("job-card !mb-0 cursor-pointer group hover:border-border-main", { 'active': wo.status === 'in-progress'})}
                                 onClick={() => handleCardClick(wo)}
                             >
                                 <div className="job-card-inner">
                                     <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
                                     <div className="job-body !p-3">
                                         <div className="job-left">
-                                            <div className="job-title-row !mb-1">
-                                                <span className="job-title !text-[11px]">{wo.description}</span>
+                                            <div className="flex items-center gap-2 mb-1 w-full justify-start">
+                                                <Badge variant="outline" className="text-[7px] uppercase h-3.5 px-1 bg-bg-tertiary">
+                                                    {wo.projectType === 'Project' ? <Briefcase size={8} className="mr-1"/> : <Wrench size={8} className="mr-1"/>}
+                                                    {wo.projectType}
+                                                </Badge>
                                                 <span className="job-wo !text-[9px] !px-1.5">{wo.id.toUpperCase()}</span>
                                             </div>
-                                            <div className="job-meta !gap-3">
-                                                <div className="job-meta-item !text-[10px]"><Clock size={11}/> {wo.scheduleTime}</div>
-                                                <div className="job-meta-item !text-[10px]"><MapPin size={11}/> {formatCityState(wo.location)}</div>
+                                            <div className="job-title-row !mb-1 !justify-start">
+                                                <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>
+                                            </div>
+                                            <div className="job-meta !gap-3 !justify-start">
+                                                <div className="job-meta-item !text-[10px]"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
+                                                <div className="job-meta-item !text-[10px]"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
+                                                <div className="job-meta-item !text-[10px]"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>
                                             </div>
                                         </div>
-                                        <div className="job-right">
+                                        <div className="job-right shrink-0">
                                             {wo.status === 'completed' ? (
                                                 <div className="btn-completed !text-[10px]"><CircleCheck size={12}/> Done</div>
                                             ) : wo.status === 'in-progress' ? (
-                                                <button className="btn-checkout !p-1.5 !text-[10px]" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                <button className="btn-checkout !p-1.5 !text-[10px] uppercase font-bold" onClick={(e) => handleCheckOut(e, wo.id)}>
                                                     OUT
                                                 </button>
                                             ) : (
                                                 <button 
-                                                    className="btn-checkin !p-1.5 !text-[10px]"
+                                                    className="btn-checkin !p-1.5 !text-[10px] uppercase font-bold"
                                                     disabled={!!activeSession}
                                                     onClick={(e) => handleCheckIn(e, wo.id)}
                                                 >

@@ -92,6 +92,17 @@ export default function DispatchPage() {
 
   const { toast } = useToast();
 
+  // Helper to remove undefined keys to prevent Firestore updateDoc crashes
+  const sanitize = (obj: any) => {
+    const result = { ...obj };
+    Object.keys(result).forEach(key => {
+        if (result[key] === undefined) {
+            delete result[key];
+        }
+    });
+    return result;
+  };
+
   // 1. Initialize Registry Listeners
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -292,7 +303,7 @@ export default function DispatchPage() {
         <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="text-left">
               <p className="page-eyebrow flex items-center gap-2"><Layers size={12} />Operations Control Center</p>
-              <h1 className="page-title">Dispatch & Intake</h1>
+              <h1 className="page-title text-left">Dispatch & Intake</h1>
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="flex items-center gap-3">
@@ -326,7 +337,7 @@ export default function DispatchPage() {
 
               <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                   <SelectTrigger className="w-[140px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-left">
                           <ArrowUpDown size={14} className="text-text-muted" />
                           <SelectValue placeholder="Sort Registry" />
                       </div>
@@ -385,7 +396,7 @@ export default function DispatchPage() {
                       </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                      <div className="p-4 border-b border-border-sub bg-bg-tertiary">
+                      <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                           <div className="flex items-center justify-between text-left">
                               <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
                               {hasActiveFilters && (
@@ -468,14 +479,14 @@ export default function DispatchPage() {
                     const asmtRef = doc(db, 'assignments', asmtId);
                     const woRef = doc(db, 'workOrders', wo.id);
                     
-                    const asmtData = {
+                    const asmtData = sanitize({
                         ...wo,
                         id: asmtId,
                         workOrderId: wo.id,
                         techId: wo.assignedTechnicianId,
                         assignedAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
-                    };
+                    });
                     
                     await setDoc(asmtRef, asmtData);
                     await deleteDoc(woRef);
@@ -492,14 +503,15 @@ export default function DispatchPage() {
                 const nonAssigned = updated.filter(u => u.status === 'unassigned');
                 for (const wo of nonAssigned) {
                     const docRef = doc(db, 'workOrders', wo.id);
-                    await updateDoc(docRef, wo);
+                    // Critical: Sanitize to remove 'undefined' fields before writing to Firestore
+                    await updateDoc(docRef, sanitize(wo));
                 }
               }}
               routes={routes}
               onRoutesChange={(updated) => {
                 updated.forEach(r => {
                   const docRef = doc(db, 'routes', r.id);
-                  setDoc(docRef, r, { merge: true }).catch(e => console.error("Route update error", e));
+                  setDoc(docRef, sanitize(r), { merge: true }).catch(e => console.error("Route update error", e));
                 });
               }}
            />
@@ -518,7 +530,7 @@ export default function DispatchPage() {
                     </TabsList>
                 </div>
 
-                <TabsContent value="active" className="m-0">
+                <TabsContent value="active" className="m-0 text-left">
                    <WorkOrdersClient 
                       workOrders={filteredAssignments.filter(wo => wo.status !== 'completed')} 
                       allWorkOrders={allAssignments} 
@@ -526,7 +538,7 @@ export default function DispatchPage() {
                       onWorkOrdersChange={(updated) => {
                         updated.forEach(wo => {
                           const docRef = doc(db, 'assignments', wo.id);
-                          updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                          updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
                         });
                       }}
                       routes={routes}
@@ -534,7 +546,7 @@ export default function DispatchPage() {
                    />
                 </TabsContent>
 
-                <TabsContent value="history" className="m-0">
+                <TabsContent value="history" className="m-0 text-left">
                    <WorkOrdersClient 
                       workOrders={filteredAssignments.filter(wo => wo.status === 'completed')} 
                       allWorkOrders={allAssignments} 
@@ -542,7 +554,7 @@ export default function DispatchPage() {
                       onWorkOrdersChange={(updated) => {
                         updated.forEach(wo => {
                           const docRef = doc(db, 'assignments', wo.id);
-                          updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                          updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
                         });
                       }}
                       routes={routes}

@@ -201,7 +201,7 @@ function DroppableRoute({
                 <Button 
                     variant="default" 
                     className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white transition-all"
-                    onClick={() => onAssignClick(routeId)}
+                    onClick={() => onAssignClick(route.id)}
                 >
                     <Plus size={12} className="mr-1" /> Assign Jobs
                 </Button>
@@ -260,13 +260,15 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleDeleteRoute = (id: string) => {
         const route = { ...routes.find(r => r.id === id) };
         onRoutesChange(routes.filter(r => r.id !== id));
-        onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: undefined } : wo));
+        // Use null instead of undefined to prevent Firestore update errors
+        onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: null } : wo));
         toast({ variant: "destructive", title: "Route Dissolved", description: `${route?.name} removed from registry.` });
     };
 
     const handleClearAllRoutes = () => {
         onRoutesChange([]);
-        onWorkOrdersChange(allWorkOrders.map(wo => ({ ...wo, routeId: undefined })));
+        // Use null instead of undefined to prevent Firestore update errors
+        onWorkOrdersChange(allWorkOrders.map(wo => ({ ...wo, routeId: null })));
         toast({ variant: "destructive", title: "Registry Reset", description: "All routes dissolved and jobs returned to unassigned pool." });
     };
 
@@ -292,8 +294,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             ? { ...r, workOrderIds: r.workOrderIds.filter(id => id !== woId) } 
             : r
         ));
+        // Use null instead of undefined to prevent Firestore update errors
         onWorkOrdersChange(allWorkOrders.map(wo => 
-            wo.id === woId ? { ...wo, routeId: undefined } : wo
+            wo.id === woId ? { ...wo, routeId: null } : wo
         ));
     };
 
@@ -449,7 +452,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         <div className="space-y-6">
             <div className="flex flex-col xl:flex-row justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-sub gap-4">
                 <div className="flex items-center gap-6 w-full xl:w-auto">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                         <Layers size={14} className="text-brand-red" />
                         Batch Optimization
                     </h3>
@@ -535,8 +538,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
             {/* NEW ROUTE DIALOG */}
             <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>
-                <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
                         <DialogTitle className="uppercase tracking-widest font-bold text-left">Establish New Route</DialogTitle>
                         <DialogDescription className="text-xs text-left">Define a named operational grouping for field assignments.</DialogDescription>
                     </DialogHeader>
@@ -558,11 +561,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
             {/* ALLOCATION TERMINAL */}
             <Dialog open={isAddJobsOpen} onOpenChange={setIsAddJobsOpen}>
-                <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default flex flex-col p-0 max-h-[80vh]">
+                <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default flex flex-col p-0 max-h-[80vh] shadow-2xl">
                     <DialogHeader className="p-6 pb-2">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <Wrench className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Allocation Terminal</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Allocation Terminal</DialogTitle>
                         </div>
                         <DialogDescription className="text-xs text-left">Select jobs from the unassigned pool to allocate to <span className="text-text-primary font-bold">{routes.find(r => r.id === activeRouteId)?.name}</span>.</DialogDescription>
                     </DialogHeader>

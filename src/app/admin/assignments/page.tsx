@@ -96,6 +96,17 @@ export default function AssignmentsHubPage() {
 
   const { toast } = useToast();
 
+  // Helper to remove undefined keys to prevent Firestore updateDoc crashes
+  const sanitize = (obj: any) => {
+    const result = { ...obj };
+    Object.keys(result).forEach(key => {
+        if (result[key] === undefined) {
+            delete result[key];
+        }
+    });
+    return result;
+  };
+
   // 1. Initialize Registry Listeners
   useEffect(() => {
     // ACTIVE WORK LIVES IN ASSIGNMENTS COLLECTION
@@ -261,7 +272,8 @@ export default function AssignmentsHubPage() {
     }
 
     const docRef = doc(db, 'assignments', editedOrder.id);
-    updateDoc(docRef, { ...finalUpdate }).catch((error: any) => {
+    // Critical: Sanitize to remove 'undefined' fields before writing to Firestore
+    updateDoc(docRef, sanitize(finalUpdate)).catch((error: any) => {
         console.error("Registry Update Error:", error);
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
     });
@@ -301,9 +313,10 @@ export default function AssignmentsHubPage() {
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
     const docRef = doc(db, 'assignments', woId);
-    updateDoc(docRef, updates).catch((error: any) => {
+    // Critical: Sanitize to remove 'undefined' fields
+    updateDoc(docRef, sanitize(updates)).catch((error: any) => {
         const woRef = doc(db, 'workOrders', woId);
-        updateDoc(woRef, updates).catch(err => {
+        updateDoc(woRef, sanitize(updates)).catch(err => {
             console.error("Field Update Error:", err);
             toast({ variant: "destructive", title: "Registry Error", description: err.message });
         });

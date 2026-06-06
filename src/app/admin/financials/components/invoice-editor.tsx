@@ -63,7 +63,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     dueDate: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
                     lineItems: [],
                     status: 'draft',
-                    isAfterHours: false,
                 });
             }
         }
@@ -128,7 +127,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
             description: '',
             quantity: 1,
             unitPrice: 0,
-            category 
+            category,
+            isAfterHours: false
         };
         setInvoiceData(prev => ({ 
             ...prev, 
@@ -149,11 +149,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         (invoiceData.lineItems || []).filter(item => item.category === 'material')
     , [invoiceData.lineItems]);
 
-    const hasLabor = laborItems.length > 0;
-
     const { subtotal, laborSubtotal, materialsSubtotal, tax, total } = useMemo(() => {
         const items = invoiceData.lineItems || [];
-        const isAH = !!invoiceData.isAfterHours;
 
         let labor = 0;
         let materials = 0;
@@ -161,7 +158,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         items.forEach(item => {
             const baseTotal = item.quantity * item.unitPrice;
             if (item.category === 'labor') {
-                labor += isAH ? baseTotal * 1.5 : baseTotal;
+                const effectiveTotal = item.isAfterHours ? baseTotal * 1.5 : baseTotal;
+                labor += effectiveTotal;
             } else {
                 materials += baseTotal;
             }
@@ -177,7 +175,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
             tax: taxAmount, 
             total: labor + materials + taxAmount 
         };
-    }, [invoiceData.lineItems, invoiceData.isAfterHours]);
+    }, [invoiceData.lineItems]);
 
     const handleSave = () => {
         if (!invoiceData.clientId) {
@@ -195,11 +193,10 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
     };
 
     const LineItemRow = ({ item }: { item: InvoiceLineItem }) => {
-        const isAH = !!invoiceData.isAfterHours && item.category === 'labor';
-        const effectivePrice = isAH ? item.unitPrice * 1.5 : item.unitPrice;
+        const effectivePrice = item.isAfterHours ? item.unitPrice * 1.5 : item.unitPrice;
 
         return (
-            <div key={item.id} className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
+            <div key={item.id} className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
                 <Select onValueChange={(val) => handlePremadeItemSelect(item.id, val)}>
                     <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Preset..."/></SelectTrigger>
                     <SelectContent>
@@ -215,18 +212,22 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 </Select>
                 <div className="space-y-1">
                     <Input placeholder="Description..." value={item.description} onChange={e => handleLineItemChange(item.id, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
-                    {isAH && (
-                        <div className="flex items-center gap-1.5 px-2">
-                            <Zap size={10} className="text-brand-red animate-pulse"/>
-                            <span className="text-[8px] font-black text-brand-red uppercase tracking-widest">AH Protocol Active (Effective: ${effectivePrice.toFixed(2)})</span>
-                        </div>
-                    )}
                 </div>
                 <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
                 <div className="relative">
                     <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                     <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
                 </div>
+                {item.category === 'labor' ? (
+                    <div className="flex flex-col items-center gap-1">
+                        <Label className="text-[7px] font-black uppercase text-text-muted">AH Protocol</Label>
+                        <Switch 
+                            checked={!!item.isAfterHours} 
+                            onCheckedChange={(val) => handleLineItemChange(item.id, 'isAfterHours', val)}
+                            className="scale-50 h-4"
+                        />
+                    </div>
+                ) : <div />}
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(item.id)}><Trash2 size={14}/></Button>
             </div>
         );
@@ -287,32 +288,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             </div>
                          </div>
                     </div>
-
-                    {/* After Hours Protocol Toggle */}
-                    <div className={cn(
-                        "p-4 rounded-xl border flex items-center justify-between transition-all",
-                        invoiceData.isAfterHours ? "bg-brand-red-dim border-brand-red shadow-lg" : "bg-bg-secondary border-border-sub"
-                    )}>
-                        <div className="flex items-center gap-4">
-                            <div className={cn(
-                                "p-2.5 rounded-lg border",
-                                invoiceData.isAfterHours ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted border-border-sub"
-                            )}>
-                                <Clock size={20} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-xs font-bold uppercase tracking-wider text-text-primary">After Hours Emergency Protocol</p>
-                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
-                                    {hasLabor ? "Applies 1.5x Multiplier to all labor entries." : "Protocol Locked: Add labor entries to activate."}
-                                </p>
-                            </div>
-                        </div>
-                        <Switch 
-                            disabled={!hasLabor}
-                            checked={!!invoiceData.isAfterHours}
-                            onCheckedChange={(val) => setInvoiceData(prev => ({ ...prev, isAfterHours: val }))}
-                        />
-                    </div>
                     
                     <div className="space-y-10">
                         {/* LABOR REGISTRY */}
@@ -325,11 +300,12 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{laborItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
-                                <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
                                     <span>Preset</span>
                                     <span>Description</span>
                                     <span className="text-center">Hrs</span>
                                     <span className="text-center">Rate ($/hr)</span>
+                                    <span className="text-center">AH</span>
                                 </div>
                                 {laborItems.map((item) => (
                                     <LineItemRow key={item.id} item={item} />
@@ -350,7 +326,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{materialItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
-                                <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
                                     <span>Preset</span>
                                     <span>Part / Asset Identification</span>
                                     <span className="text-center">QTY</span>
@@ -376,12 +352,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <span className="text-text-muted">Labor Subtotal (Tax Exempt)</span>
                                 <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
-                            {invoiceData.isAfterHours && (
-                                <div className="flex justify-between items-center text-[9px] font-black uppercase text-brand-red bg-brand-red-dim/50 px-2 py-1 rounded">
-                                    <span className="flex items-center gap-1.5"><Zap size={10}/> Emergency Multiplier (1.5x)</span>
-                                    <span>ACTIVE</span>
-                                </div>
-                            )}
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
                                 <span className="text-text-muted">Materials Subtotal</span>
                                 <span className="font-mono text-text-primary">${materialsSubtotal.toFixed(2)}</span>

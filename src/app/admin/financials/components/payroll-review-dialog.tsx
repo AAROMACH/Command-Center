@@ -447,7 +447,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
                                                                 <div className="flex items-center gap-1.5 text-left">
                                                                   <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
                                                                   {isImported && wo && (
@@ -503,59 +503,91 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = item.isAdminReviewed;
+                                        const isImported = wo?.source === 'Imported';
                                         return (
-                                            <Card key={item.id} className={cn(
-                                                "bg-bg-secondary border transition-all text-left",
-                                                isAudited ? "border-green-border/30" : "border-brand-red/30 shadow-sm"
+                                            <div key={item.id} className={cn(
+                                                "p-3 rounded-xl border transition-all flex flex-col gap-3 group",
+                                                isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                             )}>
-                                                <CardContent className="p-3 space-y-3">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-4 text-left">
-                                                            <div className="flex items-center gap-2">
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm" 
-                                                                    className={cn(
-                                                                        "h-8 px-4 uppercase text-[9px] font-bold tracking-widest",
-                                                                        isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim"
-                                                                    )}
-                                                                    onClick={() => toggleAuditItem(item.id, item.workOrderId)}
-                                                                >
-                                                                    {isAudited ? <Check size={14} className="mr-1.5"/> : <AlertTriangle size={14} className="mr-1.5"/>}
-                                                                    {isAudited ? 'Resolved' : 'Resolve'}
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon-sm" 
-                                                                    className="h-8 w-8 text-text-muted hover:text-text-red"
-                                                                    onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
-                                                                >
-                                                                    <Trash2 size={14}/>
-                                                                </Button>
+                                                <div className="flex items-center justify-between gap-6 text-left">
+                                                    <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
+                                                        <div className="shrink-0 flex items-center gap-2">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                className={cn(
+                                                                    "h-8 px-4 uppercase text-[9px] font-bold tracking-widest",
+                                                                    isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim"
+                                                                )}
+                                                                onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                            >
+                                                                {isAudited ? <Check size={14} className="mr-1.5"/> : <AlertTriangle size={14} className="mr-1.5"/>}
+                                                                {isAudited ? 'Resolved' : 'Resolve'}
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon-sm" 
+                                                                className="h-8 w-8 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
+                                                            >
+                                                                <Trash2 size={14}/>
+                                                            </Button>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1 text-left">
+                                                            <div className="flex items-center gap-2 text-left">
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Mission identifier lookup pending...'}</p>
+                                                                {isImported && (
+                                                                    <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                                )}
                                                             </div>
-                                                            <div className="space-y-0.5 text-left">
-                                                                <div className="flex items-center gap-2 text-left">
-                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
-                                                                    <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                                <div className="flex items-center gap-1.5 text-left">
+                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                  {isImported && wo && (
+                                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                                      <ExternalLink size={10} />
+                                                                    </a>
+                                                                  )}
                                                                 </div>
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description || 'Identification Pending Audit'}</p>
+                                                                <span>•</span>
+                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                                <span>•</span>
+                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                            <p className="text-sm font-mono font-bold text-text-red">${(item.jobPay || 0).toFixed(2)}</p>
-                                                        </div>
                                                     </div>
-                                                    <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
-                                                            <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
-                                                        </p>
-                                                        <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
-                                                            &quot;{item.disputeNotes}&quot;
-                                                        </p>
+                                                    
+                                                    <div className="ml-4 shrink-0 min-w-[350px]">
+                                                        {isImported && wo ? (
+                                                            <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                        ) : (
+                                                            <div className="flex items-center justify-end gap-8">
+                                                                <div className="text-right">
+                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
+                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
+                                                                        {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right min-w-[70px]">
+                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
+                                                                    <p className="text-sm font-mono font-bold text-text-red">
+                                                                        ${(item.jobPay || 0).toFixed(2)}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </CardContent>
-                                            </Card>
+                                                </div>
+
+                                                <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
+                                                    <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
+                                                        <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
+                                                    </p>
+                                                    <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
+                                                        &quot;{item.disputeNotes}&quot;
+                                                    </p>
+                                                </div>
+                                            </div>
                                         )
                                     })}
 
@@ -596,12 +628,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
                                                                     <Badge variant="onhold" className="text-[7px] h-3.5 px-1.5 uppercase">Manual Pay Required</Badge>
                                                                 </div>
-                                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
+                                                                <p className="text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="p-2 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
-                                                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic text-left">&quot;{report.summary}&quot;</p>
+                                                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">&quot;{report.summary}&quot;</p>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -665,7 +697,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             <Button 
                                 disabled={!isManifestFullyAudited}
                                 className={cn(
-                                    "h-11 px-12 uppercase font-bold text-[10px] tracking-widest shadow-lg transition-all",
+                                    "h-11 px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
                                     isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
                                 )} 
                                 onClick={() => handleStatusChange('Approved')}

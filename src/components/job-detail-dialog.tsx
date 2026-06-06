@@ -40,7 +40,14 @@ import {
   Info,
   History,
   Navigation,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  CheckCircle2,
+  Activity as ActivityIcon,
+  Pencil,
+  ChevronUp,
+  ChevronDown,
+  FolderOpen
 } from 'lucide-react';
 import {
   Avatar,
@@ -57,6 +64,8 @@ import {
   onSnapshot,
   orderBy,
   limit,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
@@ -294,7 +303,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   const isLocked = mission.status === 'completed';
   const leadTech = technicians.find(t => t.id === (mission.assignedTechnicianId || mission.techId));
-  const payout = calcPayout(mission);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -548,12 +556,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                   {isLocked ? 'Terminal Locked' : 'Terminal Active'}
                 </span>
            </div>
-           <Button 
-                onClick={() => setIsOpen(false)}
-                className="h-11 px-12 bg-transparent border-2 border-border-sub hover:bg-bg-primary hover:border-text-primary text-text-primary font-black uppercase text-[11px] tracking-[0.2em] rounded-lg transition-all"
-            >
-                Exit Operational Terminal
-            </Button>
         </div>
 
       </DialogContent>

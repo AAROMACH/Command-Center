@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,6 +6,7 @@ import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
     Briefcase, 
     Search,
@@ -136,20 +136,20 @@ export default function ClientProjectsPage() {
                 </TabsList>
 
                 <TabsContent value="active" className="space-y-6 mt-0">
-                    <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} allLogs={allLogs} technicians={technicians} />
+                    <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="space-y-6 mt-0">
-                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} allLogs={allLogs} technicians={technicians} />
+                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-6 mt-0">
-                    <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} allLogs={allLogs} technicians={technicians} />
+                    <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
 
-function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, allLogs: ProjectDailyLog[], technicians: Technician[] }) {
+function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, technicians: Technician[] }) {
     if (projects.length === 0) {
         return (
             <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
@@ -167,11 +167,11 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                 const leadTech = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
                 return (
-                    <Card key={project.id} className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
+                    <Card key={project.id} className="bg-bg-secondary border-border-main overflow-hidden shadow-sm text-left">
                         <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-6 text-left">
-                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 text-left">
                                 <div className="space-y-1 text-left">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 text-left">
                                         <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {(project.id || '').toUpperCase()}</span>
                                         <Badge variant={project.status} className="h-5 uppercase">
                                             {project.status}
@@ -183,12 +183,12 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                         <span className="flex items-center gap-1.5"><Calendar size={12}/> Started {formatDateStr(project.startDate)}</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-3 w-full md:w-auto">
+                                <div className="flex flex-col items-end gap-3 w-full md:flex-1 md:max-w-[480px]">
                                     <div className="text-right">
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Deployment Readiness</p>
                                         <p className="text-3xl font-mono font-bold text-text-primary">{progress}%</p>
                                     </div>
-                                    <Progress value={progress} className="w-full md:w-[240px] h-3 bg-bg-primary border border-border-sub shadow-inner" />
+                                    <Progress value={progress} className="relative overflow-hidden rounded-full w-full h-4 bg-bg-primary border border-border-sub shadow-inner" />
                                 </div>
                             </div>
                         </CardHeader>
@@ -201,10 +201,10 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="p-6 bg-bg-primary/30">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
                                             {(project.phases || []).map(phase => (
-                                                <div key={phase.id} className="space-y-4">
-                                                    <div className="flex items-center gap-3">
+                                                <div key={phase.id} className="space-y-4 text-left">
+                                                    <div className="flex items-center gap-3 text-left">
                                                         <div className="h-6 w-6 rounded-full bg-brand-red text-white flex items-center justify-center text-[10px] font-bold">
                                                             {phase.phaseNumber}
                                                         </div>
@@ -212,7 +212,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                                     </div>
                                                     <div className="space-y-2 border-l border-border-sub pl-6 ml-3 text-left">
                                                         {(phase.tasks || []).map(task => (
-                                                            <div key={task.id} className="flex items-center gap-2">
+                                                            <div key={task.id} className="flex items-center gap-2 text-left">
                                                                 {task.isCompleted ? (
                                                                     <CheckCircle2 size={12} className="text-text-green" />
                                                                 ) : (
@@ -232,23 +232,23 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                             </Accordion>
 
                             <div className="px-6 py-4 bg-bg-tertiary/20 border-t border-border-sub flex flex-wrap items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Project Lead</p>
+                                <div className="flex items-center gap-4 text-left">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Project Lead</p>
                                     {leadTech ? (
-                                        <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-sub shadow-sm">
+                                        <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-sub shadow-sm text-left">
                                             <Avatar className="h-6 w-6 border border-border-main">
                                                 <AvatarImage src={leadTech.avatarUrl} />
                                                 <AvatarFallback className="text-[10px] font-bold">{leadTech.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{leadTech.name}</span>
+                                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight text-left">{leadTech.name}</span>
                                         </div>
                                     ) : (
                                         <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Unallocated</Badge>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-6 text-[9px] font-bold text-text-muted uppercase tracking-widest">
-                                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-accent-gold"/> Est: {project.estimatedDuration}</span>
-                                    <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-text-green"/> SOW Verified</span>
+                                <div className="flex items-center gap-6 text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">
+                                    <span className="flex items-center gap-1.5 text-left"><Clock size={12} className="text-accent-gold"/> Est: {project.estimatedDuration}</span>
+                                    <span className="flex items-center gap-1.5 text-left"><ShieldCheck size={12} className="text-text-green"/> SOW Verified</span>
                                 </div>
                             </div>
                         </CardContent>

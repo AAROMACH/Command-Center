@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, where, addDoc, doc } from 'firebase/fire
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     ClipboardList, 
     Plus, 
@@ -483,4 +484,3 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
         </div>
     );
 }
-

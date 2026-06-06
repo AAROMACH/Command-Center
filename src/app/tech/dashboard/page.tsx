@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +20,8 @@ import {
   CheckCircle2,
   Building2,
   MapPin,
-  Activity
+  Activity,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
@@ -268,13 +268,16 @@ export default function TechDashboardPage() {
                                 {activeJob.title || activeJob.description}
                             </h3>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
                                     <Building2 size={12}/> {activeJob.clientName}
                                 </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px]">
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px] text-left">
                                     <MapPin size={12} className="text-brand-red"/> {activeJob.location}
                                 </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                    <CalendarIcon size={12} className="text-accent-gold"/> {activeJob.scheduleDate}
+                                </p>
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
                                     <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
                                 </p>
                             </div>

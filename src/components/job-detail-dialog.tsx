@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, formatCityState } from '@/lib/utils';
 import {
-  X,
   MapPin,
   Calendar,
   Clock,
@@ -67,6 +66,7 @@ import {
   doc,
   updateDoc
 } from 'firebase/firestore';
+import { useCollection } from '@/firebase';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
 
@@ -181,7 +181,7 @@ function InfoGrid({ items }: { items: { label: string; value: React.ReactNode }[
       {items.map(({ label, value }) => (
         <div key={label} className="bg-bg-tertiary border border-border-sub rounded-xl p-3 text-left">
           <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.16em] mb-1 text-left">{label}</p>
-          <p className="text-[12px] font-bold text-text-primary uppercase text-left">{value}</p>
+          <div className="text-[12px] font-bold text-text-primary uppercase text-left">{value}</div>
         </div>
       ))}
     </div>
@@ -255,6 +255,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
 
+  // Fetch real-time history from Firestore if we have a mission ID
+  const historyQuery = useMemo(() => {
+    if (!mission?.id) return null;
+    return query(collection(db, 'assignments', mission.id, 'history'), orderBy('changedAt', 'desc'));
+  }, [mission?.id]);
+
+  const { data: historyData } = useCollection(historyQuery);
+
   useEffect(() => {
     const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
         setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
@@ -284,25 +292,33 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const timeline = useMemo(() => {
     if (!mission) return [];
     
-    const baseHistory = mission.history || [];
-    const entries = [...baseHistory];
+    // Combine fetched history events with a synthesized root event
+    const entries = [...(historyData || [])].map(doc => ({
+      id: doc.id,
+      ...doc
+    }));
 
-    if (!entries.some(e => e.type === 'note' && e.details.toLowerCase().includes('created'))) {
-        entries.unshift({
-            type: 'note',
-            date: mission.scheduleDate || 'TBD',
-            details: 'Assignment Created — Mission initialized in operational registry.',
-            user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center'
-        });
+    // Synthesize "Assignment Created" if it's the root or if mission is present
+    if (mission) {
+      entries.push({
+        id: 'root-created',
+        type: 'note',
+        date: mission.scheduleDate || 'TBD',
+        details: 'Assignment Created — Mission initialized in operational registry.',
+        user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center',
+        changedAt: mission.scheduleDate // fallback for sorting
+      });
     }
 
-    return entries.reverse();
-  }, [mission]);
+    // Sort by chronological order (descending for display, or ascending as needed)
+    return entries.sort((a, b) => new Date(b.changedAt || b.date).getTime() - new Date(a.changedAt || a.date).getTime());
+  }, [mission, historyData]);
 
   if (!mission) return null;
 
   const isLocked = mission.status === 'completed';
   const leadTech = technicians.find(t => t.id === (mission.assignedTechnicianId || mission.techId));
+  const payout = calcPayout(mission);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -326,7 +342,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </div>
           </div>
 
-          <div className="space-y-1 mb-6">
+          <div className="space-y-1 mb-6 text-left">
             <Badge variant={mission.status === 'completed' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[9px] font-black tracking-widest mb-2">
                 {mission.status}
             </Badge>
@@ -336,7 +352,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <DialogDescription className="hidden">Detailed mission audit terminal for assignment oversight.</DialogDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4 mb-6 text-left">
             <MetaBox icon={MapPin} value={formatCityState(mission.location)} />
             <MetaBox icon={Calendar} value={mission.scheduleDate} />
             <MetaBox icon={Clock} value={mission.scheduleTime} />
@@ -366,7 +382,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             
             {/* ══ Overview ════════════════════════════════════════════════════ */}
             <TabsContent value="Overview" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
-                <div className="grid grid-cols-2 gap-8 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                     <div className="space-y-4 text-left">
                         <SectionLabel>Assignment Logic</SectionLabel>
                         <InfoGrid items={[
@@ -451,22 +467,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         const isLast = idx === timeline.length - 1;
                         let dot: 'blue' | 'gold' | 'green' | 'red' | 'gray' = 'gray';
                         
-                        const details = entry.details.toLowerCase();
+                        const details = (entry.details || entry.note || '').toLowerCase();
+                        const type = (entry.type || entry.eventType || '').toLowerCase();
 
-                        if (details.includes('complete') || details.includes('finalized')) dot = 'green';
+                        if (details.includes('complete') || details.includes('finalized') || type === 'completed') dot = 'green';
                         else if (details.includes('check') || details.includes('arrival')) dot = 'green';
-                        else if (details.includes('route') || details.includes('start trip')) dot = 'gold';
-                        else if (details.includes('confirm')) dot = 'blue';
-                        else if (entry.type === 'revisit') dot = 'red';
+                        else if (details.includes('route') || details.includes('start trip') || type === 'rescheduled') dot = 'gold';
+                        else if (details.includes('confirm') || type === 'assigned') dot = 'blue';
+                        else if (type === 'revisit' || type === 'cancelled') dot = 'red';
 
                         return (
                           <TimelineEntry 
-                            key={idx}
+                            key={entry.id || idx}
                             dot={dot}
-                            time={entry.date}
-                            title={entry.type.replace(/_/g, ' ')}
-                            note={entry.details}
-                            by={entry.user}
+                            time={entry.date || entry.changedAt || 'TBD'}
+                            title={type.replace(/_/g, ' ') || 'Event'}
+                            note={entry.details || entry.note || 'No additional notes recorded.'}
+                            by={entry.user || entry.changedBy || 'System'}
                             isLast={isLast}
                           />
                         );
@@ -534,7 +551,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                                         <Badge variant="inprogress" className="text-[7px] h-3.5 px-1.5 uppercase animate-pulse">Live Session</Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
+                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5 text-left">
                                                     {log.minutesWorked ? `${(log.minutesWorked / 60).toFixed(1)}h Logged` : 'Recording Duration'} · {log.location}
                                                 </p>
                                             </div>

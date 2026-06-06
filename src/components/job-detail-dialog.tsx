@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder, Technician, ReliabilityEvent, WeeklyLog } from '@/lib/types';
+import type { WorkOrder, Technician, AssignmentTimeLog, WeeklyLog } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { 
   Dialog, 
   DialogContent, 
@@ -23,20 +23,15 @@ import {
   ExternalLink,
   Lock,
   Check,
-  AlertTriangle,
-  DollarSign,
   Users,
   FileText,
   Activity,
-  LogOut,
   CheckCircle2,
   History,
   RefreshCw,
-  Pencil,
-  ChevronDown,
   User,
-  RotateCcw,
-  Settings
+  Navigation,
+  Timer
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +40,7 @@ import { cn, formatCityState } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { assignmentTimeLogs } from '@/lib/data';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -118,6 +114,18 @@ const getFieldNationLink = (id: string) => {
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
+const displayTime = (timeStr?: string) => {
+    if (!timeStr) return 'TBD';
+    try {
+        const [h, m] = timeStr.split(':');
+        const d = new Date();
+        d.setHours(parseInt(h), parseInt(m), 0);
+        return format(d, 'h:mm a');
+    } catch (e) {
+        return timeStr;
+    }
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type JobDetailDialogProps = {
@@ -131,11 +139,11 @@ type JobDetailDialogProps = {
 export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogProps) {
   const [activeTab, setActiveTab] = useState<'SOW' | 'LEDGER' | 'REVIEW'>('SOW');
   const [adminData, setAdminData] = useState<{
-    penalties: ReliabilityEvent[];
     weeklyLog: WeeklyLog | null;
+    sessionLogs: AssignmentTimeLog[];
   }>({
-    penalties: [],
     weeklyLog: null,
+    sessionLogs: []
   });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -155,24 +163,35 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     const woId = mission.id;
 
     Promise.all([
-      getDocs(query(collection(db, 'penaltyEvents'), where('relatedAssignmentId', '==', woId))),
       getDocs(query(collection(db, 'weeklyLogs'), where('items', 'array-contains', { workOrderId: woId }))),
-    ]).then(([penSnap, logSnap]) => {
+    ]).then(([logSnap]) => {
+      // Filter mock/static logs for this mission
+      const linkedSessionLogs = assignmentTimeLogs.filter(l => l.workOrderId === woId);
+      
       setAdminData({
-        penalties: penSnap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent)),
-        weeklyLog: !logSnap.empty ? { ...logSnap.docs[0].data(), id: logSnap.docs[0].id } as WeeklyLog : null
+        weeklyLog: !logSnap.empty ? { ...logSnap.docs[0].data(), id: logSnap.docs[0].id } as WeeklyLog : null,
+        sessionLogs: linkedSessionLogs
       });
     }).catch(console.error).finally(() => setLoadingAdmin(false));
   }, [activeTab, mission, isOpen]);
 
-  const techHistory = useMemo(() => {
-    if (!mission || !mission.history) return [];
-    return mission.history.filter(h => 
-      h.type === 'tech_swap' || 
-      h.type === 'tech_add' || 
-      h.type === 'tech_remove' ||
-      h.details.toLowerCase().includes('assigned to')
-    ).reverse();
+  const timeline = useMemo(() => {
+    if (!mission) return [];
+    
+    const baseHistory = mission.history || [];
+    const entries = [...baseHistory];
+
+    // Prepend Creation Event if not present
+    if (!entries.some(e => e.type === 'note' && e.details.toLowerCase().includes('created'))) {
+        entries.unshift({
+            type: 'note',
+            date: mission.scheduleDate || 'TBD',
+            details: 'Assignment Created — Mission initialized in operational registry.',
+            user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center'
+        });
+    }
+
+    return entries.reverse();
   }, [mission]);
 
   if (!mission) return null;
@@ -190,7 +209,16 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <DialogTitle className="font-mono text-[10px] font-bold text-brand-red uppercase tracking-[0.2em]">
               WO: {mission.id.toUpperCase()}
             </DialogTitle>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
+               <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-6 px-3 bg-bg-secondary border-border-sub text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"
+                onClick={() => setActiveTab('REVIEW')}
+               >
+                 <History size={10} className="text-accent-gold" />
+                 Check in/out Log
+               </Button>
                {isLocked && (
                 <div className="flex items-center gap-2 text-text-muted">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Registry Locked</span>
@@ -290,7 +318,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <SectionLabel>Personnel Allocation History</SectionLabel>
+                        <SectionLabel>Personnel Allocation</SectionLabel>
                         <div className="space-y-4">
                           {leadTech ? (
                               <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
@@ -308,31 +336,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                   <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
                               </div>
                           )}
-
-                          {techHistory.length > 0 && (
-                            <div className="space-y-2 pt-2 border-t border-border-sub/30">
-                              <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 text-left">Registry Staffing Events</p>
-                              <div className="space-y-2">
-                                {techHistory.map((h, i) => (
-                                  <div key={i} className="flex gap-3 text-left">
-                                    <div className="flex flex-col items-center">
-                                      <div className={cn(
-                                        "w-1.5 h-1.5 rounded-full mt-1.5",
-                                        h.type === 'tech_remove' ? "bg-text-red" : "bg-text-green"
-                                      )} />
-                                      {i !== techHistory.length - 1 && <div className="w-px flex-1 bg-border-sub/30 mt-1" />}
-                                    </div>
-                                    <div className="pb-1">
-                                      <p className="text-[10px] font-bold text-text-primary uppercase leading-tight text-left">{h.details}</p>
-                                      <p className="text-[8px] text-text-muted mt-1 uppercase text-left">
-                                        {h.date} · BY: {h.user}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          <div className="p-4 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-3">
+                               <Info size={16} className="text-accent-gold shrink-0 mt-0.5" />
+                               <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed text-left">
+                                   Personnel allocation is restricted to authorized Command Center administrators.
+                               </p>
+                          </div>
                         </div>
                     </div>
                 </div>
@@ -342,9 +351,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <TabsContent value="LEDGER" className="m-0 space-y-6 animate-in fade-in duration-300">
                 <SectionLabel>Operational Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
-                    {mission.history && mission.history.length > 0 ? (
-                      mission.history.slice().reverse().map((entry, idx) => {
-                        const isLast = idx === (mission.history?.length || 0) - 1;
+                    {timeline.length > 0 ? (
+                      timeline.map((entry, idx) => {
+                        const isLast = idx === timeline.length - 1;
                         let dot: 'blue' | 'gold' | 'green' | 'red' | 'gray' = 'gray';
                         
                         const type = entry.type;
@@ -413,39 +422,38 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         </div>
 
                         <div className="space-y-4 text-left">
-                            <SectionLabel>Reliability Audit</SectionLabel>
-                            {adminData.penalties.length > 0 ? (
-                                <div className="space-y-2">
-                                    {adminData.penalties.map(p => (
-                                        <div key={p.id} className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-center justify-between text-left">
-                                            <div className="flex items-center gap-4 text-left">
-                                                <div className="p-2 bg-brand-red-dim rounded border border-brand-red/30 text-text-red">
-                                                    <AlertTriangle size={14} />
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{p.eventType.replace(/_/g, ' ')}</p>
-                                                    <p className="text-[10px] text-text-muted leading-relaxed text-left italic">&quot;{p.reason}&quot;</p>
-                                                </div>
+                            <SectionLabel>Field Session Registry</SectionLabel>
+                            <div className="space-y-2">
+                                {adminData.sessionLogs.length > 0 ? adminData.sessionLogs.map(log => (
+                                    <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                        <div className="flex items-center gap-4 text-left">
+                                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted">
+                                                <Navigation size={18} />
                                             </div>
-                                            <span className="font-mono text-sm font-bold text-text-red">{p.scoreChange}</span>
+                                            <div className="text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
+                                                        {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'ACTIVE'}
+                                                    </p>
+                                                    {log.checkOutTime ? (
+                                                        <Badge variant="active" className="text-[7px] h-3.5 px-1.5 uppercase">Verified</Badge>
+                                                    ) : (
+                                                        <Badge variant="inprogress" className="text-[7px] h-3.5 px-1.5 uppercase animate-pulse">Live Session</Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                    {log.minutesWorked ? `${(log.minutesWorked / 60).toFixed(1)}h Logged` : 'Recording Duration'} · {log.location}
+                                                </p>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-6 bg-green-dim/10 border border-green-border/20 rounded-xl flex items-center gap-3">
-                                    <ShieldCheck size={16} className="text-text-green" />
-                                    <p className="text-[10px] font-bold text-text-green uppercase tracking-widest">Nominal performance Handshake</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-4">
-                            <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
-                            <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Temporal Log Protocol</p>
-                                <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
-                                    Audit data is aggregated from the rolling reliability ledger and submitted technician manifests.
-                                </p>
+                                        <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub font-mono">GPS LOCKED</Badge>
+                                    </div>
+                                )) : (
+                                    <div className="p-12 border-2 border-dashed border-border-sub rounded-xl text-center opacity-40 bg-bg-secondary/30">
+                                        <Navigation size={32} className="mx-auto text-text-muted mb-2" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">No field sessions recorded</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </>

@@ -1,7 +1,5 @@
 "use client";
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,11 +10,8 @@ import {
   Bell, 
   Shield, 
   Settings as SettingsIcon, 
-  CreditCard,
   Building2,
   ShieldCheck,
-  ChevronRight,
-  Database,
   History,
   Search
 } from 'lucide-react';
@@ -54,7 +49,7 @@ export default function ClientSettingsPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <header className="page-header">
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <SettingsIcon size={12} />
                         Client Terminal
@@ -76,7 +71,7 @@ export default function ClientSettingsPage() {
             </header>
 
             <Tabs defaultValue="notifications" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-8">
+                <TabsList className="grid w-full grid-cols-3 mb-8">
                     <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
                         <Bell size={14}/> {TERMINOLOGY.CONFIG.NOTIFICATIONS}
                     </TabsTrigger>
@@ -86,16 +81,13 @@ export default function ClientSettingsPage() {
                     <TabsTrigger value="organization" className="flex items-center gap-2 py-3">
                         <Building2 size={14}/> Organization
                     </TabsTrigger>
-                    <TabsTrigger value="billing" className="flex items-center gap-2 py-3">
-                        <CreditCard size={14}/> Billing
-                    </TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
                     {/* NOTIFICATIONS */}
                     <TabsContent value="notifications" className="m-0 space-y-6">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="text-left">
                                 <CardTitle>Notification Preferences</CardTitle>
                                 <CardDescription>Choose which updates you want to receive for your sites.</CardDescription>
                             </CardHeader>
@@ -107,7 +99,7 @@ export default function ClientSettingsPage() {
                                     { id: 'cn-4', label: 'Invoice Availability', desc: 'Alert when a new financial record is finalized.' },
                                 ].map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                        <div className="space-y-0.5">
+                                        <div className="space-y-0.5 text-left">
                                             <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
                                             <p className="text-[10px] text-text-muted">{item.desc}</p>
                                         </div>
@@ -121,7 +113,7 @@ export default function ClientSettingsPage() {
                     {/* SECURITY */}
                     <TabsContent value="security" className="m-0 space-y-6">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="text-left">
                                 <CardTitle>Data Protection</CardTitle>
                                 <CardDescription>Manage credentials and multi-factor security for your organization.</CardDescription>
                             </CardHeader>
@@ -131,7 +123,7 @@ export default function ClientSettingsPage() {
                                         <div className="p-2 bg-brand-red rounded-md text-white">
                                             <ShieldCheck size={20}/>
                                         </div>
-                                        <div>
+                                        <div className="text-left">
                                             <p className="text-sm font-bold uppercase tracking-wider">Two-Factor Authentication</p>
                                             <p className="text-xs text-text-muted">Require extra verification for all portal logins.</p>
                                         </div>
@@ -140,7 +132,7 @@ export default function ClientSettingsPage() {
                                 </div>
                                 
                                 <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-0.5 text-left">
                                         <p className="text-xs font-bold uppercase tracking-wider">Access Registry Audit</p>
                                         <p className="text-[10px] text-text-muted">Review recently authorized devices and login locations.</p>
                                     </div>
@@ -155,58 +147,26 @@ export default function ClientSettingsPage() {
                     {/* ORGANIZATION */}
                     <TabsContent value="organization" className="m-0 space-y-6">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="text-left">
                                 <CardTitle>Corporate Identity</CardTitle>
                                 <CardDescription>Verified information for {currentUser?.clientCompany || 'your organization'}.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] uppercase font-bold text-text-muted">Organization Name</Label>
                                         <Input disabled value={currentUser?.clientCompany || ''} className="bg-bg-primary opacity-60" />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] uppercase font-bold text-text-muted">Business Classification</Label>
                                         <Input disabled value={currentUser?.businessType || 'Strategic Partner'} className="bg-bg-primary opacity-60" />
                                     </div>
                                 </div>
-                                <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub">
+                                <div className="p-4 rounded-lg bg-bg-tertiary/50 border border-border-sub text-left">
                                     <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
                                         Note: Organizational parameters are locked for strategic stakeholders. Please contact your Aaromach Account Manager to modify core registry data.
                                     </p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* BILLING */}
-                    <TabsContent value="billing" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Payment Protocol</CardTitle>
-                                <CardDescription>Manage active methods for invoice settlement.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-green">
-                                            <CreditCard size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Visa ending in 4242</p>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Expires 12/2026</p>
-                                        </div>
-                                    </div>
-                                    <Badge variant="active" className="text-[8px] h-5">Primary</Badge>
-                                </div>
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full h-11 uppercase font-bold text-[10px] tracking-widest"
-                                    onClick={() => router.push('/client/billing')}
-                                >
-                                    Manage Methods in Billing Terminal
-                                    <ChevronRight size={14} className="ml-2" />
-                                </Button>
                             </CardContent>
                         </Card>
                     </TabsContent>

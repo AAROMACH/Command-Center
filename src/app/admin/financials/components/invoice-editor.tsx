@@ -30,10 +30,12 @@ const defaultLineItem: Omit<InvoiceLineItem, 'id'> = {
 
 const premadeLineItems = [
     { group: 'Labor & Services', items: [
-        { id: 'labor_std', description: 'Standard Labor ($95/hr)', unitPrice: 95 },
-        { id: 'labor_ot', description: 'Overtime Labor ($145/hr)', unitPrice: 145 },
-        { id: 'labor_crit', description: 'Emergency Labor ($195/hr)', unitPrice: 195 },
-        { id: 'service_call', description: 'Service Call Fee', unitPrice: 75 },
+        { id: 'labor_fiber', description: 'Fiber Optic Labor ($150/hr)', unitPrice: 150 },
+        { id: 'labor_install', description: 'Installation Labor ($120/hr)', unitPrice: 120 },
+        { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100 },
+        { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85 },
+        { id: 'labor_ah', description: 'After Hours Labor (1.5x)', unitPrice: 180 },
+        { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75 },
     ]},
     { group: 'Cabling & Wiring', items: [
         { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450 },
@@ -167,11 +169,11 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetContent className="sm:max-w-4xl w-full bg-bg-elevated border-border-default overflow-y-auto">
                 <SheetHeader className="pb-4 border-b border-border-sub">
-                    <SheetTitle className="flex items-center gap-2 text-lg uppercase font-bold tracking-widest">
+                    <SheetTitle className="flex items-center gap-2 text-lg uppercase font-bold tracking-widest text-left">
                         <FileText size={20} className="text-brand-red"/>
                         {invoice ? 'Modify Invoice Registry' : 'Initialize New Invoice'}
                     </SheetTitle>
-                    <SheetDescription className="text-xs uppercase font-bold text-text-muted tracking-widest">
+                    <SheetDescription className="text-xs uppercase font-bold text-text-muted tracking-widest text-left">
                         {invoice ? `Audit of Registry #${invoice.invoiceNumber}` : 'Populate parameters for client settlement.'}
                     </SheetDescription>
                 </SheetHeader>
@@ -179,14 +181,14 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 <div className="py-6 space-y-8">
                     <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6">
                         <div className="grid grid-cols-2 gap-6">
-                             <div className="space-y-2">
+                             <div className="space-y-2 text-left">
                                 <Label htmlFor="clientId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Client Entity</Label>
                                 <Select value={invoiceData.clientId} onValueChange={(val) => handleSelectChange('clientId', val)}>
                                     <SelectTrigger id="clientId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Select target client..." /></SelectTrigger>
                                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.clientCompany || c.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label htmlFor="relatedId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Reference Object (Proj/WO)</Label>
                                 <Select value={invoiceData.projectId || invoiceData.workOrderId} onValueChange={(val) => handleSelectChange('relatedId', val)}>
                                     <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link to existing mission..." /></SelectTrigger>
@@ -204,15 +206,15 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             </div>
                         </div>
                          <div className="grid grid-cols-3 gap-6">
-                             <div className="space-y-2">
+                             <div className="space-y-2 text-left">
                                 <Label htmlFor="invoiceNumber" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Invoice Identifier</Label>
                                 <Input id="invoiceNumber" name="invoiceNumber" value={invoiceData.invoiceNumber || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary font-mono text-xs uppercase font-bold" />
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 text-left">
                                 <Label htmlFor="issueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Issue Date</Label>
                                 <Input id="issueDate" name="issueDate" type="date" value={invoiceData.issueDate || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary text-xs" />
                             </div>
-                             <div className="space-y-2">
+                             <div className="space-y-2 text-left">
                                 <Label htmlFor="dueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Due Date</Label>
                                 <Input id="dueDate" name="dueDate" type="date" value={invoiceData.dueDate || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary text-xs" />
                             </div>
@@ -257,7 +259,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 pt-4">
-                         <div className="space-y-2">
+                         <div className="space-y-2 text-left">
                             <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Internal / Client Notes</Label>
                             <Textarea id="notes" name="notes" placeholder="Terms and conditions, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[120px] bg-bg-primary text-xs leading-relaxed"/>
                         </div>

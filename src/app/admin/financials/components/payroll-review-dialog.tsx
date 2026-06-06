@@ -110,19 +110,7 @@ function ImportedJobAudit({
                             type="number"
                             value={laborPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono font-bold border-none shadow-none focus-visible:ring-0" 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
-                            type="number"
-                            value={overhead}
-                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono font-bold border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
                 </div>
@@ -134,7 +122,19 @@ function ImportedJobAudit({
                             type="number"
                             value={reimbursement}
                             onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
+                    <div className="relative text-left">
+                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={overhead}
+                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
+                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
                 </div>
@@ -150,12 +150,12 @@ function ImportedJobAudit({
                     <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-brand-red uppercase text-left">Aaromach</p>
-                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-left">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[5px] font-black text-text-green uppercase text-right">Tech Payout</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-right">${techPayout.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
+                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -319,7 +319,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     return (
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl">
+                <DialogContent className="lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl text-left">
                     <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">

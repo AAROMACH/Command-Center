@@ -33,7 +33,10 @@ import {
   History,
   RefreshCw,
   Pencil,
-  ChevronDown
+  ChevronDown,
+  User,
+  RotateCcw,
+  Settings
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -287,7 +290,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <SectionLabel>Personnel Allocation</SectionLabel>
+                        <SectionLabel>Personnel Allocation History</SectionLabel>
                         <div className="space-y-4">
                           {leadTech ? (
                               <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
@@ -308,7 +311,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
                           {techHistory.length > 0 && (
                             <div className="space-y-2 pt-2 border-t border-border-sub/30">
-                              <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 text-left">Allocation History</p>
+                              <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 text-left">Registry Staffing Events</p>
                               <div className="space-y-2">
                                 {techHistory.map((h, i) => (
                                   <div key={i} className="flex gap-3 text-left">
@@ -339,49 +342,39 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <TabsContent value="LEDGER" className="m-0 space-y-6 animate-in fade-in duration-300">
                 <SectionLabel>Operational Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
-                    <TimelineEntry 
-                        dot="blue"
-                        time="APR 9 · 2:30 PM"
-                        title="Assignment dispatched"
-                        note="Work order created and pushed to Field Terminal."
-                        by="ADMIN — COMMAND CENTER"
-                    />
-                    <TimelineEntry 
-                        dot="gold"
-                        time="APR 10 · 9:52 AM"
-                        title="Acknowledgment received"
-                        note="Technician confirmed receipt of assignment via Field Terminal."
-                        by="FIELD TECH — FIELD TERMINAL"
-                    />
-                    <TimelineEntry 
-                        dot="gold"
-                        time="APR 10 · 10:03 AM"
-                        title="En route — status update"
-                        note="Technician set status to On My Way. GPS ping recorded."
-                        by="FIELD TECH — FIELD TERMINAL"
-                    />
-                    <TimelineEntry 
-                        dot="green"
-                        time="APR 10 · 10:18 AM"
-                        title="Check-in — on site"
-                        note="Technician checked in at job location. GPS coordinates verified."
-                        by="FIELD TECH — FIELD TERMINAL"
-                    />
-                    <TimelineEntry 
-                        dot="green"
-                        time="APR 10 · 12:21 PM"
-                        title="Check-out — work complete"
-                        note="2h 03m on-site. Outcome: Worked — Completed. No revisit required."
-                        by="FIELD TECH — FIELD TERMINAL"
-                    />
-                    <TimelineEntry 
-                        dot="blue"
-                        time="APR 10 · 12:25 PM"
-                        title="Registry locked — assignment closed"
-                        note={`Assignment finalized. Payout of $${mission.pay.toFixed(2)} queued for payroll processing.`}
-                        by="SYSTEM — AUTO"
-                        isLast
-                    />
+                    {mission.history && mission.history.length > 0 ? (
+                      mission.history.slice().reverse().map((entry, idx) => {
+                        const isLast = idx === (mission.history?.length || 0) - 1;
+                        let dot: 'blue' | 'gold' | 'green' | 'red' | 'gray' = 'gray';
+                        
+                        const type = entry.type;
+                        const details = entry.details.toLowerCase();
+
+                        if (details.includes('complete') || details.includes('finalized')) dot = 'green';
+                        else if (details.includes('check') || details.includes('arrival')) dot = 'green';
+                        else if (details.includes('route') || details.includes('start trip')) dot = 'gold';
+                        else if (details.includes('confirm')) dot = 'blue';
+                        else if (type === 'revisit') dot = 'red';
+                        else if (type.includes('tech')) dot = 'blue';
+
+                        return (
+                          <TimelineEntry 
+                            key={idx}
+                            dot={dot}
+                            time={entry.date}
+                            title={type.replace(/_/g, ' ')}
+                            note={entry.details}
+                            by={entry.user}
+                            isLast={isLast}
+                          />
+                        );
+                      })
+                    ) : (
+                      <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
+                        <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-center italic">No operational events logged in registry</p>
+                      </div>
+                    )}
                 </div>
             </TabsContent>
 
@@ -465,7 +458,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         <div className="shrink-0 px-8 py-6 border-t border-border-sub bg-bg-tertiary/30 flex items-center justify-between">
            <div className="flex items-center gap-3 text-text-muted opacity-40">
                 <Lock size={12}/>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Terminal Locked</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                  {isLocked ? 'Terminal Locked' : 'Terminal Active'}
+                </span>
            </div>
            <Button 
                 onClick={() => setIsOpen(false)}

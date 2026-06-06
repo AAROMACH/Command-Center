@@ -19,7 +19,8 @@ import {
   Mail,
   MessageSquare,
   Users,
-  MapPin
+  MapPin,
+  Banknote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addDays } from 'date-fns';
@@ -34,7 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
-import type { WorkOrder, Project, ServiceRequest, WeeklyLog, ReliabilityEvent, TimeOffRequest, SiteRequest } from '@/lib/types';
+import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice } from '@/lib/types';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -60,6 +61,7 @@ export function AlertBand() {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -88,6 +90,9 @@ export function AlertBand() {
     const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
+    const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+      setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+    });
 
     const storedId = localStorage.getItem('currentUserId');
     if (storedId) {
@@ -95,12 +100,12 @@ export function AlertBand() {
         if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
       });
       return () => {
-        unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubUser();
+        unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubInv(); unsubUser();
       };
     }
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite();
+      unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubInv();
     };
   }, []);
 
@@ -166,6 +171,7 @@ export function AlertBand() {
       if (company) {
         const activeProjectsCount = projects.filter(p => p.client === company && p.status === 'active').length;
         const pendingRequestsCount = serviceRequests.filter(r => r.clientName === company && r.status === 'new').length;
+        const pendingInvoicesCount = invoices.filter(inv => inv.clientName === company && (inv.status === 'sent' || inv.status === 'overdue')).length;
 
         if (activeProjectsCount > 0) {
           currentAlerts.push({
@@ -188,6 +194,18 @@ export function AlertBand() {
             icon: ClipboardList,
             actionPath: '/client/tickets?tab=requested',
             actionLabel: 'View Tickets'
+          });
+        }
+
+        if (pendingInvoicesCount > 0) {
+          currentAlerts.push({
+            id: 'client-invoices',
+            type: 'critical',
+            text: `${pendingInvoicesCount} pending invoice${pendingInvoicesCount > 1 ? 's' : ''}`,
+            description: `You have ${pendingInvoicesCount} outstanding invoice(s) awaiting settlement. Review details in the Billing Terminal.`,
+            icon: Banknote,
+            actionPath: '/client/financials',
+            actionLabel: 'View Billing'
           });
         }
       }
@@ -247,7 +265,7 @@ export function AlertBand() {
     }
 
     return currentAlerts;
-  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests]);
+  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests, invoices]);
 
   const handleAlertClick = (alert: Alert) => {
     setSelectedAlert(alert);

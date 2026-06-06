@@ -19,7 +19,7 @@ import {
     ClipboardList,
     Send,
     ExternalLink,
-    Sparkles,
+    Zap,
     Loader2,
     ShieldCheck,
     Clock,
@@ -226,7 +226,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const [isAddJobsOpen, setIsAddJobsOpen] = useState(false);
     const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
     const [jobSearch, setJobSearch] = useState("");
-    const [isAiOptimizing, setIsAiOptimizing] = useState(false);
+    const [isOptimizing, setIsOptimizing] = useState(false);
     const [targetRouteCount, setTargetRouteCount] = useState("3");
     
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
@@ -300,14 +300,14 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         ));
     };
 
-    const handleAiOptimization = async () => {
+    const handleTacticalOptimization = async () => {
         const unassigned = allWorkOrders.filter(wo => !wo.routeId && wo.status === 'unassigned');
         if (unassigned.length === 0) {
             toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
             return;
         }
 
-        setIsAiOptimizing(true);
+        setIsOptimizing(true);
         try {
             const availableTechs = technicians.filter(t => 
                 !t.roles?.includes('client') && 
@@ -316,37 +316,23 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             );
 
             const result = await getOptimizedRoutes({
-                unassignedJobs: unassigned.map(j => ({
-                    id: j.id,
-                    description: j.description,
-                    location: j.location,
-                    scheduleDate: j.scheduleDate,
-                    scheduleTime: j.scheduleTime,
-                    priority: j.priority,
-                    requiredSkills: j.requiredSkills || []
-                })),
-                availableTechnicians: availableTechs.map(t => ({
-                    id: t.id,
-                    name: t.name,
-                    currentLocation: t.address || t.currentLocation || '',
-                    reliabilityScore: t.reliabilityScore,
-                    skills: t.skills || []
-                })),
+                unassignedJobs: unassigned,
+                availableTechnicians: availableTechs,
                 targetRouteCount: parseInt(targetRouteCount)
             });
 
             if (result.warnings && result.warnings.length > 0) {
                 toast({ 
                     variant: result.routes.length > 0 ? "default" : "destructive", 
-                    title: "Terminal Dispatch Alert", 
+                    title: "Optimization Alert", 
                     description: result.warnings[0] 
                 });
             }
 
             if (result.routes && result.routes.length > 0) {
                 const newRoutes: Route[] = result.routes.map((p, idx) => ({
-                    id: p.routeId || `route-ai-${Date.now()}-${idx}`,
-                    name: p.estimatedRouteLabel || `AI Route: ${p.technicianName}`,
+                    id: p.routeId || `route-tactical-${Date.now()}-${idx}`,
+                    name: p.estimatedRouteLabel || `Cluster: ${p.technicianName}`,
                     technicianName: p.technicianName,
                     workOrderIds: p.jobIds
                 }));
@@ -363,14 +349,14 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 onWorkOrdersChange(updatedWorkOrders);
                 
                 toast({
-                    title: "Intelligence Applied",
-                    description: `Successfully architected ${newRoutes.length} optimized field routes.`,
+                    title: "Tactical Layout Applied",
+                    description: `Successfully architected ${newRoutes.length} optimized field routes based on city anchors and operative bases.`,
                 });
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Optimization Failure", description: "Auto Dispatch is temporarily unavailable. Please use Manual Dispatch." });
+            toast({ variant: "destructive", title: "Optimization Failure", description: "Internal routing engine encountered a registry error. Please use Manual Dispatch." });
         } finally {
-            setIsAiOptimizing(false);
+            setIsOptimizing(false);
         }
     };
 
@@ -454,7 +440,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 <div className="flex items-center gap-6 w-full xl:w-auto">
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                         <Layers size={14} className="text-brand-red" />
-                        Batch Optimization
+                        Tactical Optimization
                     </h3>
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <ClipboardList size={12} className="text-accent-gold" />
@@ -477,11 +463,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         </Select>
                     </div>
                     <Button 
-                        onClick={handleAiOptimization} 
-                        disabled={isAiOptimizing || unassignedJobs.length === 0}
-                        className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.2)]"
+                        onClick={handleTacticalOptimization} 
+                        disabled={isOptimizing || unassignedJobs.length === 0}
+                        className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.1)]"
                     >
-                        {isAiOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Sparkles size={14} className="mr-2" />}
+                        {isOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Zap size={14} className="mr-2" />}
                         Optimize ({targetRouteCount} Routes)
                     </Button>
                     <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
@@ -530,7 +516,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     {routes.length === 0 && (
                         <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Layers size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active formations. Establish a new route or run AI optimization to begin grouping jobs.</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active formations. Establish a new route or execute tactical optimization to begin grouping jobs.</p>
                         </div>
                     )}
                 </div>

@@ -36,6 +36,7 @@ import {
   UserPlus,
   DollarSign,
   User,
+  Users,
   Search,
   Building2,
   Check,
@@ -56,14 +57,15 @@ import {
   Lock,
   CheckCircle2,
   Wrench,
-  Target
+  Target,
+  Loader2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCityState } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
-import { getReliabilityTier, getTierBadgeVariant } from "@/lib/reliability";
+import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
@@ -259,12 +261,12 @@ export const WorkOrdersTable = React.memo(({
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
-    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
+    const payChanged = (editedOrder.pay || 0) !== (selectedJob.pay || 0) || editedOrder.payType !== selectedJob.payType;
     const payAdmin = isPayAdmin(currentUser);
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedOrder.pay;
-      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.pay = selectedJob.pay;
+      finalUpdate.payType = selectedJob.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -349,7 +351,7 @@ export const WorkOrdersTable = React.memo(({
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
                       <div className="flex items-center gap-1.5">
-                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{displayId.toUpperCase()}</div>
+                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{(displayId || '').toUpperCase()}</div>
                         {order.source === 'Imported' && (
                           <a href={getFieldNationLink(order)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                             <ExternalLink size={10} />

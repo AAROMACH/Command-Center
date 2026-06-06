@@ -223,6 +223,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
     const [jobSearch, setJobSearch] = useState("");
     const [isAiOptimizing, setIsAiOptimizing] = useState(false);
+    const [targetRouteCount, setTargetRouteCount] = useState("3");
     
     const { toast } = useToast();
 
@@ -309,7 +310,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     currentLocation: t.address || t.currentLocation,
                     reliabilityScore: t.reliabilityScore,
                     skills: t.skills || []
-                }))
+                })),
+                targetRouteCount: parseInt(targetRouteCount)
             });
 
             // Create new routes from AI proposals
@@ -426,14 +428,27 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         <span className="text-xs font-mono font-bold text-text-primary">{unassignedJobs.length}</span>
                     </div>
                 </div>
-                <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
+                <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-end">
+                    <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub">
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Route Quantity:</p>
+                        <Select value={targetRouteCount} onValueChange={setTargetRouteCount}>
+                            <SelectTrigger className="w-16 h-7 bg-bg-secondary text-[10px] font-mono font-bold border-none shadow-none focus:ring-0">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                                {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                                    <SelectItem key={n} value={n.toString()} className="text-[10px] font-mono font-bold">{n}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <Button 
                         onClick={handleAiOptimization} 
                         disabled={isAiOptimizing || unassignedJobs.length === 0}
                         className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.2)]"
                     >
                         {isAiOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Sparkles size={14} className="mr-2" />}
-                        Optimize with AI Routing
+                        Optimize ({targetRouteCount} Routes)
                     </Button>
                     <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
                     <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">

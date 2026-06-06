@@ -28,6 +28,7 @@ const AdminRouteOptimizationInputSchema = z.object({
     reliabilityScore: z.number().min(0).max(100),
     skills: z.array(z.string()),
   })).describe('Registry of field operatives available for deployment.'),
+  targetRouteCount: z.number().min(1).max(20).describe('The specific number of routes the dispatcher wants to create.'),
 });
 export type AdminRouteOptimizationInput = z.infer<typeof AdminRouteOptimizationInputSchema>;
 
@@ -53,12 +54,13 @@ const optimizeRoutesPrompt = ai.definePrompt({
   name: 'optimizeRoutesPrompt',
   input: { schema: AdminRouteOptimizationInputSchema },
   output: { schema: AdminRouteOptimizationOutputSchema },
-  prompt: `You are a high-level tactical routing engine for an operations command center. Your mission is to organize a pool of unassigned field jobs into optimized routes for our operatives.
+  prompt: `You are a high-level tactical routing engine for an operations command center. Your mission is to organize a pool of unassigned field jobs into exactly {{{targetRouteCount}}} optimized routes for our operatives.
 
 TACTICAL PRIORITIES:
-1. GEOGRAPHIC CLUSTERING: Group jobs by physical proximity to minimize travel time and operational overhead.
-2. TEMPORAL SEQUENCING: Order jobs logically based on their schedule times and priorities.
-3. OPERATIVE FIT: Match the most critical or difficult jobs to technicians with high Reliability Index scores and matching Skills.
+1. ROUTE VOLUME: You MUST generate exactly {{{targetRouteCount}}} routes if possible. If there are fewer jobs than routes, prioritize one job per route.
+2. GEOGRAPHIC CLUSTERING: Group jobs by physical proximity to minimize travel time and operational overhead.
+3. TEMPORAL SEQUENCING: Order jobs logically based on their schedule times and priorities.
+4. OPERATIVE FIT: Match the most critical or difficult jobs to technicians with high Reliability Index scores and matching Skills.
 
 Mission Pool:
 {{#each unassignedJobs}}

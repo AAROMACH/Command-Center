@@ -19,7 +19,11 @@ export async function getOptimizedRoutes(
       throw new Error("Operative Registry Empty: No available field staff for allocation.");
     }
 
-    console.log(`AI Route Optimization Initiated: Analyzing ${input.unassignedJobs.length} jobs vs ${input.availableTechnicians.length} operatives.`);
+    if (!input.targetRouteCount || input.targetRouteCount < 1) {
+      throw new Error("Logistical Error: Route quantity must be at least 1.");
+    }
+
+    console.log(`AI Route Optimization Initiated: Analyzing ${input.unassignedJobs.length} jobs into ${input.targetRouteCount} routes.`);
     
     const result = await optimizeRoutes(input);
     
@@ -34,7 +38,8 @@ export async function getOptimizedRoutes(
         message: error.message,
         params: { 
             jobCount: input.unassignedJobs?.length, 
-            techCount: input.availableTechnicians?.length 
+            techCount: input.availableTechnicians?.length,
+            targetCount: input.targetRouteCount
         }
     });
 

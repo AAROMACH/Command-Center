@@ -27,10 +27,24 @@ import {
     SearchCode
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -297,7 +311,7 @@ export default function ClientTicketsPage() {
             <Dialog open={isNewTicketOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsNewTicketOpen(open); }}>
                 <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 text-left">
                             <Plus className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
                         </div>
@@ -470,7 +484,7 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
                     <CardContent className="min-h-24 p-5 flex items-center justify-between text-left">
                         <div className="text-left space-y-1 flex-1">
                             <div className="flex items-center gap-2 text-left">
-                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{ticket.id.toUpperCase()}</span>
+                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{(ticket.id || '').toUpperCase()}</span>
                                 <Badge variant={ticket.priority === 'critical' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{ticket.priority}</Badge>
                             </div>
                             <h3 className="text-sm font-bold text-text-primary uppercase truncate max-w-[400px] text-left">{ticket.description}</h3>

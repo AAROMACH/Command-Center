@@ -1,12 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder, Technician, AssignmentTimeLog, WeeklyLog } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
-import { 
-  Dialog, 
-  DialogContent, 
+import {
+  Dialog,
+  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -18,35 +15,145 @@ import {
   TabsContent 
 } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { 
-  Clock, 
-  MapPin, 
-  Calendar,
+import { Button } from '@/components/ui/button';
+import { cn, formatCityState } from '@/lib/utils';
+import {
   X,
-  ShieldCheck,
-  Download,
-  Info,
-  ExternalLink,
+  MapPin,
+  Calendar,
+  Clock,
   Lock,
+  ExternalLink,
+  ChevronRight,
   Check,
+  AlertTriangle,
+  DollarSign,
   Users,
   FileText,
   Activity,
-  CheckCircle2,
+  ShieldCheck,
+  ArrowRight,
+  RotateCcw,
+  Minus,
+  Plus,
+  Info,
   History,
-  RefreshCw,
-  User,
   Navigation,
-  Timer,
-  FolderOpen
+  RefreshCw
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn, formatCityState } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  limit,
+} from 'firebase/firestore';
+import type { WorkOrder, Assignment, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const TABS = ['Overview', 'Scope', 'Activity Ledger', 'Admin Review'] as const;
+type Tab = typeof TABS[number];
+
+const FIELD_NATION_BASE = 'https://app.fieldnation.com/workorders/';
+
+const getFieldNationUrl = (workOrder: WorkOrder) => {
+  const id = workOrder.externalWorkOrderId || workOrder.id.replace(/^(wo-|asmt-)/, '');
+  return `${FIELD_NATION_BASE}${id}`;
+};
+
+const PAY_TYPE_LABELS: Record<string, string> = {
+  fixed:   'Fixed Rate',
+  hourly:  'Hourly Labor Rate',
+  blended: 'Blended Rate',
+};
+
+const OUTCOME_LABELS: Record<string, string> = {
+  worked_completed:               'Completed',
+  worked_revisit_same_work_order: 'Revisit Required',
+  worked_revisit_new_work_order:  'New Work Order Needed',
+  did_not_work:                   'No Work Performed',
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  completed:    'text-text-green border-green-border/40 bg-green-dim',
+  'checked-out':'text-text-green border-green-border/40 bg-green-dim',
+  'in-progress':'text-accent-gold border-accent-gold/30 bg-accent-gold-dim',
+  'on-my-way':  'text-accent-gold border-accent-gold/30 bg-accent-gold-dim',
+  assigned:     'text-text-muted border-border-sub bg-bg-tertiary',
+  confirmed:    'text-brand-cyan border-brand-cyan/30 bg-brand-cyan/5',
+  unassigned:   'text-text-muted border-border-sub bg-bg-tertiary',
+};
+
+const displayTime = (timeStr?: string) => {
+    if (!timeStr) return 'TBD';
+    try {
+        const [h, m] = timeStr.split(':');
+        const d = new Date();
+        d.setHours(parseInt(h), parseInt(m), 0);
+        return format(d, 'h:mm a');
+    } catch (e) {
+        return timeStr;
+    }
+};
+
+// ─── Pay calculation helpers ─────────────────────────────────────────────────
+
+function calcPayout(wo: WorkOrder, hoursWorked?: number): {
+  label: string;
+  amount: number;
+  lines: { label: string; value: string }[];
+} {
+  const type = wo.payType || 'fixed';
+
+  if (type === 'fixed') {
+    return {
+      label: 'Fixed Rate',
+      amount: wo.pay || 0,
+      lines: [{ label: 'Fixed Amount', value: `$${(wo.pay || 0).toFixed(2)}` }],
+    };
+  }
+
+  if (type === 'hourly') {
+    const hrs = hoursWorked ?? 0;
+    const rate = wo.pay || 0;
+    return {
+      label: 'Hourly Labor Rate',
+      amount: hrs * rate,
+      lines: [
+        { label: 'Rate',  value: `$${rate.toFixed(2)}/hr` },
+        { label: 'Hours', value: hrs.toFixed(2) },
+        { label: 'Total', value: `$${(hrs * rate).toFixed(2)}` },
+      ],
+    };
+  }
+
+  if (type === 'blended') {
+    const base     = wo.blendedFixedPay    || 0;
+    const baseHrs  = wo.blendedIncludedHours  || 0;
+    const ovRate   = wo.blendedHourlyRate || 0;
+    const hrs      = hoursWorked ?? 0;
+    const ovHrs    = Math.max(0, hrs - baseHrs);
+    const total    = base + ovHrs * ovRate;
+    return {
+      label: 'Blended Rate',
+      amount: total,
+      lines: [
+        { label: 'Base Pay',    value: `$${base.toFixed(2)} (${baseHrs}h)` },
+        { label: 'OT Rate',     value: `$${ovRate.toFixed(2)}/hr` },
+        { label: 'OT Hours',    value: ovHrs.toFixed(2) },
+        { label: 'Total',       value: `$${total.toFixed(2)}` },
+      ],
+    };
+  }
+
+  return { label: 'Unknown', amount: 0, lines: [] };
+}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -66,6 +173,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         {children}
       </p>
       <div className="flex-1 h-px bg-border-sub/30" />
+    </div>
+  );
+}
+
+function InfoGrid({ items }: { items: { label: string; value: React.ReactNode }[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 mb-5">
+      {items.map(({ label, value }) => (
+        <div key={label} className="bg-bg-tertiary border border-border-sub rounded-xl p-3 text-left">
+          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.16em] mb-1">{label}</p>
+          <p className="text-[12px] font-bold text-text-primary uppercase">{value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -115,23 +235,6 @@ function TimelineEntry({
   );
 }
 
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
-
-const displayTime = (timeStr?: string) => {
-    if (!timeStr) return 'TBD';
-    try {
-        const [h, m] = timeStr.split(':');
-        const d = new Date();
-        d.setHours(parseInt(h), parseInt(m), 0);
-        return format(d, 'h:mm a');
-    } catch (e) {
-        return timeStr;
-    }
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type JobDetailDialogProps = {
@@ -143,7 +246,7 @@ type JobDetailDialogProps = {
 };
 
 export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogProps) {
-  const [activeTab, setActiveTab] = useState<'SOW' | 'LEDGER' | 'REVIEW'>('SOW');
+  const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [adminData, setAdminData] = useState<{
     weeklyLog: WeeklyLog | null;
     sessionLogs: AssignmentTimeLog[];
@@ -163,7 +266,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   useEffect(() => {
     if (!isOpen || !mission) return;
-    if (activeTab !== 'REVIEW') return;
+    if (activeTab !== 'Admin Review') return;
 
     setLoadingAdmin(true);
     const woId = mission.id;
@@ -171,7 +274,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     Promise.all([
       getDocs(query(collection(db, 'weeklyLogs'), where('items', 'array-contains', { workOrderId: woId }))),
     ]).then(([logSnap]) => {
-      // Filter mock/static logs for this mission
       const linkedSessionLogs = assignmentTimeLogs.filter(l => l.workOrderId === woId);
       
       setAdminData({
@@ -187,7 +289,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     const baseHistory = mission.history || [];
     const entries = [...baseHistory];
 
-    // Prepend Creation Event if not present
     if (!entries.some(e => e.type === 'note' && e.details.toLowerCase().includes('created'))) {
         entries.unshift({
             type: 'note',
@@ -204,6 +305,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   const isLocked = mission.status === 'completed';
   const leadTech = technicians.find(t => t.id === mission.assignedTechnicianId);
+  const payout = calcPayout(mission);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -250,22 +352,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </div>
 
           <div className="flex gap-2 border-b border-border-sub/30">
-            {[
-              { id: 'SOW', label: 'SOW & Requirements' },
-              { id: 'LEDGER', label: 'Activity Ledger' },
-              { id: 'REVIEW', label: 'Admin Review' },
-            ].map(tab => (
+            {TABS.map(tab => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 className={cn(
                   'text-[10px] font-black uppercase tracking-widest px-6 py-3 border border-b-0 border-transparent rounded-t-lg transition-all',
-                  activeTab === tab.id
+                  activeTab === tab
                     ? 'bg-bg-secondary border-border-sub text-text-primary'
                     : 'text-text-muted hover:text-text-secondary hover:bg-bg-secondary/30'
                 )}
               >
-                {tab.label}
+                {tab}
               </button>
             ))}
           </div>
@@ -275,47 +373,20 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         <div className="flex-1 overflow-y-auto px-8 py-6">
           <Tabs value={activeTab} className="w-full h-full">
             
-            {/* ══ SOW ════════════════════════════════════════════════════ */}
-            <TabsContent value="SOW" className="m-0 space-y-8 animate-in fade-in duration-300">
-                <div className="text-left">
-                    <div className="flex justify-between items-center mb-4">
-                        <SectionLabel>Operational Briefing</SectionLabel>
-                        {mission.source === 'Imported' && (
-                            <a 
-                                href={getFieldNationLink(mission.id)} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline flex items-center gap-1"
-                            >
-                                <ExternalLink size={10} /> Link to Registry
-                            </a>
-                        )}
-                    </div>
-                    <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed uppercase font-medium italic shadow-inner text-left">
-                        &quot;{mission.description}&quot;
-                    </div>
-                </div>
-
+            {/* ══ Overview ════════════════════════════════════════════════════ */}
+            <TabsContent value="Overview" className="m-0 space-y-8 animate-in fade-in duration-300">
                 <div className="grid grid-cols-2 gap-8 text-left">
                     <div className="space-y-4">
                         <SectionLabel>Assignment Logic</SectionLabel>
-                        <div className="grid grid-cols-1 gap-2">
-                             <div className="flex justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                <span className="text-[9px] font-black text-text-muted uppercase">Priority</span>
-                                <Badge variant={mission.priority === 'critical' || mission.priority === 'high' ? 'high' : 'outline'} className="h-4 px-2 text-[8px] uppercase">{mission.priority}</Badge>
-                             </div>
-                             <div className="flex justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                <span className="text-[9px] font-black text-text-muted uppercase">Job Type</span>
-                                <span className="text-[10px] font-bold text-text-primary uppercase">{mission.projectType}</span>
-                             </div>
-                             <div className="flex justify-between p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                <span className="text-[9px] font-black text-text-muted uppercase">Settlement</span>
-                                <span className="text-[10px] font-mono font-bold text-text-green">${mission.pay.toFixed(2)} {PAY_TYPE_LABELS[mission.payType as keyof typeof PAY_TYPE_LABELS]}</span>
-                             </div>
-                        </div>
+                        <InfoGrid items={[
+                            { label: 'Job Type', value: mission.projectType || '—' },
+                            { label: 'Priority', value: mission.priority },
+                            { label: 'Settlement', value: `${PAY_TYPE_LABELS[mission.payType || 'fixed']}` },
+                            { label: 'Registry', value: mission.source || 'Manual' },
+                        ]} />
                     </div>
                     <div className="space-y-4">
-                        <SectionLabel>Personnel Allocation</SectionLabel>
+                        <SectionLabel>Lead Allocation</SectionLabel>
                         <div className="space-y-4">
                           {leadTech ? (
                               <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
@@ -344,8 +415,43 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
             </TabsContent>
 
-            {/* ══ LEDGER ═════════════════════════════════════════════════ */}
-            <TabsContent value="LEDGER" className="m-0 space-y-6 animate-in fade-in duration-300">
+            {/* ══ Scope ════════════════════════════════════════════════════ */}
+            <TabsContent value="Scope" className="m-0 space-y-8 animate-in fade-in duration-300">
+                <div className="text-left">
+                    <div className="flex justify-between items-center mb-4">
+                        <SectionLabel>Operational Briefing</SectionLabel>
+                        {mission.source === 'Imported' && (
+                            <a 
+                                href={getFieldNationUrl(mission)} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline flex items-center gap-1"
+                            >
+                                <ExternalLink size={10} /> Link to Registry
+                            </a>
+                        )}
+                    </div>
+                    <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed uppercase font-medium italic shadow-inner text-left">
+                        &quot;{mission.description}&quot;
+                    </div>
+                </div>
+
+                {Array.isArray(mission.requiredSkills) && mission.requiredSkills.length > 0 && (
+                  <div className="text-left">
+                    <SectionLabel>Requirement Assets</SectionLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {mission.requiredSkills.map((skill, idx) => (
+                        <Badge key={idx} variant="outline" className="bg-bg-secondary text-[9px] uppercase tracking-widest px-3 py-1">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </TabsContent>
+
+            {/* ══ Activity Ledger ═════════════════════════════════════════════════ */}
+            <TabsContent value="Activity Ledger" className="m-0 space-y-6 animate-in fade-in duration-300">
                 <SectionLabel>Operational Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
                     {timeline.length > 0 ? (
@@ -353,22 +459,20 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         const isLast = idx === timeline.length - 1;
                         let dot: 'blue' | 'gold' | 'green' | 'red' | 'gray' = 'gray';
                         
-                        const type = entry.type;
                         const details = entry.details.toLowerCase();
 
                         if (details.includes('complete') || details.includes('finalized')) dot = 'green';
                         else if (details.includes('check') || details.includes('arrival')) dot = 'green';
                         else if (details.includes('route') || details.includes('start trip')) dot = 'gold';
                         else if (details.includes('confirm')) dot = 'blue';
-                        else if (type === 'revisit') dot = 'red';
-                        else if (type.includes('tech')) dot = 'blue';
+                        else if (entry.type === 'revisit') dot = 'red';
 
                         return (
                           <TimelineEntry 
                             key={idx}
                             dot={dot}
                             time={entry.date}
-                            title={type.replace(/_/g, ' ')}
+                            title={entry.type.replace(/_/g, ' ')}
                             note={entry.details}
                             by={entry.user}
                             isLast={isLast}
@@ -384,8 +488,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
             </TabsContent>
 
-            {/* ══ REVIEW ═════════════════════════════════════════════════ */}
-            <TabsContent value="REVIEW" className="m-0 space-y-8 animate-in fade-in duration-300">
+            {/* ══ Admin Review ═════════════════════════════════════════════════ */}
+            <TabsContent value="Admin Review" className="m-0 space-y-8 animate-in fade-in duration-300">
                 {loadingAdmin ? (
                     <div className="py-24 text-center space-y-4">
                         <RefreshCw className="h-10 w-10 animate-spin mx-auto text-brand-red opacity-30" />

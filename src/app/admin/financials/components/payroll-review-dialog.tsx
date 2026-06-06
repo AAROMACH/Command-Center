@@ -96,62 +96,62 @@ function ImportedJobAudit({
     };
 
     return (
-        <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg text-left">
-             <div className="grid grid-cols-3 gap-2 text-left">
-                <div className="space-y-0.5 text-left">
-                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Pay (Gross)</Label>
+        <div className="flex flex-col gap-1 p-1 bg-bg-primary border border-border-sub rounded-lg text-left min-w-[300px]">
+             <div className="grid grid-cols-3 gap-1 text-left">
+                <div className="space-y-0 text-left">
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Gross Pay</Label>
                     <div className="relative text-left">
-                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <DollarSign size={10} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={totalPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
-                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono font-bold" 
+                            className="h-5 w-full text-[9px] pl-4 p-0.5 bg-bg-secondary font-mono font-bold" 
                         />
                     </div>
                 </div>
-                <div className="space-y-0.5 text-left">
-                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimbursement</Label>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimb.</Label>
                     <div className="relative text-left">
-                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <DollarSign size={10} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={reimbursement}
                             onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                            className="h-5 w-full text-[9px] pl-4 p-0.5 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>
-                <div className="space-y-0.5 text-left">
+                <div className="space-y-0 text-left">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Overhead</Label>
                     <div className="relative text-left">
-                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <DollarSign size={10} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={overhead}
                             onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
-                            className="h-6 w-full text-[10px] pl-5 p-1 bg-bg-secondary font-mono" 
+                            className="h-5 w-full text-[9px] pl-4 p-0.5 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-border-sub/30 text-left">
+             <div className="grid grid-cols-4 gap-1 pt-1 border-t border-border-sub/30 text-left">
                 <div className="space-y-0">
-                    <p className="text-[7px] font-black text-text-muted uppercase">Additional Net</p>
-                    <p className="text-[9px] font-mono font-bold text-text-primary leading-none">${additionalNet.toFixed(2)}</p>
+                    <p className="text-[6px] font-black text-text-muted uppercase">Add. Net</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none">${additionalNet.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0">
-                    <p className="text-[7px] font-black text-text-muted uppercase">Labor Net</p>
-                    <p className="text-[9px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
+                    <p className="text-[6px] font-black text-text-muted uppercase">Labor Net</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0">
-                    <p className="text-[7px] font-black text-text-green uppercase">Tech Payout</p>
-                    <p className="text-[9px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
+                    <p className="text-[6px] font-black text-text-green uppercase">Tech Payout</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[7px] font-black text-brand-red uppercase">Aaromach Pay</p>
-                    <p className="text-[9px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[6px] font-black text-brand-red uppercase">Aaromach</p>
+                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -413,6 +413,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const wo = findWorkOrder(item.workOrderId);
                                             const isImported = wo?.source === 'Imported';
                                             const isAudited = item.isAdminReviewed;
+                                            
+                                            // Title sanitization: only descriptive title
+                                            const displayTitle = wo?.title || wo?.description?.split('\n')[1] || wo?.description || 'Mission identifier lookup pending...';
+
                                             return (
                                                 <div key={item.id} className={cn(
                                                     "p-3 rounded-xl border transition-all flex items-center justify-between group",
@@ -443,7 +447,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.title || wo?.description || 'Mission identifier lookup pending...'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
@@ -465,7 +469,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="ml-4 shrink-0 min-w-[350px]">
+                                                    <div className="ml-4 shrink-0 min-w-[320px]">
                                                         {isImported && wo ? (
                                                             <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
                                                         ) : (
@@ -505,6 +509,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = item.isAdminReviewed;
                                         const isImported = wo?.source === 'Imported';
+                                        
+                                        // Title sanitization
+                                        const displayTitle = wo?.title || wo?.description?.split('\n')[1] || wo?.description || 'Mission identifier lookup pending...';
+
                                         return (
                                             <div key={item.id} className={cn(
                                                 "p-3 rounded-xl border transition-all flex flex-col gap-3 group",
@@ -536,7 +544,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.title || wo?.description || 'Mission identifier lookup pending...'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
@@ -558,7 +566,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="ml-4 shrink-0 min-w-[350px]">
+                                                    <div className="ml-4 shrink-0 min-w-[320px]">
                                                         {isImported && wo ? (
                                                             <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
                                                         ) : (

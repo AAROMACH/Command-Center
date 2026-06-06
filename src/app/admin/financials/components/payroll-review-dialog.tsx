@@ -36,7 +36,9 @@ import {
     Activity as ActivityIcon,
     Info,
     ChevronRight,
-    MapPin
+    MapPin,
+    Save,
+    RotateCcw
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -61,6 +63,10 @@ type PayrollReviewDialogProps = {
     onStatusChange: (logId: string, status: WeeklyLog['status'], total?: number) => void;
 };
 
+/**
+ * @fileOverview Internal Audit Sub-Component for individual mission settlement.
+ * Implements a local buffer protocol to ensure notifications only trigger on finalized save.
+ */
 function ImportedJobAudit({ 
     wo, 
     onUpdateWorkOrder 
@@ -68,48 +74,50 @@ function ImportedJobAudit({
     wo: WorkOrder; 
     onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void 
 }) {
-    const laborPay = wo.pay;
-    const reimbursement = wo.auditReimbursement || 0;
-    const overhead = wo.auditOverhead || 0;
-    
-    // Field Nation Fees (15.85% for labor and reimbursement)
-    const fnFeeLabor = laborPay * 0.1585;
-    const fnFeeReimb = reimbursement * 0.1585;
-    const totalFnFee = fnFeeLabor + fnFeeReimb;
-    
-    const netLabor = laborPay - fnFeeLabor;
-    const techLaborShare = netLabor * 0.50;
-    const aaromachLaborShare = netLabor * 0.50;
-    
-    // Tech gets full reimbursement (Aaromach eats the 15.85% fee for it)
-    const techPayout = techLaborShare + reimbursement;
-    const aaromachPay = aaromachLaborShare - fnFeeReimb - overhead;
+    // Local Buffer State
+    const [localPay, setLocalPay] = useState(wo.pay);
+    const [localReimb, setLocalReimb] = useState(wo.auditReimbursement || 0);
+    const [localOverhead, setLocalOverhead] = useState(wo.auditOverhead || 0);
 
-    const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
-        const nextLaborPay = updates.pay ?? laborPay;
-        const nextReimb = updates.auditReimbursement ?? reimbursement;
-        
-        const nextFnFeeLabor = nextLaborPay * 0.1585;
-        const nextNetLabor = nextLaborPay - nextFnFeeLabor;
-        const nextTechPayout = (nextNetLabor * 0.50) + nextReimb;
-        
+    const isDirty = localPay !== wo.pay || localReimb !== (wo.auditReimbursement || 0) || localOverhead !== (wo.auditOverhead || 0);
+
+    // Dynamic Financial Projections (Local)
+    const fnFeeLabor = localPay * 0.1585;
+    const fnFeeReimb = localReimb * 0.1585;
+    const totalFnFee = fnFeeLabor + fnFeeReimb;
+    const netLabor = localPay - fnFeeLabor;
+    const techPayout = (netLabor * 0.50) + localReimb;
+    const aaromachPay = (netLabor * 0.50) - fnFeeReimb - localOverhead;
+
+    const handleCommit = () => {
         onUpdateWorkOrder(wo.id, { 
-            ...updates, 
-            finalPay: Math.max(0, nextTechPayout) 
+            pay: localPay,
+            auditReimbursement: localReimb,
+            auditOverhead: localOverhead,
+            finalPay: Math.max(0, techPayout) 
         });
     };
 
+    const handleReset = () => {
+        setLocalPay(wo.pay);
+        setLocalReimb(wo.auditReimbursement || 0);
+        setLocalOverhead(wo.auditOverhead || 0);
+    };
+
     return (
-        <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[280px]">
-             <div className="grid grid-cols-3 gap-1 text-left">
+        <div className={cn(
+            "flex flex-col gap-0.5 p-1 bg-transparent border rounded-md text-left w-fit min-w-[320px] transition-all",
+            isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
+        )}>
+             <div className="grid grid-cols-4 gap-1 text-left items-end">
                 <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Labor Pay</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
-                            value={laborPay}
-                            onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
+                            value={localPay}
+                            onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
                             className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono font-bold border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
@@ -120,8 +128,8 @@ function ImportedJobAudit({
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
-                            value={reimbursement}
-                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
+                            value={localReimb}
+                            onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
                             className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
@@ -132,11 +140,31 @@ function ImportedJobAudit({
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
-                            value={overhead}
-                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
+                            value={localOverhead}
+                            onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
                             className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
+                </div>
+                <div className="flex gap-0.5 pb-0.5 pr-0.5">
+                    {isDirty && (
+                        <>
+                            <button 
+                                onClick={handleReset}
+                                className="h-4 w-4 rounded bg-bg-tertiary flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
+                                title="Reset changes"
+                            >
+                                <RotateCcw size={8}/>
+                            </button>
+                            <button 
+                                onClick={handleCommit}
+                                className="h-4 w-4 rounded bg-brand-red flex items-center justify-center text-white hover:bg-brand-red-hover transition-colors shadow-sm"
+                                title="Commit Audit"
+                            >
+                                <Save size={8}/>
+                            </button>
+                        </>
+                    )}
                 </div>
              </div>
 
@@ -153,7 +181,7 @@ function ImportedJobAudit({
                     <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
                     <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
                 </div>
-                <div className="space-y-0 text-right">
+                <div className="space-y-0 text-right pr-1">
                     <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
                     <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
@@ -247,6 +275,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
                 await updateDoc(logRef, { items: updatedItems });
                 setLocalLog({ ...localLog, items: updatedItems });
+                // NOTIFICATION DISPATCHED ONLY ON FORMAL COMMIT
                 toast({ title: "Pay Registry Updated", description: "Audit adjustment reflected in current manifest." });
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Sync Error', description: e.message });

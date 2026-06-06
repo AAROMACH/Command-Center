@@ -40,8 +40,14 @@ export async function getRecommendation(
             techCount: input.availableTechnicians?.length 
         }
     });
+
+    // Detect Quota Exhaustion (429 / RESOURCE_EXHAUSTED)
+    const errorMsg = error.message || "";
+    if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429')) {
+      throw new Error("AI DISPATCH QUOTA EXHAUSTED: Please verify Gemini API credits in Google AI Studio or transition to Manual Dispatch protocol.");
+    }
     
     // Pass tactical error message to UI
-    throw new Error(error.message || "Failed to retrieve AI dispatch intelligence.");
+    throw new Error(errorMsg || "Failed to retrieve AI dispatch intelligence.");
   }
 }

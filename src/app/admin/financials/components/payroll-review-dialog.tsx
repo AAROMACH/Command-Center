@@ -98,7 +98,7 @@ function ImportedJobAudit({
     };
 
     return (
-        <div className="flex flex-col gap-0.5 p-1 bg-bg-primary border border-border-sub rounded-md text-left w-fit min-w-[280px]">
+        <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[280px]">
              <div className="grid grid-cols-3 gap-1 text-left">
                 <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5">Gross</Label>
@@ -445,7 +445,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
                                                     
-                                                    <div className="flex-1 flex items-center justify-between gap-6">
+                                                    <div className="flex-1 flex flex-col gap-1.5">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -533,51 +533,51 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     </div>
 
                                                     <div className="flex-1 flex flex-col gap-1.5">
-                                                        <div className="flex items-center justify-between gap-6">
-                                                            <div className="min-w-0 text-left">
-                                                                <div className="flex items-center gap-2 text-left">
-                                                                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
-                                                                    {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                    <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
-                                                                    <span>•</span>
-                                                                    <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
-                                                                </div>
+                                                        <div className="min-w-0 text-left">
+                                                            <div className="flex items-center gap-2 text-left">
+                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                                {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
                                                             </div>
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                                <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                <span>•</span>
+                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                                <span>•</span>
+                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
+                                                            </div>
+                                                        </div>
 
-                                                            <div className="shrink-0 flex items-center gap-4">
-                                                                <div className="shrink-0">
-                                                                    {isImported && wo ? (
-                                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                                    ) : (
-                                                                        <div className="flex items-center gap-6">
-                                                                            <div className="text-left">
-                                                                                <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
-                                                                                <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none">
-                                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                                </p>
-                                                                            </div>
-                                                                            <div className="text-left">
-                                                                                <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
-                                                                                <p className="text-[11px] font-mono font-bold text-text-red leading-none">
-                                                                                    ${(item.jobPay || 0).toFixed(2)}
-                                                                                </p>
-                                                                            </div>
+                                                        <div className="shrink-0 flex items-start gap-4">
+                                                            <div className="shrink-0">
+                                                                {isImported && wo ? (
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                ) : (
+                                                                    <div className="flex items-center gap-6">
+                                                                        <div className="text-left">
+                                                                            <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
+                                                                            <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none">
+                                                                                {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                            </p>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                                
-                                                                <div className="min-w-[180px] max-w-[250px] p-1.5 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left self-stretch">
-                                                                    <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
-                                                                        <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
+                                                                        <div className="text-left">
+                                                                            <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
+                                                                            <p className="text-[11px] font-mono font-bold text-text-red leading-none">
+                                                                                ${(item.jobPay || 0).toFixed(2)}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <div className="min-w-[180px] max-w-[250px] p-1.5 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left self-stretch">
+                                                                <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
+                                                                    <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
+                                                                </p>
+                                                                {item.disputeNotes && (
+                                                                    <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate">
+                                                                        &quot;{item.disputeNotes}&quot;
                                                                     </p>
-                                                                    {item.disputeNotes && (
-                                                                        <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate">
-                                                                            &quot;{item.disputeNotes}&quot;
-                                                                        </p>
-                                                                    )}
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

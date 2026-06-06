@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem } from '@/lib/types';
+import { assignmentTimeLogs } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

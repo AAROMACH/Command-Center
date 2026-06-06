@@ -235,7 +235,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 hover:text-brand-red hover:underline transition-all cursor-pointer group/loc"
              >
-                <div className="p-1.5 bg-bg-secondary rounded border border-border-sub group-hover/loc:border-brand-red transition-colors">
+                <div className="p-1.5 bg-bg-secondary rounded border border-border-sub group/loc:border-brand-red transition-colors">
                   <MapPin size={12} className="text-brand-red shrink-0" />
                 </div>
                 <span>{mission.location}</span>
@@ -287,7 +287,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, onUpdate }
                                 </a>
                               )}
                             </div>
-                            <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-border-sub italic text-[13px] text-text-secondary leading-relaxed uppercase font-medium text-left">
+                            <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium text-left">
                                 {mission.description}
                             </div>
                         </div>

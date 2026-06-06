@@ -1,53 +1,48 @@
-
 "use server";
 
-import { recommendTechnician } from "@/ai/flows/admin-assignment-recommendation-flow";
-import type { AdminAssignmentRecommendationInput, AdminAssignmentRecommendationOutput } from "@/ai/flows/admin-assignment-recommendation-flow";
+import { optimizeRoutes } from "@/ai/flows/admin-route-optimization-flow";
+import type { AdminRouteOptimizationInput, AdminRouteOptimizationOutput } from "@/ai/flows/admin-route-optimization-flow";
 
 /**
- * @fileOverview Administrative server action for AI-driven technician allocation.
- * Orchestrates the handshake between the dispatch terminal and the Genkit recommendation flow.
+ * @fileOverview Administrative server action for AI-driven route optimization.
+ * Orchestrates batch logistical intelligence for unassigned mission pools.
  */
-export async function getRecommendation(
-  input: AdminAssignmentRecommendationInput
-): Promise<AdminAssignmentRecommendationOutput> {
+export async function getOptimizedRoutes(
+  input: AdminRouteOptimizationInput
+): Promise<AdminRouteOptimizationOutput> {
   try {
-    // Audit available technician pool size
+    if (!input.unassignedJobs || input.unassignedJobs.length === 0) {
+      throw new Error("Mission Pool Empty: No unassigned jobs located in registry.");
+    }
+
     if (!input.availableTechnicians || input.availableTechnicians.length === 0) {
-      console.warn("AI Dispatch Handshake: Empty operative registry transmitted.");
-      throw new Error("No field operatives currently available in the dispatch pool.");
+      throw new Error("Operative Registry Empty: No available field staff for allocation.");
     }
 
-    console.log(`AI Analysis Initiated: Mission ${input.workOrder.id.toUpperCase()} vs ${input.availableTechnicians.length} Operatives.`);
+    console.log(`AI Route Optimization Initiated: Analyzing ${input.unassignedJobs.length} jobs vs ${input.availableTechnicians.length} operatives.`);
     
-    // Execute tactical analysis flow
-    const recommendation = await recommendTechnician(input);
+    const result = await optimizeRoutes(input);
     
-    if (!recommendation || !recommendation.recommendedTechnicianId) {
-      console.error("AI Logic Terminal: Recommendation engine returned null result.");
-      throw new Error("AI engine failed to identify an optimal match.");
+    if (!result || !result.proposedRoutes) {
+      throw new Error("Intelligence Terminal Error: Optimization engine returned null manifest.");
     }
 
-    console.log(`AI Analysis Success: Operative ${recommendation.recommendedTechnicianId} identified as primary target.`);
-    return recommendation;
+    console.log(`AI Route Optimization Success: ${result.proposedRoutes.length} tactical routes architected.`);
+    return result;
   } catch (error: any) {
-    // Precision logging for Command Center audit
-    console.error("Critical Dispatch Intelligence Failure:", {
+    console.error("Critical Route Intelligence Failure:", {
         message: error.message,
-        stack: error.stack,
         params: { 
-            woId: input.workOrder.id, 
+            jobCount: input.unassignedJobs?.length, 
             techCount: input.availableTechnicians?.length 
         }
     });
 
-    // Detect Quota Exhaustion (429 / RESOURCE_EXHAUSTED)
     const errorMsg = error.message || "";
     if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429')) {
-      throw new Error("AI DISPATCH QUOTA EXHAUSTED: Please verify Gemini API credits in Google AI Studio or transition to Manual Dispatch protocol.");
+      throw new Error("AI ROUTING QUOTA EXHAUSTED: Please verify Gemini API credits or transition to manual batching.");
     }
     
-    // Pass tactical error message to UI
-    throw new Error(errorMsg || "Failed to retrieve AI dispatch intelligence.");
+    throw new Error(errorMsg || "Failed to generate optimized routing plan.");
   }
 }

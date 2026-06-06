@@ -1,9 +1,7 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import type { WorkOrder, Technician, Recommendation, Route } from "@/lib/types";
-import { getRecommendation } from "../dispatch/actions";
+import type { WorkOrder, Technician, Route } from "@/lib/types";
 import { format } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +48,6 @@ import {
   ExternalLink,
   Activity,
   Gauge,
-  Sparkles,
   Type,
   FileText,
   RefreshCw,
@@ -75,7 +72,6 @@ const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
         const parts = dateStr.split(/[-/]/);
-        let d;
         if (parts[0].length === 4) { d = new Date(dateStr); } 
         else { 
             const [m, day, y] = parts;
@@ -107,8 +103,6 @@ export const WorkOrdersTable = React.memo(({
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [techSearchQuery, setTechSearchQuery] = useState("");
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -147,7 +141,6 @@ export const WorkOrdersTable = React.memo(({
 
   const handleOpenAssignDialog = useCallback((order: WorkOrder) => {
     setSelectedOrder(order);
-    setRecommendation(null);
     setTechSearchQuery("");
     setIsDialogOpen(true);
   }, []);
@@ -165,67 +158,15 @@ export const WorkOrdersTable = React.memo(({
   }, []);
 
   const filteredTechniciansRegistry = useMemo(() => {
-    const filtered = technicians
+    return technicians
       .filter(t => {
           const roles = t.roles || [];
           const role = (t.role || '').toLowerCase();
           return !roles.includes('client') && !role.includes('client');
       })
-      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()));
-
-    // If we have a recommendation, put it at the top
-    if (recommendation) {
-        return [...filtered].sort((a, b) => {
-            if (a.id === recommendation.recommendedTechnicianId) return -1;
-            if (b.id === recommendation.recommendedTechnicianId) return 1;
-            return (b.reliabilityScore || 0) - (a.reliabilityScore || 0);
-        });
-    }
-
-    return filtered.sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
-  }, [technicians, techSearchQuery, recommendation]);
-
-  const handleGetAiRecommendation = async () => {
-    if (!selectedOrder) return;
-    setIsAiLoading(true);
-    setRecommendation(null);
-    
-    try {
-      const dispatchPool = technicians
-          .filter(t => !t.roles?.includes('client'))
-          .map((t) => ({
-            id: t.id,
-            name: t.name || 'Unknown',
-            currentLocation: t.address || t.currentLocation || 'Detroit, MI',
-            reliabilityScore: t.reliabilityScore || 0,
-            currentWorkload: t.currentWorkload || 0,
-            skills: t.skills || [],
-          }));
-
-      const result = await getRecommendation({
-        workOrder: {
-          id: selectedOrder.id,
-          description: selectedOrder.description,
-          location: selectedOrder.location,
-          requiredSkills: selectedOrder.requiredSkills || [],
-          priority: selectedOrder.priority || 'medium',
-        },
-        availableTechnicians: dispatchPool,
-      });
-      
-      setRecommendation(result);
-      toast({ title: "Intelligence Gathered", description: "AI Dispatch logic has identified optimal field personnel." });
-    } catch (error: any) {
-      console.error("AI Recommendation Error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Analysis Failure", 
-        description: error.message || "The dispatch AI could not finalize a recommendation. Please audit operative pool manually." 
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
+      .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
+      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
+  }, [technicians, techSearchQuery]);
 
   const handleAssign = useCallback(async (technicianId: string) => {
     if (!selectedOrder) return;
@@ -277,8 +218,8 @@ export const WorkOrdersTable = React.memo(({
     const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedOrder.pay;
-      finalUpdate.payType = selectedOrder.payType;
+      finalUpdate.pay = selectedJob.pay;
+      finalUpdate.payType = selectedJob.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -535,7 +476,7 @@ export const WorkOrdersTable = React.memo(({
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
+        <DialogContent className="sm:max-w-[600px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[85vh]">
           <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
             <div className="flex items-center justify-between">
                 <div className="text-left">
@@ -543,7 +484,7 @@ export const WorkOrdersTable = React.memo(({
                         <UserPlus className="text-brand-red" size={20} />
                         Dispatch Terminal
                     </DialogTitle>
-                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-1">Individual job deployment: <span className="text-text-primary font-bold">{(selectedOrder?.id || '').toUpperCase()}</span></p>
+                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-1">Manual operative allocation: <span className="text-text-primary font-bold">{(selectedOrder?.id || '').toUpperCase()}</span></p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub px-2 h-4 uppercase">{selectedOrder?.projectType}</Badge>
@@ -553,73 +494,24 @@ export const WorkOrdersTable = React.memo(({
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6 mt-4">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4 text-left">
-                    <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 flex items-center gap-2">
-                        <Target size={14} className="text-brand-red"/> Mission Parameters
-                    </h3>
-                    <div className="space-y-3 p-4 rounded-xl bg-bg-secondary border border-border-sub shadow-inner">
-                        <div className="space-y-1">
-                            <p className="text-[8px] font-black text-text-muted uppercase">Required Credentials</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {selectedOrder?.requiredSkills?.map(skill => (
-                                    <Badge key={skill} variant="outline" className="text-[7px] font-bold uppercase bg-bg-primary">{skill}</Badge>
-                                )) || <span className="text-[9px] text-text-muted italic uppercase">No skill constraints logged</span>}
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-[8px] font-black text-text-muted uppercase">Tactical Objective</p>
-                            <p className="text-[11px] font-bold text-text-primary uppercase leading-tight line-clamp-2">
-                                {selectedOrder?.title || selectedOrder?.description}
-                            </p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-[8px] font-black text-text-muted uppercase">Registry Coordinates</p>
-                            <div className="flex items-center gap-1.5">
-                                <MapPin size={10} className="text-brand-red" />
-                                <p className="text-[9px] font-bold text-text-muted uppercase truncate">{selectedOrder?.location}</p>
-                            </div>
+             <div className="space-y-4 text-left">
+                <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 flex items-center gap-2">
+                    <Target size={14} className="text-brand-red"/> Mission Parameters
+                </h3>
+                <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub shadow-inner">
+                    <div className="space-y-1">
+                        <p className="text-[8px] font-black text-text-muted uppercase">Required Credentials</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {selectedOrder?.requiredSkills?.map(skill => (
+                                <Badge key={skill} variant="outline" className="text-[7px] font-bold uppercase bg-bg-primary">{skill}</Badge>
+                            )) || <span className="text-[9px] text-text-muted italic uppercase">No skill constraints logged</span>}
                         </div>
                     </div>
-                </div>
-
-                <div className="space-y-4 text-left">
-                    <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 flex items-center gap-2">
-                        <Sparkles size={14} className="text-accent-gold"/> AI Dispatch Logic
-                    </h3>
-                    <div className="h-full flex flex-col justify-center">
-                        {!recommendation && !isAiLoading && (
-                            <Button onClick={handleGetAiRecommendation} variant="secondary" className="w-full h-14 bg-accent-gold/10 border-accent-gold/20 text-accent-gold hover:bg-accent-gold hover:text-white shadow-xl">
-                                <Sparkles className="mr-2 h-5 w-5 animate-pulse"/> Initialize AI Match Protocol
-                            </Button>
-                        )}
-                        {isAiLoading && (
-                            <div className="p-8 rounded-xl bg-bg-secondary border border-border-sub border-dashed flex flex-col items-center justify-center gap-4 text-center">
-                                <Loader2 size={32} className="animate-spin text-accent-gold" />
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-accent-gold">Calculating Optimal Fit...</span>
-                                    <p className="text-[8px] text-text-muted uppercase">Auditing Skills, Reliability, and Distance</p>
-                                </div>
-                            </div>
-                        )}
-                        {recommendation && (
-                            <div className="rounded-xl border border-accent-gold bg-accent-gold-dim/10 p-5 animate-in fade-in slide-in-from-top-1 duration-300 shadow-lg text-left">
-                                <p className="text-[9px] text-accent-gold font-black uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <ShieldCheck size={12}/> Authorized Recommendation
-                                </p>
-                                <p className="text-[11px] text-text-primary leading-relaxed uppercase font-bold text-left mb-1">
-                                    {recommendation.reasoning}
-                                </p>
-                                <div className="mt-3 flex items-center gap-3">
-                                    <button 
-                                        onClick={() => setRecommendation(null)} 
-                                        className="text-[8px] font-black text-text-muted uppercase hover:text-brand-red transition-colors"
-                                    >
-                                        [ RESET AI ANALYSIS ]
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                    <div className="space-y-1 pt-2">
+                        <p className="text-[8px] font-black text-text-muted uppercase">Tactical Objective</p>
+                        <p className="text-[11px] font-bold text-text-primary uppercase leading-tight line-clamp-2">
+                            {selectedOrder?.title || selectedOrder?.description}
+                        </p>
                     </div>
                 </div>
              </div>
@@ -641,57 +533,32 @@ export const WorkOrdersTable = React.memo(({
                         />
                     </div>
                 </div>
-                <ScrollArea className="h-[280px] rounded-xl border border-border-sub bg-bg-primary shadow-inner">
+                <ScrollArea className="h-[250px] rounded-xl border border-border-sub bg-bg-primary shadow-inner">
                     <div className="divide-y divide-border-sub">
                         {filteredTechniciansRegistry.map(tech => {
-                            const isRecommended = recommendation?.recommendedTechnicianId === tech.id;
                             const tier = getReliabilityTier(tech.reliabilityScore || 0);
-                            const tierColor = getTierColor(tech.reliabilityScore || 0);
+                            const tierColor = getTierColor(tier);
 
                             return (
-                                <div key={tech.id} className={cn(
-                                    "p-4 flex items-center justify-between group transition-all",
-                                    isRecommended ? "bg-accent-gold-dim/5 border-l-4 border-l-accent-gold" : "hover:bg-bg-tertiary"
-                                )}>
+                                <div key={tech.id} className="p-4 flex items-center justify-between group transition-all hover:bg-bg-tertiary">
                                     <div className="flex items-center gap-4 text-left">
-                                        <div className="relative">
-                                            <Avatar className={cn(
-                                                "h-10 w-10 border transition-all group-hover:scale-105",
-                                                isRecommended ? "border-accent-gold shadow-[0_0_10px_rgba(200,155,60,0.3)]" : "border-border-sub"
-                                            )}>
-                                              <AvatarImage src={tech.avatarUrl} />
-                                              <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            {isRecommended && (
-                                                <div className="absolute -top-1 -right-1 bg-accent-gold rounded-full p-0.5 border-2 border-bg-elevated animate-bounce">
-                                                    <Sparkles size={8} className="text-white" />
-                                                </div>
-                                            )}
-                                        </div>
+                                        <Avatar className="h-10 w-10 border border-border-sub transition-all group-hover:scale-105">
+                                          <AvatarImage src={tech.avatarUrl} />
+                                          <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
+                                        </Avatar>
                                         <div className="text-left">
                                             <div className="flex items-center gap-2">
-                                                <p className={cn(
-                                                    "text-xs font-black uppercase tracking-tight text-left transition-colors",
-                                                    isRecommended ? "text-accent-gold" : "text-text-primary"
-                                                )}>{tech.name}</p>
-                                                {isRecommended && <Badge className="bg-accent-gold text-white text-[7px] h-3.5 px-1 uppercase animate-pulse">RECOMMENDED</Badge>}
+                                                <p className="text-xs font-black uppercase tracking-tight text-left">{tech.name}</p>
                                                 <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                                                 <div className="flex items-center gap-1.5">
                                                     <Gauge size={10} className={tierColor} />
-                                                    <p className={cn("text-[9px] font-black uppercase", tierColor)}>{tech.reliabilityScore}% INDEX</p>
+                                                    <p className={cn("text-[9px] font-black uppercase", tierColor)}>{tech.reliabilityScore || 0}% INDEX</p>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <Navigation size={10} className="text-text-muted" />
                                                     <p className="text-[9px] text-text-muted font-bold uppercase truncate max-w-[120px]">{tech.address || tech.currentLocation}</p>
-                                                </div>
-                                                <div className="h-1 w-1 rounded-full bg-border-sub" />
-                                                <div className="flex flex-wrap gap-1">
-                                                    {tech.skills?.slice(0, 3).map(skill => (
-                                                        <span key={skill} className="text-[7px] font-bold uppercase bg-bg-tertiary border border-border-sub px-1 rounded-sm text-text-muted">{skill}</span>
-                                                    ))}
-                                                    {(tech.skills?.length || 0) > 3 && <span className="text-[7px] font-bold text-text-muted">+{tech.skills!.length - 3}</span>}
                                                 </div>
                                             </div>
                                         </div>
@@ -699,10 +566,7 @@ export const WorkOrdersTable = React.memo(({
                                     <Button 
                                         size="sm" 
                                         onClick={() => handleAssign(tech.id)} 
-                                        className={cn(
-                                            "h-9 text-[10px] px-8 uppercase font-black tracking-widest shadow-md transition-all",
-                                            isRecommended ? "bg-accent-gold hover:bg-accent-gold/90 text-white" : "bg-bg-tertiary text-text-muted hover:bg-brand-red hover:text-white"
-                                        )}
+                                        className="h-9 text-[10px] px-8 uppercase font-black tracking-widest bg-bg-tertiary text-text-muted hover:bg-brand-red hover:text-white"
                                     >
                                         Deploy
                                     </Button>

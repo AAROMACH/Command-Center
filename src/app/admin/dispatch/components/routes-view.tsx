@@ -18,7 +18,13 @@ import {
     GripVertical,
     ClipboardList,
     Send,
-    ExternalLink
+    ExternalLink,
+    Sparkles,
+    Loader2,
+    ShieldAlert,
+    Clock,
+    MapPin,
+    RotateCcw
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,7 +37,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -43,6 +49,7 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
+import { getOptimizedRoutes } from '../actions';
 
 type RoutesViewProps = {
     routes: Route[];
@@ -214,6 +221,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const [isAddJobsOpen, setIsAddJobsOpen] = useState(false);
     const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
     const [jobSearch, setJobSearch] = useState("");
+    const [isAiOptimizing, setIsAiOptimizing] = useState(false);
+    
     const { toast } = useToast();
 
     const sensors = useSensors(
@@ -242,7 +251,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleDeleteRoute = (id: string) => {
         const route = { ...routes.find(r => r.id === id) };
         onRoutesChange(routes.filter(r => r.id !== id));
-        // Unset routeId on work orders
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: undefined } : wo));
         toast({ variant: "destructive", title: "Route Dissolved", description: `${route?.name} removed from registry.` });
     };
@@ -253,13 +261,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
     const handleAddJobToRoute = (woId: string) => {
         if (!activeRouteId) return;
-        
         onRoutesChange(routes.map(r => 
             r.id === activeRouteId 
             ? { ...r, workOrderIds: [...r.workOrderIds, woId] } 
             : r
         ));
-
         onWorkOrdersChange(allWorkOrders.map(wo => 
             wo.id === woId ? { ...wo, routeId: activeRouteId } : wo
         ));
@@ -271,15 +277,73 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             ? { ...r, workOrderIds: r.workOrderIds.filter(id => id !== woId) } 
             : r
         ));
-
         onWorkOrdersChange(allWorkOrders.map(wo => 
             wo.id === woId ? { ...wo, routeId: undefined } : wo
         ));
     };
 
+    const handleAiOptimization = async () => {
+        const unassigned = allWorkOrders.filter(wo => !wo.routeId && wo.status === 'unassigned');
+        if (unassigned.length === 0) {
+            toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
+            return;
+        }
+
+        setIsAiOptimizing(true);
+        try {
+            const availableTechs = technicians.filter(t => !t.roles?.includes('client'));
+            const result = await getOptimizedRoutes({
+                unassignedJobs: unassigned.map(j => ({
+                    id: j.id,
+                    description: j.description,
+                    location: j.location,
+                    scheduleDate: j.scheduleDate,
+                    scheduleTime: j.scheduleTime,
+                    priority: j.priority,
+                    requiredSkills: j.requiredSkills || []
+                })),
+                availableTechnicians: availableTechs.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    currentLocation: t.address || t.currentLocation,
+                    reliabilityScore: t.reliabilityScore,
+                    skills: t.skills || []
+                }))
+            });
+
+            // Create new routes from AI proposals
+            const newRoutes: Route[] = result.proposedRoutes.map((p, idx) => ({
+                id: `route-ai-${Date.now()}-${idx}`,
+                name: `AI Route: ${p.technicianName}`,
+                technicianName: p.technicianName,
+                workOrderIds: p.orderedWorkOrderIds
+            }));
+
+            // Update work orders with new route IDs
+            const updatedWorkOrders = allWorkOrders.map(wo => {
+                const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));
+                if (foundRoute) {
+                    return { ...wo, routeId: foundRoute.id };
+                }
+                return wo;
+            });
+
+            onRoutesChange([...routes, ...newRoutes]);
+            onWorkOrdersChange(updatedWorkOrders);
+            
+            toast({
+                title: "Intelligence Applied",
+                description: `Successfully architected ${newRoutes.length} optimized field routes.`,
+            });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Optimization Failure", description: e.message });
+        } finally {
+            setIsAiOptimizing(false);
+        }
+    };
+
     const handleBatchAssign = () => {
         const jobsToUpdate: Record<string, string> = {};
-        
         routes.forEach(route => {
             if (route.technicianName) {
                 const tech = technicians.find(t => t.name === route.technicianName);
@@ -290,7 +354,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 }
             }
         });
-
         const updatedWorkOrders = allWorkOrders.map(wo => {
             if (jobsToUpdate[wo.id]) {
                 return {
@@ -301,27 +364,17 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
             return wo;
         });
-
         onWorkOrdersChange(updatedWorkOrders);
-        toast({
-            title: "Batch Assignment Executed",
-            description: "Job data transferred to the Assigned registry.",
-        });
+        toast({ title: "Batch Assignment Executed", description: "Job data transferred to the Assigned registry." });
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
-
         const jobId = active.id as string;
         const targetRouteId = over.id as string;
         const sourceRouteId = active.data.current?.sourceRouteId;
-
-        // If dropped in the same container, do nothing
         if (sourceRouteId === targetRouteId) return;
-
-        // 1. Remove from source route
-        // 2. Add to target route
         onRoutesChange(routes.map(r => {
             if (r.id === sourceRouteId) {
                 return { ...r, workOrderIds: r.workOrderIds.filter(id => id !== jobId) };
@@ -331,16 +384,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
             return r;
         }));
-
-        // 3. Update work order registry
         onWorkOrdersChange(allWorkOrders.map(wo => 
             wo.id === jobId ? { ...wo, routeId: targetRouteId } : wo
         ));
-
-        toast({
-            title: "Registry Relocated",
-            description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.`,
-        });
+        toast({ title: "Registry Relocated", description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.` });
     };
 
     const unassignedJobs = useMemo(() => 
@@ -366,21 +413,30 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-sub">
-                <div className="flex items-center gap-6">
+            <div className="flex flex-col xl:flex-row justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-sub gap-4">
+                <div className="flex items-center gap-6 w-full xl:w-auto">
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                         <Layers size={14} className="text-brand-red" />
-                        Batch Assign
+                        Batch Optimization
                     </h3>
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <ClipboardList size={12} className="text-accent-gold" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Jobs Remaining:</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Unassigned Jobs:</span>
                         <span className="text-xs font-mono font-bold text-text-primary">{unassignedJobs.length}</span>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px]">
-                        <Plus size={14} className="mr-2"/> Initialize Route
+                <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
+                    <Button 
+                        onClick={handleAiOptimization} 
+                        disabled={isAiOptimizing || unassignedJobs.length === 0}
+                        className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.2)]"
+                    >
+                        {isAiOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Sparkles size={14} className="mr-2" />}
+                        Optimize with AI Routing
+                    </Button>
+                    <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
+                    <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">
+                        <Plus size={14} className="mr-2"/> New Route
                     </Button>
                     <Button 
                         onClick={handleBatchAssign} 
@@ -401,7 +457,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     {routes.map(route => {
                         const routeJobs = allWorkOrders.filter(wo => route.workOrderIds.includes(wo.id));
                         const totalPay = getRouteTotalPay(route);
-                        
                         return (
                             <DroppableRoute 
                                 key={route.id}
@@ -422,10 +477,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     {routes.length === 0 && (
                         <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Layers size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No active formations. Establish a new route to begin grouping jobs.</p>
-                            <Button variant="outline" className="mt-6 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsNewRouteOpen(true)}>
-                                Initialize Route Registry
-                            </Button>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active formations. Establish a new route or run AI optimization to begin grouping jobs.</p>
                         </div>
                     )}
                 </div>
@@ -435,10 +487,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>
                 <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase font-bold tracking-widest text-text-primary">Establish New Route</DialogTitle>
-                        <DialogDescription className="text-xs">Define a named operational grouping for field assignments.</DialogDescription>
+                        <DialogTitle className="uppercase tracking-widest font-bold text-left">Establish New Route</DialogTitle>
+                        <DialogDescription className="text-xs text-left">Define a named operational grouping for field assignments.</DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
+                    <div className="py-4 text-left">
                         <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block text-left">Route Identifier / Name</Label>
                         <Input 
                             placeholder="e.g. Detroit North AM" 
@@ -458,7 +510,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             <Dialog open={isAddJobsOpen} onOpenChange={setIsAddJobsOpen}>
                 <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default flex flex-col p-0 max-h-[80vh]">
                     <DialogHeader className="p-6 pb-2">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 text-left">
                             <Wrench className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Allocation Terminal</DialogTitle>
                         </div>
@@ -476,16 +528,16 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         </div>
                     </div>
                     <ScrollArea className="flex-1 p-6">
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-left">
                             {filteredUnassigned.map(job => (
                                 <div key={job.id} className="p-4 rounded-lg bg-bg-primary border border-border-sub hover:bg-bg-tertiary transition-colors flex items-center justify-between group">
                                     <div className="flex items-center gap-4 text-left">
                                         <div className="p-2 bg-bg-tertiary rounded text-text-muted border border-border-sub">
                                             <Wrench size={16} />
                                         </div>
-                                        <div>
-                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{job.description}</p>
-                                            <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest mt-1">
+                                        <div className="text-left">
+                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">{job.description}</p>
+                                            <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest mt-1 text-left">
                                                 <span>{job.clientName}</span>
                                                 <span>•</span>
                                                 <span className="text-text-green font-mono font-bold">${job.pay.toFixed(2)}</span>
@@ -503,7 +555,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                             ))}
                             {filteredUnassigned.length === 0 && (
                                 <div className="text-center py-12 border border-dashed border-border-sub rounded-lg">
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">Registry Clear: No Unassigned Jobs Found</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic text-center">Registry Clear: No Unassigned Jobs Found</p>
                                 </div>
                             )}
                         </div>

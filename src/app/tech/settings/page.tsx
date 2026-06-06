@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Bell, 
   Shield, 
@@ -24,7 +23,8 @@ import {
   FileJson,
   FileClock,
   MessageSquare,
-  Search
+  Search,
+  Activity
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -106,15 +106,15 @@ export default function TechSettingsPage() {
     if (!mounted) return null;
 
     return (
-        <div className="max-w-4xl mx-auto">
-             <header className="page-header">
-                <div>
+        <div className="max-w-4xl mx-auto space-y-8 text-left pb-24">
+             <header className="page-header text-left">
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <SettingsIcon size={12} />
                         Terminal Configuration
                     </p>
-                    <h1 className="page-title">System Settings</h1>
-                    <p className="page-subtitle">Manage comms settings, security layers, and UI preferences.</p>
+                    <h1 className="page-title text-left">System Settings</h1>
+                    <p className="page-subtitle text-left">Unified oversight of communication, security, and interface parameters.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
@@ -129,295 +129,160 @@ export default function TechSettingsPage() {
                 </div>
              </header>
 
-            <Tabs defaultValue="notifications" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
-                    <TabsTrigger value="notifications" className="flex items-center gap-2 py-3">
-                        <Bell size={14}/> {TERMINOLOGY.CONFIG.NOTIFICATIONS}
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="flex items-center gap-2 py-3">
-                        <Shield size={14}/> {TERMINOLOGY.CONFIG.SECURITY}
-                    </TabsTrigger>
-                    <TabsTrigger value="experience" className="flex items-center gap-2 py-3">
-                        <Monitor size={14}/> Experience
-                    </TabsTrigger>
-                    <TabsTrigger value="account" className="flex items-center gap-2 py-3">
-                        <Database size={14}/> Account & Data
-                    </TabsTrigger>
-                </TabsList>
-
-                <div className="mt-6">
-                    {/* NOTIFICATIONS */}
-                    <TabsContent value="notifications" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Notification Preferences</CardTitle>
-                                <CardDescription>Choose which updates you want to see.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {[
-                                    { id: 'n-1', label: 'New Jobs', desc: 'Get notified when new jobs are assigned.' },
-                                    { id: 'n-2', label: 'Job Updates', desc: 'Alert when site details or wiring requirements change.' },
-                                    { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when start times or job dates are modified.' },
-                                    { id: 'n-4', label: 'Billing & Payments', desc: 'Alert when field logs are approved or payments initiated.' },
-                                    { id: 'n-5', label: 'Account Alerts', desc: 'Alert when a penalty or score adjustment occurs.' },
-                                ].map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
-                                            <p className="text-[10px] text-text-muted">{item.desc}</p>
-                                        </div>
-                                        <Switch defaultChecked onCheckedChange={() => handleToggle(item.label)} />
+            <div className="space-y-12">
+                {/* NOTIFICATIONS */}
+                <section id="notifications" className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Bell size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Notification Protocols</CardTitle>
+                            <CardDescription>Choose which field updates are transmitted to your terminal.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {[
+                                { id: 'n-1', label: 'New Jobs', desc: 'Alert when new assignments are staged in your registry.' },
+                                { id: 'n-2', label: 'Job Updates', desc: 'Alert when site details or wiring standards change.' },
+                                { id: 'n-3', label: 'Schedule Changes', desc: 'Alert when mission dates or start times are adjusted.' },
+                                { id: 'n-4', label: 'Billing & Payouts', desc: 'Alert when field logs are authorized for settlement.' },
+                            ].map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                                    <div className="space-y-0.5 text-left">
+                                        <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
+                                        <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
                                     </div>
-                                ))}
-                            </CardContent>
-                        </Card>
+                                    <Switch defaultChecked onCheckedChange={() => handleToggle(item.label)} />
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </section>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Timing</CardTitle>
-                                <CardDescription>Choose when and how often you get alerts.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Quiet Hours Start</Label>
-                                        <Input type="time" defaultValue="22:00" className="bg-bg-primary" />
+                {/* SECURITY */}
+                <section id="security" className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Shield size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.SECURITY}</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Authentication Layers</CardTitle>
+                            <CardDescription>Manage credentials and Command Center multi-factor security.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-border-alert">
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="p-2 bg-brand-red rounded-md text-white">
+                                        <ShieldCheck size={20}/>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Quiet Hours End</Label>
-                                        <Input type="time" defaultValue="07:00" className="bg-bg-primary" />
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold uppercase tracking-wider">Two-Factor Authentication</p>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold">High Priority Protocol</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold uppercase tracking-wider">Allow Urgent Alerts</p>
-                                        <p className="text-[10px] text-text-muted">Let important messages through during quiet hours.</p>
-                                    </div>
-                                    <Switch defaultChecked onCheckedChange={() => handleToggle("Emergency Bypass")} />
+                                <Switch onCheckedChange={() => handleToggle("2FA")} />
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
+                                <div className="text-left">
+                                    <p className="text-xs font-bold uppercase tracking-wider">Update Access Key</p>
+                                    <p className="text-[10px] text-text-muted uppercase">Modify your Command Center login credentials.</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase tracking-widest text-text-muted">Alert Frequency</Label>
-                                    <Select defaultValue="instant" onValueChange={(val) => handleToggle(`Delivery Mode: ${val}`)}>
-                                        <SelectTrigger className="bg-bg-primary">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="instant">Instant</SelectItem>
-                                            <SelectItem value="summary">Every hour</SelectItem>
-                                            <SelectItem value="daily">Once a day</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                                <Button variant="outline" size="sm" className="h-8 !text-[10px] font-bold uppercase tracking-widest"><Key size={14} className="mr-2"/> Reset Password</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
 
-                    {/* SECURITY */}
-                    <TabsContent value="security" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Authentication Layers</CardTitle>
-                                <CardDescription>Manage credentials and Command Center multi-factor security.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-brand-red-dim/10 border border-border-alert">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-brand-red rounded-md text-white">
-                                            <ShieldCheck size={20}/>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold uppercase tracking-wider">Two-Factor Authentication</p>
-                                            <p className="text-xs text-text-muted">Add a layer of security to your terminal access.</p>
-                                        </div>
+                {/* EXPERIENCE */}
+                <section id="experience" className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Monitor size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Terminal Interface</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Visual Environment</CardTitle>
+                            <CardDescription>Customize the visual behavior of your field terminal.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-left">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Display Protocol</Label>
+                                    <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub">
+                                        <button 
+                                            onClick={() => toggleTheme('dark')}
+                                            className={cn(
+                                                "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
+                                                theme === 'dark' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
+                                            )}
+                                        >
+                                            <Moon size={14}/> Dark
+                                        </button>
+                                        <button 
+                                            onClick={() => toggleTheme('light')}
+                                            className={cn(
+                                                "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
+                                                theme === 'light' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
+                                            )}
+                                        >
+                                            <Sun size={14}/> Light
+                                        </button>
                                     </div>
-                                    <Switch onCheckedChange={() => handleToggle("2FA")} />
-                                </div>
-                                <div className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider">Change Password</p>
-                                        <p className="text-[10px] text-text-muted">Update your Command Center access key.</p>
-                                    </div>
-                                    <Button variant="outline" size="sm" className="h-8"><Key size={14} className="mr-2"/> Reset Password</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Active Sessions</CardTitle>
-                                <CardDescription>Monitor and manage currently authorized devices.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {[
-                                    { device: 'iPhone 15 Pro (Current)', location: 'New York, US', time: 'Active now', isCurrent: true },
-                                    { device: 'MacBook Pro 16"', location: 'Brooklyn, US', time: '2 hours ago', isCurrent: false },
-                                ].map((session, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 rounded-md bg-bg-primary border border-border-sub">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-bg-secondary rounded border border-border-sub">
-                                                <History size={14} className="text-text-muted"/>
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{session.device}</p>
-                                                <p className="text-[10px] text-text-muted">{session.location} • {session.time}</p>
-                                            </div>
-                                        </div>
-                                        {!session.isCurrent && (
-                                            <Button variant="ghost" size="sm" className="text-[10px] hover:text-text-red">Revoke</Button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button variant="destructive-outline" className="w-full mt-2" onClick={() => handleToggle("Logout All")}>
-                                    Log Out All Other Devices
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* EXPERIENCE */}
-                    <TabsContent value="experience" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Interface & Region</CardTitle>
-                                <CardDescription>Customize the visual behavior and regional settings of the terminal.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-text-muted">Display Theme</Label>
-                                        <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub">
-                                            <button 
-                                                onClick={() => toggleTheme('dark')}
-                                                className={cn(
-                                                    "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
-                                                    theme === 'dark' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
-                                                )}
-                                            >
-                                                <Moon size={14}/> Dark
-                                            </button>
-                                            <button 
-                                                onClick={() => toggleTheme('light')}
-                                                className={cn(
-                                                    "flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors text-[10px] font-bold uppercase",
-                                                    theme === 'light' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
-                                                )}
-                                            >
-                                                <Sun size={14}/> Light
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* ACCOUNT & DATA */}
-                    <TabsContent value="account" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Data Sovereignty</CardTitle>
-                                <CardDescription>Manage your technician data records and local terminal storage.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-bold uppercase tracking-wider text-text-primary">Operational Data Export</p>
-                                        <p className="text-[10px] text-text-muted">Generate a high-fidelity archive of your field activity and billing records.</p>
-                                    </div>
-                                    <Button variant="outline" size="sm" className="h-9 px-4 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsExportDialogOpen(true)}>
-                                        <Download size={14} className="mr-2"/> Initialize Export
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </div>
-            </Tabs>
-
-            {/* AUDIT DATA EXPORT DIALOG */}
-            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Download className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Archive Configuration</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted tracking-tight">Configure parameters for tactical data extraction.</DialogDescription>
-                    </DialogHeader>
-
-                    <div className="p-6 space-y-8">
-                        {/* Temporal Window */}
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Temporal Window</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
-                                        <CalendarIcon size={12} /> From
-                                    </Label>
-                                    <Input 
-                                        type="date" 
-                                        value={exportConfig.from}
-                                        onChange={e => setExportConfig({...exportConfig, from: e.target.value})}
-                                        className="h-10 bg-bg-primary border-border-sub text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
-                                        <CalendarIcon size={12} /> To
-                                    </Label>
-                                    <Input 
-                                        type="date" 
-                                        value={exportConfig.to}
-                                        onChange={e => setExportConfig({...exportConfig, to: e.target.value})}
-                                        className="h-10 bg-bg-primary border-border-sub text-xs"
-                                    />
                                 </div>
                             </div>
-                        </div>
+                        </CardContent>
+                    </Card>
+                </section>
 
-                        {/* Data Categories */}
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Tactical Categories</h3>
-                            <div className="grid grid-cols-1 gap-2">
-                                {[
-                                    { id: 'assignments', label: 'Work History', desc: 'Assignment records, site locations, and completion status.', icon: FileJson },
-                                    { id: 'billing', label: 'Billing Ledger', desc: 'Payroll manifests, reimbursements, and authorized payments.', icon: FileClock },
-                                    { id: 'comms', label: 'Communication Logs', desc: 'Directives received and system broadcast records.', icon: MessageSquare }
-                                ].map(cat => (
-                                    <div 
-                                        key={cat.id} 
-                                        onClick={() => toggleExportType(cat.id)}
-                                        className={cn(
-                                            "flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer",
-                                            exportConfig.types.includes(cat.id) ? "bg-brand-red-dim/10 border-brand-red" : "bg-bg-primary border-border-sub hover:border-text-muted"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                "p-2 rounded border transition-colors",
-                                                exportConfig.types.includes(cat.id) ? "bg-brand-red text-white border-brand-red" : "bg-bg-tertiary border-border-sub text-text-muted"
-                                            )}>
-                                                <cat.icon size={14} />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <p className={cn("text-xs font-bold uppercase", exportConfig.types.includes(cat.id) ? "text-text-primary" : "text-text-muted")}>{cat.label}</p>
-                                                <p className="text-[9px] text-text-muted tracking-tight leading-tight">{cat.desc}</p>
-                                            </div>
-                                        </div>
-                                        <Checkbox checked={exportConfig.types.includes(cat.id)} className="h-4 w-4" />
-                                    </div>
-                                ))}
+                {/* ACCOUNT & DATA */}
+                <section id="account" className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Database size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Registry Data</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Operational Data Extraction</CardTitle>
+                            <CardDescription>Generate a high-fidelity archive of your field activity records.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-left">
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                                <div className="space-y-1 text-left">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-text-primary text-left">Audit Manifest Generation</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-medium">Export assignment records and billing ledger data.</p>
+                                </div>
+                                <Button variant="outline" size="sm" className="h-9 px-4 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsExportDialogOpen(true)}>
+                                    <Download size={14} className="mr-2"/> Initialize Export
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            </div>
+
+            {/* EXPORT DIALOG (Unchanged Logic) */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
+                        <DialogTitle className="uppercase tracking-widest font-bold">Audit Archive Protocol</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 space-y-6 text-left">
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">From</Label>
+                                <Input type="date" value={exportConfig.from} className="h-10 bg-bg-primary" />
+                            </div>
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">To</Label>
+                                <Input type="date" value={exportConfig.to} className="h-10 bg-bg-primary" />
                             </div>
                         </div>
                     </div>
-
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">
-                            Cancel
-                        </Button>
-                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
-                            <Download size={16} className="mr-2" /> Request ZIP Archive
-                        </Button>
+                    <DialogFooter className="bg-bg-tertiary/30 border-t border-border-default p-6 flex gap-3">
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Execute Export</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

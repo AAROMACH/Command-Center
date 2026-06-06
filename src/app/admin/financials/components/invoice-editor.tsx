@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 

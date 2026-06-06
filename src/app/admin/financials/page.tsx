@@ -16,6 +16,7 @@ import { RevenueChart } from './components/revenue-chart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from "@/components/ui/checkbox";
 import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";

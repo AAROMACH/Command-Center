@@ -28,7 +28,10 @@ import {
     Trash2,
     Undo2,
     MessageSquare,
-    AlertCircle
+    AlertCircle,
+    Calendar as CalendarIcon,
+    ShieldCheck,
+    FileCheck
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -229,7 +232,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     };
 
     const handleUpdateWorkOrder = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
-        // Optimistic update of the log item if pay changed
         if (updates.finalPay !== undefined && localLog) {
             const updatedItems = (localLog.items || []).map(item => 
                 item.workOrderId === woId ? { ...item, jobPay: updates.finalPay! } : item
@@ -245,7 +247,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             }
         }
 
-        // Also update the mission itself in the appropriate collection
         try {
             const asmtRef = doc(db, 'assignments', woId);
             const woRef = doc(db, 'workOrders', woId);
@@ -442,7 +443,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Mission identifier lookup pending...'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.title || wo?.description || 'Mission identifier lookup pending...'}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
@@ -535,7 +536,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Mission identifier lookup pending...'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.title || wo?.description || 'Mission identifier lookup pending...'}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}

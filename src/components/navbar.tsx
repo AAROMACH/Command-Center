@@ -49,7 +49,7 @@ const techNavItems: NavItem[] = [
   { href: '/tech/projects', label: 'Projects', icon: Briefcase, permission: 'view_assigned_projects_only' },
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
-  { href: '/tech/earnings', label: 'Billing', icon: Coins, permission: 'field_logs' },
+  { href: '/tech/earnings', label: 'earnings', icon: Coins, permission: 'field_logs' },
 ];
 
 const clientNavItems: NavItem[] = [

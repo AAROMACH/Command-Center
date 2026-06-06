@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -32,7 +31,7 @@ import {
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { isAdmin, isTech, isClient, getAvailablePortals } from '@/lib/permissions';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export function UserNav() {
@@ -158,7 +157,7 @@ export function UserNav() {
           {billingPath && !plansPath && (
             <DropdownMenuItem onSelect={() => router.push(billingPath)}>
               <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing</span>
+              <span>earnings</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>

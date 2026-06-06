@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign, Hammer, Package } from 'lucide-react';
+import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign, Hammer, Package, Zap, Activity, UserCheck } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -24,27 +24,21 @@ type InvoiceEditorProps = {
     onSave: (invoice: Invoice) => void;
 };
 
-const defaultLineItem: Omit<InvoiceLineItem, 'id'> = {
-    description: '',
-    quantity: 1,
-    unitPrice: 0,
-    category: 'labor',
-};
-
 const premadeLineItems = [
-    { group: 'Labor & Services', items: [
+    { group: 'Labor & Services (Tax Exempt)', items: [
         { id: 'labor_fiber', description: 'Fiber Optic Labor ($150/hr)', unitPrice: 150, category: 'labor' },
         { id: 'labor_install', description: 'Installation Labor ($120/hr)', unitPrice: 120, category: 'labor' },
         { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100, category: 'labor' },
         { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor' },
         { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75, category: 'labor' },
+        { id: 'ah_surcharge', description: 'After Hours Emergency Surcharge', unitPrice: 180, category: 'labor' },
     ]},
-    { group: 'Cabling & Wiring (Taxable)', items: [
+    { group: 'Cabling & Wiring (8% Tax)', items: [
         { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450, category: 'material' },
         { id: 'cat6_riser', description: 'CAT6 Riser Cable (1000ft)', unitPrice: 320, category: 'material' },
         { id: 'fiber_patch', description: 'LC-LC Duplex Fiber Patch (3m)', unitPrice: 24, category: 'material' },
     ]},
-    { group: 'Network & Infrastructure (Taxable)', items: [
+    { group: 'Network & Infrastructure (8% Tax)', items: [
         { id: 'poe_8', description: '8-Port Managed PoE Switch', unitPrice: 195, category: 'material' },
         { id: 'ap_ac', description: 'Enterprise Wireless Access Point', unitPrice: 245, category: 'material' },
         { id: 'rack_6u', description: '6U Wall Mount Rack Enclosure', unitPrice: 180, category: 'material' },
@@ -200,30 +194,43 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         onSave(finalInvoice);
     };
 
-    const LineItemRow = ({ item }: { item: InvoiceLineItem }) => (
-        <div key={item.id} className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
-            <Select onValueChange={(val) => handlePremadeItemSelect(item.id, val)}>
-                <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Premade..."/></SelectTrigger>
-                <SelectContent>
-                    {premadeLineItems.map(group => (
-                        <SelectGroup key={group.group}>
-                            <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
-                            {group.items.filter(pi => pi.category === item.category).map(pi => (
-                                <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
-                            ))}
-                        </SelectGroup>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Input placeholder="Service description..." value={item.description} onChange={e => handleLineItemChange(item.id, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
-            <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
-            <div className="relative">
-                <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
-                <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
+    const LineItemRow = ({ item }: { item: InvoiceLineItem }) => {
+        const isAH = !!invoiceData.isAfterHours && item.category === 'labor';
+        const effectivePrice = isAH ? item.unitPrice * 1.5 : item.unitPrice;
+
+        return (
+            <div key={item.id} className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
+                <Select onValueChange={(val) => handlePremadeItemSelect(item.id, val)}>
+                    <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Preset..."/></SelectTrigger>
+                    <SelectContent>
+                        {premadeLineItems.map(group => (
+                            <SelectGroup key={group.group}>
+                                <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
+                                {group.items.filter(pi => pi.category === item.category).map(pi => (
+                                    <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <div className="space-y-1">
+                    <Input placeholder="Description..." value={item.description} onChange={e => handleLineItemChange(item.id, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
+                    {isAH && (
+                        <div className="flex items-center gap-1.5 px-2">
+                            <Zap size={10} className="text-brand-red animate-pulse"/>
+                            <span className="text-[8px] font-black text-brand-red uppercase tracking-widest">AH Protocol Active (Effective: ${effectivePrice.toFixed(2)})</span>
+                        </div>
+                    )}
+                </div>
+                <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
+                <div className="relative">
+                    <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                    <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(item.id)}><Trash2 size={14}/></Button>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(item.id)}><Trash2 size={14}/></Button>
-        </div>
-    );
+        );
+    };
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -231,10 +238,10 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 <SheetHeader className="pb-4 border-b border-border-sub">
                     <SheetTitle className="flex items-center gap-2 text-lg uppercase font-bold tracking-widest text-left">
                         <FileText size={20} className="text-brand-red"/>
-                        {invoice ? 'Modify Invoice Registry' : 'Initialize New Invoice'}
+                        {invoice ? 'Audit Invoice Registry' : 'Initialize Client Settlement'}
                     </SheetTitle>
                     <SheetDescription className="text-xs uppercase font-bold text-text-muted tracking-widest text-left">
-                        {invoice ? `Audit of Registry #${invoice.invoiceNumber}` : 'Populate parameters for client settlement.'}
+                        {invoice ? `Registry Ref: ${invoice.invoiceNumber}` : 'Populate parameters for strategic billing.'}
                     </SheetDescription>
                 </SheetHeader>
                 
@@ -249,9 +256,9 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label htmlFor="relatedId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Reference Object (Proj/WO)</Label>
+                                <Label htmlFor="relatedId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Related Mission (Proj/WO)</Label>
                                 <Select value={invoiceData.projectId || invoiceData.workOrderId} onValueChange={(val) => handleSelectChange('relatedId', val)}>
-                                    <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link to existing mission..." /></SelectTrigger>
+                                    <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link mission registry..." /></SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
                                             <SelectLabel className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Active Projects</SelectLabel>
@@ -267,7 +274,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </div>
                          <div className="grid grid-cols-3 gap-6">
                              <div className="space-y-2 text-left">
-                                <Label htmlFor="invoiceNumber" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Invoice Identifier</Label>
+                                <Label htmlFor="invoiceNumber" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Invoice ID</Label>
                                 <Input id="invoiceNumber" name="invoiceNumber" value={invoiceData.invoiceNumber || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary font-mono text-xs uppercase font-bold" />
                             </div>
                             <div className="space-y-2 text-left">
@@ -294,9 +301,9 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <Clock size={20} />
                             </div>
                             <div className="text-left">
-                                <p className="text-xs font-bold uppercase tracking-wider text-text-primary">After Hours Protocol (1.5x Labor)</p>
+                                <p className="text-xs font-bold uppercase tracking-wider text-text-primary">After Hours Emergency Protocol</p>
                                 <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
-                                    {hasLabor ? "Applies multiplier to all labor line items." : "Protocol Locked: Add labor items to enable."}
+                                    {hasLabor ? "Applies 1.5x Multiplier to all labor entries." : "Protocol Locked: Add labor entries to activate."}
                                 </p>
                             </div>
                         </div>
@@ -313,15 +320,15 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             <div className="flex items-center justify-between px-1">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                                     <Hammer size={14} className="text-brand-red" />
-                                    Labor Registry
+                                    Labor Registry (Tax Exempt)
                                 </h3>
                                 <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{laborItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
                                 <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
-                                    <span>Template</span>
-                                    <span>Technical Specification</span>
-                                    <span className="text-center">Hours</span>
+                                    <span>Preset</span>
+                                    <span>Description</span>
+                                    <span className="text-center">Hrs</span>
                                     <span className="text-center">Rate ($/hr)</span>
                                 </div>
                                 {laborItems.map((item) => (
@@ -329,7 +336,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 ))}
                             </div>
                             <Button variant="dashed" size="sm" className="w-full h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={() => addLineItem('labor')}>
-                                <Plus size={16} className="mr-2"/> Add Labor Entry
+                                <Plus size={16} className="mr-2"/> Add Labor Row
                             </Button>
                         </div>
 
@@ -338,13 +345,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             <div className="flex items-center justify-between px-1">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                                     <Package size={14} className="text-accent-gold" />
-                                    Material Registry (Taxable)
+                                    Material Registry (8% Tax)
                                 </h3>
                                 <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{materialItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
                                 <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
-                                    <span>Template</span>
+                                    <span>Preset</span>
                                     <span>Part / Asset Identification</span>
                                     <span className="text-center">QTY</span>
                                     <span className="text-center">Unit ($)</span>
@@ -354,25 +361,25 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 ))}
                             </div>
                             <Button variant="dashed" size="sm" className="w-full h-10 border-accent-gold/20 text-accent-gold hover:bg-accent-gold/5" onClick={() => addLineItem('material')}>
-                                <Plus size={16} className="mr-2"/> Add Material Entry
+                                <Plus size={16} className="mr-2"/> Add Material Row
                             </Button>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 pt-4">
                          <div className="space-y-2 text-left">
-                            <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Internal / Client Notes</Label>
-                            <Textarea id="notes" name="notes" placeholder="Terms and conditions, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
+                            <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Tactical Audit Notes</Label>
+                            <Textarea id="notes" name="notes" placeholder="Terms, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
                         </div>
-                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3">
+                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
                                 <span className="text-text-muted">Labor Subtotal (Tax Exempt)</span>
                                 <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
                             {invoiceData.isAfterHours && (
                                 <div className="flex justify-between items-center text-[9px] font-black uppercase text-brand-red bg-brand-red-dim/50 px-2 py-1 rounded">
-                                    <span>After Hours Multiplier Applied</span>
-                                    <span>1.5X ACTIVE</span>
+                                    <span className="flex items-center gap-1.5"><Zap size={10}/> Emergency Multiplier (1.5x)</span>
+                                    <span>ACTIVE</span>
                                 </div>
                             )}
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
@@ -380,11 +387,11 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <span className="font-mono text-text-primary">${materialsSubtotal.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-accent-gold">
-                                <span className="flex items-center gap-1.5"><Coins size={10}/> Regional Tax (8% on Materials)</span>
+                                <span className="flex items-center gap-1.5"><Coins size={10}/> Material Tax (8.0%)</span>
                                 <span className="font-mono">${tax.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-4 mt-4">
-                                <span className="text-xs font-black uppercase tracking-[0.2em] text-text-primary">Total Settlement</span>
+                                <span className="text-xs font-black uppercase tracking-[0.2em] text-text-primary">Final Settlement</span>
                                 <span className="text-2xl font-mono font-bold text-text-green">${total.toFixed(2)}</span>
                             </div>
                         </div>
@@ -394,7 +401,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 <div className="flex justify-between items-center pt-6 border-t border-border-sub mt-4 sticky bottom-0 bg-bg-elevated py-4">
                     <div>
                         <Select value={invoiceData.status} onValueChange={(val) => handleSelectChange('status', val)}>
-                            <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest"><SelectValue placeholder="Set Registry Status" /></SelectTrigger>
+                            <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest"><SelectValue placeholder="Status" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="draft">DRAFT</SelectItem>
                                 <SelectItem value="sent">TRANSMITTED</SelectItem>

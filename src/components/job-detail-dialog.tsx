@@ -11,6 +11,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { 
+  Tabs, 
+  TabsList, 
+  TabsTrigger, 
+  TabsContent 
+} from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { 
   Clock, 
@@ -31,7 +37,8 @@ import {
   RefreshCw,
   User,
   Navigation,
-  Timer
+  Timer,
+  FolderOpen
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -39,7 +46,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, formatCityState } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { assignmentTimeLogs } from '@/lib/data';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -210,15 +216,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               WO: {mission.id.toUpperCase()}
             </DialogTitle>
             <div className="flex items-center gap-4">
-               <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-6 px-3 bg-bg-secondary border-border-sub text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"
-                onClick={() => setActiveTab('REVIEW')}
-               >
-                 <History size={10} className="text-accent-gold" />
-                 Check in/out Log
-               </Button>
                {isLocked && (
                 <div className="flex items-center gap-2 text-text-muted">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Registry Locked</span>

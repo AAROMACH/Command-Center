@@ -56,8 +56,8 @@ const optimizeRoutesPrompt = ai.definePrompt({
   output: { schema: AdminRouteOptimizationOutputSchema },
   prompt: `You are a high-level tactical routing engine for an operations command center. Your mission is to organize a pool of unassigned field jobs into exactly {{{targetRouteCount}}} optimized routes for our operatives.
 
-TACTICAL PRIORITIES:
-1. ROUTE VOLUME: You MUST generate exactly {{{targetRouteCount}}} routes if possible. If there are fewer jobs than routes, prioritize one job per route.
+TACTICAL PRIORITIES (STRICT):
+1. ROUTE VOLUME: You MUST generate exactly {{{targetRouteCount}}} routes. Do not generate more or less unless there are fewer than {{{targetRouteCount}}} total jobs.
 2. GEOGRAPHIC CLUSTERING: Group jobs by physical proximity to minimize travel time and operational overhead.
 3. TEMPORAL SEQUENCING: Order jobs logically based on their schedule times and priorities.
 4. OPERATIVE FIT: Match the most critical or difficult jobs to technicians with high Reliability Index scores and matching Skills.
@@ -85,6 +85,7 @@ Operative Registry:
 
 Operational Protocol:
 - Architect routes that maximize daily throughput.
+- Distribute the unassigned jobs as evenly as possible across the {{{targetRouteCount}}} routes while maintaining geographic logic.
 - If a technician is unqualified for a job, DO NOT include it in their route.
 - If multiple techs are qualified, prioritize the tech closest to the cluster.
 - Provide a brief 'Reasoning' for each route explaining the geographical and skill-based logic used.

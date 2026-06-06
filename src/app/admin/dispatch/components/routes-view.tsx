@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { Route, WorkOrder, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,12 @@ import {
     ExternalLink,
     Sparkles,
     Loader2,
-    ShieldAlert,
+    ShieldCheck,
     Clock,
     MapPin,
-    RotateCcw
+    RotateCcw,
+    X,
+    ShieldAlert
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,6 +53,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import { getOptimizedRoutes } from '../actions';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type RoutesViewProps = {
     routes: Route[];
@@ -155,7 +158,7 @@ function DroppableRoute({
     >
         <CardHeader className="bg-bg-tertiary/50 border-b border-border-sub p-3">
             <div className="flex justify-between items-start mb-1.5">
-                <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">ROUTE ID: {route.id.split('-')[1]}</Badge>
+                <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">ROUTE ID: {route.id.split('-').pop()?.toUpperCase()}</Badge>
                 <button onClick={() => onDelete(route.id)} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
             </div>
             <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none text-left">{route.name}</CardTitle>
@@ -225,6 +228,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const [isAiOptimizing, setIsAiOptimizing] = useState(false);
     const [targetRouteCount, setTargetRouteCount] = useState("3");
     
+    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
+    const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
+
     const { toast } = useToast();
 
     const sensors = useSensors(
@@ -255,6 +261,12 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         onRoutesChange(routes.filter(r => r.id !== id));
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: undefined } : wo));
         toast({ variant: "destructive", title: "Route Dissolved", description: `${route?.name} removed from registry.` });
+    };
+
+    const handleClearAllRoutes = () => {
+        onRoutesChange([]);
+        onWorkOrdersChange(allWorkOrders.map(wo => ({ ...wo, routeId: undefined })));
+        toast({ variant: "destructive", title: "Registry Reset", description: "All routes dissolved and jobs returned to unassigned pool." });
     };
 
     const handleTechNameChange = (routeId: string, name: string) => {
@@ -357,6 +369,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 }
             }
         });
+
         const updatedWorkOrders = allWorkOrders.map(wo => {
             if (jobsToUpdate[wo.id]) {
                 return {
@@ -367,6 +380,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
             return wo;
         });
+
         onWorkOrdersChange(updatedWorkOrders);
         toast({ title: "Batch Assignment Executed", description: "Job data transferred to the Assigned registry." });
     };
@@ -378,6 +392,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         const targetRouteId = over.id as string;
         const sourceRouteId = active.data.current?.sourceRouteId;
         if (sourceRouteId === targetRouteId) return;
+
         onRoutesChange(routes.map(r => {
             if (r.id === sourceRouteId) {
                 return { ...r, workOrderIds: r.workOrderIds.filter(id => id !== jobId) };
@@ -387,9 +402,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
             return r;
         }));
+
         onWorkOrdersChange(allWorkOrders.map(wo => 
             wo.id === jobId ? { ...wo, routeId: targetRouteId } : wo
         ));
+
         toast({ title: "Registry Relocated", description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.` });
     };
 
@@ -453,6 +470,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
                     <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">
                         <Plus size={14} className="mr-2"/> New Route
+                    </Button>
+                    <Button variant="ghost" onClick={handleClearAllRoutes} disabled={routes.length === 0} className="h-9 px-4 text-[10px] uppercase font-bold text-text-muted hover:text-text-red">
+                        <RotateCcw size={14} className="mr-2"/> Reset
                     </Button>
                     <Button 
                         onClick={handleBatchAssign} 
@@ -560,13 +580,23 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                             </div>
                                         </div>
                                     </div>
-                                    <Button 
-                                        size="sm" 
-                                        className="h-8 bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white"
-                                        onClick={() => handleAddJobToRoute(job.id)}
-                                    >
-                                        <Check size={14} className="mr-1.5"/> Allocate
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-text-muted hover:text-text-primary"
+                                            onClick={() => { setSelectedJob(job); setIsJobDetailOpen(true); }}
+                                        >
+                                            <Eye size={16}/>
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            className="h-8 bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white"
+                                            onClick={() => handleAddJobToRoute(job.id)}
+                                        >
+                                            <Check size={14} className="mr-1.5"/> Allocate
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                             {filteredUnassigned.length === 0 && (
@@ -581,6 +611,12 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     </div>
                 </DialogContent>
             </Dialog>
+            
+            <JobDetailDialog 
+                isOpen={isJobDetailOpen} 
+                setIsOpen={setIsJobDetailOpen} 
+                mission={selectedJob} 
+            />
         </div>
     );
 }

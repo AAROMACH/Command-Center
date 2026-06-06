@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc } from 'firebase/firestore';
 import { DispatchTabs } from "./components/dispatch-tabs";
 import { RequestsTabs } from "../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./components/work-orders-client";
@@ -404,7 +404,7 @@ export default function DispatchPage() {
                                           <Checkbox 
                                               id={`prio-${priority}`} 
                                               checked={activePriorities.includes(priority)}
-                                              onCheckedChange={(checked) => setActivePriorities(prev => checked ? [...prev, priority] : prev.filter(p => p !== priority))}
+                                              onCheckedChange={() => togglePriority(priority)}
                                           />
                                           <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
                                       </div>
@@ -421,7 +421,7 @@ export default function DispatchPage() {
                                             <Checkbox 
                                                 id={`type-${type}`} 
                                                 checked={activeTypes.includes(type)}
-                                                onCheckedChange={(checked) => setActiveTypes(prev => checked ? [...prev, type] : prev.filter(t => t !== type))}
+                                                onCheckedChange={() => toggleType(type)}
                                             />
                                             <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
                                         </div>
@@ -438,7 +438,7 @@ export default function DispatchPage() {
                                           <Checkbox 
                                               id={`src-${source}`} 
                                               checked={activeSources.includes(source)}
-                                              onCheckedChange={(checked) => setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source))}
+                                              onCheckedChange={() => toggleSource(source)}
                                           />
                                           <Label htmlFor={`src-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
                                       </div>
@@ -459,21 +459,41 @@ export default function DispatchPage() {
            <DispatchTabs 
               workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)} 
               technicians={technicians} 
-              onWorkOrdersChange={(updated) => {
-                updated.forEach(async (wo) => {
-                  const docRef = doc(db, 'workOrders', wo.id);
-                  await updateDoc(docRef, wo);
-                  
-                  // Notify Technician if assignment changed
-                  if (wo.status === 'assigned' && wo.assignedTechnicianId) {
-                      await NotificationService.notify(
-                          wo.assignedTechnicianId,
-                          "Priority Mission Dispatched",
-                          `New priority mission [${wo.id.toUpperCase()}] assigned. Confirm schedule immediately.`,
-                          { id: wo.id, type: 'assignment' }
-                      );
-                  }
-                });
+              onWorkOrdersChange={async (updated) => {
+                // Find and process assignments
+                const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
+                
+                for (const wo of newlyAssigned) {
+                    const asmtId = `asmt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                    const asmtRef = doc(db, 'assignments', asmtId);
+                    const woRef = doc(db, 'workOrders', wo.id);
+                    
+                    const asmtData = {
+                        ...wo,
+                        id: asmtId,
+                        workOrderId: wo.id,
+                        techId: wo.assignedTechnicianId,
+                        assignedAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    await setDoc(asmtRef, asmtData);
+                    await deleteDoc(woRef);
+                    
+                    await NotificationService.notify(
+                        wo.assignedTechnicianId!,
+                        "Priority Mission Dispatched",
+                        `New mission [${wo.id.toUpperCase()}] assigned. Confirm schedule via terminal.`,
+                        { id: asmtId, type: 'assignment' }
+                    );
+                }
+
+                // Update non-assigned changes
+                const nonAssigned = updated.filter(u => u.status === 'unassigned');
+                for (const wo of nonAssigned) {
+                    const docRef = doc(db, 'workOrders', wo.id);
+                    await updateDoc(docRef, wo);
+                }
               }}
               routes={routes}
               onRoutesChange={(updated) => {
@@ -538,4 +558,14 @@ export default function DispatchPage() {
       <NewRequestDialog isOpen={isNewRequestOpen} setIsOpen={setIsNewRequestOpen} onSave={handleAddNewRequest} />
     </div>
   );
+
+  function togglePriority(priority: string) {
+    setActivePriorities(prev => prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]);
+  }
+  function toggleType(type: string) {
+    setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+  }
+  function toggleSource(source: string) {
+    setActiveSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]);
+  }
 }

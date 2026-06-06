@@ -111,8 +111,8 @@ export async function getOptimizedRoutes(
         return result;
     } catch (aiError: any) {
         // LOG REAL ERROR SECURELY ON SERVER
-        console.error("[SERVER] AI DISPATCH FAILURE:", aiError.message);
-        if (aiError.message.includes('429')) console.error("[SERVER] ALERT: AI QUOTA EXHAUSTED");
+        const errorMessage = aiError.originalMessage || aiError.message || JSON.stringify(aiError);
+        console.error("[SERVER] AI DISPATCH FAILURE:", errorMessage);
         
         // 3. TRIGGER DETERMINISTIC FALLBACK
         return generateFallbackRoutes(sanitizedInput);

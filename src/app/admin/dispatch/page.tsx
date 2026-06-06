@@ -301,7 +301,7 @@ export default function DispatchPage() {
                   <SelectTrigger className="w-[140px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                       <div className="flex items-center gap-2">
                           <ArrowUpDown size={14} className="text-text-muted" />
-                          <SelectValue placeholder="Sort" />
+                          <SelectValue placeholder="Sort Registry" />
                       </div>
                   </SelectTrigger>
                   <SelectContent>
@@ -318,10 +318,10 @@ export default function DispatchPage() {
               <Popover>
                   <PopoverTrigger asChild>
                     <div className={cn(
-                        "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                        "flex items-center h-8 rounded-md border border-border-main bg-bg-primary px-2 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-7",
                         dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                     )}>
-                        <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                        <CalendarIcon size={12} className={cn("mr-1.5", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
                         <span className={cn(
                             "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
                             dateRange?.from ? "text-text-primary" : "text-text-muted"
@@ -332,7 +332,7 @@ export default function DispatchPage() {
                         </span>
                         {dateRange?.from && (
                             <button 
-                                className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                className="absolute right-1.5 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
                                 onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
                             >
                                 <X size={10} />

@@ -92,15 +92,17 @@ export default function TechDashboardPage() {
     /**
      * Intelligent Mission Selector.
      * Prioritizes current sessions (En Route/On Site).
-     * Automatically pivots to "Next Up" missions once current is Checked Out.
      */
     const activeJob = useMemo(() => {
-        // Priority 1: In-Flight Missions (En Route or On Site)
-        const inFlight = allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed');
+        // Priority 1: On-Site Missions (Critical to handle first)
+        const onSite = allWorkOrders.find(wo => wo.status === 'in-progress');
+        if (onSite) return onSite;
+
+        // Priority 2: In-Flight Missions (En Route or Confirmed)
+        const inFlight = allWorkOrders.find(wo => wo.status === 'on-my-way' || wo.status === 'confirmed');
         if (inFlight) return inFlight;
 
-        // Priority 2: Next Mission in Registry (Assigned)
-        // Sort by date then time to find the true "Next Up"
+        // Priority 3: Next Mission in Registry (Assigned)
         const upcoming = allWorkOrders
             .filter(wo => wo.status === 'assigned')
             .sort((a, b) => {

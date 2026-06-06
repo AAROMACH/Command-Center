@@ -22,7 +22,8 @@ import {
   FileCheck,
   RotateCcw,
   X,
-  History
+  History,
+  AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -151,7 +152,7 @@ export default function TechAssignmentsPage() {
         return [...activeAssignments].sort((a, b) => {
             if (sortBy === 'priority') {
                 const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-                return prio[a.priority] - prio[b.priority];
+                return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
             }
             if (sortBy === 'pay') return b.pay - a.pay;
             return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
@@ -162,6 +163,14 @@ export default function TechAssignmentsPage() {
         techWorkOrders.filter(wo => wo.status === 'completed')
             .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || '')),
     [techWorkOrders]);
+
+    /**
+     * Session Lock Validator.
+     * Prevents multi-job check-ins.
+     */
+    const hasActiveSession = useMemo(() => {
+        return allWorkOrders.some(wo => wo.status === 'in-progress');
+    }, [allWorkOrders]);
 
     const getFieldNationLink = (id: string) => {
       const cleanId = id.replace(/^wo-/, '');
@@ -213,6 +222,7 @@ export default function TechAssignmentsPage() {
     };
 
     const handleCheckIn = async (woId: string) => {
+        if (hasActiveSession) return;
         const now = format(new Date(), 'h:mm a');
         const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
@@ -357,6 +367,18 @@ export default function TechAssignmentsPage() {
                 </div>
             </header>
 
+            {hasActiveSession && (
+                <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left mb-6">
+                    <AlertCircle size={20} className="text-text-red shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-left">
+                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Active Session lock</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
+                            You are currently checked into a mission. Only one active check-in session is permitted per operative. Check out of your active session to initiate another.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
                     <TabsList className="tabs !mb-0">
@@ -493,7 +515,13 @@ export default function TechAssignmentsPage() {
                                                   </Button>
                                               )}
                                               {wo.status === 'on-my-way' && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim" onClick={() => handleCheckIn(wo.id)}>
+                                                  <Button 
+                                                    disabled={hasActiveSession}
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" 
+                                                    onClick={() => handleCheckIn(wo.id)}
+                                                  >
                                                       <Play size={14} className="mr-2 fill-current"/>
                                                       Check In
                                                   </Button>
@@ -506,7 +534,13 @@ export default function TechAssignmentsPage() {
                                               )}
                                               {wo.status === 'checked-out' && (
                                                   <>
-                                                      <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleCheckIn(wo.id)}>
+                                                      <Button 
+                                                        disabled={hasActiveSession}
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" 
+                                                        onClick={() => handleCheckIn(wo.id)}
+                                                      >
                                                           <RotateCcw size={14} className="mr-2"/>
                                                           Check back in
                                                       </Button>

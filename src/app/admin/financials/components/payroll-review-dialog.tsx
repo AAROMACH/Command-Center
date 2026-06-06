@@ -25,7 +25,10 @@ import {
     Wrench,
     Clock,
     ClipboardCheck,
-    Trash2
+    Trash2,
+    Undo2,
+    MessageSquare,
+    AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -188,6 +191,26 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    const handleApproveUnsubmit = async () => {
+        if (!localLog) return;
+        try {
+            const logRef = doc(db, 'weeklyLogs', localLog.id);
+            await updateDoc(logRef, {
+                status: 'Draft',
+                unsubmitRequested: false,
+                unsubmitReason: null,
+                unsubmitRequestedAt: null
+            });
+            toast({
+                title: "Unsubmit Authorized",
+                description: `Weekly log for ${localLog.weekOf} has been reverted to Draft.`,
+            });
+            setIsOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Authorization Failed', description: e.message });
+        }
+    };
+
     const handleUpdateWorkOrder = useCallback((woId: string, updates: Partial<WorkOrder>) => {
         setLocalWorkOrders(prev => prev.map(wo => 
             wo.id === woId ? { ...wo, ...updates } : wo
@@ -270,7 +293,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="text-left">
-                                <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
+                                <div className="flex items-center gap-2">
+                                    <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
+                                    {localLog.unsubmitRequested && (
+                                        <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Requested</Badge>
+                                    )}
+                                </div>
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                     Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
                                 </p>
@@ -315,85 +343,109 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     <div className="flex-1 overflow-hidden relative">
                         <TabsContent value="verified" className="m-0 h-full">
                             <ScrollArea className="h-full p-4">
-                                <div className="space-y-2">
-                                    {confirmedItems.length > 0 ? confirmedItems.map(item => {
-                                        const wo = findWorkOrder(item.workOrderId);
-                                        const isImported = wo?.source === 'Imported';
-                                        const isAudited = item.isAdminReviewed;
-                                        return (
-                                            <div key={item.id} className={cn(
-                                                "p-3 rounded-xl border transition-all flex items-center justify-between group",
-                                                isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
-                                            )}>
-                                                <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
-                                                    <div className="shrink-0 flex items-center gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
-                                                            className={cn(
-                                                                "h-8 px-4 uppercase text-[9px] font-bold tracking-widest transition-all",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
-                                                            )}
-                                                            onClick={() => toggleAuditItem(item.id, item.workOrderId)}
-                                                        >
-                                                            {isAudited ? <Check size={14} className="mr-1.5"/> : <ClipboardCheck size={14} className="mr-1.5"/>}
-                                                            {isAudited ? 'Audit Pass' : 'Approve'}
-                                                        </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon-sm" 
-                                                            className="h-8 w-8 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
-                                                        >
-                                                            <Trash2 size={14}/>
-                                                        </Button>
-                                                    </div>
-                                                    <div className="min-w-0 flex-1 text-left">
-                                                        <div className="flex items-center gap-2 text-left">
-                                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description}</p>
-                                                            {isImported && (
-                                                                <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                                            <div className="flex items-center gap-1.5 text-left">
-                                                              <span className="text-brand-red font-mono text-left">{wo?.id.toUpperCase()}</span>
-                                                              {isImported && wo && (
-                                                                <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
-                                                                  <ExternalLink size={10} />
-                                                                </a>
-                                                              )}
-                                                            </div>
-                                                            <span>•</span>
-                                                            <span>{wo?.location.split(',')[0]}</span>
-                                                        </div>
-                                                    </div>
+                                <div className="space-y-4">
+                                    {localLog.unsubmitRequested && (
+                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 mb-4">
+                                            <AlertCircle size={20} className="text-text-red shrink-0 mt-0.5" />
+                                            <div className="space-y-1 text-left flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[11px] font-black text-text-red uppercase tracking-widest">Unsubmit Request Flagged</p>
+                                                    <span className="text-[9px] text-text-muted font-mono uppercase">{localLog.unsubmitRequestedAt ? format(parseISO(localLog.unsubmitRequestedAt), 'MMM d, h:mm a') : ''}</span>
                                                 </div>
-                                                
-                                                <div className="ml-4 shrink-0 min-w-[350px]">
-                                                    {isImported && wo ? (
-                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                    ) : (
-                                                        <div className="flex items-center justify-end gap-8">
-                                                            <div className="text-right">
-                                                                <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
-                                                                <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">{getHoursOnsite(wo!.id)}</p>
-                                                            </div>
-                                                            <div className="text-right min-w-[70px]">
-                                                                <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                                <p className="text-sm font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{localLog.unsubmitReason}&quot;</p>
+                                                <div className="pt-2">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="h-8 px-6 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[9px] tracking-widest text-white"
+                                                        onClick={handleApproveUnsubmit}
+                                                    >
+                                                        <Undo2 size={12} className="mr-1.5"/> Authorize Unsubmit & Return to Draft
+                                                    </Button>
                                                 </div>
                                             </div>
-                                        );
-                                    }) : (
-                                        <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-                                            <CheckCircle2 size={48} className="mx-auto text-text-muted mb-2" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest">No verified assignments in this manifest</p>
                                         </div>
                                     )}
+
+                                    <div className="space-y-2">
+                                        {confirmedItems.length > 0 ? confirmedItems.map(item => {
+                                            const wo = findWorkOrder(item.workOrderId);
+                                            const isImported = wo?.source === 'Imported';
+                                            const isAudited = item.isAdminReviewed;
+                                            return (
+                                                <div key={item.id} className={cn(
+                                                    "p-3 rounded-xl border transition-all flex items-center justify-between group",
+                                                    isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
+                                                )}>
+                                                    <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
+                                                        <div className="shrink-0 flex items-center gap-2">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                className={cn(
+                                                                    "h-8 px-4 uppercase text-[9px] font-bold tracking-widest transition-all",
+                                                                    isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
+                                                                )}
+                                                                onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                            >
+                                                                {isAudited ? <Check size={14} className="mr-1.5"/> : <ClipboardCheck size={14} className="mr-1.5"/>}
+                                                                {isAudited ? 'Audit Pass' : 'Approve'}
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon-sm" 
+                                                                className="h-8 w-8 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
+                                                            >
+                                                                <Trash2 size={14}/>
+                                                            </Button>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1 text-left">
+                                                            <div className="flex items-center gap-2 text-left">
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description}</p>
+                                                                {isImported && (
+                                                                    <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                                                <div className="flex items-center gap-1.5 text-left">
+                                                                  <span className="text-brand-red font-mono text-left">{wo?.id.toUpperCase()}</span>
+                                                                  {isImported && wo && (
+                                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                                      <ExternalLink size={10} />
+                                                                    </a>
+                                                                  )}
+                                                                </div>
+                                                                <span>•</span>
+                                                                <span>{wo?.location.split(',')[0]}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="ml-4 shrink-0 min-w-[350px]">
+                                                        {isImported && wo ? (
+                                                            <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                        ) : (
+                                                            <div className="flex items-center justify-end gap-8">
+                                                                <div className="text-right">
+                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
+                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">{getHoursOnsite(wo!.id)}</p>
+                                                                </div>
+                                                                <div className="text-right min-w-[70px]">
+                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
+                                                                    <p className="text-sm font-mono font-bold text-text-primary">${wo?.pay.toFixed(2)}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }) : (
+                                            <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                                <CheckCircle2 size={48} className="mx-auto text-text-muted mb-2" />
+                                                <p className="text-[10px] font-bold uppercase tracking-widest">No verified assignments in this manifest</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </ScrollArea>
                         </TabsContent>

@@ -31,7 +31,10 @@ import {
     Circle,
     Info,
     SearchCheck,
-    RotateCcw
+    RotateCcw,
+    Undo2,
+    MessageSquare,
+    AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,6 +91,10 @@ export default function TechWeeklyLogPage() {
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
     const [isCreateLogOpen, setIsCreateLogOpen] = useState(false);
     const [newLogDate, setNewLogDate] = useState<Date | undefined>(new Date());
+
+    // Unsubmit Request State
+    const [isUnsubmitDialogOpen, setIsUnsubmitDialogOpen] = useState(false);
+    const [unsubmitReason, setUnsubmitReason] = useState("");
 
     const { toast } = useToast();
 
@@ -262,6 +269,25 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    const handleRequestUnsubmit = async () => {
+        if (!activeLog || !unsubmitReason.trim()) return;
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
+                unsubmitRequested: true,
+                unsubmitReason: unsubmitReason.trim(),
+                unsubmitRequestedAt: new Date().toISOString()
+            });
+            toast({
+                title: "Unsubmit Requested",
+                description: "Amendment request transmitted for administrative authorization.",
+            });
+            setIsUnsubmitDialogOpen(false);
+            setUnsubmitReason("");
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Request Failed", description: e.message });
+        }
+    };
+
     const counts = useMemo(() => {
         if (!activeLog) return { total: 0, confirmed: 0, disputed: 0, pending: 0 };
         const items = activeLog.items || [];
@@ -345,7 +371,12 @@ export default function TechWeeklyLogPage() {
                                         <CalendarIcon size={20} />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                            {log.unsubmitRequested && (
+                                                <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Pending</Badge>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                             <span>{(log.items || []).length} Assignments</span>
                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
@@ -362,6 +393,12 @@ export default function TechWeeklyLogPage() {
                             </CardContent>
                         </Card>
                     ))}
+                    {filteredAndSortedLogs.length === 0 && (
+                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
+                            <LayoutList size={48} className="mx-auto text-text-muted mb-2" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest italic">Registry clear for these filters</p>
+                        </div>
+                    )}
                 </div>
 
                 <Dialog open={isCreateLogOpen} onOpenChange={setIsCreateLogOpen}>
@@ -429,10 +466,32 @@ export default function TechWeeklyLogPage() {
                 </div>
                 
                 <div className="flex items-center gap-3 text-right">
-                    {isLocked ? (
+                    {activeLog.status === 'Submitted' ? (
+                        <div className="flex flex-col items-end gap-3 text-right">
+                            {activeLog.unsubmitRequested ? (
+                                <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary border border-border-sub text-accent-gold">
+                                    <AlertCircle size={14} className="animate-pulse" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest">Unsubmit Pending Approval</p>
+                                </div>
+                            ) : (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    onClick={() => setIsUnsubmitDialogOpen(true)}
+                                >
+                                    <Undo2 size={14} className="mr-2" /> Request Unsubmit
+                                </Button>
+                            )}
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Registry Transmitted</p>
+                                <p className="text-[9px] text-text-muted uppercase font-bold text-right">Logged: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
+                            </div>
+                        </div>
+                    ) : isLocked ? (
                         <div className="flex flex-col items-end text-right">
                             <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Terminal Locked</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">Finalized: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
                         </div>
                     ) : (
                         <Button 
@@ -445,6 +504,19 @@ export default function TechWeeklyLogPage() {
                     )}
                 </div>
             </div>
+
+            {/* UNSET REASONS WARNING */}
+            {!isLocked && counts.pending > 0 && (
+                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse">
+                    <ShieldAlert size={20} className="text-text-red shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-left">
+                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Registry Verification Required</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed uppercase text-left">
+                            You must confirm or dispute the remaining <span className="text-text-red font-black">{counts.pending} assignments</span> before the manifest can be transmitted for billing.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-4 max-w-4xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
@@ -466,8 +538,58 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                         />
                     ))}
+                    {(activeLog.items || []).length === 0 && (
+                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
+                            <ActivityIcon size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments synced to this weeklog</p>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* UN-SUBMIT REQUEST DIALOG */}
+            <Dialog open={isUnsubmitDialogOpen} onOpenChange={setIsUnsubmitDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <Undo2 className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Unsubmit Request Terminal</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Request authorization to amend a previously submitted weekly manifest.</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-6 space-y-4 text-left">
+                        <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2">
+                                <Info size={12}/> Amendment Policy
+                            </p>
+                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                                Unsubmitting a log will pause any active billing audits for this week. You must provide a specific tactical reason for this amendment request.
+                            </p>
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                <MessageSquare size={12} /> Amendment Justification
+                            </Label>
+                            <Textarea 
+                                placeholder="e.g., Added missing materials reimbursement, need to dispute WO-18927..." 
+                                value={unsubmitReason}
+                                onChange={e => setUnsubmitReason(e.target.value)}
+                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed uppercase font-medium"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsUnsubmitDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button 
+                            disabled={!unsubmitReason.trim()}
+                            onClick={handleRequestUnsubmit} 
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                        >
+                            <Send size={16} className="mr-2" /> Transmit Request
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <ReportMissingJobDialog 
                 isOpen={isReportMissingOpen} 

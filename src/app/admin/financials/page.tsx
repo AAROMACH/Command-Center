@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
@@ -305,6 +304,7 @@ export default function FinancialsPage() {
                                         <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
                                         <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
                                         <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
                                         <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
                                         <TableHead className="text-right pr-6"></TableHead>
                                     </TableRow>
@@ -318,6 +318,13 @@ export default function FinancialsPage() {
                                                 <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
                                                     {log.status}
                                                 </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {log.unsubmitRequested && (
+                                                    <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
+                                                        <Undo2 size={8} className="mr-1"/> Unsubmit
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell className="font-mono text-text-green font-bold">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
                                             <TableCell className="text-right pr-6">
@@ -433,7 +440,7 @@ export default function FinancialsPage() {
                     <div className="p-6 space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2">
                             <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Tactical Warning</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase">
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
                                 Closing the period transitions all financial records (Invoices, Expenses, Payroll) to a read-only archival state.
                             </p>
                         </div>
@@ -485,6 +492,7 @@ export default function FinancialsPage() {
                     </DialogHeader>
 
                     <div className="p-6 space-y-8">
+                        {/* Temporal Window */}
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Temporal Audit Window</h3>
                             <div className="grid grid-cols-2 gap-4">

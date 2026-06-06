@@ -317,6 +317,9 @@ export type WeeklyLog = {
   missingAssignmentReports?: MissingAssignmentReport[];
   totalPayout?: number;
   submittedAt?: string;
+  unsubmitRequested?: boolean;
+  unsubmitReason?: string;
+  unsubmitRequestedAt?: string;
 };
 
 export type TimeOffRequest = {

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   CheckCircle2,
   Activity,
+  Undo2
 } from 'lucide-react';
 import { StatCard } from './components/stat-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -134,13 +135,15 @@ export default function DashboardPage() {
         const tickets = clientRequests.filter(r => r.status === 'new');
         const sites = siteRequests.filter(s => s.status === 'pending');
         const timeOff = timeOffRequests.filter(t => t.status === 'pending');
+        const unsubmits = weeklyLogs.filter(l => l.unsubmitRequested);
         return {
             tickets,
             sites,
             timeOff,
-            total: tickets.length + sites.length + timeOff.length
+            unsubmits,
+            total: tickets.length + sites.length + timeOff.length + unsubmits.length
         };
-    }, [clientRequests, siteRequests, timeOffRequests]);
+    }, [clientRequests, siteRequests, timeOffRequests, weeklyLogs]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
@@ -320,6 +323,9 @@ export default function DashboardPage() {
                                 <TabsTrigger value="timeoff" className="tab-trigger-dashboard flex items-center gap-2">
                                     <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.timeOff.length}</Badge>
                                 </TabsTrigger>
+                                <TabsTrigger value="unsubmits" className="tab-trigger-dashboard flex items-center gap-2">
+                                    <Undo2 size={14} /> Amendments <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.unsubmits.length}</Badge>
+                                </TabsTrigger>
                                 <TabsTrigger value="sites" className="tab-trigger-dashboard flex items-center gap-2">
                                     <MapPin size={14} /> Site Registry <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.sites.length}</Badge>
                                 </TabsTrigger>
@@ -369,6 +375,32 @@ export default function DashboardPage() {
                                         )
                                     })}
                                     {pendingRequests.timeOff.length === 0 && <EmptyState icon={Users} label="Personnel registry nominal" />}
+                                </TabsContent>
+
+                                <TabsContent value="unsubmits" className="m-0 space-y-3">
+                                    {pendingRequests.unsubmits.map(log => {
+                                        const tech = technicians.find(t => t.id === log.technicianId);
+                                        return (
+                                            <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
+                                                <div className="flex items-center gap-4 text-left">
+                                                    <Avatar className="h-10 w-10 border border-border-sub">
+                                                        <AvatarImage src={tech?.avatarUrl} />
+                                                        <AvatarFallback>{(tech?.name || 'U').charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="text-left">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
+                                                            <Badge variant="destructive" className="h-3.5 px-1 text-[7px] uppercase">Unsubmit Req.</Badge>
+                                                        </div>
+                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Week of {log.weekOf}</p>
+                                                        <p className="text-[10px] text-text-secondary leading-tight mt-1 line-clamp-1 italic">&quot;{log.unsubmitReason}&quot;</p>
+                                                    </div>
+                                                </div>
+                                                <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/financials?tab=payroll'); }}>Audit Manifest</Button>
+                                            </div>
+                                        )
+                                    })}
+                                    {pendingRequests.unsubmits.length === 0 && <EmptyState icon={Undo2} label="No amendment requests" />}
                                 </TabsContent>
 
                                 <TabsContent value="sites" className="m-0 space-y-3">

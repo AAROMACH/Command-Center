@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -16,7 +17,7 @@ import {
   isSameDay, 
   isSameMonth, 
   isToday, 
-  parseISO 
+  startOfDay
 } from 'date-fns';
 import { 
   ChevronLeft, 
@@ -59,6 +60,31 @@ export function GlobalScheduleCalendar({
         setCurrentDate(new Date());
     }, []);
 
+    /**
+     * Tactical Date Parser.
+     * Ensures local-time interpretation to prevent UTC date shifts in the UI.
+     */
+    const parseTacticalDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        try {
+            const parts = dateStr.split(/[-/]/);
+            if (parts.length !== 3) return null;
+            let year, month, day;
+            if (parts[0].length === 4) {
+                year = parseInt(parts[0]);
+                month = parseInt(parts[1]) - 1;
+                day = parseInt(parts[2]);
+            } else {
+                month = parseInt(parts[0]) - 1;
+                day = parseInt(parts[1]);
+                year = parseInt(parts[2]);
+            }
+            return startOfDay(new Date(year, month, day));
+        } catch (e) {
+            return null;
+        }
+    };
+
     const handleDayClick = (day: Date) => {
         const isAlreadySelected = selectedDates.some(selected => isSameDay(selected, day));
         let newDates: Date[];
@@ -77,24 +103,19 @@ export function GlobalScheduleCalendar({
     const assignmentsForSelectedDays = useMemo(() => {
         if (selectedDates.length === 0) return [];
         return workOrders.filter(wo => {
-            try {
-                const woDate = parseISO(wo.scheduleDate);
-                return selectedDates.some(selected => isSameDay(woDate, selected));
-            } catch (e) {
-                return false;
-            }
+            const woDate = parseTacticalDate(wo.scheduleDate);
+            if (!woDate) return false;
+            return selectedDates.some(selected => isSameDay(woDate, selected));
         });
     }, [workOrders, selectedDates]);
     
     const eventsByDate = useMemo(() => {
       return workOrders.reduce((acc, wo) => {
-        try {
-            const dateStr = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
-            if (!acc[dateStr]) {
-              acc[dateStr] = [];
-            }
+        const woDate = parseTacticalDate(wo.scheduleDate);
+        if (woDate) {
+            const dateStr = format(woDate, 'yyyy-MM-dd');
+            if (!acc[dateStr]) acc[dateStr] = [];
             acc[dateStr].push(wo);
-        } catch (e) {
         }
         return acc;
       }, {} as Record<string, WorkOrder[]>);

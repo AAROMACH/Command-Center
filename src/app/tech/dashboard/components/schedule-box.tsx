@@ -17,7 +17,6 @@ import {
   isSameDay, 
   isSameMonth, 
   isToday, 
-  parseISO,
   startOfDay
 } from 'date-fns';
 import { 
@@ -34,7 +33,6 @@ import {
   Wrench
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -56,22 +54,31 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
     const [selectedDates, setSelectedDates] = useState<Date[]>([new Date()]);
     const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const { toast } = useToast();
 
     /**
-     * Unified Date Parser.
-     * Manages MM-DD-YYYY and YYYY-MM-DD desync.
+     * Unified Local Date Parser.
+     * Prevents UTC shifts by manually extracting parts for local-time construction.
      */
     const parseTacticalDate = (dateStr: string) => {
         if (!dateStr) return null;
         try {
             const parts = dateStr.split(/[-/]/);
+            if (parts.length !== 3) return null;
+            
+            let year, month, day;
             if (parts[0].length === 4) {
-                return startOfDay(new Date(dateStr));
+                // YYYY-MM-DD
+                year = parseInt(parts[0]);
+                month = parseInt(parts[1]) - 1;
+                day = parseInt(parts[2]);
             } else {
-                const [m, d, y] = parts;
-                return startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+                // MM-DD-YYYY
+                month = parseInt(parts[0]) - 1;
+                day = parseInt(parts[1]);
+                year = parseInt(parts[2]);
             }
+            // new Date(y, m, d) is always interpreted as local time
+            return startOfDay(new Date(year, month, day));
         } catch (e) {
             return null;
         }
@@ -219,7 +226,6 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                 {viewMode === 'week' ? (
                     <div className="week-grid !mb-6">
                         {weekDays.map((day, idx) => {
-                            const dateStr = format(day, 'yyyy-MM-dd');
                             const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                             return (
                                 <div 
@@ -232,7 +238,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                 >
                                     <span className="day-name">{format(day, 'EEE')}</span>
                                     <span className="day-num">{format(day, 'd')}</span>
-                                    {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="day-dot"></div>}
+                                    {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="day-dot"></div>}
                                 </div>
                             )
                         })}
@@ -246,7 +252,6 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                         </div>
                         <div className="month-days">
                             {monthDays.map((day, idx) => {
-                                const dateStr = format(day, 'yyyy-MM-dd');
                                 const isSelected = selectedDates.some(sd => isSameDay(sd, day));
                                 return (
                                     <div 
@@ -259,7 +264,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                       onClick={() => handleDayClick(day)}
                                     >
                                         {format(day, 'd')}
-                                        {eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 && <div className="month-day-dot"></div>}
+                                        {eventsByDate[format(day, 'yyyy-MM-dd')] && <div className="month-day-dot"></div>}
                                     </div>
                                 )
                             })}

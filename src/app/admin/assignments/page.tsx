@@ -34,7 +34,7 @@ import {
   Check
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
-import { format, isSameDay, parseISO } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
   Dialog,
@@ -115,6 +115,31 @@ export default function AssignmentsHubPage() {
     return result;
   };
 
+  /**
+   * Unified Tactical Date Parser.
+   * Consistently handles mixed MM-DD-YYYY and YYYY-MM-DD formats in local time.
+   */
+  const parseTacticalDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    try {
+        const parts = dateStr.split(/[-/]/);
+        if (parts.length !== 3) return null;
+        let year, month, day;
+        if (parts[0].length === 4) {
+            year = parseInt(parts[0]);
+            month = parseInt(parts[1]) - 1;
+            day = parseInt(parts[2]);
+        } else {
+            month = parseInt(parts[0]) - 1;
+            day = parseInt(parts[1]);
+            year = parseInt(parts[2]);
+        }
+        return startOfDay(new Date(year, month, day));
+    } catch (e) {
+        return null;
+    }
+  };
+
   // 1. Initialize Registry Listeners
   useEffect(() => {
     const q = query(collection(db, 'assignments'));
@@ -127,6 +152,11 @@ export default function AssignmentsHubPage() {
     const techUnsub = onSnapshot(techQ, (snapshot) => {
       const techs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician));
       setTechnicians(techs);
+      
+      const userId = localStorage.getItem('currentUserId');
+      if (userId) {
+        setCurrentUser(techs.find(t => t.id === userId) || null);
+      }
     });
 
     return () => {
@@ -134,13 +164,6 @@ export default function AssignmentsHubPage() {
       techUnsub();
     };
   }, []);
-
-  useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
-    if (userId) {
-      setCurrentUser(technicians.find(t => t.id === userId) || null);
-    }
-  }, [technicians]);
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders
@@ -158,29 +181,13 @@ export default function AssignmentsHubPage() {
           (tech && (tech.name || '').toLowerCase().includes(queryStr))
         );
 
-        const matchesDate = !dateRange?.from || (wo.scheduleDate && (() => {
-            try {
-                const parts = (wo.scheduleDate || '').split(/[-/]/);
-                let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = new Date(wo.scheduleDate); } 
-                else { 
-                  const [m, d, y] = parts;
-                  if (y && m && d) {
-                      woDate = new Date(`${y}-${m}-${d}T12:00:00`);
-                  } else {
-                      return true;
-                  }
-                }
-                
-                if (dateRange.from && dateRange.to) {
-                    return woDate >= dateRange.from && woDate <= dateRange.to;
-                }
-                if (dateRange.from) {
-                    return isSameDay(woDate, dateRange.from);
-                }
-                return true;
-            } catch (e) { return false; }
-        })());
+        const matchesDate = !dateRange?.from || (() => {
+            const woDate = parseTacticalDate(wo.scheduleDate);
+            if (!woDate) return true;
+            const start = startOfDay(dateRange.from!);
+            const end = dateRange.to ? startOfDay(dateRange.to) : start;
+            return woDate >= start && woDate <= end;
+        })();
 
         const matchesPriority = activePriorities.length === 0 || activePriorities.includes(wo.priority);
         const matchesSource = activeSources.length === 0 || (wo.source && activeSources.includes(wo.source));
@@ -229,23 +236,8 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
 
   const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr) return 'TBD';
-    try {
-      const parts = dateStr.split(/[-/]/);
-      let d;
-      if (parts[0].length === 4) { d = new Date(dateStr); } 
-      else { 
-        const [m, day, y] = parts;
-        if (y && m && day) {
-            d = new Date(`${y}-${m}-${day}T12:00:00`);
-        } else {
-            return dateStr;
-        }
-      }
-      return format(d, 'MM-dd-yyyy');
-    } catch (e) {
-      return dateStr;
-    }
+    const woDate = parseTacticalDate(dateStr);
+    return woDate ? format(woDate, 'MM-dd-yyyy') : dateStr;
   };
 
   const handleCardClick = (wo: WorkOrder) => {

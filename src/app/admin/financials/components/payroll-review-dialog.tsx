@@ -118,18 +118,6 @@ function ImportedJobAudit({
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
-                            type="number"
-                            value={overhead}
-                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -137,6 +125,18 @@ function ImportedJobAudit({
                             type="number"
                             value={reimbursement}
                             onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
+                    <div className="relative text-left">
+                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={overhead}
+                            onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
                             className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
                         />
                     </div>
@@ -423,69 +423,66 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[3rem] justify-center",
+                                                "p-2 rounded-lg border transition-all flex group gap-1 min-h-[3rem] justify-center items-center",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="shrink-0 flex items-center gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
-                                                            className={cn(
-                                                                "h-7 px-3 uppercase text-[8px] font-bold tracking-widest transition-all",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
-                                                            )}
-                                                            onClick={() => toggleAuditItem(item.id, item.workOrderId)}
-                                                        >
-                                                            {isAudited ? <Check size={12} className="mr-1"/> : <ClipboardCheck size={12} className="mr-1"/>}
-                                                            {isAudited ? 'Verified' : 'Approve'}
-                                                        </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon-sm" 
-                                                            className="h-7 w-7 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
-                                                        >
-                                                            <Trash2 size={12}/>
-                                                        </Button>
+                                                <div className="shrink-0 flex items-center gap-2 pr-2 border-r border-border-sub/30">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className={cn(
+                                                            "h-7 px-3 uppercase text-[8px] font-bold tracking-widest transition-all",
+                                                            isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
+                                                        )}
+                                                        onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                    >
+                                                        {isAudited ? <Check size={12} className="mr-1"/> : <ClipboardCheck size={12} className="mr-1"/>}
+                                                        {isAudited ? 'Verified' : 'Approve'}
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon-sm" 
+                                                        className="h-7 w-7 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
+                                                    >
+                                                        <Trash2 size={12}/>
+                                                    </Button>
+                                                </div>
+                                                
+                                                <div className="flex-1 flex items-center justify-between gap-4">
+                                                    <div className="min-w-0 text-left">
+                                                        <div className="flex items-center gap-2 text-left">
+                                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                            {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                            <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                            <span>•</span>
+                                                            <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                            <span>•</span>
+                                                            <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
+                                                        </div>
                                                     </div>
-                                                    
-                                                    <div className="flex-1 flex flex-col gap-0.5">
-                                                        <div className="min-w-0 text-left">
-                                                            <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
-                                                                {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
-                                                                <span>•</span>
-                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
-                                                                <span>•</span>
-                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
-                                                            </div>
-                                                        </div>
 
-                                                        {/* INFO-ANCHORED CALC / DISCREPANCY BLOCK */}
-                                                        <div className="flex items-center gap-4 mt-1">
-                                                            {isImported && wo ? (
-                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                            ) : (
-                                                                <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
-                                                                    <div className="text-left">
-                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
-                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
-                                                                            {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="text-left">
-                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
-                                                                        <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
-                                                                            ${(item.jobPay || 0).toFixed(2)}
-                                                                        </p>
-                                                                    </div>
+                                                    <div className="shrink-0">
+                                                        {isImported && wo ? (
+                                                            <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                        ) : (
+                                                            <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
+                                                                <div className="text-left">
+                                                                    <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
+                                                                    <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
+                                                                        {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                    </p>
                                                                 </div>
-                                                            )}
-                                                        </div>
+                                                                <div className="text-left">
+                                                                    <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
+                                                                    <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
+                                                                        ${(item.jobPay || 0).toFixed(2)}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -549,7 +546,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>•</span>
                                                                 <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
                                                                 <span>•</span>
-                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
+                                                                <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
                                                             </div>
                                                         </div>
 
@@ -641,7 +638,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     })}
 
                                     {discrepancyItems.length === 0 && (
-                                        <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
+                                        <div className="p-24 text-center bg-bg-secondary/30 rounded-xl border-2 border-dashed border-border-sub opacity-40">
                                             <CheckCircle2 size={48} className="mx-auto mb-2 text-text-muted" />
                                             <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Discrepancy registry clear</p>
                                         </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -88,9 +89,29 @@ export default function TechDashboardPage() {
         };
     }, [router]);
 
-    const activeJob = useMemo(() => 
-        allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed' || wo.status === 'checked-out'),
-    [allWorkOrders]);
+    /**
+     * Intelligent Mission Selector.
+     * Prioritizes current sessions (En Route/On Site).
+     * Automatically pivots to "Next Up" missions once current is Checked Out.
+     */
+    const activeJob = useMemo(() => {
+        // Priority 1: In-Flight Missions (En Route or On Site)
+        const inFlight = allWorkOrders.find(wo => wo.status === 'in-progress' || wo.status === 'on-my-way' || wo.status === 'confirmed');
+        if (inFlight) return inFlight;
+
+        // Priority 2: Next Mission in Registry (Assigned)
+        // Sort by date then time to find the true "Next Up"
+        const upcoming = allWorkOrders
+            .filter(wo => wo.status === 'assigned')
+            .sort((a, b) => {
+                const dateA = a.scheduleDate || '9999-12-31';
+                const dateB = b.scheduleDate || '9999-12-31';
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return (a.scheduleTime || '').localeCompare(b.scheduleTime || '');
+            });
+            
+        return upcoming[0] || null;
+    }, [allWorkOrders]);
 
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
@@ -160,6 +181,7 @@ export default function TechDashboardPage() {
         
         try {
             const docRef = doc(db, 'assignments', woId);
+            const targetWO = allWorkOrders.find(wo => wo.id === woId);
             const historyEntry = { 
                 type: 'status_change' as const, 
                 date: today, 
@@ -173,7 +195,7 @@ export default function TechDashboardPage() {
 
             await updateDoc(docRef, { 
                 status: newStatus,
-                history: [...(activeJob?.history || []), historyEntry]
+                history: [...(targetWO?.history || []), historyEntry]
             });
             
             if (newStatus === 'in-progress' || newStatus === 'completed') {
@@ -259,6 +281,11 @@ export default function TechDashboardPage() {
                         </div>
                         
                         <div className="flex gap-2 shrink-0 self-start md:self-center">
+                            {activeJob.status === 'assigned' && (
+                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-6 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
+                                    <Check size={14} className="mr-2"/> Confirm
+                                </Button>
+                            )}
                             {activeJob.status === 'confirmed' && (
                                 <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
                                     <Navigation size={14} className="mr-2"/> Start Trip
@@ -289,7 +316,7 @@ export default function TechDashboardPage() {
                 </Card>
             )}
 
-            <ScheduleBox workOrders={allWorkOrders} />
+            <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
 
             <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
             <ReceiptUploadDialog isOpen={isReceiptDialogOpen} setIsOpen={setIsReceiptDialogOpen} workOrders={allWorkOrders} projects={[]} />

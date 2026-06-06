@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -16,7 +17,8 @@ import {
   isSameDay, 
   isSameMonth, 
   isToday, 
-  parseISO 
+  parseISO,
+  startOfDay
 } from 'date-fns';
 import { 
   ChevronLeft, 
@@ -28,7 +30,8 @@ import {
   Clock, 
   CircleCheck,
   Building2,
-  Briefcase
+  Briefcase,
+  Wrench
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -40,16 +43,39 @@ type ViewMode = 'week' | 'month';
 
 type ScheduleBoxProps = {
     workOrders: WorkOrder[];
+    onStatusTransition?: (woId: string, status: WorkOrder['status']) => void;
 };
 
-export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps) {
+/**
+ * Tactical Operational Schedule.
+ * Hardened date parsing for cross-registry format synchronization.
+ */
+export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDates, setSelectedDates] = useState<Date[]>([new Date()]);
-    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
     const [selectedMission, setSelectedMission] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
+
+    /**
+     * Unified Date Parser.
+     * Manages MM-DD-YYYY and YYYY-MM-DD desync.
+     */
+    const parseTacticalDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        try {
+            const parts = dateStr.split(/[-/]/);
+            if (parts[0].length === 4) {
+                return startOfDay(new Date(dateStr));
+            } else {
+                const [m, d, y] = parts;
+                return startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
+            }
+        } catch (e) {
+            return null;
+        }
+    };
 
     const weekDays = useMemo(() => eachDayOfInterval({
         start: startOfWeek(currentDate, { weekStartsOn: 0 }),
@@ -62,8 +88,8 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     }), [currentDate]);
 
     const activeSession = useMemo(() => {
-        return allWorkOrders.find(wo => wo.status === 'in-progress');
-    }, [allWorkOrders]);
+        return workOrders.find(wo => wo.status === 'in-progress');
+    }, [workOrders]);
 
     const isAllSelected = useMemo(() => {
         const currentDays = viewMode === 'week' 
@@ -93,29 +119,24 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     };
 
     const assignmentsForSelectedDays = useMemo(() => {
-        return allWorkOrders.filter(wo => {
-            try {
-                const woDate = parseISO(wo.scheduleDate);
-                return selectedDates.some(sd => isSameDay(woDate, sd));
-            } catch (e) {
-                return false;
-            }
+        return workOrders.filter(wo => {
+            const woDate = parseTacticalDate(wo.scheduleDate);
+            if (!woDate) return false;
+            return selectedDates.some(sd => isSameDay(woDate, sd));
         });
-    }, [allWorkOrders, selectedDates]);
+    }, [workOrders, selectedDates]);
     
     const eventsByDate = useMemo(() => {
-      return allWorkOrders.reduce((acc, wo) => {
-        try {
-            const dateStr = format(parseISO(wo.scheduleDate), 'yyyy-MM-dd');
-            if (!acc[dateStr]) {
-              acc[dateStr] = [];
-            }
+      return workOrders.reduce((acc, wo) => {
+        const woDate = parseTacticalDate(wo.scheduleDate);
+        if (woDate) {
+            const dateStr = format(woDate, 'yyyy-MM-dd');
+            if (!acc[dateStr]) acc[dateStr] = [];
             acc[dateStr].push(wo);
-        } catch (e) {
         }
         return acc;
       }, {} as Record<string, WorkOrder[]>);
-    }, [allWorkOrders]);
+    }, [workOrders]);
 
     const handlePrev = () => {
         if (viewMode === 'week') {
@@ -135,22 +156,12 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
     
     const handleCheckIn = (e: React.MouseEvent, workOrderId: string) => {
       e.stopPropagation();
-      if (activeSession) {
-        toast({
-          variant: 'destructive',
-          title: 'Active session exists',
-          description: 'You must check out of your current job before starting another.',
-        });
-        return;
-      }
-      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'in-progress'} : wo));
-      toast({ title: 'Checked In', description: 'Your session has started.' });
+      if (onStatusTransition) onStatusTransition(workOrderId, 'in-progress');
     };
 
     const handleCheckOut = (e: React.MouseEvent, workOrderId: string) => {
       e.stopPropagation();
-      setAllWorkOrders(orders => orders.map(wo => wo.id === workOrderId ? {...wo, status: 'completed'} : wo));
-      toast({ title: 'Checked Out', description: 'Your session has ended.' });
+      if (onStatusTransition) onStatusTransition(workOrderId, 'checked-out');
     };
 
     const handleCardClick = (wo: WorkOrder) => {
@@ -267,17 +278,17 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                                     <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
                                     <div className="job-body !p-3">
                                         <div className="job-left">
-                                            <div className="flex items-center gap-2 mb-1 w-full justify-start">
+                                            <div className="flex items-center gap-2 mb-1 w-full justify-start text-left">
                                                 <Badge variant="outline" className="text-[7px] uppercase h-3.5 px-1 bg-bg-tertiary">
                                                     {wo.projectType === 'Project' ? <Briefcase size={8} className="mr-1"/> : <Wrench size={8} className="mr-1"/>}
                                                     {wo.projectType}
                                                 </Badge>
                                                 <span className="job-wo !text-[9px] !px-1.5">{wo.id.toUpperCase()}</span>
                                             </div>
-                                            <div className="job-title-row !mb-1 !justify-start">
+                                            <div className="job-title-row !mb-1 !justify-start text-left">
                                                 <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>
                                             </div>
-                                            <div className="job-meta !gap-3 !justify-start">
+                                            <div className="job-meta !gap-3 !justify-start text-left">
                                                 <div className="job-meta-item !text-[10px]"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
                                                 <div className="job-meta-item !text-[10px]"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
                                                 <div className="job-meta-item !text-[10px]"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>
@@ -285,14 +296,14 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                                         </div>
                                         <div className="job-right shrink-0">
                                             {wo.status === 'completed' ? (
-                                                <div className="btn-completed !text-[10px]"><CircleCheck size={12}/> Done</div>
+                                                <div className="text-[10px] font-bold text-text-green flex items-center gap-1 uppercase"><CircleCheck size={12}/> Done</div>
                                             ) : wo.status === 'in-progress' ? (
-                                                <button className="btn-checkout !p-1.5 !text-[10px] uppercase font-bold" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                <button className="h-7 px-3 rounded bg-bg-primary border border-border-sub text-[10px] text-text-red uppercase font-bold hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
                                                     OUT
                                                 </button>
                                             ) : (
                                                 <button 
-                                                    className="btn-checkin !p-1.5 !text-[10px] uppercase font-bold"
+                                                    className="h-7 px-3 rounded bg-brand-red text-white text-[10px] uppercase font-bold hover:bg-brand-red-hover"
                                                     disabled={!!activeSession}
                                                     onClick={(e) => handleCheckIn(e, wo.id)}
                                                 >
@@ -306,7 +317,7 @@ export function ScheduleBox({ workOrders: initialWorkOrders }: ScheduleBoxProps)
                         ))
                     ) : (
                         <div className="p-8 text-center border border-dashed border-border-main rounded-md">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments for selected dates</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted italic">No missions scheduled for selected coordinates</div>
                         </div>
                     )}
                 </div>

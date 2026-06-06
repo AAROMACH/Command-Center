@@ -40,6 +40,24 @@ export type ReliabilityEvent = {
   category: ReliabilityEventCategory;
 };
 
+export type NotificationPreferences = {
+  email: boolean;
+  sms: boolean;
+  push: boolean;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  type: 'email' | 'sms' | 'push';
+  title: string;
+  body: string;
+  timestamp: string;
+  status: 'sent' | 'failed' | 'pending';
+  relatedEntityId?: string;
+  relatedEntityType?: 'assignment' | 'project' | 'request';
+};
+
 export type WorkOrder = {
   id: string;
   workOrderId?: string;
@@ -159,6 +177,7 @@ export type Technician = {
     terms: 'Net 15' | 'Net 30' | 'Net 60' | 'Due on Receipt' | string;
     deliveryMethod: 'Email' | 'Portal' | 'Both' | string;
   };
+  notificationPreferences?: NotificationPreferences;
 };
 
 export type Recommendation = {

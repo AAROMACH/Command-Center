@@ -31,6 +31,7 @@ import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek } from 'date-fns';
 import { cn, getTacticalLocation } from '@/lib/utils';
+import { NotificationService } from '@/lib/notification-service';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -126,7 +127,7 @@ export default function TechDashboardPage() {
             id: `wli-${Date.now()}`,
             workOrderId: woId,
             jobPay: wo.pay,
-            outcomeCode: null, // Initial outcome is null until tech verifies
+            outcomeCode: null, 
             isComplete: true,
             isAdminReviewed: false
         };
@@ -172,6 +173,17 @@ export default function TechDashboardPage() {
                 history: [...(activeJob?.history || []), historyEntry]
             });
             
+            // Notify Admin Staff on critical status changes
+            if (newStatus === 'in-progress' || newStatus === 'completed') {
+                const adminIds = mockTechnicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
+                await NotificationService.broadcast(
+                    adminIds,
+                    `Status Alert: ${newStatus.toUpperCase()}`,
+                    `Technician ${tech?.name} has transitioned to ${newStatus} for mission ${woId.toUpperCase()} at ${location}.`,
+                    { id: woId, type: 'assignment' }
+                );
+            }
+
             if (newStatus === 'completed') {
                 await removeFromWeeklyLogs(woId);
                 await syncToWeeklyLog(woId);
@@ -197,8 +209,8 @@ export default function TechDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">{TERMINOLOGY.PORTAL.TECH}</h1>
+            <div className="flex justify-between items-center text-left">
+                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary text-left">{TERMINOLOGY.PORTAL.TECH}</h1>
                 <NotificationBell />
             </div>
 

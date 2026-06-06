@@ -45,6 +45,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
+import { NotificationService } from '@/lib/notification-service';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -114,10 +115,24 @@ export default function DispatchPage() {
     };
   }, []);
 
-  const handleAddNewOrder = (order: WorkOrder) => {
-    addDoc(collection(db, 'workOrders'), { ...order, source: 'Manual' })
-      .then(() => toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." }))
-      .catch((e) => toast({ variant: "destructive", title: "Write Failed", description: e.message }));
+  const handleAddNewOrder = async (order: WorkOrder) => {
+    try {
+        await addDoc(collection(db, 'workOrders'), { ...order, source: 'Manual' });
+        toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." });
+        
+        // Notify Client if applicable
+        const client = technicians.find(t => t.clientCompany === order.clientName);
+        if (client) {
+            await NotificationService.notify(
+                client.id, 
+                "New Assignment Staged", 
+                `A new work order [${order.title}] has been initialized for your site at ${order.location}.`,
+                { id: order.id, type: 'assignment' }
+            );
+        }
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Write Failed", description: e.message });
+    }
   };
 
   const handleImportOrders = (newOrders: WorkOrder[]) => {
@@ -128,10 +143,22 @@ export default function DispatchPage() {
     toast({ title: "Import Processed", description: `${newOrders.length} records transmitted to registry.` });
   };
 
-  const handleAddNewRequest = (request: ServiceRequest) => {
-    addDoc(collection(db, 'clientRequests'), request)
-      .then(() => toast({ title: "Request Logged", description: "Service ticket added to intake funnel." }))
-      .catch((e) => toast({ variant: "destructive", title: "Write Failed", description: e.message }));
+  const handleAddNewRequest = async (request: ServiceRequest) => {
+    try {
+        await addDoc(collection(db, 'clientRequests'), request);
+        toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
+        
+        // Notify Admin Staff
+        const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
+        await NotificationService.broadcast(
+            adminIds,
+            "Urgent Intake Ticket",
+            `New service request received from ${request.clientName} for site ${request.location}.`,
+            { id: request.id, type: 'request' }
+        );
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Write Failed", description: e.message });
+    }
   };
 
   const resetFilters = () => {
@@ -287,10 +314,10 @@ export default function DispatchPage() {
             </TabsList>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="search-wrap flex-1 !mb-0">
+              <div className="search-wrap flex-1 !mb-0 text-left">
                 <Search className="h-4 w-4 text-text-muted" />
                 <input 
-                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary" 
+                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary text-left" 
                   placeholder={`Search registry...`} 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -359,7 +386,7 @@ export default function DispatchPage() {
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                       <div className="p-4 border-b border-border-sub bg-bg-tertiary">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between text-left">
                               <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
                               {hasActiveFilters && (
                                   <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
@@ -369,11 +396,11 @@ export default function DispatchPage() {
                           </div>
                       </div>
                       <div className="p-4 space-y-6 text-left">
-                          <div className="space-y-3">
+                          <div className="space-y-3 text-left">
                               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="grid grid-cols-2 gap-2 text-left">
                                   {['critical', 'high', 'medium', 'low'].map(priority => (
-                                      <div key={priority} className="flex items-center space-x-2">
+                                      <div key={priority} className="flex items-center space-x-2 text-left">
                                           <Checkbox 
                                               id={`prio-${priority}`} 
                                               checked={activePriorities.includes(priority)}
@@ -385,12 +412,12 @@ export default function DispatchPage() {
                               </div>
                           </div>
 
-                          <div className="space-y-3">
+                          <div className="space-y-3 text-left">
                               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Technical Category</p>
-                              <ScrollArea className="h-[120px]">
-                                <div className="space-y-2 pr-4">
+                              <ScrollArea className="h-[120px] text-left">
+                                <div className="space-y-2 pr-4 text-left">
                                     {SERVICE_CATEGORIES.map(type => (
-                                        <div key={type} className="flex items-center space-x-2">
+                                        <div key={type} className="flex items-center space-x-2 text-left">
                                             <Checkbox 
                                                 id={`type-${type}`} 
                                                 checked={activeTypes.includes(type)}
@@ -403,11 +430,11 @@ export default function DispatchPage() {
                               </ScrollArea>
                           </div>
 
-                          <div className="space-y-3">
+                          <div className="space-y-3 text-left">
                               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
-                              <div className="space-y-2">
+                              <div className="space-y-2 text-left">
                                   {ASSIGNMENT_SOURCES.map(source => (
-                                      <div key={source} className="flex items-center space-x-2">
+                                      <div key={source} className="flex items-center space-x-2 text-left">
                                           <Checkbox 
                                               id={`src-${source}`} 
                                               checked={activeSources.includes(source)}
@@ -433,9 +460,19 @@ export default function DispatchPage() {
               workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)} 
               technicians={technicians} 
               onWorkOrdersChange={(updated) => {
-                updated.forEach(wo => {
+                updated.forEach(async (wo) => {
                   const docRef = doc(db, 'workOrders', wo.id);
-                  updateDoc(docRef, wo).catch(e => console.error("Update error", e));
+                  await updateDoc(docRef, wo);
+                  
+                  // Notify Technician if assignment changed
+                  if (wo.status === 'assigned' && wo.assignedTechnicianId) {
+                      await NotificationService.notify(
+                          wo.assignedTechnicianId,
+                          "Priority Mission Dispatched",
+                          `New priority mission [${wo.id.toUpperCase()}] assigned. Confirm schedule immediately.`,
+                          { id: wo.id, type: 'assignment' }
+                      );
+                  }
                 });
               }}
               routes={routes}

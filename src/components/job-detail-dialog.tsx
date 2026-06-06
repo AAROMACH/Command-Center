@@ -436,19 +436,40 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         
                         const details = (entry.details || '').toLowerCase();
                         const type = (entry.type || '').toLowerCase();
+                        
+                        let notableTitle = type.replace(/_/g, ' ') || 'Log Entry';
 
-                        if (details.includes('complete') || details.includes('finalized') || type === 'completed') dot = 'green';
-                        else if (details.includes('check') || details.includes('arrival')) dot = 'green';
-                        else if (details.includes('route') || details.includes('start trip')) dot = 'gold';
-                        else if (details.includes('confirm')) dot = 'blue';
-                        else if (type === 'note' && details.includes('created')) dot = 'blue';
+                        if (details.includes('complete') || details.includes('finalized') || type === 'completed') {
+                            dot = 'green';
+                            notableTitle = 'Mission Finalized';
+                        }
+                        else if (details.includes('check-in') || details.includes('arrival') || details.includes('in-progress')) {
+                            dot = 'green';
+                            notableTitle = 'Site Arrival / Check-In';
+                        }
+                        else if (details.includes('checked out') || details.includes('paused') || details.includes('checked-out')) {
+                            dot = 'gold';
+                            notableTitle = 'Mission Paused / Check-Out';
+                        }
+                        else if (details.includes('trip') || details.includes('en route') || details.includes('way')) {
+                            dot = 'gold';
+                            notableTitle = 'Trip Initiated / En Route';
+                        }
+                        else if (details.includes('confirmed')) {
+                            dot = 'blue';
+                            notableTitle = 'Mission Confirmed';
+                        }
+                        else if ((type === 'note' && details.includes('created')) || details.includes('initialized')) {
+                            dot = 'blue';
+                            notableTitle = 'Registry Entry Created';
+                        }
 
                         return (
                           <TimelineEntry 
                             key={idx}
                             dot={dot}
                             time={entry.date || 'TBD'}
-                            title={type.replace(/_/g, ' ') || 'Log Entry'}
+                            title={notableTitle}
                             note={entry.details || 'No additional notes recorded.'}
                             by={entry.user || 'System'}
                             isLast={isLast}

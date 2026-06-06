@@ -383,6 +383,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         });
 
         onWorkOrdersChange(updatedWorkOrders);
+        onRoutesChange([]); // Registry Reset: Purge routes after successful transmission
         toast({ title: "Batch Assignment Executed", description: "Job data transferred to the Assigned registry." });
     };
 

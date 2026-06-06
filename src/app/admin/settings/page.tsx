@@ -23,8 +23,7 @@ import {
   AlertCircle,
   Search,
   Clock,
-  Globe,
-  Hammer
+  Globe
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -204,19 +203,6 @@ export default function SettingsPage() {
                                                 <Input type="time" defaultValue="20:00" className="bg-bg-primary h-11 text-xs" />
                                             </div>
                                             <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter mt-1">Automatic alert suppression active outside this window.</p>
-                                        </div>
-
-                                        <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-sub group hover:border-brand-red transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-bg-primary rounded border border-border-sub group-hover:bg-brand-red group-hover:text-white transition-colors">
-                                                    <Hammer size={16} />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Maintenance Mode</p>
-                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">Global Lockout</p>
-                                                </div>
-                                            </div>
-                                            <Switch />
                                         </div>
                                     </div>
                                 </div>

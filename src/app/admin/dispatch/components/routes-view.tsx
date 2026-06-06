@@ -37,6 +37,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState } from '@/lib/utils';
 import {
   DndContext,
@@ -88,7 +89,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
         isDragging && "opacity-50 ring-2 ring-brand-red ring-offset-2 ring-offset-bg-secondary"
       )}
     >
-      <div className="flex items-center gap-2 overflow-hidden flex-1">
+      <div className="flex items-center gap-2 overflow-hidden flex-1 text-left">
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary p-1 -ml-1">
           <GripVertical size={14} />
         </div>

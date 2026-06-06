@@ -41,7 +41,8 @@ import {
     Gauge,
     Filter,
     FileCheck,
-    Trash2
+    Trash2,
+    Download
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -413,6 +414,52 @@ export default function ActivityAuditPage() {
         return getFilteredVisits(techStats.myJobs);
     }, [techStats, getFilteredVisits]);
 
+    const handleExportCurrentAudit = () => {
+        const rows: string[][] = [];
+        let filename = "Audit_Export";
+
+        if (activeTab === 'tech' && selectedTechId && techStats) {
+            rows.push(['DATE', 'MISSION ID', 'TITLE', 'CLIENT', 'STATUS', 'PAYOUT']);
+            sortedTechVisits.forEach(wo => {
+                rows.push([
+                    wo.scheduleDate,
+                    wo.id.toUpperCase(),
+                    wo.title || wo.description,
+                    wo.clientName,
+                    wo.status,
+                    wo.pay.toString()
+                ]);
+            });
+            filename = `Tech_Audit_${activeTech?.name.replace(/\s+/g, '_')}`;
+        } else if (activeTab === 'sites' && selectedSiteId && activeSite && siteAuditData) {
+            rows.push(['DATE', 'MISSION ID', 'TITLE', 'STATUS', 'AUDIT REGISTRY']);
+            sortedAllSiteVisits.forEach(wo => {
+                const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
+                rows.push([
+                    wo.scheduleDate,
+                    wo.id.toUpperCase(),
+                    wo.title || wo.description,
+                    wo.status,
+                    linkedLog ? `WK: ${linkedLog.weekOf}` : 'Pending'
+                ]);
+            });
+            filename = `Site_Audit_${activeSite.name.replace(/\s+/g, '_')}`;
+        }
+
+        if (rows.length === 0) return;
+
+        const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${filename}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "Audit Dispatched", description: "Manifest exported successfully." });
+    };
+
     const anomalyCounts = useMemo(() => {
         const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
         const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft').length;
@@ -694,6 +741,10 @@ export default function ActivityAuditPage() {
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
+                <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[9px] font-bold tracking-widest" onClick={handleExportCurrentAudit}>
+                    <Download size={12} className="mr-2" /> Export CSV
+                </Button>
+                
                 <Popover>
                     <PopoverTrigger asChild>
                         <div className={cn(
@@ -843,7 +894,7 @@ export default function ActivityAuditPage() {
                                             const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                             return (
                                                 <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                    <TableCell className="text-left py-4 pl-6">
+                                                    <TableCell className="text-left py-4 pl-6 text-left">
                                                         <div className="flex flex-col gap-0.5 text-left">
                                                             <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none text-left">{(wo.id || '').toUpperCase()}</span>
                                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>

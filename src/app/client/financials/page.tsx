@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 export default function ClientFinancialsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -77,6 +77,35 @@ export default function ClientFinancialsPage() {
         return { label: 'General', id: 'N/A', icon: FileText };
     };
 
+    const handleExportInvoices = () => {
+        const rows = [
+            ['INVOICE #', 'DATE', 'SOURCE', 'SOURCE ID', 'STATUS', 'TOTAL']
+        ];
+        
+        filteredInvoices.forEach(inv => {
+            const source = getInvoiceSource(inv);
+            rows.push([
+                `INV-${inv.invoiceNumber}`,
+                inv.issueDate,
+                source.label,
+                inv.projectId || inv.workOrderId || 'N/A',
+                inv.status.toUpperCase(),
+                inv.total.toString()
+            ]);
+        });
+
+        const csvContent = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Invoices_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "Download Executed", description: "Audit CSV generated for settlement verification."});
+    };
+
     if (!mounted) return null;
 
     return (
@@ -125,14 +154,19 @@ export default function ClientFinancialsPage() {
                         <CardTitle>Invoice Ledger</CardTitle>
                         <CardDescription>Comprehensive record of all field critical financial transactions.</CardDescription>
                     </div>
-                    <div className="search-wrap !mb-0">
-                        <Search />
-                        <input 
-                            className="search-input !w-[250px] !h-9 !text-xs font-bold uppercase" 
-                            placeholder="Filter by Invoice # or Job..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                    <div className="flex items-center gap-3">
+                        <div className="search-wrap !mb-0">
+                            <Search />
+                            <input 
+                                className="search-input !w-[250px] !h-9 !text-xs font-bold uppercase" 
+                                placeholder="Filter by Invoice # or Job..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[10px] font-bold tracking-widest" onClick={handleExportInvoices}>
+                            <Download size={14} className="mr-2" /> Export CSV
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -178,8 +212,8 @@ export default function ClientFinancialsPage() {
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted group-hover:text-brand-red transition-colors" onClick={() => toast({ title: "Manifest Downloaded", description: "Audit CSV generated for settlement verification."})}>
-                                                    <Download className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted group-hover:text-brand-red transition-colors" onClick={() => toast({ title: "Audit Link", description: "This will open the detailed invoice audit terminal in a future protocol update."})}>
+                                                    <ExternalLink className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </TableCell>

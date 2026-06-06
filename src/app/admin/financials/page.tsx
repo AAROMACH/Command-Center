@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder } from '@/lib/types';
@@ -16,7 +17,6 @@ import { RevenueChart } from './components/revenue-chart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from "@/components/ui/checkbox";
 import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";
@@ -158,7 +158,6 @@ export default function FinancialsPage() {
             const end = endOfMonth(date);
             const label = format(date, 'MMM yy').toUpperCase();
 
-            // Protocol Update: Revenue only includes PAID invoices
             const rev = invoices
                 .filter(inv => {
                     try {
@@ -225,10 +224,6 @@ export default function FinancialsPage() {
             console.error("Financial registry write error:", e);
             toast({ variant: "destructive", title: "Save Failed", description: e.message });
         }
-    };
-
-    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
-        // Status updates are handled within the dialog
     };
 
     const handleReviewLog = (log: WeeklyLog) => {

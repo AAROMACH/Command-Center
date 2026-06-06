@@ -98,7 +98,7 @@ function formatDateDisplay(dateStr: string) {
 }
 
 const displayTime = (timeStr?: string) => {
-    if (!timeStr) return '';
+    if (!timeStr) return 'TBD';
     try {
         const [h, m] = timeStr.split(':');
         const d = new Date();
@@ -447,6 +447,35 @@ const TimesheetsTab = ({
             .sort((a, b) => b.date.localeCompare(a.date));
     }, [dailyLogs]);
 
+    const handleExportTimesheets = () => {
+        const rows = [
+            ['DATE', 'OPERATIVE', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
+        ];
+        
+        dailyLogs.forEach(log => {
+            const tech = technicians.find(t => t.id === log.technicianId);
+            rows.push([
+                log.date,
+                tech?.name || 'Unknown',
+                log.checkInTime || '',
+                log.checkOutTime || '',
+                log.hoursWorked?.toString() || '0',
+                log.workSummary.replace(/\n/g, ' ')
+            ]);
+        });
+
+        const csvContent = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Timesheets_${project.id}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
+    };
+
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
 
     return (
@@ -553,7 +582,7 @@ const TimesheetsTab = ({
             <section className="space-y-4">
                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Historical Session Ledger</h3>
-                    <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red">
+                    <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red" onClick={handleExportTimesheets}>
                         <Download size={10} className="mr-1"/> Export Audit manifest
                     </Button>
                 </div>

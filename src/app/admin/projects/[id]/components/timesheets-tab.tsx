@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
@@ -175,18 +174,18 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         } else {
             const byDate = filteredTimesheets.reduce((acc, log) => {
                  if (!acc[log.date]) {
-                    acc[log.date] = { logs: [], totalHoursNum: 0 };
+                    acc[log.date] = { logs: [], total: 0 };
                 }
                 acc[log.date].logs.push(log);
-                acc[log.date].totalHoursNum += (log.hoursWorked || 0);
+                acc[log.date].total += (log.hoursWorked || 0);
                 return acc;
-            }, {} as Record<string, { logs: ProjectDailyLog[], totalHoursNum: number }>);
+            }, {} as Record<string, { logs: ProjectDailyLog[], total: number }>);
 
             return Object.entries(byDate).map(([date, data]) => ({
                 id: date,
                 title: date,
                 logs: data.logs,
-                totalTime: `${data.totalHoursNum.toFixed(1)}h`,
+                totalTime: `${data.total.toFixed(1)}h`,
             })).sort((a,b) => b.id.localeCompare(a.id));
         }
     }, [filteredTimesheets, viewBy, getTechnician]);
@@ -261,6 +260,35 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         }
     };
 
+    const handleExportTimesheets = () => {
+        const rows = [
+            ['DATE', 'OPERATIVE', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
+        ];
+        
+        filteredTimesheets.forEach(log => {
+            const tech = getTechnician(log.technicianId);
+            rows.push([
+                log.date,
+                tech?.name || 'Unknown',
+                log.checkInTime || '',
+                log.checkOutTime || '',
+                log.hoursWorked?.toString() || '0',
+                log.workSummary.replace(/\n/g, ' ')
+            ]);
+        });
+
+        const csvContent = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Timesheets_${project.id}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm">
@@ -273,7 +301,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                         <p className="text-xl font-mono font-bold text-text-primary">{(project.actualHours || 0).toFixed(1)} Total Hours Logged</p>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-border-sub" onClick={() => toast({ title: "CSV Export Initiated", description: "Generating high-fidelity timesheet manifest." })}>
+                <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-border-sub" onClick={handleExportTimesheets}>
                     <Download size={14} className="mr-1.5"/> Export Audit Manifest
                 </Button>
             </div>
@@ -356,7 +384,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                                     <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
                                 <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">
-                                    {viewBy === 'date' ? 'Daily Hours:' : 'Tech Total Hours:'} <span className="text-text-primary font-mono text-xs">{group.totalTime}</span>
+                                    {viewBy === 'date' ? 'Daily Hours:' : 'Tech Total Hours:'} <span className="text-text-primary font-mono text-sm">{group.totalTime}</span>
                                 </span>
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">

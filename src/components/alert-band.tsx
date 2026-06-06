@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -31,7 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import type { WorkOrder, Project, ServiceRequest, WeeklyLog, ReliabilityEvent, TimeOffRequest, SiteRequest } from '@/lib/types';
 
@@ -55,7 +56,6 @@ export function AlertBand() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-  const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
@@ -76,9 +76,6 @@ export function AlertBand() {
     const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
       setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
     });
-    const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), (snap) => {
-      setPenaltyEvents(snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent)));
-    });
     const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
@@ -98,12 +95,12 @@ export function AlertBand() {
         if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
       });
       return () => {
-        unsubWO(); unsubAsmt(); unsubLogs(); unsubPenalty(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubUser();
+        unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubUser();
       };
     }
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubLogs(); unsubPenalty(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite();
+      unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite();
     };
   }, []);
 
@@ -264,13 +261,6 @@ export function AlertBand() {
     }
   };
 
-  const isClientPortal = pathname.startsWith('/client');
-  
-  // Use real admin for contact if in client portal
-  const leadAdmin = useMemo(() => currentUser?.roles?.includes('super_admin') ? currentUser : null, [currentUser]);
-  const leadName = leadAdmin?.name || 'Administrator';
-  const leadInitials = leadName.split(' ').map((n: string) => n[0]).join('') || 'AD';
-
   return (
     <>
       <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-2 overflow-hidden">
@@ -300,29 +290,6 @@ export function AlertBand() {
             </div>
           )}
         </div>
-
-        {isClientPortal && (
-          <div className="flex items-center gap-4 border-l border-border-sub/30 pl-4 shrink-0">
-            <div className="flex items-center gap-2">
-               <div className="h-5 w-5 rounded-full bg-brand-red text-[8px] font-black text-white flex items-center justify-center">{leadInitials}</div>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted hidden md:block">Lead: <span className="text-text-primary">{leadName}</span></p>
-            </div>
-            <div className="flex items-center gap-3">
-              <a 
-                href="mailto:admin@aaromach.com"
-                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
-              >
-                <Mail size={12} /> Email
-              </a>
-              <a 
-                href="sms:+15550000000"
-                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
-              >
-                <MessageSquare size={12} /> SMS
-              </a>
-            </div>
-          </div>
-        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

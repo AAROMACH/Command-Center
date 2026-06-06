@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -52,6 +53,8 @@ import {
   onSnapshot,
   orderBy,
   limit,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
@@ -270,10 +273,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const timeline = useMemo(() => {
     if (!mission) return [];
     
-    // Combine fetched history events with a synthesized root event
     const entries = [...(mission.history || [])];
 
-    // Synthesize "Assignment Created" if it's the root
     if (entries.length === 0 || !entries.some(e => e.details.toLowerCase().includes('created'))) {
       entries.push({
         type: 'note',
@@ -283,7 +284,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       } as any);
     }
 
-    // Sort by chronological order (descending for display)
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [mission]);
 
@@ -296,7 +296,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="p-0 gap-0 max-w-2xl w-full bg-bg-elevated border-border-default shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
 
-        {/* ── Header ────────────────────────────────────────────────────── */}
         <DialogHeader className="shrink-0 px-8 pt-8 pb-0 text-left space-y-0">
           <div className="flex items-center justify-between mb-4">
             <DialogTitle className="font-mono text-[10px] font-bold text-brand-red uppercase tracking-[0.2em]">
@@ -348,11 +347,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </div>
         </DialogHeader>
 
-        {/* ── Body ──────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-8 py-6 text-left">
           <Tabs value={activeTab} className="w-full h-full text-left">
             
-            {/* ══ Overview ════════════════════════════════════════════════════ */}
             <TabsContent value="Overview" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                     <div className="space-y-4 text-left">
@@ -395,7 +392,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
             </TabsContent>
 
-            {/* ══ Scope ════════════════════════════════════════════════════ */}
             <TabsContent value="Scope" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 <div className="text-left">
                     <div className="flex justify-between items-center mb-4 text-left">
@@ -430,7 +426,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 )}
             </TabsContent>
 
-            {/* ══ Activity Ledger ═════════════════════════════════════════════════ */}
             <TabsContent value="Activity Ledger" className="m-0 space-y-6 animate-in fade-in duration-300 text-left">
                 <SectionLabel>Operational Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
@@ -469,7 +464,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
             </TabsContent>
 
-            {/* ══ Admin Review ═════════════════════════════════════════════════ */}
             <TabsContent value="Admin Review" className="m-0 space-y-8 animate-in fade-in duration-300 text-left">
                 {loadingAdmin ? (
                     <div className="py-24 text-center space-y-4">
@@ -544,7 +538,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </Tabs>
         </div>
 
-        {/* ── Footer ────────────────────────────────────────────────────── */}
         <div className="shrink-0 px-8 py-6 border-t border-border-sub bg-bg-tertiary/30 flex items-center justify-between">
            <div className="flex items-center gap-3 text-text-muted opacity-40">
                 {isLocked ? <Lock size={12}/> : <Unlock size={12}/>}

@@ -2,7 +2,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where, addDoc, doc } from 'firebase/firestore';
 import type { ServiceRequest, Technician } from '@/lib/types';
+import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -29,8 +32,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, addDoc } from 'firebase/firestore';
 
 type SortOption = 'newest' | 'oldest' | 'priority' | 'type';
 
@@ -137,6 +138,14 @@ export default function ClientTicketsPage() {
         } else {
           if (docs.length >= 2) return;
           setDocs([...docs, `Blueprint_Revision_${docs.length + 1}.pdf`]);
+        }
+    };
+
+    const removeAttachment = (type: 'image' | 'doc', index: number) => {
+        if (type === 'image') {
+            setImages(images.filter((_, i) => i !== index));
+        } else {
+            setDocs(docs.filter((_, i) => i !== index));
         }
     };
 

@@ -7,6 +7,9 @@ import { collection, doc, updateDoc, onSnapshot, query, where, getDocs } from 'f
 import { 
   Dialog, 
   DialogContent, 
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -179,11 +182,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       <DialogContent className="p-0 gap-0 max-w-2xl w-full bg-bg-elevated border-border-default shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
 
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="shrink-0 px-8 pt-8 pb-0 text-left">
+        <DialogHeader className="shrink-0 px-8 pt-8 pb-0 text-left space-y-0">
           <div className="flex items-center justify-between mb-4">
-            <span className="font-mono text-[10px] font-bold text-brand-red uppercase tracking-[0.2em]">
+            <DialogTitle className="font-mono text-[10px] font-bold text-brand-red uppercase tracking-[0.2em]">
               WO: {mission.id.toUpperCase()}
-            </span>
+            </DialogTitle>
             <div className="flex items-center gap-6">
                {isLocked && (
                 <div className="flex items-center gap-2 text-text-muted">
@@ -209,6 +212,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <h2 className="text-2xl font-black uppercase tracking-wide text-text-primary leading-tight">
                 {mission.title || mission.description}
             </h2>
+            <DialogDescription className="hidden">Detailed mission audit terminal for assignment oversight.</DialogDescription>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -237,7 +241,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               </button>
             ))}
           </div>
-        </div>
+        </DialogHeader>
 
         {/* ── Body ──────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-8 py-6">

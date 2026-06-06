@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -71,6 +72,7 @@ function ImportedJobAudit({
     const reimbursement = wo.auditReimbursement || 0;
     const overhead = wo.auditOverhead || 0;
     
+    // Field Nation Fees (15.85% for labor and reimbursement)
     const fnFeeLabor = laborPay * 0.1585;
     const fnFeeReimb = reimbursement * 0.1585;
     const totalFnFee = fnFeeLabor + fnFeeReimb;
@@ -79,8 +81,9 @@ function ImportedJobAudit({
     const techLaborShare = netLabor * 0.50;
     const aaromachLaborShare = netLabor * 0.50;
     
+    // Tech gets full reimbursement (Aaromach eats the 15.85% fee for it)
     const techPayout = techLaborShare + reimbursement;
-    const aaromachPay = aaromachLaborShare - fnFeeReimb;
+    const aaromachPay = aaromachLaborShare - fnFeeReimb - overhead;
 
     const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
         const nextLaborPay = updates.pay ?? laborPay;
@@ -112,18 +115,6 @@ function ImportedJobAudit({
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
-                            type="number"
-                            value={reimbursement}
-                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -131,6 +122,18 @@ function ImportedJobAudit({
                             type="number"
                             value={overhead}
                             onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
+                    <div className="relative text-left">
+                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={reimbursement}
+                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
                             className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
                         />
                     </div>
@@ -317,7 +320,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent className="lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl">
-                    <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0">
+                    <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-10 w-10 border border-border-sub">
@@ -331,9 +334,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Requested</Badge>
                                         )}
                                     </div>
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
+                                    <DialogDescription className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                         Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
-                                    </p>
+                                    </DialogDescription>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">

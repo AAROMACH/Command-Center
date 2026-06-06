@@ -48,6 +48,7 @@ export type WorkOrder = {
   title: string;
   description: string;
   location: string;
+  locationText?: string;
   requiredSkills: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed';
@@ -56,6 +57,7 @@ export type WorkOrder = {
   additionalTechnicianIds?: string[];
   clientName: string;
   projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission' | string;
+  jobType?: string;
   scheduleDate: string;
   scheduleTime: string;
   pay: number;
@@ -68,7 +70,7 @@ export type WorkOrder = {
   isImported?: boolean;
   source?: 'Imported' | 'Manual' | 'Client';
   history?: { type: 'tech_swap' | 'tech_add' | 'tech_remove' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
-  notes?: string[];
+  notes?: string;
   reimbursements?: FinancialRecord[];
   finalPay?: number;
   payChangeRequest?: {
@@ -82,6 +84,30 @@ export type WorkOrder = {
   isAudited?: boolean;
   auditedAt?: string | null;
   auditedBy?: string | null;
+  gpsRequired?: boolean;
+  revisitCount?: number;
+  externalWorkOrderId?: string;
+};
+
+export type Assignment = {
+  id: string;
+  status: string;
+  currentScheduledDate?: string;
+  revisitCount?: number;
+  techName?: string;
+  assignedAt?: string;
+  assignedBy?: string;
+  acknowledgedAt?: string;
+  acknowledgmentMissed?: boolean;
+  confirmedStartAt?: string;
+  latestOutcomeCode?: string;
+  updatedAt?: string;
+  removedAfterAcknowledgment?: boolean;
+  removalReasonCode?: string;
+  removedAt?: string;
+  needsAdminReview?: boolean;
+  acknowledgmentRequiredAt?: string;
+  techId?: string;
 };
 
 export type Route = {

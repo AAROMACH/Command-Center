@@ -14,6 +14,8 @@
     --brand-red-hover: #E02500;
     --brand-red-dim: #ffeeee;
 
+    --brand-cyan: #0095A8;
+
     --accent-gold: #C89B3C;
     --accent-gold-dim: #fdf8eb;
 
@@ -74,6 +76,8 @@
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;
     --brand-red-dim: #3a0a00;
+
+    --brand-cyan: #00e5ff;
 
     --accent-gold: #C89B3C;
     --accent-gold-dim: #2a1f00;
@@ -492,6 +496,18 @@
     @apply border border-dashed border-border-main rounded-lg p-6 text-center;
   }
   .empty-state-text { @apply mt-1.5 text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+
+  .tab-trigger-plans {
+      @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+  }
+
+  .tab-trigger-job {
+      @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+  }
+
+  .tab-trigger-activity {
+      @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+  }
 }
 
 /* Fix for Google Places Autocomplete in Modals */

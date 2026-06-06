@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -56,6 +55,7 @@ export default {
         'brand-red': 'var(--brand-red)',
         'brand-red-hover': 'var(--brand-red-hover)',
         'brand-red-dim': 'var(--brand-red-dim)',
+        'brand-cyan': 'var(--brand-cyan)',
         'accent-gold': 'var(--accent-gold)',
         'accent-gold-dim': 'var(--accent-gold-dim)',
         'green-dim': 'var(--green-dim)',

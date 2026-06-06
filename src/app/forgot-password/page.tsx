@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -74,7 +73,7 @@ export default function ForgotPasswordPage() {
           </div>
           <div>
             <CardTitle className="text-xl font-bold uppercase tracking-wider text-text-primary">
-              Identity Recovery
+              Forgot Password
             </CardTitle>
             <CardDescription className="text-text-muted">
               Initiate password reset protocol
@@ -101,14 +100,14 @@ export default function ForgotPasswordPage() {
                 className="w-full h-11" 
                 onClick={() => router.push("/login")}
             >
-                <ArrowLeft size={16} className="mr-2"/> Return to Terminal
+                <ArrowLeft size={16} className="mr-2"/> Back to Login
             </Button>
           </CardContent>
         ) : (
           <form onSubmit={handleReset}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Registered Email</Label>
+                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Email</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input
@@ -132,13 +131,13 @@ export default function ForgotPasswordPage() {
                 disabled={isLoading}
                 className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest"
               >
-                {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Transmit Recovery Link"}
+                {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Email"}
               </Button>
               <Link 
                 href="/login" 
                 className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-[0.2em] flex items-center justify-center gap-2"
               >
-                <ArrowLeft size={12}/> Back to Login Terminal
+                <ArrowLeft size={12}/> Back to Login
               </Link>
             </CardFooter>
           </form>

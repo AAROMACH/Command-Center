@@ -110,7 +110,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: "Invalid credentials. Use the dev bypass or verify your access key.",
+        description: "Invalid credentials. Use the dev bypass or verify your password.",
       });
     } finally {
       setIsLoading(false);
@@ -173,7 +173,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Registry Email</Label>
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -189,9 +189,9 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Access Key</Label>
+                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Password</Label>
                 <Link href="/forgot-password" className="text-[9px] font-black uppercase text-brand-red hover:underline tracking-tighter">
-                  Lost Credentials?
+                  Forgot Password?
                 </Link>
               </div>
               <div className="relative">
@@ -274,7 +274,7 @@ export default function LoginPage() {
                   Synchronizing...
                 </>
               ) : (
-                "Authorize Terminal Access"
+                "Login"
               )}
             </Button>
             <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-center px-4">

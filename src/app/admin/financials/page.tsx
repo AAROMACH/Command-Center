@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -231,14 +231,14 @@ export default function FinancialsPage() {
         setIsReviewDialogOpen(true);
     };
 
-    const handleUpdateLogStatus = (logId: string, status: WeeklyLog['status'], total?: number) => {
+    const handleUpdateLogStatus = useCallback((logId: string, status: WeeklyLog['status'], total?: number) => {
         toast({
             title: `Audit Finalized: ${status}`,
             description: `Manifest for log ${logId.split('-').pop()?.toUpperCase()} updated. Final settlement: $${total?.toFixed(2) || '0.00'}`
         });
         setIsReviewDialogOpen(false);
         setSelectedLog(null);
-    };
+    }, [toast]);
 
     const handleExecuteExport = () => {
         if (exportConfig.types.length === 0) {
@@ -554,7 +554,7 @@ export default function FinancialsPage() {
                     </DialogHeader>
                     <div className="p-6 space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2 text-left">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Tactical Warning</p>
+                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest mb-1">Safety Lock Required</p>
                             <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">Closing the period transitions all financial records to read-only archival state.</p>
                         </div>
                         {userIsSuperAdmin ? (

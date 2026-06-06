@@ -201,7 +201,7 @@ function DroppableRoute({
                 <Button 
                     variant="default" 
                     className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white transition-all"
-                    onClick={() => onAssignClick(route.id)}
+                    onClick={() => onAssignClick(routeId)}
                 >
                     <Plus size={12} className="mr-1" /> Assign Jobs
                 </Button>

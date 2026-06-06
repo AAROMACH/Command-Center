@@ -282,7 +282,7 @@ export type WeeklyLogItem = {
   confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;
   disputeNotes?: string;
-  outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';
+  outcomeCode?: 'worked_completed' | 'worked_revisit' | 'other' | null;
   isComplete: boolean;
   isAdminReviewed: boolean;
   jobPay: number;

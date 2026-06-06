@@ -259,7 +259,7 @@ export default function TechAssignmentsPage() {
             id: `wli-${Date.now()}`,
             workOrderId: woId,
             jobPay: wo.pay,
-            outcomeCode: 'worked_completed',
+            outcomeCode: null, // Awaiting verification
             isComplete: true,
             isAdminReviewed: false
         };

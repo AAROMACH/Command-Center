@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Check, Coins, ScrollText, Trash2, Plus } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { OUTCOME_CODE_LABELS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 type WeeklyLogDialogProps = {
     isOpen: boolean;
@@ -93,10 +95,18 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                                                     <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase text-left">{wo?.title || wo?.description || 'Assignment Detail Restricted'}</div>
                                                 </TableCell>
                                                 <TableCell className="py-2">
-                                                    <Badge variant="active" className="text-[9px] uppercase tracking-widest h-5">Verified</Badge>
+                                                    <Badge variant={item.confirmationStatus === 'confirmed' ? 'active' : 'onhold'} className="text-[9px] uppercase tracking-widest h-5">
+                                                        {item.confirmationStatus ? item.confirmationStatus.toUpperCase() : 'VERIFYING'}
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell className="py-2 text-right">
-                                                    <span className="text-[10px] font-mono text-text-green uppercase">Worked</span>
+                                                    <span className={cn(
+                                                        "text-[10px] font-mono uppercase font-bold",
+                                                        item.outcomeCode === 'worked_completed' ? "text-text-green" : 
+                                                        item.outcomeCode === 'worked_revisit' ? "text-text-red" : "text-text-muted"
+                                                    )}>
+                                                        {item.outcomeCode ? OUTCOME_CODE_LABELS[item.outcomeCode as keyof typeof OUTCOME_CODE_LABELS] : 'Pending Verification'}
+                                                    </span>
                                                 </TableCell>
                                             </TableRow>
                                         )

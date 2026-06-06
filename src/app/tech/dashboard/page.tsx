@@ -126,7 +126,7 @@ export default function TechDashboardPage() {
             id: `wli-${Date.now()}`,
             workOrderId: woId,
             jobPay: wo.pay,
-            outcomeCode: 'worked_completed',
+            outcomeCode: null, // Initial outcome is null until tech verifies
             isComplete: true,
             isAdminReviewed: false
         };

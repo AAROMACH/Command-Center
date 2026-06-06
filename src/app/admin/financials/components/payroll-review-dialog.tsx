@@ -69,36 +69,37 @@ function ImportedJobAudit({
     wo: WorkOrder; 
     onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void 
 }) {
-    const totalPay = wo.pay;
+    const laborPay = wo.pay;
     const reimbursement = wo.auditReimbursement || 0;
     const overhead = wo.auditOverhead || 0;
-    const additionalCharges = reimbursement + overhead;
     
-    const fnMultiplier = 0.846;
-    const additionalNet = additionalCharges * fnMultiplier;
+    // Field Nation Protocol: 15.85% deduction from Labor Pay
+    const fnFee = laborPay * 0.1585;
+    const netLabor = laborPay - fnFee;
     
-    const laborNet = totalPay - additionalNet;
-    const techPay = (laborNet * 0.50) + additionalNet;
-    const aaromachPay = laborNet * 0.50;
+    // Strategic Split: 50/50 of net labor
+    const aaromachPay = netLabor * 0.50;
+    const techLaborShare = netLabor * 0.50;
+    
+    // Tech Payout: Labor share + 100% of Reimbursement
+    const techPayout = techLaborShare + reimbursement;
 
     const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
-        const nextTotal = updates.pay ?? totalPay;
+        const nextLaborPay = updates.pay ?? laborPay;
         const nextReimb = updates.auditReimbursement ?? reimbursement;
-        const nextOver = updates.auditOverhead ?? overhead;
         
-        const nextAdditionalCharges = nextReimb + nextOver;
-        const nextAdditionalNet = nextAdditionalCharges * fnMultiplier;
-        const nextLaborNet = nextTotal - nextAdditionalNet;
-        const nextTechPay = (nextLaborNet * 0.50) + nextAdditionalNet;
+        const nextFnFee = nextLaborPay * 0.1585;
+        const nextNetLabor = nextLaborPay - nextFnFee;
+        const nextTechPayout = (nextNetLabor * 0.50) + nextReimb;
         
         onUpdateWorkOrder(wo.id, { 
             ...updates, 
-            finalPay: Math.max(0, nextTechPay) 
+            finalPay: Math.max(0, nextTechPayout) 
         });
     };
 
     return (
-        <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[280px]">
+        <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[320px]">
              <div className="grid grid-cols-3 gap-1 text-left">
                 <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Labor Pay</Label>
@@ -106,7 +107,7 @@ function ImportedJobAudit({
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
-                            value={totalPay}
+                            value={laborPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
                             className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono font-bold" 
                         />
@@ -140,19 +141,19 @@ function ImportedJobAudit({
 
              <div className="grid grid-cols-4 gap-1 pt-0.5 border-t border-border-sub/30 text-left">
                 <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Add. Net</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${additionalNet.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-text-muted uppercase text-left">FN Fee (15.85%)</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${fnFee.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Labor Net</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${laborNet.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Net Labor</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
                     <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPay.toFixed(2)}</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach Pay</p>
+                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
                     <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
@@ -418,7 +419,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1">
@@ -459,28 +460,29 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
 
-                                                <div className="pl-24 flex items-center gap-4">
-                                                    {isImported && wo ? (
-                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                    ) : (
-                                                        <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
-                                                            <div className="text-left">
-                                                                <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
-                                                                <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
-                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-left">
-                                                                <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
-                                                                <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
-                                                                    ${(item.jobPay || 0).toFixed(2)}
-                                                                </p>
-                                                            </div>
+                                                        {/* INFO-ANCHORED CALC / DISCREPANCY BLOCK */}
+                                                        <div className="flex items-center gap-4 mt-1">
+                                                            {isImported && wo ? (
+                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                            ) : (
+                                                                <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
+                                                                    <div className="text-left">
+                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
+                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
+                                                                            {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-left">
+                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
+                                                                        <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
+                                                                            ${(item.jobPay || 0).toFixed(2)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -505,7 +507,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1 text-left">
@@ -546,38 +548,39 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
 
-                                                <div className="pl-24 flex items-center gap-4 text-left">
-                                                    {isImported && wo ? (
-                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                    ) : (
-                                                        <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
-                                                            <div className="text-left">
-                                                                <p className="text-[7px] font-black text-text-muted uppercase text-left">Duration</p>
-                                                                <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none text-left">
-                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                        {/* INFO-ANCHORED CALC & DISCREPANCY BLOCK */}
+                                                        <div className="flex items-center gap-4 mt-1">
+                                                            {isImported && wo ? (
+                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                            ) : (
+                                                                <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
+                                                                    <div className="text-left">
+                                                                        <p className="text-[7px] font-black text-text-muted uppercase text-left">Duration</p>
+                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none text-left">
+                                                                            {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-left">
+                                                                        <p className="text-[7px] font-black text-text-muted uppercase text-left">Payout</p>
+                                                                        <p className="text-[11px] font-mono font-bold text-text-red leading-none text-left">
+                                                                            ${(item.jobPay || 0).toFixed(2)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="min-w-[180px] max-w-[250px] p-2 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left flex flex-col justify-center h-full">
+                                                                <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
+                                                                    <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
                                                                 </p>
-                                                            </div>
-                                                            <div className="text-left">
-                                                                <p className="text-[7px] font-black text-text-muted uppercase text-left">Payout</p>
-                                                                <p className="text-[11px] font-mono font-bold text-text-red leading-none text-left">
-                                                                    ${(item.jobPay || 0).toFixed(2)}
-                                                                </p>
+                                                                {item.disputeNotes && (
+                                                                    <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate mt-0.5">
+                                                                        &quot;{item.disputeNotes}&quot;
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    )}
-                                                    
-                                                    <div className="min-w-[180px] max-w-[250px] p-2 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left flex flex-col justify-center">
-                                                        <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
-                                                            <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
-                                                        </p>
-                                                        {item.disputeNotes && (
-                                                            <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate mt-0.5">
-                                                                &quot;{item.disputeNotes}&quot;
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -588,7 +591,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = (report as any).isAudited;
                                         return (
                                             <div key={report.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
                                                 isAudited ? "border-green-border/30 bg-bg-primary" : "border-accent-gold/30 bg-bg-secondary shadow-sm"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1 text-left">
@@ -613,7 +616,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
                                                     
-                                                    <div className="flex-1 flex items-center justify-between gap-6 text-left">
+                                                    <div className="flex-1 flex flex-col gap-0.5 text-left">
                                                         <div className="text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
@@ -621,11 +624,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </div>
                                                             <p className="text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                                <div className="pl-24 text-left">
-                                                    <div className="max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
-                                                        <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate text-left">&quot;{report.summary}&quot;</p>
+
+                                                        <div className="mt-1">
+                                                            <div className="max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
+                                                                <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate text-left">&quot;{report.summary}&quot;</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

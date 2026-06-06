@@ -26,7 +26,7 @@ import {
     Upload,
     SearchCode
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +35,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { technicians } from '@/lib/data';
 
 declare global {
   interface Window {
@@ -413,7 +414,7 @@ export default function ClientTicketsPage() {
                     <DialogHeader className="p-6 pb-2 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Navigation className="text-accent-gold h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Site Registry</DialogTitle>
                         </div>
                         <DialogDescription className="text-xs text-left">Select verified coordinates for your organization.</DialogDescription>
                     </DialogHeader>
@@ -466,7 +467,7 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
         <div className="grid grid-cols-1 gap-4 text-left">
             {requests.map(ticket => (
                 <Card key={ticket.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-                    <CardContent className="p-5 flex items-center justify-between text-left">
+                    <CardContent className="min-h-24 p-5 flex items-center justify-between text-left">
                         <div className="text-left space-y-1 flex-1">
                             <div className="flex items-center gap-2 text-left">
                                 <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{ticket.id.toUpperCase()}</span>

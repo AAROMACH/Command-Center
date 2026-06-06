@@ -98,7 +98,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
           <GripVertical size={14} />
         </div>
         <div className="space-y-0 overflow-hidden text-left">
-          <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.description}</p>
+          <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate leading-tight">{job.description}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
             {job.source === 'Imported' && (
@@ -335,7 +335,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             if (result.warnings && result.warnings.length > 0) {
                 toast({ 
                     variant: result.routes.length > 0 ? "default" : "destructive", 
-                    title: "Intelligence Terminal Alert", 
+                    title: "Terminal Dispatch Alert", 
                     description: result.warnings[0] 
                 });
             }

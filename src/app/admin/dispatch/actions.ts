@@ -58,7 +58,7 @@ function generateFallbackRoutes(input: AdminRouteOptimizationInput): AdminRouteO
   return {
     routes,
     unassignedJobIds: unassignedJobs.filter(j => !assignedJobIds.has(j.id)).map(j => j.id),
-    warnings: ["Auto Dispatch utilized deterministic fallback logic due to intelligence terminal unavailability."]
+    warnings: ["AI Dispatch is unavailable. Fallback routing was used."]
   };
 }
 
@@ -69,7 +69,7 @@ export async function getOptimizedRoutes(
     // 1. DATA SANITIZATION & VALIDATION
     // Ensure we only dispatch valid technicians (Exclude admins/blank records)
     const validTechs = input.availableTechnicians
-        .filter(t => t.id && t.name && !t.id.includes('admin') && t.currentLocation)
+        .filter(t => t.id && t.name && !t.id.toLowerCase().includes('admin') && t.currentLocation)
         .map(t => ({
             ...t,
             currentLocation: formatCityState(t.currentLocation) // STRIP STREET ADDRESS
@@ -81,7 +81,7 @@ export async function getOptimizedRoutes(
         .map(j => ({
             ...j,
             location: formatCityState(j.location), // STRIP STREET ADDRESS
-            // Enforce strict time format
+            // Enforce strict time format: HH:MM AM/PM only
             scheduleTime: (j.scheduleTime || '09:00 AM').split('→')[0].split('to')[0].trim()
         }));
 
@@ -101,12 +101,18 @@ export async function getOptimizedRoutes(
 
     // 2. ATTEMPT AI DISPATCH
     try {
+        // Check for API Key presence before attempting handshake
+        if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
+            throw new Error("CREDENTIAL_MISMATCH: API Key not found in operational environment.");
+        }
+
         const result = await optimizeRoutes(sanitizedInput);
-        if (!result || !result.routes) throw new Error("AI Terminal returned empty manifest.");
+        if (!result || !result.routes) throw new Error("EMPTY_MANIFEST: AI Terminal returned null results.");
         return result;
     } catch (aiError: any) {
         // LOG REAL ERROR SECURELY ON SERVER
         console.error("[SERVER] AI DISPATCH FAILURE:", aiError.message);
+        if (aiError.message.includes('429')) console.error("[SERVER] ALERT: AI QUOTA EXHAUSTED");
         
         // 3. TRIGGER DETERMINISTIC FALLBACK
         return generateFallbackRoutes(sanitizedInput);

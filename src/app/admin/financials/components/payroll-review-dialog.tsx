@@ -96,7 +96,7 @@ function ImportedJobAudit({
     };
 
     return (
-        <div className="flex flex-col gap-1 p-1 bg-bg-primary border border-border-sub rounded-lg text-left min-w-[300px]">
+        <div className="flex flex-col gap-1 p-1 bg-bg-primary border border-border-sub rounded-lg text-left w-fit min-w-[300px]">
              <div className="grid grid-cols-3 gap-1 text-left">
                 <div className="space-y-0 text-left">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Gross Pay</Label>
@@ -419,11 +419,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                             return (
                                                 <div key={item.id} className={cn(
-                                                    "p-3 rounded-xl border transition-all flex items-center justify-between group",
+                                                    "p-3 rounded-xl border transition-all flex items-start justify-between group",
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                                 )}>
-                                                    <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
-                                                        <div className="shrink-0 flex items-center gap-2">
+                                                    <div className="min-w-0 flex-1 flex items-start gap-6 text-left">
+                                                        <div className="shrink-0 flex items-center gap-2 mt-1">
                                                             <Button 
                                                                 variant="outline" 
                                                                 size="sm" 
@@ -445,49 +445,52 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <Trash2 size={14}/>
                                                             </Button>
                                                         </div>
-                                                        <div className="min-w-0 flex-1 text-left">
-                                                            <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
-                                                                {isImported && (
-                                                                    <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                        <div className="min-w-0 flex-1 text-left flex flex-col gap-3">
+                                                            <div className="text-left">
+                                                                <div className="flex items-center gap-2 text-left">
+                                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                                    {isImported && (
+                                                                        <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                                    <div className="flex items-center gap-1.5 text-left">
+                                                                      <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                      {isImported && wo && (
+                                                                        <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                                          <ExternalLink size={10} />
+                                                                        </a>
+                                                                      )}
+                                                                    </div>
+                                                                    <span>•</span>
+                                                                    <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                                    <span>•</span>
+                                                                    <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Pay details anchored under info */}
+                                                            <div className="shrink-0">
+                                                                {isImported && wo ? (
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                ) : (
+                                                                    <div className="flex items-center justify-start gap-8">
+                                                                        <div className="text-left">
+                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
+                                                                            <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
+                                                                                {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="text-left min-w-[70px]">
+                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
+                                                                            <p className="text-sm font-mono font-bold text-text-primary">
+                                                                                ${(item.jobPay || 0).toFixed(2)}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                <div className="flex items-center gap-1.5 text-left">
-                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
-                                                                  {isImported && wo && (
-                                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
-                                                                      <ExternalLink size={10} />
-                                                                    </a>
-                                                                  )}
-                                                                </div>
-                                                                <span>•</span>
-                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
-                                                                <span>•</span>
-                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
-                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="ml-4 shrink-0 min-w-[320px]">
-                                                        {isImported && wo ? (
-                                                            <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                        ) : (
-                                                            <div className="flex items-center justify-end gap-8">
-                                                                <div className="text-right">
-                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
-                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
-                                                                        {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="text-right min-w-[70px]">
-                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                                    <p className="text-sm font-mono font-bold text-text-primary">
-                                                                        ${(item.jobPay || 0).toFixed(2)}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -518,9 +521,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 "p-3 rounded-xl border transition-all flex flex-col gap-3 group",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                             )}>
-                                                <div className="flex items-center justify-between gap-6 text-left">
-                                                    <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
-                                                        <div className="shrink-0 flex items-center gap-2">
+                                                <div className="flex items-start justify-between gap-6 text-left">
+                                                    <div className="min-w-0 flex-1 flex items-start gap-6 text-left">
+                                                        <div className="shrink-0 flex items-center gap-2 mt-1">
                                                             <Button 
                                                                 variant="outline" 
                                                                 size="sm" 
@@ -542,49 +545,51 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <Trash2 size={14}/>
                                                             </Button>
                                                         </div>
-                                                        <div className="min-w-0 flex-1 text-left">
-                                                            <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
-                                                                {isImported && (
-                                                                    <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                        <div className="min-w-0 flex-1 text-left flex flex-col gap-3">
+                                                            <div className="text-left">
+                                                                <div className="flex items-center gap-2 text-left">
+                                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                                    {isImported && (
+                                                                        <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                                    <div className="flex items-center gap-1.5 text-left">
+                                                                      <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                      {isImported && wo && (
+                                                                        <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
+                                                                          <ExternalLink size={10} />
+                                                                        </a>
+                                                                      )}
+                                                                    </div>
+                                                                    <span>•</span>
+                                                                    <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                                    <span>•</span>
+                                                                    <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="shrink-0">
+                                                                {isImported && wo ? (
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                ) : (
+                                                                    <div className="flex items-center justify-start gap-8">
+                                                                        <div className="text-left">
+                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
+                                                                            <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
+                                                                                {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="text-left min-w-[70px]">
+                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
+                                                                            <p className="text-sm font-mono font-bold text-text-red">
+                                                                                ${(item.jobPay || 0).toFixed(2)}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                <div className="flex items-center gap-1.5 text-left">
-                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
-                                                                  {isImported && wo && (
-                                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
-                                                                      <ExternalLink size={10} />
-                                                                    </a>
-                                                                  )}
-                                                                </div>
-                                                                <span>•</span>
-                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
-                                                                <span>•</span>
-                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
-                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="ml-4 shrink-0 min-w-[320px]">
-                                                        {isImported && wo ? (
-                                                            <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                        ) : (
-                                                            <div className="flex items-center justify-end gap-8">
-                                                                <div className="text-right">
-                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
-                                                                    <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
-                                                                        {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="text-right min-w-[70px]">
-                                                                    <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                                    <p className="text-sm font-mono font-bold text-text-red">
-                                                                        ${(item.jobPay || 0).toFixed(2)}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
 

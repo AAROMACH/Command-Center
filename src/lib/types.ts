@@ -396,6 +396,7 @@ export type InvoiceLineItem = {
   description: string;
   quantity: number;
   unitPrice: number;
+  category: 'labor' | 'material';
 };
 
 export type Invoice = {
@@ -409,6 +410,7 @@ export type Invoice = {
   dueDate: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
   lineItems: InvoiceLineItem[];
+  isAfterHours?: boolean;
   notes?: string;
   subtotal: number;
   tax: number;

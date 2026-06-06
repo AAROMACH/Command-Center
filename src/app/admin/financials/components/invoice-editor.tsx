@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -9,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Trash2, Plus, FileText, Wrench, FolderKanban } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 type InvoiceEditorProps = {
     isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
+    setIsOpen: (open: boolean) => void;
     invoice: Invoice | null;
     clients: Technician[];
     projects: Project[];
@@ -26,35 +27,26 @@ const defaultLineItem: Omit<InvoiceLineItem, 'id'> = {
     description: '',
     quantity: 1,
     unitPrice: 0,
+    category: 'labor',
 };
 
 const premadeLineItems = [
     { group: 'Labor & Services', items: [
-        { id: 'labor_fiber', description: 'Fiber Optic Labor ($150/hr)', unitPrice: 150 },
-        { id: 'labor_install', description: 'Installation Labor ($120/hr)', unitPrice: 120 },
-        { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100 },
-        { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85 },
-        { id: 'labor_ah', description: 'After Hours Labor (1.5x)', unitPrice: 180 },
-        { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75 },
+        { id: 'labor_fiber', description: 'Fiber Optic Labor ($150/hr)', unitPrice: 150, category: 'labor' },
+        { id: 'labor_install', description: 'Installation Labor ($120/hr)', unitPrice: 120, category: 'labor' },
+        { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100, category: 'labor' },
+        { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor' },
+        { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75, category: 'labor' },
     ]},
-    { group: 'Cabling & Wiring', items: [
-        { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450 },
-        { id: 'cat6_riser', description: 'CAT6 Riser Cable (1000ft)', unitPrice: 320 },
-        { id: 'fiber_patch', description: 'LC-LC Duplex Fiber Patch (3m)', unitPrice: 24 },
+    { group: 'Cabling & Wiring (Taxable)', items: [
+        { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450, category: 'material' },
+        { id: 'cat6_riser', description: 'CAT6 Riser Cable (1000ft)', unitPrice: 320, category: 'material' },
+        { id: 'fiber_patch', description: 'LC-LC Duplex Fiber Patch (3m)', unitPrice: 24, category: 'material' },
     ]},
-    { group: 'Network & Infrastructure', items: [
-        { id: 'poe_8', description: '8-Port Managed PoE Switch', unitPrice: 195 },
-        { id: 'ap_ac', description: 'Enterprise Wireless Access Point', unitPrice: 245 },
-        { id: 'rack_6u', description: '6U Wall Mount Rack Enclosure', unitPrice: 180 },
-        { id: 'rack_shelf', description: '1U Cantilever Rack Shelf', unitPrice: 35 },
-        { id: 'patch_24', description: '24-Port Patch Panel', unitPrice: 85 },
-        { id: 'patch_48', description: '48-Port Patch Panel', unitPrice: 155 },
-    ]},
-    { group: 'Terminations & Consumables', items: [
-        { id: 'cat6_keystone', description: 'CAT6 Shielded Keystone Jack', unitPrice: 7.50 },
-        { id: 'rj45_pack', description: 'RJ45 Connectors (Pack of 50)', unitPrice: 25 },
-        { id: 'wall_plate', description: 'Single Gang Wall Plate', unitPrice: 1.50 },
-        { id: 'velcro', description: 'Velcro Cable Ties (Roll)', unitPrice: 15 },
+    { group: 'Network & Infrastructure (Taxable)', items: [
+        { id: 'poe_8', description: '8-Port Managed PoE Switch', unitPrice: 195, category: 'material' },
+        { id: 'ap_ac', description: 'Enterprise Wireless Access Point', unitPrice: 245, category: 'material' },
+        { id: 'rack_6u', description: '6U Wall Mount Rack Enclosure', unitPrice: 180, category: 'material' },
     ]}
 ];
 
@@ -76,6 +68,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     dueDate: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
                     lineItems: [{ ...defaultLineItem, id: `li-${Date.now()}` }],
                     status: 'draft',
+                    isAfterHours: false,
                 });
             }
         }
@@ -111,13 +104,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         setInvoiceData(prev => ({ ...prev, ...update }));
     };
 
-    const handleLineItemChange = (index: number, field: keyof InvoiceLineItem, value: string | number) => {
+    const handleLineItemChange = (index: number, field: keyof InvoiceLineItem, value: any) => {
         const updatedLineItems = [...(invoiceData.lineItems || [])];
         (updatedLineItems[index] as any)[field] = value;
         setInvoiceData(prev => ({ ...prev, lineItems: updatedLineItems }));
     };
 
-     const handlePremadeItemSelect = (index: number, itemId: string) => {
+    const handlePremadeItemSelect = (index: number, itemId: string) => {
         const allItems = premadeLineItems.flatMap(g => g.items);
         const premade = allItems.find(p => p.id === itemId);
         if (!premade) return;
@@ -127,6 +120,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
             ...updatedLineItems[index],
             description: premade.description,
             unitPrice: premade.unitPrice,
+            category: premade.category as 'labor' | 'material',
         };
         setInvoiceData(prev => ({ ...prev, lineItems: updatedLineItems }));
     };
@@ -142,13 +136,38 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         setInvoiceData(prev => ({ ...prev, lineItems: newLineItems }));
     };
 
-    const { subtotal, tax, total } = useMemo(() => {
-        const sub = invoiceData.lineItems?.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0) || 0;
-        const taxRate = 0.08; // 8% tax
-        const taxAmount = sub * taxRate;
-        const totalAmount = sub + taxAmount;
-        return { subtotal: sub, tax: taxAmount, total: totalAmount };
+    const hasLabor = useMemo(() => {
+        return (invoiceData.lineItems || []).some(item => item.category === 'labor');
     }, [invoiceData.lineItems]);
+
+    // Financial Calculation Protocol
+    const { subtotal, laborSubtotal, materialsSubtotal, tax, total } = useMemo(() => {
+        const items = invoiceData.lineItems || [];
+        const isAH = !!invoiceData.isAfterHours;
+
+        let labor = 0;
+        let materials = 0;
+
+        items.forEach(item => {
+            const baseTotal = item.quantity * item.unitPrice;
+            if (item.category === 'labor') {
+                labor += isAH ? baseTotal * 1.5 : baseTotal;
+            } else {
+                materials += baseTotal;
+            }
+        });
+
+        const taxRate = 0.08; // 8% Regional Material Tax
+        const taxAmount = materials * taxRate;
+        
+        return { 
+            subtotal: labor + materials, 
+            laborSubtotal: labor,
+            materialsSubtotal: materials,
+            tax: taxAmount, 
+            total: labor + materials + taxAmount 
+        };
+    }, [invoiceData.lineItems, invoiceData.isAfterHours]);
 
     const handleSave = () => {
         if (!invoiceData.clientId) {
@@ -220,6 +239,32 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             </div>
                          </div>
                     </div>
+
+                    {/* After Hours Protocol Toggle */}
+                    <div className={cn(
+                        "p-4 rounded-xl border flex items-center justify-between transition-all",
+                        invoiceData.isAfterHours ? "bg-brand-red-dim border-brand-red shadow-lg" : "bg-bg-secondary border-border-sub"
+                    )}>
+                        <div className="flex items-center gap-4">
+                            <div className={cn(
+                                "p-2.5 rounded-lg border",
+                                invoiceData.isAfterHours ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted border-border-sub"
+                            )}>
+                                <Clock size={20} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-xs font-bold uppercase tracking-wider text-text-primary">After Hours Protocol (1.5x Labor)</p>
+                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
+                                    {hasLabor ? "Applies multiplier to all labor line items." : "Protocol Locked: Add labor items to enable."}
+                                </p>
+                            </div>
+                        </div>
+                        <Switch 
+                            disabled={!hasLabor}
+                            checked={!!invoiceData.isAfterHours}
+                            onCheckedChange={(val) => setInvoiceData(prev => ({ ...prev, isAfterHours: val }))}
+                        />
+                    </div>
                     
                     <div className="space-y-3">
                          <div className="flex items-center justify-between px-1">
@@ -227,16 +272,17 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             <span className="text-[9px] font-mono text-text-muted">{invoiceData.lineItems?.length || 0} Entries</span>
                          </div>
                         <div className="space-y-2">
-                            <div className="grid grid-cols-[1.5fr,2fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
-                                <span>Common Materials</span>
+                            <div className="grid grid-cols-[1.5fr,2fr,80px,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                <span>Type</span>
                                 <span>Description / Tech Spec</span>
                                 <span className="text-center">QTY</span>
+                                <span className="text-center">Category</span>
                                 <span className="text-center">Unit ($)</span>
                             </div>
                             {invoiceData.lineItems?.map((item, index) => (
-                                <div key={item.id} className="grid grid-cols-[1.5fr,2fr,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
+                                <div key={item.id} className="grid grid-cols-[1.5fr,2fr,80px,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
                                     <Select onValueChange={(val) => handlePremadeItemSelect(index, val)}>
-                                        <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Select Material..."/></SelectTrigger>
+                                        <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Select Item..."/></SelectTrigger>
                                         <SelectContent>
                                             {premadeLineItems.map(group => (
                                                 <SelectGroup key={group.group}>
@@ -250,29 +296,47 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                     </Select>
                                     <Input placeholder="Service description..." value={item.description} onChange={e => handleLineItemChange(index, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
                                     <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
-                                    <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono" />
+                                    <div className="flex justify-center">
+                                        <Badge variant={item.category === 'labor' ? 'active' : 'onhold'} className="text-[8px] h-5 uppercase">
+                                            {item.category}
+                                        </Badge>
+                                    </div>
+                                    <div className="relative">
+                                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                        <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
+                                    </div>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(index)}><Trash2 size={14}/></Button>
                                 </div>
                             ))}
                         </div>
-                        <Button variant="dashed" size="sm" className="w-full mt-2 h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={addLineItem}><Plus size={16} className="mr-2"/> Add Custom Terminal Entry</Button>
+                        <Button variant="dashed" size="sm" className="w-full mt-2 h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={addLineItem}><Plus size={16} className="mr-2"/> Add Custom Line Item</Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 pt-4">
                          <div className="space-y-2 text-left">
                             <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Internal / Client Notes</Label>
-                            <Textarea id="notes" name="notes" placeholder="Terms and conditions, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[120px] bg-bg-primary text-xs leading-relaxed"/>
+                            <Textarea id="notes" name="notes" placeholder="Terms and conditions, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
                         </div>
-                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-4">
-                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                                <span className="text-text-muted">Net Subtotal</span>
-                                <span className="font-mono text-text-primary">${subtotal.toFixed(2)}</span>
+                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3">
+                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                <span className="text-text-muted">Labor Subtotal (Tax Exempt)</span>
+                                <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
-                             <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                                <span className="text-text-muted">Regional Tax (8%)</span>
-                                <span className="font-mono text-text-primary">${tax.toFixed(2)}</span>
+                            {invoiceData.isAfterHours && (
+                                <div className="flex justify-between items-center text-[9px] font-black uppercase text-brand-red bg-brand-red-dim/50 px-2 py-1 rounded">
+                                    <span>After Hours Multiplier Applied</span>
+                                    <span>1.5X ACTIVE</span>
+                                </div>
+                            )}
+                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                <span className="text-text-muted">Materials Subtotal</span>
+                                <span className="font-mono text-text-primary">${materialsSubtotal.toFixed(2)}</span>
                             </div>
-                             <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-4 mt-2">
+                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-accent-gold">
+                                <span className="flex items-center gap-1.5"><Coins size={10}/> Regional Tax (8% on Materials)</span>
+                                <span className="font-mono">${tax.toFixed(2)}</span>
+                            </div>
+                             <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-4 mt-4">
                                 <span className="text-xs font-black uppercase tracking-[0.2em] text-text-primary">Total Settlement</span>
                                 <span className="text-2xl font-mono font-bold text-text-green">${total.toFixed(2)}</span>
                             </div>

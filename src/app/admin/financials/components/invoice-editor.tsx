@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, FileText, Hammer, Package, DollarSign, Zap } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 type InvoiceEditorProps = {
     isOpen: boolean;
@@ -213,13 +214,26 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                     <Input placeholder="Description..." value={item.description} onChange={e => handleLineItemChange(item.id, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
                 </div>
                 <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
                 <div className="relative">
                     <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
-                    <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
+                    <Input 
+                        type="number" 
+                        placeholder="0.00" 
+                        value={isLabor && item.isEmergencyProtocol ? (item.unitPrice * 1.5).toFixed(2) : item.unitPrice} 
+                        onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            const baseVal = isLabor && item.isEmergencyProtocol ? val / 1.5 : val;
+                            handleLineItemChange(item.id, 'unitPrice', baseVal);
+                        }} 
+                        className={cn(
+                            "h-8 text-xs bg-bg-secondary text-center font-mono pl-6",
+                            isLabor && item.isEmergencyProtocol && "text-text-green font-bold"
+                        )} 
+                    />
                 </div>
                 {isLabor ? (
                     <div className="flex flex-col items-center gap-1">
@@ -249,7 +263,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     </SheetDescription>
                 </SheetHeader>
                 
-                <div className="py-6 space-y-8">
+                <div className="py-6 space-y-8 text-left">
                     <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6 text-left">
                         <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2 text-left">
@@ -345,7 +359,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 pt-4">
+                    <div className="grid grid-cols-2 gap-8 pt-4 text-left">
                          <div className="space-y-2 text-left">
                             <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Tactical Audit Notes</Label>
                             <Textarea id="notes" name="notes" placeholder="Terms, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>

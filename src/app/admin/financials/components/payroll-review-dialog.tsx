@@ -33,7 +33,8 @@ import {
     ShieldCheck,
     FileCheck,
     Pencil,
-    Activity as ActivityIcon
+    Activity as ActivityIcon,
+    Info
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';

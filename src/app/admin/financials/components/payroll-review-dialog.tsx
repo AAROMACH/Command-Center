@@ -414,7 +414,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isImported = wo?.source === 'Imported';
                                             const isAudited = item.isAdminReviewed;
                                             
-                                            // Title sanitization: only descriptive title
                                             const displayTitle = wo?.title || wo?.description?.split('\n')[1] || wo?.description || 'Mission identifier lookup pending...';
 
                                             return (
@@ -469,7 +468,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 </div>
                                                             </div>
 
-                                                            {/* Pay details anchored under info */}
                                                             <div className="shrink-0">
                                                                 {isImported && wo ? (
                                                                     <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
@@ -513,7 +511,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = item.isAdminReviewed;
                                         const isImported = wo?.source === 'Imported';
                                         
-                                        // Title sanitization
                                         const displayTitle = wo?.title || wo?.description?.split('\n')[1] || wo?.description || 'Mission identifier lookup pending...';
 
                                         return (
@@ -569,37 +566,41 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 </div>
                                                             </div>
                                                             
-                                                            <div className="shrink-0">
-                                                                {isImported && wo ? (
-                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                                ) : (
-                                                                    <div className="flex items-center justify-start gap-8">
-                                                                        <div className="text-left">
-                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
-                                                                            <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
-                                                                                {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                            </p>
+                                                            <div className="flex items-start gap-4">
+                                                                <div className="shrink-0">
+                                                                    {isImported && wo ? (
+                                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                    ) : (
+                                                                        <div className="flex items-center justify-start gap-8">
+                                                                            <div className="text-left">
+                                                                                <p className="text-[8px] font-black text-text-muted uppercase">Duration On-Site</p>
+                                                                                <p className="text-xs font-mono font-bold text-accent-gold uppercase tracking-tighter">
+                                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="text-left min-w-[70px]">
+                                                                                <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
+                                                                                <p className="text-sm font-mono font-bold text-text-red">
+                                                                                    ${(item.jobPay || 0).toFixed(2)}
+                                                                                </p>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="text-left min-w-[70px]">
-                                                                            <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                                            <p className="text-sm font-mono font-bold text-text-red">
-                                                                                ${(item.jobPay || 0).toFixed(2)}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                <div className="flex-1 p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left self-stretch">
+                                                                    <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
+                                                                        <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
+                                                                    </p>
+                                                                    {item.disputeNotes && (
+                                                                        <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
+                                                                            &quot;{item.disputeNotes}&quot;
+                                                                        </p>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-
-                                                <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                                                    <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
-                                                        <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
-                                                    </p>
-                                                    <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
-                                                        &quot;{item.disputeNotes}&quot;
-                                                    </p>
                                                 </div>
                                             </div>
                                         )

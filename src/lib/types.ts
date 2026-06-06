@@ -79,6 +79,9 @@ export type WorkOrder = {
   };
   auditReimbursement?: number;
   auditOverhead?: number;
+  isAudited?: boolean;
+  auditedAt?: string;
+  auditedBy?: string;
 };
 
 export type Route = {

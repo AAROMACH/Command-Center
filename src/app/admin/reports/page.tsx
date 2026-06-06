@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -40,7 +40,8 @@ import {
     ClipboardList,
     Gauge,
     Filter,
-    FileCheck
+    FileCheck,
+    Trash2
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -87,6 +88,7 @@ import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, is
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
+import { isAdmin, isSuperAdmin } from '@/lib/permissions';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -241,6 +243,38 @@ export default function ActivityAuditPage() {
         window.dispatchEvent(new Event('storage'));
         toast({ variant: "destructive", title: "Broadcast Revoked", description: "Directive purged from all target terminals." });
     }, [messages, toast]);
+
+    const handleVerifyAssignment = async (woId: string) => {
+        if (!isAdmin(currentUser)) {
+            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Administrative privileges required for registry verification.' });
+            return;
+        }
+        const docRef = doc(db, 'assignments', woId);
+        try {
+            await updateDoc(docRef, { 
+                isAudited: true, 
+                auditedAt: new Date().toISOString(), 
+                auditedBy: currentUser?.name || 'Admin' 
+            });
+            toast({ title: "Registry Verified", description: `Mission record ${woId.toUpperCase()} has been confirmed.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Audit Failure', description: e.message });
+        }
+    };
+
+    const handleDeleteAssignment = async (woId: string) => {
+        if (!isSuperAdmin(currentUser)) {
+            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Super Admin credentials required for record purging.' });
+            return;
+        }
+        const docRef = doc(db, 'assignments', woId);
+        try {
+            await deleteDoc(docRef);
+            toast({ variant: 'destructive', title: 'Record Purged', description: `Assignment ${woId.toUpperCase()} removed from registry.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Purge Failure', description: e.message });
+        }
+    };
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
 
@@ -801,7 +835,7 @@ export default function ActivityAuditPage() {
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
-                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
+                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -833,7 +867,32 @@ export default function ActivityAuditPage() {
                                                             <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                                            {wo.isAudited ? (
+                                                                <Badge variant="active" className="h-7 text-[8px] uppercase tracking-widest px-2 bg-green-dim border-green-border text-text-green">
+                                                                    <ShieldCheck size={10} className="mr-1"/> Verified
+                                                                </Badge>
+                                                            ) : (
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim"
+                                                                    onClick={() => handleVerifyAssignment(wo.id)}
+                                                                >
+                                                                    <Check size={12} className="mr-1"/> Verify
+                                                                </Button>
+                                                            )}
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-7 w-7 text-text-muted hover:text-text-red"
+                                                                onClick={() => handleDeleteAssignment(wo.id)}
+                                                            >
+                                                                <Trash2 size={14}/>
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
                                                 </TableRow>
                                             )
                                         })}
@@ -1059,11 +1118,13 @@ export default function ActivityAuditPage() {
                                                                         <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission ID</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
-                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Value</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
+                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {sortedTechVisits.map(wo => {
+                                                                        const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                                                         return (
                                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                                 <TableCell className="text-left py-4 pl-6">
@@ -1081,7 +1142,41 @@ export default function ActivityAuditPage() {
                                                                                         {wo.status}
                                                                                     </Badge>
                                                                                 </TableCell>
-                                                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                                                <TableCell className="text-center">
+                                                                                    {linkedLog ? (
+                                                                                        <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub uppercase tracking-tighter">
+                                                                                            <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
+                                                                                        </Badge>
+                                                                                    ) : (
+                                                                                        <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-right pr-6">
+                                                                                    <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                                                                        {wo.isAudited ? (
+                                                                                            <Badge variant="active" className="h-7 text-[8px] uppercase tracking-widest px-2 bg-green-dim border-green-border text-text-green">
+                                                                                                <ShieldCheck size={10} className="mr-1"/> Verified
+                                                                                            </Badge>
+                                                                                        ) : (
+                                                                                            <Button 
+                                                                                                variant="outline" 
+                                                                                                size="sm" 
+                                                                                                className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim"
+                                                                                                onClick={() => handleVerifyAssignment(wo.id)}
+                                                                                            >
+                                                                                                <Check size={12} className="mr-1"/> Verify
+                                                                                            </Button>
+                                                                                        )}
+                                                                                        <Button 
+                                                                                            variant="ghost" 
+                                                                                            size="icon" 
+                                                                                            className="h-7 w-7 text-text-muted hover:text-text-red"
+                                                                                            onClick={() => handleDeleteAssignment(wo.id)}
+                                                                                        >
+                                                                                            <Trash2 size={14}/>
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </TableCell>
                                                                             </TableRow>
                                                                         )
                                                                     })}

@@ -29,7 +29,8 @@ import {
   StickyNote,
   Type,
   FileText,
-  Trash2
+  Trash2,
+  Check
 } from "lucide-react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -282,6 +283,20 @@ export default function AssignmentsHubPage() {
     setSelectedJob(null);
     setEditedOrder(null);
     toast({ title: "Registry Purged", description: "Assignment removed from operational ledger." });
+  };
+
+  const handleVerifyAssignment = async (woId: string) => {
+    const docRef = doc(db, 'assignments', woId);
+    try {
+        await updateDoc(docRef, { 
+            isAudited: true, 
+            auditedAt: new Date().toISOString(), 
+            auditedBy: currentUser?.name || 'Admin' 
+        });
+        toast({ title: "Registry Verified", description: `Mission record ${woId.toUpperCase()} has been confirmed.` });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Audit Failure', description: e.message });
+    }
   };
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
@@ -561,7 +576,7 @@ export default function AssignmentsHubPage() {
                                 <th className="text-center">Client & Service Result</th>
                                 <th className="text-center">Deployment Coordinates</th>
                                 <th className="text-center">Finalized Date</th>
-                                <th className="text-center">Audit Status</th>
+                                <th className="text-right pr-6">Audit Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -601,8 +616,35 @@ export default function AssignmentsHubPage() {
                                                 <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase"><User size={10}/> {tech?.name || 'Field Ops'}</div>
                                             </div>
                                         </td>
-                                        <td className="py-4 text-center">
-                                            <div className="flex items-center justify-center"><Badge variant="active" className="uppercase text-[9px] tracking-widest px-3 h-6">Audit Passed</Badge></div>
+                                        <td className="py-4 text-right pr-6">
+                                            <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                                {wo.isAudited ? (
+                                                    <Badge variant="active" className="h-7 px-4 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5">
+                                                        <ShieldCheck size={14} className="text-text-green"/>
+                                                        Verified
+                                                    </Badge>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-7 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim"
+                                                            onClick={() => handleVerifyAssignment(wo.id)}
+                                                        >
+                                                            <Check size={14} className="mr-1.5"/>
+                                                            Verify
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-7 w-7 text-text-muted hover:text-text-red"
+                                                            onClick={() => { setSelectedJob(wo); handleDeleteOrder(); }}
+                                                        >
+                                                            <Trash2 size={14}/>
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 )

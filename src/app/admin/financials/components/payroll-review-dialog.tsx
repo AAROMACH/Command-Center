@@ -24,7 +24,8 @@ import {
     DollarSign,
     Wrench,
     Clock,
-    ClipboardCheck
+    ClipboardCheck,
+    Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,6 +36,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { differenceInMinutes, parseISO } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 type PayrollReviewDialogProps = {
     isOpen: boolean;
@@ -150,12 +154,11 @@ function ImportedJobAudit({
 export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [localWorkOrders, setLocalWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
-    const [auditedIds, setAuditedIds] = useState<Set<string>>(new Set());
+    const { toast } = useToast();
 
     useEffect(() => {
         if (isOpen && initialLog) {
             setLocalLog(JSON.parse(JSON.stringify(initialLog)));
-            setAuditedIds(new Set());
         }
     }, [isOpen, initialLog]);
 
@@ -191,13 +194,42 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         ));
     }, []);
 
-    const toggleAuditItem = (id: string) => {
-        setAuditedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+    const toggleAuditItem = async (itemId: string, workOrderId: string) => {
+        if (!localLog) return;
+        
+        const item = (localLog.items || []).find(i => i.id === itemId);
+        if (!item) return;
+
+        const nextStatus = item.confirmationStatus === 'confirmed' ? undefined : 'confirmed';
+        const updatedItems = (localLog.items || []).map(i => 
+            i.id === itemId ? { ...i, confirmationStatus: nextStatus as any, isAdminReviewed: !!nextStatus } : i
+        );
+        
+        try {
+            const logRef = doc(db, 'weeklyLogs', localLog.id);
+            await updateDoc(logRef, { items: updatedItems });
+            
+            const woRef = doc(db, 'assignments', workOrderId);
+            await updateDoc(woRef, { isAudited: !!nextStatus, auditedAt: new Date().toISOString(), auditedBy: 'Admin' });
+
+            setLocalLog({ ...localLog, items: updatedItems });
+            toast({ title: nextStatus ? "Item Verified" : "Review Reset", description: "Audit trail synchronized with registry." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Audit Sync Error', description: e.message });
+        }
+    };
+
+    const handleDeleteAssignmentRecord = async (woId: string, itemId: string) => {
+        if (!localLog) return;
+        try {
+            await deleteDoc(doc(db, 'assignments', woId));
+            const updatedItems = (localLog.items || []).filter(i => i.id !== itemId);
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: updatedItems });
+            setLocalLog({ ...localLog, items: updatedItems });
+            toast({ variant: 'destructive', title: 'Record Purged', description: `Assignment ${woId.toUpperCase()} removed from registry.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+        }
     };
 
     const confirmedItems = useMemo(() => localLog?.items?.filter(item => item.confirmationStatus === 'confirmed') || [], [localLog]);
@@ -207,7 +239,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     ], [localLog]);
 
     const totalJobsCount = (localLog?.items?.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
-    const auditCompleteCount = auditedIds.size;
+    const auditCompleteCount = (localLog?.items || []).filter(i => i.isAdminReviewed).length + (localLog?.missingAssignmentReports || []).filter(r => (r as any).isAudited).length;
     const isManifestFullyAudited = auditCompleteCount === totalJobsCount && totalJobsCount > 0;
 
     const calculatedTotalPayout = useMemo(() => {
@@ -286,14 +318,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     {confirmedItems.length > 0 ? confirmedItems.map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isImported = wo?.source === 'Imported';
-                                        const isAudited = auditedIds.has(item.id);
+                                        const isAudited = item.isAdminReviewed;
                                         return (
                                             <div key={item.id} className={cn(
                                                 "p-3 rounded-xl border transition-all flex items-center justify-between group",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
                                                 <div className="min-w-0 flex-1 flex items-center gap-6 text-left">
-                                                    <div className="shrink-0">
+                                                    <div className="shrink-0 flex items-center gap-2">
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm" 
@@ -301,10 +333,18 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 "h-8 px-4 uppercase text-[9px] font-bold tracking-widest transition-all",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
                                                             )}
-                                                            onClick={() => toggleAuditItem(item.id)}
+                                                            onClick={() => toggleAuditItem(item.id, item.workOrderId)}
                                                         >
                                                             {isAudited ? <Check size={14} className="mr-1.5"/> : <ClipboardCheck size={14} className="mr-1.5"/>}
                                                             {isAudited ? 'Audit Pass' : 'Approve'}
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon-sm" 
+                                                            className="h-8 w-8 text-text-muted hover:text-text-red opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
+                                                        >
+                                                            <Trash2 size={14}/>
                                                         </Button>
                                                     </div>
                                                     <div className="min-w-0 flex-1">
@@ -362,7 +402,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <div className="space-y-2">
                                     {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
-                                        const isAudited = auditedIds.has(item.id);
+                                        const isAudited = item.isAdminReviewed;
                                         return (
                                             <Card key={item.id} className={cn(
                                                 "bg-bg-secondary border transition-all",
@@ -371,19 +411,29 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 <CardContent className="p-3 space-y-3">
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-4 text-left">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm" 
-                                                                className={cn(
-                                                                    "h-8 px-4 uppercase text-[9px] font-bold tracking-widest",
-                                                                    isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim"
-                                                                )}
-                                                                onClick={() => toggleAuditItem(item.id)}
-                                                            >
-                                                                {isAudited ? <Check size={14} className="mr-1.5"/> : <AlertTriangle size={14} className="mr-1.5"/>}
-                                                                {isAudited ? 'Resolved' : 'Resolve'}
-                                                            </Button>
-                                                            <div className="space-y-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    className={cn(
+                                                                        "h-8 px-4 uppercase text-[9px] font-bold tracking-widest",
+                                                                        isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim"
+                                                                    )}
+                                                                    onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                                >
+                                                                    {isAudited ? <Check size={14} className="mr-1.5"/> : <AlertTriangle size={14} className="mr-1.5"/>}
+                                                                    {isAudited ? 'Resolved' : 'Resolve'}
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon-sm" 
+                                                                    className="h-8 w-8 text-text-muted hover:text-text-red"
+                                                                    onClick={() => handleDeleteAssignmentRecord(item.workOrderId, item.id)}
+                                                                >
+                                                                    <Trash2 size={14}/>
+                                                                </Button>
+                                                            </div>
+                                                            <div className="space-y-0.5 text-left">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
                                                                     <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
@@ -410,7 +460,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     })}
 
                                     {localLog?.missingAssignmentReports?.map(report => {
-                                        const isAudited = auditedIds.has(report.id);
+                                        const isAudited = (report as any).isAudited;
                                         return (
                                             <Card key={report.id} className={cn(
                                                 "bg-bg-secondary border transition-all",
@@ -426,7 +476,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     "h-8 px-4 uppercase text-[9px] font-bold tracking-widest",
                                                                     isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
                                                                 )}
-                                                                onClick={() => toggleAuditItem(report.id)}
+                                                                onClick={async () => {
+                                                                    const updatedReports = (localLog.missingAssignmentReports || []).map(r => 
+                                                                        r.id === report.id ? { ...r, isAudited: !isAudited } : r
+                                                                    );
+                                                                    await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
+                                                                    setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
+                                                                    toast({ title: !isAudited ? "Report Cleared" : "Review Reset", description: "Audit trail updated." });
+                                                                }}
                                                             >
                                                                 {isAudited ? <Check size={14} className="mr-1.5"/> : <Wrench size={14} className="mr-1.5"/>}
                                                                 {isAudited ? 'Cleared' : 'Authorize'}
@@ -446,21 +503,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className="p-2 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
                                                         <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic">&quot;{report.summary}&quot;</p>
                                                     </div>
-                                                    {!isAudited && (
-                                                        <div className="space-y-2 text-left animate-in fade-in duration-300">
-                                                            <Label className="text-[8px] font-black uppercase text-text-muted ml-1 flex">Manual Pay Authorization</Label>
-                                                            <div className="flex gap-2">
-                                                                <div className="relative flex-1">
-                                                                    <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
-                                                                    <Input 
-                                                                        placeholder="Enter payout..." 
-                                                                        className="h-8 pl-8 bg-bg-primary border-border-sub text-xs font-mono"
-                                                                    />
-                                                                </div>
-                                                                <Button variant="default" size="sm" className="h-8 text-[9px] uppercase font-bold bg-text-green px-4">Authorize</Button>
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </CardContent>
                                             </Card>
                                         );

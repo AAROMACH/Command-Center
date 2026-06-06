@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { technicians, penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import Image from 'next/image';
@@ -36,6 +36,7 @@ export default function TechProfilePage() {
     
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -65,6 +66,25 @@ export default function TechProfilePage() {
 
     const tierColor = getTierColor(reliabilityTier);
     const badgeVariant = getTierBadgeVariant(reliabilityTier);
+
+    const handleUpdatePhoto = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && tech) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setTech({ ...tech, avatarUrl: reader.result as string });
+                toast({
+                    title: "Identity Asset Updated",
+                    description: "New profile photo has been synchronized with the registry.",
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     if (!mounted || !currentTechId || !tech) {
         return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Loading Technician Profile...</div>;
@@ -127,7 +147,7 @@ export default function TechProfilePage() {
     return (
         <div className="animate-in fade-in duration-500">
              <header className="page-header">
-                <div>
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <User size={12} />
                         Identity & Field Readiness
@@ -185,7 +205,14 @@ export default function TechProfilePage() {
                                         <AvatarFallback className="text-2xl">{tech.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="space-y-3">
-                                        <Button variant="outline" size="sm">Update Photo</Button>
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef} 
+                                            className="hidden" 
+                                            accept="image/*" 
+                                            onChange={handleFileChange} 
+                                        />
+                                        <Button variant="outline" size="sm" onClick={handleUpdatePhoto}>Update Photo</Button>
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Technician ID</p>
                                             <p className="font-mono text-xs text-brand-red">{tech.id}</p>

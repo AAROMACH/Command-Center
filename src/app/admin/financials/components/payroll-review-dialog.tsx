@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { assignmentTimeLogs } from '@/lib/data';
+import { penaltyEvents, assignmentTimeLogs } from '@/lib/data';
 import { 
     AlertTriangle, 
     CheckCircle2, 
@@ -73,23 +73,27 @@ function ImportedJobAudit({
     const reimbursement = wo.auditReimbursement || 0;
     const overhead = wo.auditOverhead || 0;
     
-    // Field Nation Protocol: 15.85% deduction from Labor Pay
-    const fnFee = laborPay * 0.1585;
-    const netLabor = laborPay - fnFee;
+    // Field Nation Protocol: 15.85% deduction from Labor and Reimbursements
+    const fnFeeLabor = laborPay * 0.1585;
+    const fnFeeReimb = reimbursement * 0.1585;
+    const totalFnFee = fnFeeLabor + fnFeeReimb;
+    
+    const netLabor = laborPay - fnFeeLabor;
     
     // Strategic Split: 50/50 of net labor
-    const aaromachPay = netLabor * 0.50;
     const techLaborShare = netLabor * 0.50;
+    const aaromachLaborShare = netLabor * 0.50;
     
-    // Tech Payout: Labor share + 100% of Reimbursement
+    // Aaromach eats the FN fee on reimbursements so tech gets 100%
     const techPayout = techLaborShare + reimbursement;
+    const aaromachPay = aaromachLaborShare - fnFeeReimb;
 
     const handleFieldUpdate = (updates: Partial<WorkOrder>) => {
         const nextLaborPay = updates.pay ?? laborPay;
         const nextReimb = updates.auditReimbursement ?? reimbursement;
         
-        const nextFnFee = nextLaborPay * 0.1585;
-        const nextNetLabor = nextLaborPay - nextFnFee;
+        const nextFnFeeLabor = nextLaborPay * 0.1585;
+        const nextNetLabor = nextLaborPay - nextFnFeeLabor;
         const nextTechPayout = (nextNetLabor * 0.50) + nextReimb;
         
         onUpdateWorkOrder(wo.id, { 
@@ -114,18 +118,6 @@ function ImportedJobAudit({
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
-                            type="number"
-                            value={reimbursement}
-                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-0 text-left">
                     <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -137,24 +129,36 @@ function ImportedJobAudit({
                         />
                     </div>
                 </div>
+                <div className="space-y-0 text-left">
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
+                    <div className="relative text-left">
+                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input 
+                            type="number"
+                            value={reimbursement}
+                            onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
+                        />
+                    </div>
+                </div>
              </div>
 
              <div className="grid grid-cols-4 gap-1 pt-0.5 border-t border-border-sub/30 text-left">
                 <div className="space-y-0 text-left">
                     <p className="text-[5px] font-black text-text-muted uppercase text-left">FN Fee (15.85%)</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${fnFee.toFixed(2)}</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${totalFnFee.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
                     <p className="text-[5px] font-black text-text-muted uppercase text-left">Net Labor</p>
                     <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-brand-red uppercase text-left">Aaromach</p>
+                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-left">${aaromachPay.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
-                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-text-green uppercase text-right">Tech Payout</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-right">${techPayout.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -419,7 +423,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[3rem] justify-center",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1">
@@ -507,7 +511,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[3rem] justify-center",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1 text-left">
@@ -591,7 +595,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = (report as any).isAudited;
                                         return (
                                             <div key={report.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[4rem] justify-center",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-1 min-h-[3rem] justify-center",
                                                 isAudited ? "border-green-border/30 bg-bg-primary" : "border-accent-gold/30 bg-bg-secondary shadow-sm"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1 text-left">

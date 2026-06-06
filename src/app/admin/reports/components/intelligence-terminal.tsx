@@ -34,7 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, startOfDay } from 'date-fns';
+import { format, isWithinInterval, startOfDay, parseISO } from 'date-fns';
 import { 
     Filter, 
     RefreshCw, 

@@ -38,8 +38,15 @@ import {
   ShieldCheck,
   ChevronUp,
   FolderOpen,
-  Pencil
+  Pencil,
+  SearchCheck
 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -55,12 +62,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';

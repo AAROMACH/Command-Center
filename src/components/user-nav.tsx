@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Avatar,
   AvatarFallback,
@@ -21,18 +21,18 @@ import {
 import {
   User,
   Settings,
-  CreditCard,
+  Zap,
   LogOut,
   ChevronDown,
   MonitorUp,
-  Check,
-  Zap
+  Check
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { isAdmin, isTech, isClient, getAvailablePortals } from '@/lib/permissions';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export function UserNav() {
   const router = useRouter();
@@ -47,12 +47,19 @@ export function UserNav() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (user) {
-        // Attempt to find in registry by email or local storage ID
-        const storedId = localStorage.getItem('currentUserId');
-        const registryUser = technicians.find(t => 
-          t.id === storedId || t.email.toLowerCase() === user.email?.toLowerCase()
-        );
-        setCurrentUser(registryUser);
+        // First try to listen to live Firestore record
+        const unsubDoc = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+          if (snap.exists()) {
+            setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+          } else {
+            // Fallback to registry match by email if Firestore doc doesn't exist yet
+            const registryUser = technicians.find(t => 
+              t.email.toLowerCase() === user.email?.toLowerCase()
+            );
+            setCurrentUser(registryUser);
+          }
+        });
+        return () => unsubDoc();
       } else {
         const storedId = localStorage.getItem('currentUserId');
         if (storedId) {
@@ -83,9 +90,6 @@ export function UserNav() {
   
   const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : 
                       pathname.startsWith('/client') ? '/client/settings' : '/admin/settings';
-
-  const billingPath = pathname.startsWith('/tech') ? '/tech/earnings' :
-                     pathname.startsWith('/client') ? '/client/billing' : null;
 
   const plansPath = pathname.startsWith('/admin') ? '/admin/plans' : 
                     pathname.startsWith('/client') ? '/client/billing' : null;
@@ -152,12 +156,6 @@ export function UserNav() {
             <DropdownMenuItem onSelect={() => router.push(plansPath)}>
               <Zap className="mr-2 h-4 w-4 text-brand-red" />
               <span>Plans & Pricing</span>
-            </DropdownMenuItem>
-          )}
-          {billingPath && !plansPath && (
-            <DropdownMenuItem onSelect={() => router.push(billingPath)}>
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>earnings</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>

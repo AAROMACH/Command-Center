@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -33,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { auth, db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import type { WorkOrder, Project, ServiceRequest, WeeklyLog, ReliabilityEvent, TimeOffRequest, SiteRequest } from '@/lib/types';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';

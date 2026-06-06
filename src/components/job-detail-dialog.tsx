@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -25,7 +24,6 @@ import {
   Lock,
   Unlock,
   ExternalLink,
-  ChevronRight,
   Check,
   AlertTriangle,
   DollarSign,
@@ -33,21 +31,11 @@ import {
   FileText,
   Activity,
   ShieldCheck,
-  ArrowRight,
   RotateCcw,
-  Minus,
-  Plus,
   Info,
   History,
   Navigation,
   RefreshCw,
-  LogOut,
-  CheckCircle2,
-  Activity as ActivityIcon,
-  Pencil,
-  ChevronUp,
-  ChevronDown,
-  FolderOpen
 } from 'lucide-react';
 import {
   Avatar,
@@ -64,8 +52,6 @@ import {
   onSnapshot,
   orderBy,
   limit,
-  doc,
-  updateDoc
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -96,12 +97,19 @@ export default function AssignmentsHubPage() {
 
   const { toast } = useToast();
 
-  // Helper to remove undefined keys to prevent Firestore updateDoc crashes
-  const sanitize = (obj: any) => {
-    const result = { ...obj };
-    Object.keys(result).forEach(key => {
-        if (result[key] === undefined) {
-            delete result[key];
+  /**
+   * Recursive Sanitize Protocol.
+   * Purges undefined properties to ensure document update integrity.
+   */
+  const sanitize = (obj: any): any => {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sanitize);
+    
+    const result: any = {};
+    Object.keys(obj).forEach(key => {
+        const val = obj[key];
+        if (val !== undefined) {
+            result[key] = sanitize(val);
         }
     });
     return result;
@@ -109,7 +117,6 @@ export default function AssignmentsHubPage() {
 
   // 1. Initialize Registry Listeners
   useEffect(() => {
-    // ACTIVE WORK LIVES IN ASSIGNMENTS COLLECTION
     const q = query(collection(db, 'assignments'));
     const unsub = onSnapshot(q, (snapshot) => {
       const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder));
@@ -161,7 +168,7 @@ export default function AssignmentsHubPage() {
                   if (y && m && d) {
                       woDate = new Date(`${y}-${m}-${d}T12:00:00`);
                   } else {
-                      return true; // Safe fallback for invalid dates
+                      return true;
                   }
                 }
                 
@@ -272,7 +279,6 @@ export default function AssignmentsHubPage() {
     }
 
     const docRef = doc(db, 'assignments', editedOrder.id);
-    // Critical: Sanitize to remove 'undefined' fields before writing to Firestore
     updateDoc(docRef, sanitize(finalUpdate)).catch((error: any) => {
         console.error("Registry Update Error:", error);
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -313,7 +319,6 @@ export default function AssignmentsHubPage() {
 
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
     const docRef = doc(db, 'assignments', woId);
-    // Critical: Sanitize to remove 'undefined' fields
     updateDoc(docRef, sanitize(updates)).catch((error: any) => {
         const woRef = doc(db, 'workOrders', woId);
         updateDoc(woRef, sanitize(updates)).catch(err => {

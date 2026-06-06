@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -92,12 +93,19 @@ export default function DispatchPage() {
 
   const { toast } = useToast();
 
-  // Helper to remove undefined keys to prevent Firestore updateDoc crashes
-  const sanitize = (obj: any) => {
-    const result = { ...obj };
-    Object.keys(result).forEach(key => {
-        if (result[key] === undefined) {
-            delete result[key];
+  /**
+   * Recursive Sanitize Protocol.
+   * Hardened against undefined values to ensure Firestore compatibility.
+   */
+  const sanitize = (obj: any): any => {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sanitize);
+    
+    const result: any = {};
+    Object.keys(obj).forEach(key => {
+        const val = obj[key];
+        if (val !== undefined) {
+            result[key] = sanitize(val);
         }
     });
     return result;
@@ -128,10 +136,9 @@ export default function DispatchPage() {
 
   const handleAddNewOrder = async (order: WorkOrder) => {
     try {
-        await addDoc(collection(db, 'workOrders'), { ...order, source: 'Manual' });
+        await addDoc(collection(db, 'workOrders'), { ...sanitize(order), source: 'Manual' });
         toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." });
         
-        // Notify Client if applicable
         const client = technicians.find(t => t.clientCompany === order.clientName);
         if (client) {
             await NotificationService.notify(
@@ -148,7 +155,7 @@ export default function DispatchPage() {
 
   const handleImportOrders = (newOrders: WorkOrder[]) => {
     newOrders.forEach(order => {
-        setDoc(doc(db, 'workOrders', order.id), { ...order, source: 'Imported' })
+        setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Imported' })
             .catch(e => console.error("Import error", e));
     });
     toast({ title: "Import Processed", description: `${newOrders.length} records transmitted to registry.` });
@@ -156,10 +163,9 @@ export default function DispatchPage() {
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
     try {
-        await addDoc(collection(db, 'clientRequests'), request);
+        await addDoc(collection(db, 'clientRequests'), sanitize(request));
         toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
         
-        // Notify Admin Staff
         const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
         await NotificationService.broadcast(
             adminIds,
@@ -499,20 +505,35 @@ export default function DispatchPage() {
                     );
                 }
 
-                // Update non-assigned changes
-                const nonAssigned = updated.filter(u => u.status === 'unassigned');
-                for (const wo of nonAssigned) {
+                // Surgically update unassigned changes to minimize network overhead
+                const unassignedChanges = updated.filter(u => {
+                    if (u.status !== 'unassigned') return false;
+                    const current = allWorkOrders.find(wo => wo.id === u.id);
+                    // Compare serialized objects to detect actual property mutations (e.g. routeId transition)
+                    return !current || JSON.stringify(sanitize(current)) !== JSON.stringify(sanitize(u));
+                });
+
+                for (const wo of unassignedChanges) {
                     const docRef = doc(db, 'workOrders', wo.id);
-                    // Critical: Sanitize to remove 'undefined' fields before writing to Firestore
-                    await updateDoc(docRef, sanitize(wo));
+                    await updateDoc(docRef, sanitize(wo)).catch(e => console.error("WO Update Error:", e));
                 }
               }}
               routes={routes}
-              onRoutesChange={(updated) => {
-                updated.forEach(r => {
+              onRoutesChange={async (updated) => {
+                const currentIds = routes.map(r => r.id);
+                const newIds = updated.map(r => r.id);
+                
+                // Identification and removal of dissolved routes
+                const toDelete = currentIds.filter(id => !newIds.includes(id));
+                for (const id of toDelete) {
+                  await deleteDoc(doc(db, 'routes', id)).catch(e => console.error("Route delete error", e));
+                }
+
+                // Upsert of active tactical formations
+                for (const r of updated) {
                   const docRef = doc(db, 'routes', r.id);
-                  setDoc(docRef, sanitize(r), { merge: true }).catch(e => console.error("Route update error", e));
-                });
+                  await setDoc(docRef, sanitize(r), { merge: true }).catch(e => console.error("Route update error", e));
+                }
               }}
            />
         </TabsContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
@@ -258,17 +259,27 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     };
 
     const handleDeleteRoute = (id: string) => {
-        const route = { ...routes.find(r => r.id === id) };
+        const route = routes.find(r => r.id === id);
+        if (!route) return;
+
+        // 1. Identification and removal of route from tactical registry
         onRoutesChange(routes.filter(r => r.id !== id));
-        // Use null instead of undefined to prevent Firestore update errors
+
+        // 2. Surgical reset of route affiliation for associated missions
+        // Important: Using null to satisfy Firestore document property constraints
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: null } : wo));
-        toast({ variant: "destructive", title: "Route Dissolved", description: `${route?.name} removed from registry.` });
+        
+        toast({ variant: "destructive", title: "Route Dissolved", description: `${route.name} removed from registry.` });
     };
 
     const handleClearAllRoutes = () => {
+        // 1. Execution of global tactical reset
         onRoutesChange([]);
-        // Use null instead of undefined to prevent Firestore update errors
-        onWorkOrdersChange(allWorkOrders.map(wo => ({ ...wo, routeId: null })));
+        
+        // 2. Automated dissolution of all job-route affiliations
+        // Important: Transitions all routeId properties to null state for registry synchronization
+        onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId ? { ...wo, routeId: null } : wo));
+        
         toast({ variant: "destructive", title: "Registry Reset", description: "All routes dissolved and jobs returned to unassigned pool." });
     };
 
@@ -294,7 +305,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             ? { ...r, workOrderIds: r.workOrderIds.filter(id => id !== woId) } 
             : r
         ));
-        // Use null instead of undefined to prevent Firestore update errors
         onWorkOrdersChange(allWorkOrders.map(wo => 
             wo.id === woId ? { ...wo, routeId: null } : wo
         ));

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
@@ -261,25 +260,14 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleDeleteRoute = (id: string) => {
         const route = routes.find(r => r.id === id);
         if (!route) return;
-
-        // 1. Identification and removal of route from tactical registry
         onRoutesChange(routes.filter(r => r.id !== id));
-
-        // 2. Surgical reset of route affiliation for associated missions
-        // Important: Using null to satisfy Firestore document property constraints
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: null } : wo));
-        
         toast({ variant: "destructive", title: "Route Dissolved", description: `${route.name} removed from registry.` });
     };
 
     const handleClearAllRoutes = () => {
-        // 1. Execution of global tactical reset
         onRoutesChange([]);
-        
-        // 2. Automated dissolution of all job-route affiliations
-        // Important: Transitions all routeId properties to null state for registry synchronization
         onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId ? { ...wo, routeId: null } : wo));
-        
         toast({ variant: "destructive", title: "Registry Reset", description: "All routes dissolved and jobs returned to unassigned pool." });
     };
 
@@ -342,8 +330,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             if (result.routes && result.routes.length > 0) {
                 const newRoutes: Route[] = result.routes.map((p, idx) => ({
                     id: p.routeId || `route-tactical-${Date.now()}-${idx}`,
-                    name: p.estimatedRouteLabel || `Cluster: ${p.technicianName}`,
-                    technicianName: p.technicianName,
+                    name: p.estimatedRouteLabel || `Cluster: ${p.technicianName || 'Unassigned'}`,
+                    technicianName: p.technicianName || "",
                     workOrderIds: p.jobIds
                 }));
 
@@ -360,11 +348,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 
                 toast({
                     title: "Tactical Layout Applied",
-                    description: `Successfully architected ${newRoutes.length} optimized field routes based on city anchors and operative bases.`,
+                    description: `Successfully architected ${newRoutes.length} tactical routes based on geographic city anchors.`,
                 });
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Optimization Failure", description: "Internal routing engine encountered a registry error. Please use Manual Dispatch." });
+            toast({ variant: "destructive", title: "Optimization Failure", description: "Internal routing engine encountered an error." });
         } finally {
             setIsOptimizing(false);
         }

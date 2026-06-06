@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -187,16 +188,10 @@ export const WorkOrdersTable = React.memo(({
   const handleGetAiRecommendation = async () => {
     if (!selectedOrder) return;
     setIsAiLoading(true);
+    setRecommendation(null);
+    
     try {
-      const result = await getRecommendation({
-        workOrder: {
-          id: selectedOrder.id,
-          description: selectedOrder.description,
-          location: selectedOrder.location,
-          requiredSkills: selectedOrder.requiredSkills || [],
-          priority: selectedOrder.priority || 'medium',
-        },
-        availableTechnicians: technicians
+      const dispatchPool = technicians
           .filter(t => !t.roles?.includes('client'))
           .map((t) => ({
             id: t.id,
@@ -205,12 +200,28 @@ export const WorkOrdersTable = React.memo(({
             reliabilityScore: t.reliabilityScore || 0,
             currentWorkload: t.currentWorkload || 0,
             skills: t.skills || [],
-          })),
+          }));
+
+      const result = await getRecommendation({
+        workOrder: {
+          id: selectedOrder.id,
+          description: selectedOrder.description,
+          location: selectedOrder.location,
+          requiredSkills: selectedOrder.requiredSkills || [],
+          priority: selectedOrder.priority || 'medium',
+        },
+        availableTechnicians: dispatchPool,
       });
+      
       setRecommendation(result);
       toast({ title: "Intelligence Gathered", description: "AI Dispatch logic has identified optimal field personnel." });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Recommendation Failed", description: "Could not get an AI recommendation." });
+    } catch (error: any) {
+      console.error("AI Recommendation Error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Analysis Failure", 
+        description: error.message || "The dispatch AI could not finalize a recommendation. Please audit operative pool manually." 
+      });
     } finally {
       setIsAiLoading(false);
     }
@@ -261,12 +272,13 @@ export const WorkOrdersTable = React.memo(({
     if (!editedOrder || !selectedOrder) return;
     
     let finalUpdate = { ...editedOrder };
-    const payChanged = (editedOrder.pay || 0) !== (selectedJob.pay || 0) || editedOrder.payType !== selectedJob.payType;
+    
     const payAdmin = isPayAdmin(currentUser);
+    const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedJob.pay;
-      finalUpdate.payType = selectedJob.payType;
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -524,7 +536,7 @@ export const WorkOrdersTable = React.memo(({
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
+          <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
             <div className="flex items-center justify-between">
                 <div className="text-left">
                     <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-2">

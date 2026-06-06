@@ -38,7 +38,9 @@ import {
   Info,
   Calendar,
   User,
-  History
+  History,
+  Download,
+  SearchCode
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -594,14 +596,46 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             
                             {(selectedRequest.imageUrls?.length || 0) > 0 && (
                                 <div className="space-y-3">
-                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Visual Evidence Registry</p>
+                                    <div className="flex items-center justify-between px-1">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Visual Evidence Registry</p>
+                                        <VerifyToggle field="photos" label="verify" />
+                                    </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         {selectedRequest.imageUrls?.map((url, i) => (
                                             <div key={i} className="relative aspect-video rounded-xl border border-border-sub overflow-hidden bg-bg-primary group">
                                                 <img src={url} alt="Site evidence" className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button variant="ghost" size="icon" className="text-white"><Eye size={20}/></Button>
+                                                    <Button variant="ghost" size="icon" className="text-white" asChild>
+                                                        <a href={url} target="_blank" rel="noopener noreferrer"><Eye size={20}/></a>
+                                                    </Button>
                                                 </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {(selectedRequest.documentUrls?.length || 0) > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Technical Asset Registry</p>
+                                        <VerifyToggle field="documents" label="verify" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        {selectedRequest.documentUrls?.map((docName, i) => (
+                                            <div key={i} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
+                                                <div className="flex items-center gap-4 text-left">
+                                                    <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-brand-red">
+                                                        <FileText size={18} />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{docName}</p>
+                                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-left">Tactical Asset · Ready for Download</p>
+                                                    </div>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                                    <Download size={16}/>
+                                                </Button>
                                             </div>
                                         ))}
                                     </div>
@@ -616,7 +650,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 <div className="flex items-center justify-between w-full">
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Audit Verification Phase:</p>
                                     <p className={cn("text-[9px] font-black uppercase tracking-widest", isAllVerified ? "text-text-green" : "text-text-red")}>
-                                        {verifiedFields.size} / 5 Fields Verified
+                                        {verifiedFields.size} / 5 Core Indicators Verified
                                     </p>
                                 </div>
                                 <Button 
@@ -630,7 +664,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                     {isAllVerified ? (
                                         <><SearchCheck size={16} className="mr-2" /> Mark as Reviewed & Confirmed</>
                                     ) : (
-                                        <><Lock size={14} className="mr-2" /> Verify All Fields to Continue</>
+                                        <><Lock size={14} className="mr-2" /> Complete Verification to Proceed</>
                                     )}
                                 </Button>
                             </div>
@@ -690,7 +724,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         
                         {(selectedRequest?.status === 'closed' || selectedRequest?.status === 'rejected') && (
                             <div className="flex flex-col gap-4 w-full">
-                                <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4">
+                                <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4 text-left">
                                     <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
                                     <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium text-left">
                                         This intake has been finalized. Audit trail preserved in the historical registry. Converted missions are active in their respective logistical hubs.
@@ -719,7 +753,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
             <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 text-left">
                             <ShieldAlert className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Rejection Briefing</DialogTitle>
                         </div>

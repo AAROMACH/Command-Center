@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2 } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
+import { RevenueChart } from './components/revenue-chart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -19,13 +20,12 @@ import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
+import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval } from 'date-fns';
 
-const financialMetrics = [
-    { title: "TOTAL REVENUE (MTD)", value: "$42,850.00", trend: "+12.4% VS LAST MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
-    { title: "PENDING PAYOUTS", value: "$12,450.00", trend: "ACROSS 8 TECHNICIANS", trendType: "negative" as const, TrendIcon: ArrowDownRight },
-    { title: "OUTSTANDING A/R", value: "$8,920.00", trend: "NOMINAL STATUS", trendType: "warning" as const, TrendIcon: Minus },
-    { title: "SERVICE MARGIN", value: "32.8%", trend: "NOMINAL THRESHOLD: 25%", trendType: "positive" as const, TrendIcon: ArrowUpRight },
-];
+/**
+ * @fileOverview Master Financial Registry.
+ * High-fidelity oversight of organizational revenue, operative payroll, and project economics.
+ */
 
 export default function FinancialsPage() {
     const searchParams = useSearchParams();
@@ -46,11 +46,8 @@ export default function FinancialsPage() {
     const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
     
-    // Period Closure State
     const [isClosePeriodOpen, setIsClosePeriodOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState("");
-    
-    // Export State
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [exportConfig, setExportConfig] = useState({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -60,7 +57,7 @@ export default function FinancialsPage() {
 
     const { toast } = useToast();
 
-    // 1. Initialize Registry Listeners
+    // 1. Initialize Registry Handshake
     useEffect(() => {
         const unsubExp = onSnapshot(collection(db, 'expenses'), (snap) => {
             setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
@@ -99,17 +96,103 @@ export default function FinancialsPage() {
         };
     }, []);
 
-    const userIsSuperAdmin = isSuperAdmin(currentUser);
+    // 2. Tactical Intelligence Calculation
+    const stats = useMemo(() => {
+        const now = new Date();
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
 
+        const mtdRevenue = invoices
+            .filter(inv => {
+                try {
+                    const d = new Date(inv.issueDate);
+                    return isWithinInterval(d, { start, end });
+                } catch(e) { return false; }
+            })
+            .reduce((acc, inv) => acc + inv.total, 0);
+
+        const pendingPayouts = weeklyLogs
+            .filter(log => log.status === 'Submitted')
+            .reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+
+        const outstandingAR = invoices
+            .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
+            .reduce((acc, inv) => acc + inv.total, 0);
+
+        const mtdCosts = expenses
+            .filter(e => {
+                try {
+                    const d = new Date(e.date);
+                    return isWithinInterval(d, { start, end }) && e.status === 'Approved';
+                } catch(e) { return false; }
+            })
+            .reduce((acc, e) => acc + e.amount, 0) + 
+            weeklyLogs
+            .filter(l => {
+                try {
+                    const d = new Date(l.weekOf);
+                    return isWithinInterval(d, { start, end }) && l.status === 'Approved';
+                } catch(e) { return false; }
+            })
+            .reduce((acc, l) => acc + (l.totalPayout || 0), 0);
+
+        const margin = mtdRevenue > 0 ? ((mtdRevenue - mtdCosts) / mtdRevenue) * 100 : 0;
+
+        return [
+            { title: "TOTAL REVENUE (MTD)", value: `$${mtdRevenue.toLocaleString()}`, trend: "REAL-TIME AGGREGATION", trendType: "positive" as const, TrendIcon: ArrowUpRight },
+            { title: "PENDING PAYOUTS", value: `$${pendingPayouts.toLocaleString()}`, trend: "AWAITING AUDIT", trendType: "warning" as const, TrendIcon: Minus },
+            { title: "OUTSTANDING A/R", value: `$${outstandingAR.toLocaleString()}`, trend: "FUNDING PIPELINE", trendType: "positive" as const, TrendIcon: Activity },
+            { title: "SERVICE MARGIN", value: `${margin.toFixed(1)}%`, trend: "TARGET THRESHOLD: 25%", trendType: margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
+        ];
+    }, [invoices, weeklyLogs, expenses]);
+
+    const chartData = useMemo(() => {
+        const data = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const date = subMonths(now, i);
+            const start = startOfMonth(date);
+            const end = endOfMonth(date);
+            const label = format(date, 'MMM yy').toUpperCase();
+
+            const rev = invoices
+                .filter(inv => {
+                    try {
+                        const d = new Date(inv.issueDate);
+                        return isWithinInterval(d, { start, end });
+                    } catch(e) { return false; }
+                })
+                .reduce((acc, inv) => acc + inv.total, 0);
+
+            const exp = expenses
+                .filter(e => {
+                    try {
+                        const d = new Date(e.date);
+                        return isWithinInterval(d, { start, end }) && e.status === 'Approved';
+                    } catch(e) { return false; }
+                })
+                .reduce((acc, e) => acc + e.amount, 0) +
+                weeklyLogs
+                .filter(l => {
+                    try {
+                        const d = new Date(l.weekOf);
+                        return isWithinInterval(d, { start, end }) && l.status === 'Approved';
+                    } catch(e) { return false; }
+                })
+                .reduce((acc, l) => acc + (l.totalPayout || 0), 0);
+
+            data.push({ month: label, revenue: rev, expenses: exp });
+        }
+        return data;
+    }, [invoices, expenses, weeklyLogs]);
+
+    const userIsSuperAdmin = isSuperAdmin(currentUser);
     const allMissions = useMemo(() => [...workOrders, ...assignments], [workOrders, assignments]);
 
     const handleExpenseStatusChange = async (id: string, status: 'Approved' | 'Rejected') => {
         try {
             await updateDoc(doc(db, 'expenses', id), { status });
-            toast({
-                title: `Expense ${status}`,
-                description: `The expense has been successfully ${status.toLowerCase()}.`,
-            });
+            toast({ title: `Expense ${status}`, description: `The expense has been successfully ${status.toLowerCase()}.` });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
         }
@@ -117,18 +200,7 @@ export default function FinancialsPage() {
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
     const getTechnician = (id: string) => technicians.find(t => t.id === id);
-
-    const clients = technicians.filter(t => t.roles?.includes('client') || (t.role || '').toLowerCase().includes('client'));
-    
-    const handleCreateNewInvoice = () => {
-        setSelectedInvoice(null);
-        setIsInvoiceEditorOpen(true);
-    };
-
-    const handleEditInvoice = (invoice: Invoice) => {
-        setSelectedInvoice(invoice);
-        setIsInvoiceEditorOpen(true);
-    };
+    const clientsList = technicians.filter(t => t.roles?.includes('client') || (t.role || '').toLowerCase().includes('client'));
     
     const handleSaveInvoice = async (savedInvoice: Invoice) => {
         try {
@@ -136,7 +208,7 @@ export default function FinancialsPage() {
                 await setDoc(doc(db, 'invoices', savedInvoice.id), savedInvoice);
                 toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
             } else {
-                const docRef = await addDoc(collection(db, 'invoices'), savedInvoice);
+                await addDoc(collection(db, 'invoices'), savedInvoice);
                 toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
             }
             setIsInvoiceEditorOpen(false);
@@ -145,93 +217,23 @@ export default function FinancialsPage() {
         }
     };
 
-    const getInvoiceStatusVariant = (status: Invoice['status']) => {
-        switch (status) {
-            case 'paid': return 'active';
-            case 'sent': return 'onhold';
-            case 'overdue': return 'missed';
-            case 'draft': return 'pending';
-            case 'void': return 'outline';
-            default: return 'outline';
-        }
-    };
-    
-    const handleReviewLog = (log: WeeklyLog) => {
-        setSelectedLog(log);
-        setIsReviewDialogOpen(true);
-    };
-    
-    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
-        try {
-            const updates: any = { status };
-            if (total !== undefined) updates.totalPayout = total;
-            await updateDoc(doc(db, 'weeklyLogs', logId), updates);
-            toast({
-                title: `Log ${status}`,
-                description: `The weekly log has been ${status.toLowerCase()}.`,
-            });
-            setIsReviewDialogOpen(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
-    };
-
-    const handleExecuteClosePeriod = () => {
-        if (!userIsSuperAdmin) {
-            toast({
-                title: "Closure Request Transmitted",
-                description: "Request to lock fiscal period sent to Super Admin registry for final sign-off.",
-            });
-        } else {
-            toast({
-                title: "Fiscal Period Finalized",
-                description: "General ledger successfully locked. All financial records transitioned to read-only archival state.",
-            });
-        }
-        setIsClosePeriodOpen(false);
-        setConfirmationText("");
-    };
-
-    const handleExecuteExport = () => {
-        if (exportConfig.types.length === 0) {
-            toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category to export.' });
-            return;
-        }
-        toast({ 
-            title: 'General Ledger Exported', 
-            description: `Audit file containing ${exportConfig.types.join(', ')} from ${exportConfig.from} to ${exportConfig.to} generated.` 
-        });
-        setIsExportDialogOpen(false);
-    };
-
     const filteredWeeklyLogs = useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return weeklyLogs.filter(log => 
-            (log.weekOf || '').includes(q) || 
-            getTechnicianName(log.technicianId).toLowerCase().includes(q)
-        );
+        return weeklyLogs.filter(log => (log.weekOf || '').includes(q) || getTechnicianName(log.technicianId).toLowerCase().includes(q));
     }, [weeklyLogs, searchQuery, technicians]);
 
     const filteredInvoices = useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return invoices.filter(inv => 
-            (inv.invoiceNumber || '').toLowerCase().includes(q) || 
-            (inv.clientName || '').toLowerCase().includes(q)
-        );
+        return invoices.filter(inv => (inv.invoiceNumber || '').toLowerCase().includes(q) || (inv.clientName || '').toLowerCase().includes(q));
     }, [invoices, searchQuery]);
 
     const filteredExpenses = useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return expenses.filter(exp => 
-            (exp.description || '').toLowerCase().includes(q) || 
-            (exp.submittedBy || '').toLowerCase().includes(q) ||
-            (exp.category || '').toLowerCase().includes(q)
-        );
+        return expenses.filter(exp => (exp.description || '').toLowerCase().includes(q) || (exp.submittedBy || '').toLowerCase().includes(q) || (exp.category || '').toLowerCase().includes(q));
     }, [expenses, searchQuery]);
 
-
     return (
-        <div>
+        <div className="text-left animate-in fade-in duration-700">
             <header className="page-header text-left">
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
@@ -244,12 +246,7 @@ export default function FinancialsPage() {
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
                         <Search />
-                        <input 
-                            className="search-input !w-full md:!w-[250px]" 
-                            placeholder="Filter ledger data..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                        <input className="search-input !w-full md:!w-[250px]" placeholder="Filter ledger data..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
                     <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="h-10 text-[10px]">⇩ EXPORT GENERAL LEDGER</Button>
                     <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)} className="h-10 text-[10px]">
@@ -258,7 +255,7 @@ export default function FinancialsPage() {
                 </div>
             </header>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-left">
                 <TabsList className="tabs !p-0 !bg-bg-tertiary">
                     <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
                     <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
@@ -266,41 +263,56 @@ export default function FinancialsPage() {
                     <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
                 </TabsList>
                 
-                <div className="mt-6">
-                    <TabsContent value="summary">
+                <div className="mt-6 text-left">
+                    <TabsContent value="summary" className="m-0 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {financialMetrics.map((metric, index) => (
-                                <Card key={index} className="bg-bg-tertiary border-border-subtle">
+                            {stats.map((metric, index) => (
+                                <Card key={index} className="bg-bg-tertiary border-border-subtle shadow-sm hover:border-text-muted transition-colors">
                                     <CardHeader className="pb-4">
                                         <div className="flex justify-between items-start">
-                                            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">{metric.title}</span>
-                                            <metric.TrendIcon size={16} className={
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{metric.title}</span>
+                                            <metric.TrendIcon size={16} className={cn(
                                                 metric.trendType === 'positive' ? 'text-text-green' :
                                                 metric.trendType === 'negative' ? 'text-text-red' :
                                                 'text-accent-gold'
-                                            } />
+                                            )} />
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className={`text-4xl font-bold 
-                                            ${metric.trendType === 'negative' ? 'text-text-red' :
-                                              metric.trendType === 'warning' ? 'text-accent-gold' :
-                                              'text-text-primary'}`
-                                        }>
+                                        <p className={cn("text-3xl font-mono font-bold tabular-nums",
+                                            metric.trendType === 'negative' ? 'text-text-red' :
+                                            metric.trendType === 'warning' ? 'text-accent-gold' :
+                                            'text-text-primary'
+                                        )}>
                                             {metric.value}
                                         </p>
-                                        <p className={`text-xs font-semibold tracking-wider uppercase mt-2 
-                                            ${metric.trendType === 'positive' ? 'text-text-green' :
-                                              'text-text-muted'}`
-                                        }>
+                                        <p className={cn("text-[9px] font-black tracking-widest uppercase mt-3",
+                                            metric.trendType === 'positive' ? 'text-text-green' : 'text-text-muted'
+                                        )}>
                                             {metric.trend}
                                         </p>
                                     </CardContent>
                                 </Card>
                             ))}
                         </div>
+
+                        <Card className="bg-bg-secondary border-border-main shadow-xl overflow-hidden">
+                            <CardHeader className="border-b border-border-sub bg-bg-tertiary/20">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-left">
+                                        <CardTitle className="text-base">Strategic Cash Flow Analysis</CardTitle>
+                                        <CardDescription className="text-[10px] uppercase font-bold text-text-muted">Monthly comparison of authorized revenue vs field operational expenses.</CardDescription>
+                                    </div>
+                                    <Badge variant="outline" className="bg-bg-primary text-[8px] uppercase tracking-widest">Rolling 6-Month Audit</Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-8">
+                                <RevenueChart data={chartData} />
+                            </CardContent>
+                        </Card>
                     </TabsContent>
-                    <TabsContent value="payroll">
+
+                    <TabsContent value="payroll" className="m-0">
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Payroll Audit</CardTitle>
@@ -322,7 +334,7 @@ export default function FinancialsPage() {
                                         {filteredWeeklyLogs.map(log => (
                                             <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                                 <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
-                                                <TableCell className="text-sm font-semibold">{getTechnicianName(log.technicianId)}</TableCell>
+                                                <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.technicianId)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
                                                         {log.status}
@@ -335,9 +347,9 @@ export default function FinancialsPage() {
                                                         </Badge>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-text-green font-bold">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
+                                                <TableCell className="font-mono text-text-green font-bold tabular-nums">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
                                                 <TableCell className="text-right pr-6">
-                                                    <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Review Log</Button>
+                                                    <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit log</Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -346,14 +358,15 @@ export default function FinancialsPage() {
                             </CardContent>
                         </Card>
                     </TabsContent>
-                    <TabsContent value="invoices">
+
+                    <TabsContent value="invoices" className="m-0">
                          <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div className="text-left">
                                     <CardTitle>Client Invoices</CardTitle>
                                     <CardDescription>Manage and track all client invoices.</CardDescription>
                                 </div>
-                                <Button onClick={handleCreateNewInvoice} className="h-9 px-6"><Plus size={14} className="mr-2"/>Create New Invoice</Button>
+                                <Button onClick={() => { setSelectedInvoice(null); setIsInvoiceEditorOpen(true); }} className="h-9 px-6"><Plus size={14} className="mr-2"/>Create New Invoice</Button>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
@@ -368,13 +381,13 @@ export default function FinancialsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {filteredInvoices.map((invoice) => (
-                                            <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
+                                            <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsInvoiceEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
                                                 <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
                                                 <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
-                                                <TableCell className="font-mono text-sm font-bold text-text-primary">${invoice.total.toFixed(2)}</TableCell>
+                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${invoice.total.toFixed(2)}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={getInvoiceStatusVariant(invoice.status)} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
+                                                    <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'onhold' : 'pending'} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -383,7 +396,8 @@ export default function FinancialsPage() {
                             </CardContent>
                         </Card>
                     </TabsContent>
-                    <TabsContent value="expenses">
+
+                    <TabsContent value="expenses" className="m-0">
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Expense Submissions</CardTitle>
@@ -408,9 +422,9 @@ export default function FinancialsPage() {
                                                 <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>
                                                 <TableCell>
                                                     <div className="font-bold text-text-primary text-xs uppercase">{expense.description}</div>
-                                                    <div className="text-[10px] text-text-muted uppercase font-bold">{expense.category}</div>
+                                                    <div className="text-[10px] text-text-muted uppercase font-bold tracking-tight">{expense.category}</div>
                                                 </TableCell>
-                                                <TableCell className="font-mono text-sm font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
+                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${expense.amount.toFixed(2)}</TableCell>
                                                 <TableCell><Badge variant={expense.status === 'Approved' ? 'active' : expense.status === 'Pending' ? 'onhold' : 'missed'} className="text-[8px] h-4 uppercase">{expense.status}</Badge></TableCell>
                                                 <TableCell className="text-right pr-6">
                                                      {expense.status === 'Pending' && (
@@ -430,7 +444,7 @@ export default function FinancialsPage() {
                 </div>
             </Tabs>
 
-            {/* FISCAL PERIOD CLOSURE TERMINAL */}
+            {/* PERIOD CLOSURE TERMINAL */}
             <Dialog open={isClosePeriodOpen} onOpenChange={setIsClosePeriodOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
@@ -441,127 +455,37 @@ export default function FinancialsPage() {
                             </DialogTitle>
                         </div>
                         <DialogDescription className="text-xs">
-                            {userIsSuperAdmin 
-                                ? "This action permanently locks the general ledger for the current period. Irreversible operation."
-                                : "You are submitting a closure request to the command hierarchy for Super Admin authorization."}
+                            {userIsSuperAdmin ? "This action permanently locks the general ledger for the current period." : "You are submitting a closure request for Super Admin authorization."}
                         </DialogDescription>
                     </DialogHeader>
-
                     <div className="p-6 space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2 text-left">
                             <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Tactical Warning</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
-                                Closing the period transitions all financial records (Invoices, Expenses, Payroll) to a read-only archival state.
-                            </p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">Closing the period transitions all financial records to read-only archival state.</p>
                         </div>
-
                         {userIsSuperAdmin ? (
                             <div className="space-y-3 pt-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
-                                <Input 
-                                    placeholder="Type 'CLOSE'..." 
-                                    value={confirmationText}
-                                    onChange={(e) => setConfirmationText(e.target.value)}
-                                    className="h-11 bg-bg-primary border-border-sub text-center font-mono text-sm tracking-widest uppercase font-bold"
-                                />
+                                <Input placeholder="Type 'CLOSE'..." value={confirmationText} onChange={(e) => setConfirmationText(e.target.value)} className="h-11 bg-bg-primary text-center font-mono text-sm tracking-widest uppercase font-bold" />
                             </div>
                         ) : (
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
                                 <Info size={16} className="text-text-muted" />
-                                <p className="text-[10px] text-text-muted uppercase font-bold leading-tight">
-                                    Your account level requires external sign-off from a Super Admin to finalize closure.
-                                </p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold leading-tight">Your account level requires external sign-off from a Super Admin to finalize closure.</p>
                             </div>
                         )}
                     </div>
-
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">
-                            Cancel
-                        </Button>
-                        <Button 
-                            onClick={handleExecuteClosePeriod} 
-                            disabled={userIsSuperAdmin && confirmationText !== "CLOSE"}
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11"
-                        >
+                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
+                        <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period Finalized" : "Request Sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
                             {userIsSuperAdmin ? "Execute Global Lock" : "Submit Request"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* EXPORT CONFIGURATION TERMINAL */}
-            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Download className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Export Configuration</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs">Define temporal parameters and tactical categories for general ledger generation.</DialogDescription>
-                    </DialogHeader>
-
-                    <div className="p-6 space-y-8">
-                        {/* Temporal Window */}
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1 text-left">Temporal Audit Window</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
-                                        <CalendarIcon size={12} /> From
-                                    </Label>
-                                    <Input 
-                                        type="date" 
-                                        value={exportConfig.from}
-                                        onChange={e => setExportConfig({...exportConfig, from: e.target.value})}
-                                        className="h-10 bg-bg-primary border-border-sub text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
-                                        <CalendarIcon size={12} /> To
-                                    </Label>
-                                    <Input 
-                                        type="date" 
-                                        value={exportConfig.to}
-                                        onChange={e => setExportConfig({...exportConfig, to: e.target.value})}
-                                        className="h-10 bg-bg-primary border-border-sub text-xs"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">
-                            Cancel
-                        </Button>
-                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
-                            <Check size={16} className="mr-2" /> Execute Audit Export
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <InvoiceEditor
-                isOpen={isInvoiceEditorOpen}
-                setIsOpen={setIsInvoiceEditorOpen}
-                invoice={selectedInvoice}
-                clients={clients}
-                projects={projects}
-                workOrders={allMissions}
-                onSave={handleSaveInvoice}
-            />
-            {selectedLog && (
-                <PayrollReviewDialog
-                    isOpen={isReviewDialogOpen}
-                    setIsOpen={setIsReviewDialogOpen}
-                    log={selectedLog}
-                    technician={getTechnician(selectedLog.technicianId)}
-                    missions={allMissions}
-                    onStatusChange={handleUpdateLogStatus}
-                />
-            )}
+            <InvoiceEditor isOpen={isInvoiceEditorOpen} setIsOpen={setIsInvoiceEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
+            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.technicianId)} missions={allMissions} onStatusChange={handleUpdateLogStatus} />}
         </div>
     );
 }

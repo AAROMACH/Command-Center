@@ -103,11 +103,12 @@ export default function FinancialsPage() {
         const start = startOfMonth(now);
         const end = endOfMonth(now);
 
+        // Protocol Update: Revenue only includes PAID invoices
         const mtdRevenue = invoices
             .filter(inv => {
                 try {
                     const d = new Date(inv.issueDate);
-                    return isWithinInterval(d, { start, end });
+                    return isWithinInterval(d, { start, end }) && inv.status === 'paid';
                 } catch(e) { return false; }
             })
             .reduce((acc, inv) => acc + inv.total, 0);
@@ -131,7 +132,8 @@ export default function FinancialsPage() {
             weeklyLogs
             .filter(l => {
                 try {
-                    const d = new Date(l.weekOf);
+                    const parts = l.weekOf.split('-');
+                    const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
                     return isWithinInterval(d, { start, end }) && l.status === 'Approved';
                 } catch(e) { return false; }
             })
@@ -140,10 +142,10 @@ export default function FinancialsPage() {
         const margin = mtdRevenue > 0 ? ((mtdRevenue - mtdCosts) / mtdRevenue) * 100 : 0;
 
         return [
-            { title: "TOTAL REVENUE (MTD)", value: `$${mtdRevenue.toLocaleString()}`, trend: "REAL-TIME AGGREGATION", trendType: "positive" as const, TrendIcon: ArrowUpRight },
+            { title: "TOTAL REVENUE (MTD)", value: `$${mtdRevenue.toLocaleString()}`, trend: "SETTLED FUNDS ONLY", trendType: "positive" as const, TrendIcon: ArrowUpRight },
             { title: "PENDING PAYOUTS", value: `$${pendingPayouts.toLocaleString()}`, trend: "AWAITING AUDIT", trendType: "warning" as const, TrendIcon: Minus },
             { title: "OUTSTANDING A/R", value: `$${outstandingAR.toLocaleString()}`, trend: "FUNDING PIPELINE", trendType: "positive" as const, TrendIcon: Activity },
-            { title: "SERVICE MARGIN", value: `${margin.toFixed(1)}%`, trend: "TARGET THRESHOLD: 25%", trendType: margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
+            { title: "SERVICE MARGIN", value: `${margin.toFixed(1)}%`, trend: "PAID REVENUE VS COSTS", trendType: margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
         ];
     }, [invoices, weeklyLogs, expenses]);
 
@@ -156,11 +158,12 @@ export default function FinancialsPage() {
             const end = endOfMonth(date);
             const label = format(date, 'MMM yy').toUpperCase();
 
+            // Protocol Update: Revenue only includes PAID invoices
             const rev = invoices
                 .filter(inv => {
                     try {
                         const d = new Date(inv.issueDate);
-                        return isWithinInterval(d, { start, end });
+                        return isWithinInterval(d, { start, end }) && inv.status === 'paid';
                     } catch(e) { return false; }
                 })
                 .reduce((acc, inv) => acc + inv.total, 0);
@@ -176,7 +179,8 @@ export default function FinancialsPage() {
                 weeklyLogs
                 .filter(l => {
                     try {
-                        const d = new Date(l.weekOf);
+                        const parts = l.weekOf.split('-');
+                        const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
                         return isWithinInterval(d, { start, end }) && l.status === 'Approved';
                     } catch(e) { return false; }
                 })
@@ -224,7 +228,7 @@ export default function FinancialsPage() {
     };
 
     const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
-        // Status updates are handled within the dialog, this just facilitates the local refresh if needed
+        // Status updates are handled within the dialog
     };
 
     const handleReviewLog = (log: WeeklyLog) => {
@@ -387,7 +391,7 @@ export default function FinancialsPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="text-left">
                                         <CardTitle className="text-base">Strategic Cash Flow Analysis</CardTitle>
-                                        <CardDescription className="text-[10px] uppercase font-bold text-text-muted">Monthly comparison of authorized revenue vs field operational expenses.</CardDescription>
+                                        <CardDescription className="text-[10px] uppercase font-bold text-text-muted">Monthly comparison of realized revenue vs field operational expenses.</CardDescription>
                                     </div>
                                     <Badge variant="outline" className="bg-bg-primary text-[8px] uppercase tracking-widest">Rolling 6-Month Audit</Badge>
                                 </div>

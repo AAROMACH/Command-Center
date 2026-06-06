@@ -101,7 +101,7 @@ function ImportedJobAudit({
         <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[280px]">
              <div className="grid grid-cols-3 gap-1 text-left">
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Gross Pay</Label>
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Labor Pay</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 

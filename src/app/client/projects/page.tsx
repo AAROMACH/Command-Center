@@ -17,11 +17,13 @@ import {
     CheckCircle2,
     Circle,
     ScrollText,
-    History
+    History,
+    ShieldCheck
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 export default function ClientProjectsPage() {
@@ -104,7 +106,7 @@ export default function ClientProjectsPage() {
                         Low Voltage infrastructure
                     </p>
                     <h1 className="page-title">Active Projects</h1>
-                    <p className="page-subtitle text-left">Read-only oversight of multi-day field initiatives and phase completion.</p>
+                    <p className="page-subtitle text-left">Real-time oversight of multi-day field initiatives and phase completion.</p>
                 </div>
             </header>
 
@@ -147,7 +149,7 @@ export default function ClientProjectsPage() {
     );
 }
 
-function ProjectsList({ projects, getProjectProgress, formatDateStr, allLogs, technicians }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, allLogs: ProjectDailyLog[], technicians: Technician[] }) {
+function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, allLogs: ProjectDailyLog[], technicians: Technician[] }) {
     if (projects.length === 0) {
         return (
             <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
@@ -161,13 +163,13 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, allLogs, te
         <div className="space-y-6">
             {projects.map(project => {
                 const progress = getProjectProgress(project);
-                const logs = allLogs.filter(l => l.projectId === project.id);
-                const assignedTechs = (project.team || []).map(m => technicians.find(t => t.id === m.technicianId)?.name).filter(Boolean);
+                const leadMember = project.team?.find(m => m.role === 'Project Lead');
+                const leadTech = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
 
                 return (
-                    <Card key={project.id} className="bg-bg-secondary border-border-main overflow-hidden">
-                        <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 text-left">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <Card key={project.id} className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
+                        <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-6 text-left">
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                                 <div className="space-y-1 text-left">
                                     <div className="flex items-center gap-3">
                                         <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {(project.id || '').toUpperCase()}</span>
@@ -175,25 +177,25 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, allLogs, te
                                             {project.status}
                                         </Badge>
                                     </div>
-                                    <CardTitle className="text-xl font-bold text-text-primary uppercase tracking-wide text-left">{project.name}</CardTitle>
-                                    <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                    <CardTitle className="text-2xl font-bold text-text-primary uppercase tracking-wide text-left">{project.name}</CardTitle>
+                                    <div className="flex items-center gap-4 text-[11px] text-text-muted font-bold uppercase tracking-widest text-left mt-2">
                                         <span className="flex items-center gap-1.5"><MapPin size={12} className="text-brand-red"/> {project.location}</span>
                                         <span className="flex items-center gap-1.5"><Calendar size={12}/> Started {formatDateStr(project.startDate)}</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
+                                <div className="flex flex-col items-end gap-3 w-full md:w-auto">
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">Overall Progress</p>
-                                        <p className="text-2xl font-bold text-text-primary">{progress}%</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Deployment Readiness</p>
+                                        <p className="text-3xl font-mono font-bold text-text-primary">{progress}%</p>
                                     </div>
-                                    <Progress value={progress} className="w-[180px] h-1.5 bg-bg-primary" />
+                                    <Progress value={progress} className="w-full md:w-[240px] h-3 bg-bg-primary border border-border-sub shadow-inner" />
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value="phases" className="border-b border-border-sub">
-                                    <AccordionTrigger className="px-6 py-4 hover:bg-bg-tertiary transition-colors hover:no-underline">
+                                <AccordionItem value="phases" className="border-none">
+                                    <AccordionTrigger className="px-6 py-4 hover:bg-bg-tertiary transition-colors hover:no-underline border-b border-border-sub">
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">
                                             <History size={14} className="text-brand-red"/> Phase Breakdown & Tasks
                                         </div>
@@ -227,51 +229,26 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, allLogs, te
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
-
-                                <AccordionItem value="logs" className="border-none">
-                                    <AccordionTrigger className="px-6 py-4 hover:bg-bg-tertiary transition-colors hover:no-underline">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                                            <ScrollText size={14} className="text-brand-red"/> Field activity logs
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="px-6 pb-6 bg-bg-primary/30">
-                                        {logs.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {logs.map(log => (
-                                                    <div key={log.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
-                                                        <div className="flex justify-between items-start">
-                                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{formatDateStr(log.date)}</p>
-                                                            <p className="text-[10px] font-bold text-text-green uppercase tracking-widest">{log.hoursWorked} Hours Logged</p>
-                                                        </div>
-                                                        <p className="text-[11px] text-text-secondary leading-relaxed italic uppercase font-medium">&quot;{log.workSummary}&quot;</p>
-                                                        <div className="flex items-center gap-2 pt-1 border-t border-border-sub/30">
-                                                            <User size={10} className="text-text-muted"/>
-                                                            <span className="text-[9px] font-bold uppercase text-text-muted tracking-widest">Reporter: {technicians.find(t => t.id === log.technicianId)?.name || 'Field Ops'}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="p-8 text-center text-[10px] text-text-muted uppercase font-bold italic tracking-widest">No site activity reported yet.</div>
-                                        )}
-                                    </AccordionContent>
-                                </AccordionItem>
                             </Accordion>
 
-                            <div className="px-6 py-4 bg-bg-tertiary/20 border-t border-border-sub flex flex-wrap items-center gap-x-8 gap-y-2">
-                                <div className="flex items-center gap-2">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">Authorized Support</p>
-                                    <div className="flex items-center -space-x-2">
-                                        {assignedTechs.map((name, i) => (
-                                            <div key={i} className="h-6 w-6 rounded-full bg-bg-tertiary border border-border-main flex items-center justify-center text-[9px] font-bold" title={name || 'Field Tech'}>
-                                                {name?.charAt(0) || 'T'}
-                                            </div>
-                                        ))}
-                                    </div>
+                            <div className="px-6 py-4 bg-bg-tertiary/20 border-t border-border-sub flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Project Lead</p>
+                                    {leadTech ? (
+                                        <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-sub shadow-sm">
+                                            <Avatar className="h-6 w-6 border border-border-main">
+                                                <AvatarImage src={leadTech.avatarUrl} />
+                                                <AvatarFallback className="text-[10px] font-bold">{leadTech.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight">{leadTech.name}</span>
+                                        </div>
+                                    ) : (
+                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Unallocated</Badge>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-4 text-[9px] font-bold text-text-muted uppercase tracking-widest ml-auto">
+                                <div className="flex items-center gap-6 text-[9px] font-bold text-text-muted uppercase tracking-widest">
                                     <span className="flex items-center gap-1.5"><Clock size={12} className="text-accent-gold"/> Est: {project.estimatedDuration}</span>
-                                    <span className="flex items-center gap-1.5"><Calendar size={12}/> Target Start: {formatDateStr(project.startDate)}</span>
+                                    <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-text-green"/> SOW Verified</span>
                                 </div>
                             </div>
                         </CardContent>

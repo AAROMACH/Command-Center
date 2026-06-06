@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign } from 'lucide-react';
+import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign, Hammer, Package } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +67,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     invoiceNumber: `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`,
                     issueDate: format(new Date(), 'yyyy-MM-dd'),
                     dueDate: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
-                    lineItems: [{ ...defaultLineItem, id: `li-${Date.now()}` }],
+                    lineItems: [],
                     status: 'draft',
                     isAfterHours: false,
                 });
@@ -105,43 +105,58 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         setInvoiceData(prev => ({ ...prev, ...update }));
     };
 
-    const handleLineItemChange = (index: number, field: keyof InvoiceLineItem, value: any) => {
-        const updatedLineItems = [...(invoiceData.lineItems || [])];
-        (updatedLineItems[index] as any)[field] = value;
+    const handleLineItemChange = (id: string, field: keyof InvoiceLineItem, value: any) => {
+        const updatedLineItems = (invoiceData.lineItems || []).map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+        );
         setInvoiceData(prev => ({ ...prev, lineItems: updatedLineItems }));
     };
 
-    const handlePremadeItemSelect = (index: number, itemId: string) => {
+    const handlePremadeItemSelect = (id: string, itemId: string) => {
         const allItems = premadeLineItems.flatMap(g => g.items);
         const premade = allItems.find(p => p.id === itemId);
         if (!premade) return;
 
-        const updatedLineItems = [...(invoiceData.lineItems || [])];
-        updatedLineItems[index] = {
-            ...updatedLineItems[index],
-            description: premade.description,
-            unitPrice: premade.unitPrice,
-            category: premade.category as 'labor' | 'material',
-        };
+        const updatedLineItems = (invoiceData.lineItems || []).map(item => 
+            item.id === id ? {
+                ...item,
+                description: premade.description,
+                unitPrice: premade.unitPrice,
+                category: premade.category as 'labor' | 'material',
+            } : item
+        );
         setInvoiceData(prev => ({ ...prev, lineItems: updatedLineItems }));
     };
 
-    const addLineItem = () => {
-        const newLineItems = [...(invoiceData.lineItems || []), { ...defaultLineItem, id: `li-${Date.now()}` }];
+    const addLineItem = (category: 'labor' | 'material') => {
+        const newItem = { 
+            id: `li-${Date.now()}`,
+            description: '',
+            quantity: 1,
+            unitPrice: 0,
+            category 
+        };
+        setInvoiceData(prev => ({ 
+            ...prev, 
+            lineItems: [...(prev.lineItems || []), newItem] 
+        }));
+    };
+
+    const removeLineItem = (id: string) => {
+        const newLineItems = (invoiceData.lineItems || []).filter(item => item.id !== id);
         setInvoiceData(prev => ({ ...prev, lineItems: newLineItems }));
     };
 
-    const removeLineItem = (index: number) => {
-        const newLineItems = [...(invoiceData.lineItems || [])];
-        newLineItems.splice(index, 1);
-        setInvoiceData(prev => ({ ...prev, lineItems: newLineItems }));
-    };
+    const laborItems = useMemo(() => 
+        (invoiceData.lineItems || []).filter(item => item.category === 'labor')
+    , [invoiceData.lineItems]);
 
-    const hasLabor = useMemo(() => {
-        return (invoiceData.lineItems || []).some(item => item.category === 'labor');
-    }, [invoiceData.lineItems]);
+    const materialItems = useMemo(() => 
+        (invoiceData.lineItems || []).filter(item => item.category === 'material')
+    , [invoiceData.lineItems]);
 
-    // Financial Calculation Protocol
+    const hasLabor = laborItems.length > 0;
+
     const { subtotal, laborSubtotal, materialsSubtotal, tax, total } = useMemo(() => {
         const items = invoiceData.lineItems || [];
         const isAH = !!invoiceData.isAfterHours;
@@ -184,6 +199,31 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
         onSave(finalInvoice);
     };
+
+    const LineItemRow = ({ item }: { item: InvoiceLineItem }) => (
+        <div key={item.id} className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
+            <Select onValueChange={(val) => handlePremadeItemSelect(item.id, val)}>
+                <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Premade..."/></SelectTrigger>
+                <SelectContent>
+                    {premadeLineItems.map(group => (
+                        <SelectGroup key={group.group}>
+                            <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
+                            {group.items.filter(pi => pi.category === item.category).map(pi => (
+                                <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
+                            ))}
+                        </SelectGroup>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Input placeholder="Service description..." value={item.description} onChange={e => handleLineItemChange(item.id, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
+            <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
+            <div className="relative">
+                <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(item.id)}><Trash2 size={14}/></Button>
+        </div>
+    );
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -267,50 +307,56 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         />
                     </div>
                     
-                    <div className="space-y-3">
-                         <div className="flex items-center justify-between px-1">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted">Line Itemized Ledger</h3>
-                            <span className="text-[9px] font-mono text-text-muted">{invoiceData.lineItems?.length || 0} Entries</span>
-                         </div>
-                        <div className="space-y-2">
-                            <div className="grid grid-cols-[1.5fr,2fr,80px,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
-                                <span>Type</span>
-                                <span>Description / Tech Spec</span>
-                                <span className="text-center">QTY</span>
-                                <span className="text-center">Category</span>
-                                <span className="text-center">Unit ($)</span>
+                    <div className="space-y-10">
+                        {/* LABOR REGISTRY */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                    <Hammer size={14} className="text-brand-red" />
+                                    Labor Registry
+                                </h3>
+                                <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{laborItems.length} Entries</Badge>
                             </div>
-                            {invoiceData.lineItems?.map((item, index) => (
-                                <div key={item.id} className="grid grid-cols-[1.5fr,2fr,80px,80px,120px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
-                                    <Select onValueChange={(val) => handlePremadeItemSelect(index, val)}>
-                                        <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Select Item..."/></SelectTrigger>
-                                        <SelectContent>
-                                            {premadeLineItems.map(group => (
-                                                <SelectGroup key={group.group}>
-                                                    <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
-                                                    {group.items.map(pi => (
-                                                        <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <Input placeholder="Service description..." value={item.description} onChange={e => handleLineItemChange(index, 'description', e.target.value)} className="h-8 text-xs bg-bg-secondary" />
-                                    <Input type="number" placeholder="0" value={item.quantity} onChange={e => handleLineItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center" />
-                                    <div className="flex justify-center">
-                                        <Badge variant={item.category === 'labor' ? 'active' : 'onhold'} className="text-[8px] h-5 uppercase">
-                                            {item.category}
-                                        </Badge>
-                                    </div>
-                                    <div className="relative">
-                                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
-                                        <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => removeLineItem(index)}><Trash2 size={14}/></Button>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                    <span>Template</span>
+                                    <span>Technical Specification</span>
+                                    <span className="text-center">Hours</span>
+                                    <span className="text-center">Rate ($/hr)</span>
                                 </div>
-                            ))}
+                                {laborItems.map((item) => (
+                                    <LineItemRow key={item.id} item={item} />
+                                ))}
+                            </div>
+                            <Button variant="dashed" size="sm" className="w-full h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={() => addLineItem('labor')}>
+                                <Plus size={16} className="mr-2"/> Add Labor Entry
+                            </Button>
                         </div>
-                        <Button variant="dashed" size="sm" className="w-full mt-2 h-10 border-brand-red/20 text-brand-red hover:bg-brand-red/5" onClick={addLineItem}><Plus size={16} className="mr-2"/> Add Custom Line Item</Button>
+
+                        {/* MATERIAL REGISTRY */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                    <Package size={14} className="text-accent-gold" />
+                                    Material Registry (Taxable)
+                                </h3>
+                                <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{materialItems.length} Entries</Badge>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-[1.5fr,2.5fr,80px,120px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                    <span>Template</span>
+                                    <span>Part / Asset Identification</span>
+                                    <span className="text-center">QTY</span>
+                                    <span className="text-center">Unit ($)</span>
+                                </div>
+                                {materialItems.map((item) => (
+                                    <LineItemRow key={item.id} item={item} />
+                                ))}
+                            </div>
+                            <Button variant="dashed" size="sm" className="w-full h-10 border-accent-gold/20 text-accent-gold hover:bg-accent-gold/5" onClick={() => addLineItem('material')}>
+                                <Plus size={16} className="mr-2"/> Add Material Entry
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 pt-4">

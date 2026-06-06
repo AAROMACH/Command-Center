@@ -10,21 +10,21 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// Input Schema
+// Input Schema - Hardened to use sanitized locations
 const AdminRouteOptimizationInputSchema = z.object({
   unassignedJobs: z.array(z.object({
     id: z.string().describe('The unique identifier for the work order.'),
     description: z.string().describe('A description of the work.'),
-    location: z.string().describe('Geographical location.'),
+    location: z.string().describe('Sanitized geographical location (City, ST).'),
     scheduleDate: z.string().describe('YYYY-MM-DD format.'),
-    scheduleTime: z.string().describe('Target start time.'),
+    scheduleTime: z.string().describe('Target start time (e.g. 09:00 AM).'),
     priority: z.enum(['low', 'medium', 'high', 'critical']),
     requiredSkills: z.array(z.string()),
   })).describe('Pool of jobs awaiting allocation.'),
   availableTechnicians: z.array(z.object({
     id: z.string().describe('Technician ID.'),
     name: z.string().describe('Technician name.'),
-    currentLocation: z.string().describe('Base or current coordinates.'),
+    currentLocation: z.string().describe('Sanitized base coordinates (City, ST).'),
     reliabilityScore: z.number().min(0).max(100),
     skills: z.array(z.string()),
   })).describe('Registry of field operatives available for deployment.'),
@@ -32,7 +32,7 @@ const AdminRouteOptimizationInputSchema = z.object({
 });
 export type AdminRouteOptimizationInput = z.infer<typeof AdminRouteOptimizationInputSchema>;
 
-// Output Schema
+// Output Schema - Included warnings for safe failure handling
 const AdminRouteOptimizationOutputSchema = z.object({
   proposedRoutes: z.array(z.object({
     technicianId: z.string().describe('The ID of the tech assigned to this route.'),
@@ -41,6 +41,7 @@ const AdminRouteOptimizationOutputSchema = z.object({
     reasoning: z.string().describe('Tactical justification for this specific route and tech match.'),
   })).describe('A collection of optimized tactical routes.'),
   unassignedReasoning: z.string().optional().describe('Explanation for why any jobs remained unassigned.'),
+  warnings: z.array(z.string()).optional().describe('Non-critical alerts encountered during analysis.'),
 });
 export type AdminRouteOptimizationOutput = z.infer<typeof AdminRouteOptimizationOutputSchema>;
 
@@ -58,7 +59,7 @@ const optimizeRoutesPrompt = ai.definePrompt({
 
 TACTICAL PRIORITIES (STRICT):
 1. ROUTE VOLUME: You MUST generate exactly {{{targetRouteCount}}} routes. Do not generate more or less unless there are fewer than {{{targetRouteCount}}} total jobs.
-2. GEOGRAPHIC CLUSTERING: Group jobs by physical proximity to minimize travel time and operational overhead.
+2. GEOGRAPHIC CLUSTERING: Group jobs by physical proximity (City/ST) to minimize travel time and operational overhead.
 3. TEMPORAL SEQUENCING: Order jobs logically based on their schedule times and priorities.
 4. OPERATIVE FIT: Match the most critical or difficult jobs to technicians with high Reliability Index scores and matching Skills.
 

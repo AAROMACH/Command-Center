@@ -54,7 +54,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     pay: 0,
     payType: 'fixed',
     scheduleDate: new Date().toISOString().split('T')[0],
-    scheduleTime: '09:00 AM EST',
+    scheduleTime: '09:00 AM',
     clientName: '',
     location: '',
     blendedFixedPay: 0,
@@ -202,7 +202,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         pay: 0,
         payType: 'fixed',
         scheduleDate: new Date().toISOString().split('T')[0],
-        scheduleTime: '09:00 AM EST',
+        scheduleTime: '09:00 AM',
         clientName: '',
         location: '',
         blendedFixedPay: 0,
@@ -248,7 +248,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             }}
           >
             <DialogHeader className="p-6 pb-2 text-left">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 text-left">
                 <Wrench className="text-brand-red h-5 w-5" />
                 <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service job</DialogTitle>
               </div>
@@ -424,7 +424,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
                   <Input 
-                    placeholder="e.g. 10:00 AM EST"
+                    placeholder="e.g. 09:00 AM"
                     value={formData.scheduleTime}
                     onChange={(e) => setFormData({...formData, scheduleTime: e.target.value})}
                     className="bg-bg-primary h-10 text-xs"
@@ -477,7 +477,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Users className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Client Registry</DialogTitle>
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Client Registry</DialogTitle>
                     </div>
                     <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
                 </DialogHeader>

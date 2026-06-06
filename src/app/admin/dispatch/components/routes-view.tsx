@@ -27,7 +27,8 @@ import {
     RotateCcw,
     X,
     ShieldAlert,
-    Eye
+    Eye,
+    Separator
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,7 +41,6 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState } from '@/lib/utils';
 import {
   DndContext,
@@ -306,12 +306,18 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
         setIsAiOptimizing(true);
         try {
-            const availableTechs = technicians.filter(t => !t.roles?.includes('client'));
+            // DATA SANITIZATION: Exclude exact street addresses and invalid operatives
+            const availableTechs = technicians.filter(t => 
+                !t.roles?.includes('client') && 
+                t.name && 
+                (t.address || t.currentLocation)
+            );
+
             const result = await getOptimizedRoutes({
                 unassignedJobs: unassigned.map(j => ({
                     id: j.id,
                     description: j.description,
-                    location: j.location,
+                    location: formatCityState(j.location), // SANITIZED
                     scheduleDate: j.scheduleDate,
                     scheduleTime: j.scheduleTime,
                     priority: j.priority,
@@ -320,39 +326,48 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 availableTechnicians: availableTechs.map(t => ({
                     id: t.id,
                     name: t.name,
-                    currentLocation: t.address || t.currentLocation,
+                    currentLocation: formatCityState(t.address || t.currentLocation), // SANITIZED
                     reliabilityScore: t.reliabilityScore,
                     skills: t.skills || []
                 })),
                 targetRouteCount: parseInt(targetRouteCount)
             });
 
-            // Create new routes from AI proposals
-            const newRoutes: Route[] = result.proposedRoutes.map((p, idx) => ({
-                id: `route-ai-${Date.now()}-${idx}`,
-                name: `AI Route: ${p.technicianName}`,
-                technicianName: p.technicianName,
-                workOrderIds: p.orderedWorkOrderIds
-            }));
+            if (result.warnings && result.warnings.length > 0) {
+                toast({ 
+                    variant: result.proposedRoutes.length > 0 ? "default" : "destructive", 
+                    title: "Intelligence Terminal Alert", 
+                    description: result.warnings[0] 
+                });
+            }
 
-            // Update work orders with new route IDs
-            const updatedWorkOrders = allWorkOrders.map(wo => {
-                const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));
-                if (foundRoute) {
-                    return { ...wo, routeId: foundRoute.id };
-                }
-                return wo;
-            });
+            if (result.proposedRoutes.length > 0) {
+                const newRoutes: Route[] = result.proposedRoutes.map((p, idx) => ({
+                    id: `route-ai-${Date.now()}-${idx}`,
+                    name: `AI Route: ${p.technicianName}`,
+                    technicianName: p.technicianName,
+                    workOrderIds: p.orderedWorkOrderIds
+                }));
 
-            onRoutesChange([...routes, ...newRoutes]);
-            onWorkOrdersChange(updatedWorkOrders);
-            
-            toast({
-                title: "Intelligence Applied",
-                description: `Successfully architected ${newRoutes.length} optimized field routes.`,
-            });
+                const updatedWorkOrders = allWorkOrders.map(wo => {
+                    const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));
+                    if (foundRoute) {
+                        return { ...wo, routeId: foundRoute.id };
+                    }
+                    return wo;
+                });
+
+                onRoutesChange([...routes, ...newRoutes]);
+                onWorkOrdersChange(updatedWorkOrders);
+                
+                toast({
+                    title: "Intelligence Applied",
+                    description: `Successfully architected ${newRoutes.length} optimized field routes.`,
+                });
+            }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Optimization Failure", description: e.message });
+            // Action now returns safe messages, but we catch unexpected crashes
+            toast({ variant: "destructive", title: "Optimization Failure", description: "Auto Dispatch is temporarily unavailable. Please use Manual Dispatch." });
         } finally {
             setIsAiOptimizing(false);
         }

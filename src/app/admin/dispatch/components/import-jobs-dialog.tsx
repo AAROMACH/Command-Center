@@ -91,10 +91,13 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
            try { 
              const dateParts = d.split('/');
              if (dateParts.length === 3) {
-                scheduleDate = `${dateParts[2]}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`;
+                // Ensure strict YYYY-MM-DD
+                const year = dateParts[2].length === 2 ? `20${dateParts[2]}` : dateParts[2];
+                scheduleDate = `${year}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`;
              }
            } catch(e) {}
-           scheduleTime = t.split('(')[0].trim();
+           // Ensure strict clean time format (No arrows or timezones)
+           scheduleTime = t.split('(')[0].split('→')[0].split(' to ')[0].trim();
         }
 
         return {

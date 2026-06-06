@@ -6,48 +6,46 @@ import type { AdminRouteOptimizationInput, AdminRouteOptimizationOutput } from "
 /**
  * @fileOverview Administrative server action for AI-driven route optimization.
  * Orchestrates batch logistical intelligence for unassigned mission pools.
+ * Implements strict error-shielding to prevent technical leakage to the UI.
  */
 export async function getOptimizedRoutes(
   input: AdminRouteOptimizationInput
 ): Promise<AdminRouteOptimizationOutput> {
   try {
     if (!input.unassignedJobs || input.unassignedJobs.length === 0) {
-      throw new Error("Mission Pool Empty: No unassigned jobs located in registry.");
+      return { 
+        proposedRoutes: [], 
+        warnings: ["Mission Pool Empty: No unassigned jobs located in registry."] 
+      };
     }
 
     if (!input.availableTechnicians || input.availableTechnicians.length === 0) {
-      throw new Error("Operative Registry Empty: No available field staff for allocation.");
+      return { 
+        proposedRoutes: [], 
+        warnings: ["Operative Registry Empty: No available field staff for allocation."] 
+      };
     }
 
-    if (!input.targetRouteCount || input.targetRouteCount < 1) {
-      throw new Error("Logistical Error: Route quantity must be at least 1.");
-    }
-
-    console.log(`AI Route Optimization Initiated: Analyzing ${input.unassignedJobs.length} jobs into ${input.targetRouteCount} routes.`);
-    
+    // Handshake with AI Logic
     const result = await optimizeRoutes(input);
     
     if (!result || !result.proposedRoutes) {
-      throw new Error("Intelligence Terminal Error: Optimization engine returned null manifest.");
+      throw new Error("Null output from AI engine.");
     }
 
-    console.log(`AI Route Optimization Success: ${result.proposedRoutes.length} tactical routes architected.`);
     return result;
   } catch (error: any) {
-    console.error("Critical Route Intelligence Failure:", {
-        message: error.message,
-        params: { 
-            jobCount: input.unassignedJobs?.length, 
-            techCount: input.availableTechnicians?.length,
-            targetCount: input.targetRouteCount
-        }
+    // LOG TECHNICAL ERROR SECURELY ON SERVER
+    console.error("[SERVER] AUTO-DISPATCH PROTOCOL FAILURE:", {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        timestamp: new Date().toISOString()
     });
 
-    const errorMsg = error.message || "";
-    if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429')) {
-      throw new Error("AI ROUTING QUOTA EXHAUSTED: Please verify Gemini API credits or transition to manual batching.");
-    }
-    
-    throw new Error(errorMsg || "Failed to generate optimized routing plan.");
+    // RETURN STANDARDIZED SAFE FAILURE OBJECT
+    return {
+      proposedRoutes: [],
+      warnings: ["Auto Dispatch is temporarily unavailable. Please use Manual Dispatch."]
+    };
   }
 }

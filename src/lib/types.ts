@@ -397,7 +397,7 @@ export type InvoiceLineItem = {
   quantity: number;
   unitPrice: number;
   category: 'labor' | 'material';
-  isAfterHours?: boolean;
+  isEmergencyProtocol?: boolean;
 };
 
 export type Invoice = {

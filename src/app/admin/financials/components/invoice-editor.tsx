@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, FileText, Wrench, FolderKanban, Coins, Clock, ShieldAlert, DollarSign, Hammer, Package, Zap, Activity, UserCheck } from 'lucide-react';
+import { Trash2, Plus, FileText, Hammer, Package, DollarSign, ShieldAlert, Zap } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type InvoiceEditorProps = {
     isOpen: boolean;
@@ -31,7 +32,6 @@ const premadeLineItems = [
         { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100, category: 'labor' },
         { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor' },
         { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75, category: 'labor' },
-        { id: 'ah_surcharge', description: 'After Hours Emergency Surcharge', unitPrice: 180, category: 'labor' },
     ]},
     { group: 'Cabling & Wiring (8% Tax)', items: [
         { id: 'cat6_plenum', description: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450, category: 'material' },
@@ -122,13 +122,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
     };
 
     const addLineItem = (category: 'labor' | 'material') => {
-        const newItem = { 
+        const newItem: InvoiceLineItem = { 
             id: `li-${Date.now()}`,
             description: '',
             quantity: 1,
             unitPrice: 0,
             category,
-            isAfterHours: false
+            isEmergencyProtocol: false
         };
         setInvoiceData(prev => ({ 
             ...prev, 
@@ -158,7 +158,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         items.forEach(item => {
             const baseTotal = item.quantity * item.unitPrice;
             if (item.category === 'labor') {
-                const effectiveTotal = item.isAfterHours ? baseTotal * 1.5 : baseTotal;
+                const effectiveTotal = item.isEmergencyProtocol ? baseTotal * 1.5 : baseTotal;
                 labor += effectiveTotal;
             } else {
                 materials += baseTotal;
@@ -193,7 +193,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
     };
 
     const LineItemRow = ({ item }: { item: InvoiceLineItem }) => {
-        const effectivePrice = item.isAfterHours ? item.unitPrice * 1.5 : item.unitPrice;
+        const isLabor = item.category === 'labor';
+        const effectivePrice = (isLabor && item.isEmergencyProtocol) ? item.unitPrice * 1.5 : item.unitPrice;
 
         return (
             <div key={item.id} className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
@@ -218,12 +219,12 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                     <Input type="number" placeholder="0.00" value={item.unitPrice} onChange={e => handleLineItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="h-8 text-xs bg-bg-secondary text-center font-mono pl-6" />
                 </div>
-                {item.category === 'labor' ? (
+                {isLabor ? (
                     <div className="flex flex-col items-center gap-1">
-                        <Label className="text-[7px] font-black uppercase text-text-muted">AH Protocol</Label>
+                        <Label className="text-[6px] font-black uppercase text-text-muted text-center leading-none">Emergency Protocol (1.5x)</Label>
                         <Switch 
-                            checked={!!item.isAfterHours} 
-                            onCheckedChange={(val) => handleLineItemChange(item.id, 'isAfterHours', val)}
+                            checked={!!item.isEmergencyProtocol} 
+                            onCheckedChange={(val) => handleLineItemChange(item.id, 'isEmergencyProtocol', val)}
                             className="scale-50 h-4"
                         />
                     </div>
@@ -305,7 +306,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                     <span>Description</span>
                                     <span className="text-center">Hrs</span>
                                     <span className="text-center">Rate ($/hr)</span>
-                                    <span className="text-center">AH</span>
+                                    <span className="text-center">Emergency</span>
                                 </div>
                                 {laborItems.map((item) => (
                                     <LineItemRow key={item.id} item={item} />
@@ -349,7 +350,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </div>
                         <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                                <span className="text-text-muted">Labor Subtotal (Tax Exempt)</span>
+                                <span className="text-text-muted">Labor Subtotal (Multiplier Applied)</span>
                                 <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
@@ -357,7 +358,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                                 <span className="font-mono text-text-primary">${materialsSubtotal.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-accent-gold">
-                                <span className="flex items-center gap-1.5"><Coins size={10}/> Material Tax (8.0%)</span>
+                                <span className="flex items-center gap-1.5"><Zap size={10}/> Material Tax (8.0%)</span>
                                 <span className="font-mono">${tax.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-4 mt-4">
@@ -382,6 +383,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </Select>
                     </div>
                     <div className="flex gap-3">
+                        <DropdownMenuWrapper />
                         <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
                         <Button onClick={handleSave} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">Commit Registry Entry</Button>
                     </div>
@@ -389,4 +391,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
             </SheetContent>
         </Sheet>
     );
+}
+
+function DropdownMenuWrapper() {
+  return null; // Logic removed as per user request to clean terminal
 }

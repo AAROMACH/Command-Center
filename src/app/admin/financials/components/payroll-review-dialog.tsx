@@ -101,59 +101,59 @@ function ImportedJobAudit({
         <div className="flex flex-col gap-0.5 p-1 bg-transparent border border-border-sub rounded-md text-left w-fit min-w-[280px]">
              <div className="grid grid-cols-3 gap-1 text-left">
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5">Gross</Label>
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Gross Pay</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={totalPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono font-bold" 
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono font-bold" 
                         />
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5">Reimb.</Label>
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={reimbursement}
                             onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono" 
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>
                 <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5">Overhead</Label>
+                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
                     <div className="relative text-left">
                         <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
                             value={overhead}
                             onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono" 
+                            className="h-4 w-full text-[8px] pl-4 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>
              </div>
 
              <div className="grid grid-cols-4 gap-1 pt-0.5 border-t border-border-sub/30 text-left">
-                <div className="space-y-0">
-                    <p className="text-[5px] font-black text-text-muted uppercase">Add. Net</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none">${additionalNet.toFixed(2)}</p>
+                <div className="space-y-0 text-left">
+                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Add. Net</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${additionalNet.toFixed(2)}</p>
                 </div>
-                <div className="space-y-0">
-                    <p className="text-[5px] font-black text-text-muted uppercase">Labor Net</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none">${laborNet.toFixed(2)}</p>
+                <div className="space-y-0 text-left">
+                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Labor Net</p>
+                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${laborNet.toFixed(2)}</p>
                 </div>
-                <div className="space-y-0">
-                    <p className="text-[5px] font-black text-text-green uppercase">Tech Pay</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none">${techPay.toFixed(2)}</p>
+                <div className="space-y-0 text-left">
+                    <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
+                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPay.toFixed(2)}</p>
                 </div>
                 <div className="space-y-0 text-right">
-                    <p className="text-[5px] font-black text-brand-red uppercase">Aaromach</p>
-                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none">${aaromachPay.toFixed(2)}</p>
+                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach Pay</p>
+                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
         </div>
@@ -338,7 +338,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </Avatar>
                             <div className="text-left">
                                 <div className="flex items-center gap-2">
-                                    <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
+                                    <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary text-left">Registry Audit: {technician.name}</DialogTitle>
                                     {localLog.unsubmitRequested && (
                                         <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Requested</Badge>
                                     )}
@@ -418,7 +418,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex items-center justify-between group",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                             )}>
                                                 <div className="flex items-center gap-4 flex-1">
@@ -445,7 +445,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
                                                     
-                                                    <div className="flex-1 flex flex-col gap-1.5">
+                                                    <div className="flex-1 flex flex-col gap-0.5">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -459,28 +459,28 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
-
-                                                        <div className="shrink-0 flex items-center gap-4">
-                                                            {isImported && wo ? (
-                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                            ) : (
-                                                                <div className="flex items-center gap-6">
-                                                                    <div className="text-left">
-                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
-                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none">
-                                                                            {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="text-left">
-                                                                        <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
-                                                                        <p className="text-[11px] font-mono font-bold text-text-primary leading-none">
-                                                                            ${(item.jobPay || 0).toFixed(2)}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
                                                     </div>
+                                                </div>
+
+                                                <div className="pl-24 flex items-center gap-4">
+                                                    {isImported && wo ? (
+                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                    ) : (
+                                                        <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
+                                                            <div className="text-left">
+                                                                <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
+                                                                <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
+                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
+                                                                <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
+                                                                    ${(item.jobPay || 0).toFixed(2)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -495,8 +495,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </TabsContent>
 
                         <TabsContent value="discrepancy" className="m-0 h-full text-left">
-                            <ScrollArea className="h-full p-2">
-                                <div className="space-y-1">
+                            <ScrollArea className="h-full p-2 text-left">
+                                <div className="space-y-1 text-left">
                                     {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                         const wo = findWorkOrder(item.workOrderId);
                                         const isAudited = item.isAdminReviewed;
@@ -505,11 +505,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                         return (
                                             <div key={item.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex items-center justify-between group",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
                                                 isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                             )}>
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="shrink-0 flex items-center gap-2">
+                                                <div className="flex items-center gap-4 flex-1 text-left">
+                                                    <div className="shrink-0 flex items-center gap-2 text-left">
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm" 
@@ -532,7 +532,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
 
-                                                    <div className="flex-1 flex flex-col gap-1.5">
+                                                    <div className="flex-1 flex flex-col gap-0.5 text-left">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -546,40 +546,38 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
+                                                    </div>
+                                                </div>
 
-                                                        <div className="shrink-0 flex items-start gap-4">
-                                                            <div className="shrink-0">
-                                                                {isImported && wo ? (
-                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
-                                                                ) : (
-                                                                    <div className="flex items-center gap-6">
-                                                                        <div className="text-left">
-                                                                            <p className="text-[7px] font-black text-text-muted uppercase">Duration</p>
-                                                                            <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none">
-                                                                                {wo ? getHoursOnsite(wo.id) : 'TBD'}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div className="text-left">
-                                                                            <p className="text-[7px] font-black text-text-muted uppercase">Payout</p>
-                                                                            <p className="text-[11px] font-mono font-bold text-text-red leading-none">
-                                                                                ${(item.jobPay || 0).toFixed(2)}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            
-                                                            <div className="min-w-[180px] max-w-[250px] p-1.5 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left self-stretch">
-                                                                <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
-                                                                    <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
+                                                <div className="pl-24 flex items-center gap-4 text-left">
+                                                    {isImported && wo ? (
+                                                        <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                    ) : (
+                                                        <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
+                                                            <div className="text-left">
+                                                                <p className="text-[7px] font-black text-text-muted uppercase text-left">Duration</p>
+                                                                <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none text-left">
+                                                                    {wo ? getHoursOnsite(wo.id) : 'TBD'}
                                                                 </p>
-                                                                {item.disputeNotes && (
-                                                                    <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate">
-                                                                        &quot;{item.disputeNotes}&quot;
-                                                                    </p>
-                                                                )}
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[7px] font-black text-text-muted uppercase text-left">Payout</p>
+                                                                <p className="text-[11px] font-mono font-bold text-text-red leading-none text-left">
+                                                                    ${(item.jobPay || 0).toFixed(2)}
+                                                                </p>
                                                             </div>
                                                         </div>
+                                                    )}
+                                                    
+                                                    <div className="min-w-[180px] max-w-[250px] p-2 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left flex flex-col justify-center">
+                                                        <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
+                                                            <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
+                                                        </p>
+                                                        {item.disputeNotes && (
+                                                            <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate mt-0.5">
+                                                                &quot;{item.disputeNotes}&quot;
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -590,11 +588,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = (report as any).isAudited;
                                         return (
                                             <div key={report.id} className={cn(
-                                                "p-2 rounded-lg border transition-all flex items-center justify-between",
+                                                "p-2 rounded-lg border transition-all flex flex-col group gap-2",
                                                 isAudited ? "border-green-border/30 bg-bg-primary" : "border-accent-gold/30 bg-bg-secondary shadow-sm"
                                             )}>
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="shrink-0">
+                                                <div className="flex items-center gap-4 flex-1 text-left">
+                                                    <div className="shrink-0 text-left">
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm" 
@@ -615,17 +613,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
                                                     
-                                                    <div className="flex-1 flex items-center justify-between gap-6">
+                                                    <div className="flex-1 flex items-center justify-between gap-6 text-left">
                                                         <div className="text-left">
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Missing Assignment Report</p>
+                                                            <div className="flex items-center gap-2 text-left">
+                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
                                                                 <Badge variant="onhold" className="text-[6px] h-3.5 px-1 uppercase">MANUAL PAY</Badge>
                                                             </div>
-                                                            <p className="text-[8px] text-text-muted font-medium uppercase tracking-widest">{report.date} · {report.location.split(',')[0]}</p>
+                                                            <p className="text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
                                                         </div>
-                                                        <div className="max-w-[300px] p-1.5 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
-                                                            <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate">&quot;{report.summary}&quot;</p>
-                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="pl-24 text-left">
+                                                    <div className="max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
+                                                        <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate text-left">&quot;{report.summary}&quot;</p>
                                                     </div>
                                                 </div>
                                             </div>

@@ -10,9 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, FileText, Hammer, Package, DollarSign, ShieldAlert, Zap } from 'lucide-react';
+import { Trash2, Plus, FileText, Hammer, Package, DollarSign, Zap } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 type InvoiceEditorProps = {
@@ -29,7 +28,7 @@ const premadeLineItems = [
     { group: 'Labor & Services (Tax Exempt)', items: [
         { id: 'labor_fiber', description: 'Fiber Optic Labor ($150/hr)', unitPrice: 150, category: 'labor' },
         { id: 'labor_install', description: 'Installation Labor ($120/hr)', unitPrice: 120, category: 'labor' },
-        { id: 'labor_diag', description: 'Diagnostics & Audit ($100/hr)', unitPrice: 100, category: 'labor' },
+        { id: 'labor_diag', description: 'Troubleshooting ($100/hr)', unitPrice: 100, category: 'labor' },
         { id: 'labor_smart', description: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor' },
         { id: 'service_call', description: 'Service Dispatch Fee', unitPrice: 75, category: 'labor' },
     ]},
@@ -239,7 +238,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetContent className="sm:max-w-4xl w-full bg-bg-elevated border-border-default overflow-y-auto">
+            <SheetContent className="sm:max-w-[1000px] w-full bg-bg-elevated border-border-default overflow-y-auto">
                 <SheetHeader className="pb-4 border-b border-border-sub">
                     <SheetTitle className="flex items-center gap-2 text-lg uppercase font-bold tracking-widest text-left">
                         <FileText size={20} className="text-brand-red"/>
@@ -251,7 +250,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 </SheetHeader>
                 
                 <div className="py-6 space-y-8">
-                    <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6">
+                    <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6 text-left">
                         <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2 text-left">
                                 <Label htmlFor="clientId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Client Entity</Label>
@@ -351,7 +350,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                             <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Tactical Audit Notes</Label>
                             <Textarea id="notes" name="notes" placeholder="Terms, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
                         </div>
-                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
+                        <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner text-left">
                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
                                 <span className="text-text-muted">
                                     Labor Subtotal {isAnyMultiplierActive ? "(Multiplier Applied)" : ""}

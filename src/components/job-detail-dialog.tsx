@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -66,7 +67,6 @@ import {
   doc,
   updateDoc
 } from 'firebase/firestore';
-import { useCollection } from '@/firebase';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
 
@@ -255,14 +255,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
 
-  // Fetch real-time history from Firestore if we have a mission ID
-  const historyQuery = useMemo(() => {
-    if (!mission?.id) return null;
-    return query(collection(db, 'assignments', mission.id, 'history'), orderBy('changedAt', 'desc'));
-  }, [mission?.id]);
-
-  const { data: historyData } = useCollection(historyQuery);
-
   useEffect(() => {
     const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
         setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
@@ -293,32 +285,26 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     if (!mission) return [];
     
     // Combine fetched history events with a synthesized root event
-    const entries = [...(historyData || [])].map(doc => ({
-      id: doc.id,
-      ...doc
-    }));
+    const entries = [...(mission.history || [])];
 
-    // Synthesize "Assignment Created" if it's the root or if mission is present
-    if (mission) {
+    // Synthesize "Assignment Created" if it's the root
+    if (entries.length === 0 || !entries.some(e => e.details.toLowerCase().includes('created'))) {
       entries.push({
-        id: 'root-created',
         type: 'note',
         date: mission.scheduleDate || 'TBD',
         details: 'Assignment Created — Mission initialized in operational registry.',
         user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center',
-        changedAt: mission.scheduleDate // fallback for sorting
-      });
+      } as any);
     }
 
-    // Sort by chronological order (descending for display, or ascending as needed)
-    return entries.sort((a, b) => new Date(b.changedAt || b.date).getTime() - new Date(a.changedAt || a.date).getTime());
-  }, [mission, historyData]);
+    // Sort by chronological order (descending for display)
+    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [mission]);
 
   if (!mission) return null;
 
   const isLocked = mission.status === 'completed';
   const leadTech = technicians.find(t => t.id === (mission.assignedTechnicianId || mission.techId));
-  const payout = calcPayout(mission);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -349,7 +335,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <h2 className="text-2xl font-black uppercase tracking-wide text-text-primary leading-tight text-left">
                 {mission.title || mission.description}
             </h2>
-            <DialogDescription className="hidden">Detailed mission audit terminal for assignment oversight.</DialogDescription>
+            <DialogDescription className="sr-only">Detailed mission audit terminal for assignment oversight.</DialogDescription>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 mb-6 text-left">
@@ -467,23 +453,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         const isLast = idx === timeline.length - 1;
                         let dot: 'blue' | 'gold' | 'green' | 'red' | 'gray' = 'gray';
                         
-                        const details = (entry.details || entry.note || '').toLowerCase();
-                        const type = (entry.type || entry.eventType || '').toLowerCase();
+                        const details = (entry.details || '').toLowerCase();
+                        const type = (entry.type || '').toLowerCase();
 
                         if (details.includes('complete') || details.includes('finalized') || type === 'completed') dot = 'green';
                         else if (details.includes('check') || details.includes('arrival')) dot = 'green';
-                        else if (details.includes('route') || details.includes('start trip') || type === 'rescheduled') dot = 'gold';
-                        else if (details.includes('confirm') || type === 'assigned') dot = 'blue';
-                        else if (type === 'revisit' || type === 'cancelled') dot = 'red';
+                        else if (details.includes('route') || details.includes('start trip')) dot = 'gold';
+                        else if (details.includes('confirm')) dot = 'blue';
+                        else if (type === 'note' && details.includes('created')) dot = 'blue';
 
                         return (
                           <TimelineEntry 
-                            key={entry.id || idx}
+                            key={idx}
                             dot={dot}
-                            time={entry.date || entry.changedAt || 'TBD'}
-                            title={type.replace(/_/g, ' ') || 'Event'}
-                            note={entry.details || entry.note || 'No additional notes recorded.'}
-                            by={entry.user || entry.changedBy || 'System'}
+                            time={entry.date || 'TBD'}
+                            title={type.replace(/_/g, ' ') || 'Log Entry'}
+                            note={entry.details || 'No additional notes recorded.'}
+                            by={entry.user || 'System'}
                             isLast={isLast}
                           />
                         );

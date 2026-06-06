@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +22,6 @@ import {
   MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { workOrders, penaltyEvents, weeklyLogs, technicians, projects, serviceRequests, timeOffRequests, siteRequests } from '@/lib/data';
 import { addDays } from 'date-fns';
 import {
   Dialog,
@@ -32,8 +32,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { auth } from '@/lib/firebase';
-import { format, parseISO } from 'date-fns';
+import { auth, db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import type { WorkOrder, Project, ServiceRequest, WeeklyLog, ReliabilityEvent, TimeOffRequest, SiteRequest } from '@/lib/types';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -50,27 +51,73 @@ type Alert = {
 export function AlertBand() {
   const pathname = usePathname();
   const router = useRouter();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Real-time states
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+  const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+  const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // 1. Initialize Real-time Registry Listeners
   useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
-    const fbUser = auth.currentUser;
-    
-    // Find registry data
-    const user = technicians.find(t => 
-      t.id === userId || t.email.toLowerCase() === fbUser?.email?.toLowerCase()
-    );
-    
-    if (!user) return;
-    setCurrentUser(user);
+    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+      setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    });
+    const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+      setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    });
+    const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+      setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+    });
+    const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), (snap) => {
+      setPenaltyEvents(snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent)));
+    });
+    const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+      setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
+    });
+    const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
+      setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
+    });
+    const unsubTimeOff = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+      setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+    });
+    const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
+      setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
+    });
+
+    const storedId = localStorage.getItem('currentUserId');
+    if (storedId) {
+      const unsubUser = onSnapshot(doc(db, 'users', storedId), (snap) => {
+        if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
+      });
+      return () => {
+        unsubWO(); unsubAsmt(); unsubLogs(); unsubPenalty(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubUser();
+      };
+    }
+
+    return () => {
+      unsubWO(); unsubAsmt(); unsubLogs(); unsubPenalty(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite();
+    };
+  }, []);
+
+  const alerts = useMemo(() => {
+    if (!currentUser) return [];
 
     const currentAlerts: Alert[] = [];
 
     if (pathname.startsWith('/tech')) {
-      const activeJob = workOrders.find(wo => wo.assignedTechnicianId === user.id && wo.status === 'in-progress');
+      const activeJob = assignments.find(wo => 
+        (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) && 
+        wo.status === 'in-progress'
+      );
       if (activeJob) {
         currentAlerts.push({
           id: 'tech-active',
@@ -85,10 +132,10 @@ export function AlertBand() {
 
       const tomorrow = addDays(new Date(), 1);
       const now = new Date();
-      const upcomingJobsCount = workOrders.filter(wo =>
-        wo.assignedTechnicianId === user.id &&
+      const upcomingJobsCount = assignments.filter(wo =>
+        (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) &&
         new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
-        wo.status === 'assigned'
+        (wo.status === 'assigned' || wo.status === 'confirmed')
       ).length;
 
       if (upcomingJobsCount > 0) {
@@ -104,7 +151,7 @@ export function AlertBand() {
       }
 
       const pendingLogsCount = weeklyLogs.filter(log =>
-        log.technicianId === user.id && log.status === 'Draft'
+        log.technicianId === currentUser.id && log.status === 'Draft'
       ).length;
 
       if (pendingLogsCount > 0) {
@@ -118,21 +165,8 @@ export function AlertBand() {
           actionLabel: 'Finalize Logs'
         });
       }
-
-      const recentPenalties = penaltyEvents.filter(p => p.technicianId === user.id).length;
-       if (recentPenalties > 0) {
-        currentAlerts.push({
-          id: 'tech-penalties',
-          type: 'critical',
-          text: `${recentPenalties} penalty events`,
-          description: `Discrepancies have been identified in your recent field activity. Review the penalty ledger to see specific points of failure.`,
-          icon: AlertTriangle,
-          actionPath: '/tech/profile?tab=reliability',
-          actionLabel: 'Audit Penalty Ledger'
-        });
-      }
     } else if (pathname.startsWith('/client')) {
-      const company = user.clientCompany;
+      const company = currentUser.clientCompany;
       if (company) {
         const activeProjectsCount = projects.filter(p => p.client === company && p.status === 'active').length;
         const pendingRequestsCount = serviceRequests.filter(r => r.clientName === company && r.status === 'new').length;
@@ -174,20 +208,10 @@ export function AlertBand() {
           text: `${unassignedJobsCount} unassigned jobs`,
           description: `There are ${unassignedJobsCount} missions in the active window requiring operative allocation. Immediate dispatch required.`,
           icon: AlertTriangle,
-          actionPath: '/admin/dispatch?tab=unassigned',
+          actionPath: '/admin/dispatch?tab=dispatch',
           actionLabel: 'Dispatch Hub'
         });
       }
-      
-      currentAlerts.push({
-        id: 'admin-missed',
-        type: 'warning',
-        text: `1 missed check-in`,
-        description: `An operative has failed to verify site presence within the scheduled window. Follow up or force session termination.`,
-        icon: Clock,
-        actionPath: '/admin/reports?tab=flags',
-        actionLabel: 'Activity Audit'
-      });
 
       if (logsToAuditCount > 0) {
         currentAlerts.push({
@@ -226,8 +250,8 @@ export function AlertBand() {
       }
     }
 
-    setAlerts(currentAlerts);
-  }, [pathname]);
+    return currentAlerts;
+  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests]);
 
   const handleAlertClick = (alert: Alert) => {
     setSelectedAlert(alert);
@@ -243,10 +267,10 @@ export function AlertBand() {
 
   const isClientPortal = pathname.startsWith('/client');
   
-  // Dynamically find lead admin
-  const leadAdmin = useMemo(() => technicians.find(t => t.roles?.includes('super_admin')), []);
-  const leadName = auth.currentUser?.displayName || leadAdmin?.name || 'Administrator';
-  const leadInitials = leadName.split(' ').map(n => n[0]).join('') || 'AD';
+  // Use real admin for contact if in client portal
+  const leadAdmin = useMemo(() => currentUser?.roles?.includes('super_admin') ? currentUser : null, [currentUser]);
+  const leadName = leadAdmin?.name || 'Administrator';
+  const leadInitials = leadName.split(' ').map((n: string) => n[0]).join('') || 'AD';
 
   return (
     <>
@@ -286,13 +310,13 @@ export function AlertBand() {
             </div>
             <div className="flex items-center gap-3">
               <a 
-                href={`mailto:${leadAdmin?.email || 'admin@aaromach.com'}`}
+                href="mailto:admin@aaromach.com"
                 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
               >
                 <Mail size={12} /> Email
               </a>
               <a 
-                href={`sms:${leadAdmin?.phone || '+15550000000'}`}
+                href="sms:+15550000000"
                 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-red hover:text-brand-red-hover transition-colors"
               >
                 <MessageSquare size={12} /> SMS
@@ -317,7 +341,7 @@ export function AlertBand() {
                   <selectedAlert.icon size={20} />
                 </div>
               )}
-              <div>
+              <div className="text-left">
                 <DialogTitle className="uppercase tracking-widest text-text-primary text-base">Operational Alert Briefing</DialogTitle>
                 <p className={cn(
                   "text-[10px] font-bold uppercase tracking-widest",
@@ -337,7 +361,7 @@ export function AlertBand() {
                     <Info size={14} className="text-brand-red" />
                     Strategic Context
                   </p>
-                  <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium">
+                  <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">
                     {selectedAlert.description}
                   </p>
                 </div>
@@ -355,7 +379,7 @@ export function AlertBand() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
               Dismiss
             </Button>
-            <Button onClick={handleAction} className="h-10 flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest">
+            <Button onClick={handleAction} className="h-10 flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
               {selectedAlert?.actionLabel || 'Take Action'}
               <ChevronRight size={14} className="ml-1.5" />
             </Button>

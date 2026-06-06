@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WorkOrder, Technician, Recommendation, ReliabilityEvent, WeeklyLog } from '@/lib/types';
+import type { WorkOrder, Technician, ReliabilityEvent, WeeklyLog } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { 
   Dialog, 
   DialogContent, 
@@ -25,17 +25,12 @@ import {
   Users,
   FileText,
   Activity,
-  Navigation,
-  Play,
   LogOut,
   CheckCircle2,
-  ListTodo,
-  Circle,
-  Briefcase,
   History,
-  RotateCcw,
   RefreshCw,
-  Pencil
+  Pencil,
+  ChevronDown
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,7 +40,7 @@ import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-// ─── Sub-components for the new UI ───────────────────────────────────────────
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
 function MetaBox({ icon: Icon, value }: { icon: any; value: string }) {
   return (
@@ -164,6 +159,16 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     }).catch(console.error).finally(() => setLoadingAdmin(false));
   }, [activeTab, mission, isOpen]);
 
+  const techHistory = useMemo(() => {
+    if (!mission || !mission.history) return [];
+    return mission.history.filter(h => 
+      h.type === 'tech_swap' || 
+      h.type === 'tech_add' || 
+      h.type === 'tech_remove' ||
+      h.details.toLowerCase().includes('assigned to')
+    ).reverse();
+  }, [mission]);
+
   if (!mission) return null;
 
   const isLocked = mission.status === 'completed';
@@ -254,7 +259,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                             </a>
                         )}
                     </div>
-                    <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed uppercase font-medium italic shadow-inner">
+                    <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed uppercase font-medium italic shadow-inner text-left">
                         &quot;{mission.description}&quot;
                     </div>
                 </div>
@@ -279,22 +284,49 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                     </div>
                     <div className="space-y-4">
                         <SectionLabel>Personnel Allocation</SectionLabel>
-                        {leadTech ? (
-                             <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
-                                <Avatar className="h-10 w-10 border border-border-sub">
-                                    <AvatarImage src={leadTech.avatarUrl}/>
-                                    <AvatarFallback>{leadTech.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="text-left">
-                                    <p className="text-xs font-black text-text-primary uppercase tracking-tight">{leadTech.name}</p>
-                                    <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{leadTech.role}</p>
-                                </div>
-                             </div>
-                        ) : (
-                            <div className="p-8 border border-dashed border-border-sub rounded-xl text-center opacity-40">
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
+                        <div className="space-y-4">
+                          {leadTech ? (
+                              <div className="p-3 rounded-xl bg-bg-secondary border border-border-sub flex items-center gap-3 shadow-sm">
+                                  <Avatar className="h-10 w-10 border border-border-sub">
+                                      <AvatarImage src={leadTech.avatarUrl}/>
+                                      <AvatarFallback>{leadTech.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="text-left">
+                                      <p className="text-xs font-black text-text-primary uppercase tracking-tight">{leadTech.name}</p>
+                                      <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{leadTech.role}</p>
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="p-8 border border-dashed border-border-sub rounded-xl text-center opacity-40">
+                                  <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
+                              </div>
+                          )}
+
+                          {techHistory.length > 0 && (
+                            <div className="space-y-2 pt-2 border-t border-border-sub/30">
+                              <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 text-left">Allocation History</p>
+                              <div className="space-y-2">
+                                {techHistory.map((h, i) => (
+                                  <div key={i} className="flex gap-3 text-left">
+                                    <div className="flex flex-col items-center">
+                                      <div className={cn(
+                                        "w-1.5 h-1.5 rounded-full mt-1.5",
+                                        h.type === 'tech_remove' ? "bg-text-red" : "bg-text-green"
+                                      )} />
+                                      {i !== techHistory.length - 1 && <div className="w-px flex-1 bg-border-sub/30 mt-1" />}
+                                    </div>
+                                    <div className="pb-1">
+                                      <p className="text-[10px] font-bold text-text-primary uppercase leading-tight text-left">{h.details}</p>
+                                      <p className="text-[8px] text-text-muted mt-1 uppercase text-left">
+                                        {h.date} · BY: {h.user}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                        )}
+                          )}
+                        </div>
                     </div>
                 </div>
             </TabsContent>
@@ -370,7 +402,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                         <Badge variant="active" className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Audit Verified</Badge>
                                     </div>
                                     <div className="p-4">
-                                         <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+                                         <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">
                                             Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span>
                                          </p>
                                     </div>
@@ -378,7 +410,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                             ) : (
                                 <div className="p-12 border-2 border-dashed border-border-sub rounded-xl text-center opacity-40 bg-bg-secondary/30">
                                     <Clock size={32} className="mx-auto text-text-muted mb-2" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest italic">Awaiting payroll submission</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Awaiting payroll submission</p>
                                 </div>
                             )}
                         </div>
@@ -414,7 +446,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                             <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
                             <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Temporal Log Protocol</p>
-                                <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium">
+                                <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
                                     Audit data is aggregated from the rolling reliability ledger and submitted technician manifests.
                                 </p>
                             </div>

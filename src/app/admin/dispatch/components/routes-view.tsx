@@ -329,8 +329,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
             if (result.routes && result.routes.length > 0) {
                 const newRoutes: Route[] = result.routes.map((p, idx) => ({
-                    id: p.routeId || `route-tactical-${Date.now()}-${idx}`,
-                    name: p.estimatedRouteLabel || `Cluster: ${p.technicianName || 'Unassigned'}`,
+                    id: p.routeId || `route-area-${Date.now()}-${idx}`,
+                    name: p.estimatedRouteLabel || `Area: ${p.technicianName || 'Unassigned'}`,
                     technicianName: p.technicianName || "",
                     workOrderIds: p.jobIds
                 }));
@@ -347,8 +347,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 onWorkOrdersChange(updatedWorkOrders);
                 
                 toast({
-                    title: "Tactical Layout Applied",
-                    description: `Successfully architected ${newRoutes.length} tactical routes based on geographic city anchors.`,
+                    title: "Area Optimization Applied",
+                    description: `Successfully architected ${newRoutes.length} service areas based on geographic city anchors.`,
                 });
             }
         } catch (e: any) {
@@ -438,7 +438,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 <div className="flex items-center gap-6 w-full xl:w-auto">
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 text-left">
                         <Layers size={14} className="text-brand-red" />
-                        Tactical Optimization
+                        Area Optimization
                     </h3>
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <ClipboardList size={12} className="text-accent-gold" />
@@ -466,7 +466,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.1)]"
                     >
                         {isOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Zap size={14} className="mr-2" />}
-                        Optimize ({targetRouteCount} Routes)
+                        Optimize ({targetRouteCount} Areas)
                     </Button>
                     <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
                     <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">
@@ -514,7 +514,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     {routes.length === 0 && (
                         <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                             <Layers size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active formations. Establish a new route or execute tactical optimization to begin grouping jobs.</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active areas. Establish a new route or execute area optimization to begin grouping jobs.</p>
                         </div>
                     )}
                 </div>
@@ -602,7 +602,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                             ))}
                             {filteredUnassigned.length === 0 && (
                                 <div className="text-center py-12 border border-dashed border-border-sub rounded-lg">
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic text-center">Registry Clear: No Unassigned Jobs Found</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic text-center">Registry clear: No unassigned jobs found</p>
                                 </div>
                             )}
                         </div>

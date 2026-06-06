@@ -11,7 +11,7 @@ import type { WorkOrder, Technician, Route } from "@/lib/types";
  * 3. Tactical Urgency (Priority weighting).
  * 
  * Protocol Update: This engine now prioritizes the requested route quantity 
- * even if no technician match is found for a specific cluster.
+ * even if no technician match is found for a specific area.
  */
 
 export async function getOptimizedRoutes(input: {
@@ -61,7 +61,7 @@ export async function getOptimizedRoutes(input: {
         cityGroups[city].push(job.id);
     });
 
-    // 4. TACTICAL FORMATION GENERATION
+    // 4. ROUTE FORMATION GENERATION
     // Flatten job pool while maintaining geographic grouping
     const sortedCities = Object.keys(cityGroups).sort((a, b) => cityGroups[b].length - cityGroups[a].length);
     const jobPool: string[] = [];
@@ -79,7 +79,7 @@ export async function getOptimizedRoutes(input: {
         const routeJobIds = jobPool.slice(start, end);
 
         if (routeJobIds.length > 0) {
-            // Find a common location anchor for the cluster
+            // Find a common location anchor for the area
             const firstJobId = routeJobIds[0];
             const firstJob = prioritizedJobs.find(j => j.id === firstJobId);
             const cityAnchor = firstJob ? formatCityState(firstJob.location) : "Regional";
@@ -96,8 +96,8 @@ export async function getOptimizedRoutes(input: {
                 technicianId: nearbyTech?.id || null,
                 technicianName: nearbyTech?.name || "",
                 jobIds: routeJobIds,
-                reasoning: `Geographic cluster anchored to ${cityAnchor}. Sequence optimized by mission priority and start times.`,
-                estimatedRouteLabel: `${cityNameOnly} Tactical Cluster ${i + 1}`
+                reasoning: `Geographic area anchored to ${cityAnchor}. Sequence optimized by mission priority and start times.`,
+                estimatedRouteLabel: `${cityNameOnly} Area ${i + 1}`
             });
 
             routeJobIds.forEach(id => assignedJobIds.add(id));
@@ -107,15 +107,15 @@ export async function getOptimizedRoutes(input: {
     return {
       routes,
       unassignedJobIds: validJobs.filter(j => !assignedJobIds.has(j.id)).map(j => j.id),
-      warnings: routes.length < targetRouteCount ? ["Registry Concentration: Job volume insufficient for full tactical distribution."] : []
+      warnings: routes.length < targetRouteCount ? ["Registry Concentration: Job volume insufficient for full regional distribution."] : []
     };
 
   } catch (error: any) {
-    console.error("[SERVER] TACTICAL ROUTING FAILURE:", error.message);
+    console.error("[SERVER] ROUTING FAILURE:", error.message);
     return {
       routes: [],
       unassignedJobIds: input.unassignedJobs.map(j => j.id),
-      warnings: ["Tactical routing engine encountered a registry error. Please use Manual Dispatch."]
+      warnings: ["Routing engine encountered a registry error. Please use Manual Dispatch."]
     };
   }
 }

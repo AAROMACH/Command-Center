@@ -20,7 +20,7 @@ import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
-import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval } from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval, parseISO, startOfDay } from 'date-fns';
 
 /**
  * @fileOverview Master Financial Registry.
@@ -204,7 +204,6 @@ export default function FinancialsPage() {
     
     const handleSaveInvoice = async (savedInvoice: Invoice) => {
         try {
-            // Registry Protocol: Stripping undefined fields to ensure Firestore handshake success
             const cleanedData = JSON.parse(JSON.stringify(savedInvoice));
             const { id, ...data } = cleanedData;
 
@@ -213,7 +212,6 @@ export default function FinancialsPage() {
                 toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
             } else {
                 const docRef = await addDoc(collection(db, 'invoices'), data);
-                // Synchronize registry ID within document
                 await updateDoc(docRef, { id: docRef.id });
                 toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
             }
@@ -226,12 +224,82 @@ export default function FinancialsPage() {
 
     const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
         // Status updates are handled within the dialog, this just facilitates the local refresh if needed
-        // but since we have a live onSnapshot, it will update automatically.
     };
 
     const handleReviewLog = (log: WeeklyLog) => {
         setSelectedLog(log);
         setIsReviewDialogOpen(true);
+    };
+
+    const handleExecuteExport = () => {
+        if (exportConfig.types.length === 0) {
+            toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category.' });
+            return;
+        }
+
+        const start = startOfDay(parseISO(exportConfig.from));
+        const end = startOfDay(parseISO(exportConfig.to));
+
+        const escapeCSV = (val: any) => {
+            const str = String(val ?? "");
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        const rows: string[][] = [
+            ['TYPE', 'REFERENCE ID', 'DATE', 'ENTITY', 'DESCRIPTION', 'AMOUNT', 'STATUS']
+        ];
+
+        if (exportConfig.types.includes('invoices')) {
+            invoices.forEach(inv => {
+                const d = startOfDay(parseISO(inv.issueDate));
+                if (isWithinInterval(d, { start, end })) {
+                    rows.push(['INV', inv.invoiceNumber, inv.issueDate, inv.clientName, 'Invoice Settlement', inv.total.toString(), inv.status]);
+                }
+            });
+        }
+
+        if (exportConfig.types.includes('expenses')) {
+            expenses.forEach(exp => {
+                const d = startOfDay(parseISO(exp.date));
+                if (isWithinInterval(d, { start, end })) {
+                    rows.push(['EXP', exp.id, exp.date, exp.submittedBy, exp.description, exp.amount.toString(), exp.status]);
+                }
+            });
+        }
+
+        if (exportConfig.types.includes('payroll')) {
+            weeklyLogs.forEach(log => {
+                try {
+                    const parts = log.weekOf.split('-');
+                    const d = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
+                    if (isWithinInterval(d, { start, end })) {
+                        rows.push(['PAY', log.id, log.weekOf, getTechnicianName(log.technicianId), 'Weekly Log Payout', (log.totalPayout || 0).toString(), log.status]);
+                    }
+                } catch(e) {}
+            });
+        }
+
+        if (rows.length === 1) {
+            toast({ variant: 'warning', title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
+            return;
+        }
+
+        const csvContent = rows.map(r => r.map(escapeCSV).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Aaromach_General_Ledger_${exportConfig.from}_to_${exportConfig.to}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: 'Export Dispatched', description: 'General ledger manifest has been generated and transmitted.' });
+        setIsExportDialogOpen(false);
     };
 
     const filteredWeeklyLogs = useMemo(() => {
@@ -497,6 +565,55 @@ export default function FinancialsPage() {
                         <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period Finalized" : "Request Sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
                             {userIsSuperAdmin ? "Execute Global Lock" : "Submit Request"}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* EXPORT CONFIGURATION TERMINAL */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Download className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">General Ledger Export</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Configure the parameters for your financial data extraction.</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-6 space-y-6 text-left">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">From Date</Label>
+                                <Input type="date" value={exportConfig.from} onChange={e => setExportConfig({...exportConfig, from: e.target.value})} className="h-10 bg-bg-primary text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">To Date</Label>
+                                <Input type="date" value={exportConfig.to} onChange={e => setExportConfig({...exportConfig, to: e.target.value})} className="h-10 bg-bg-primary text-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Manifest Categories</Label>
+                            <div className="space-y-2">
+                                {[
+                                    { id: 'invoices', label: 'Client Invoices' },
+                                    { id: 'expenses', label: 'Field Expenses' },
+                                    { id: 'payroll', label: 'Operative Payroll' }
+                                ].map(type => (
+                                    <div key={type.id} className="flex items-center space-x-3 p-3 rounded-lg border border-border-sub bg-bg-primary hover:border-brand-red transition-all cursor-pointer" onClick={() => {
+                                        setExportConfig(prev => ({
+                                            ...prev,
+                                            types: prev.types.includes(type.id) ? prev.types.filter(t => t !== type.id) : [...prev.types, type.id]
+                                        }));
+                                    }}>
+                                        <Checkbox checked={exportConfig.types.includes(type.id)} className="h-4 w-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wide text-text-primary">{type.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Execute Export</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

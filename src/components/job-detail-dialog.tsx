@@ -372,7 +372,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         <InfoGrid items={[
                             { label: 'Job Type', value: mission.projectType || '—' },
                             { label: 'Priority', value: mission.priority },
-                            { label: 'Settlement', value: `${PAY_TYPE_LABELS[mission.payType || 'fixed']}` },
+                            { 
+                              label: 'Settlement', 
+                              value: (
+                                <span className="text-text-green font-mono">
+                                  ${mission.payType === 'hourly' ? `${mission.pay}/hr` : mission.pay.toFixed(2)}
+                                </span>
+                              ) 
+                            },
                             { label: 'Registry', value: mission.source || 'Manual' },
                         ]} />
                     </div>

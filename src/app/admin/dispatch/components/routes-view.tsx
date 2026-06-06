@@ -306,7 +306,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
         setIsAiOptimizing(true);
         try {
-            // DATA SANITIZATION: Exclude exact street addresses and invalid operatives
             const availableTechs = technicians.filter(t => 
                 !t.roles?.includes('client') && 
                 t.name && 
@@ -317,7 +316,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 unassignedJobs: unassigned.map(j => ({
                     id: j.id,
                     description: j.description,
-                    location: formatCityState(j.location), // SANITIZED
+                    location: j.location,
                     scheduleDate: j.scheduleDate,
                     scheduleTime: j.scheduleTime,
                     priority: j.priority,
@@ -326,7 +325,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 availableTechnicians: availableTechs.map(t => ({
                     id: t.id,
                     name: t.name,
-                    currentLocation: formatCityState(t.address || t.currentLocation), // SANITIZED
+                    currentLocation: t.address || t.currentLocation || '',
                     reliabilityScore: t.reliabilityScore,
                     skills: t.skills || []
                 })),
@@ -335,18 +334,18 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
             if (result.warnings && result.warnings.length > 0) {
                 toast({ 
-                    variant: result.proposedRoutes.length > 0 ? "default" : "destructive", 
+                    variant: result.routes.length > 0 ? "default" : "destructive", 
                     title: "Intelligence Terminal Alert", 
                     description: result.warnings[0] 
                 });
             }
 
-            if (result.proposedRoutes.length > 0) {
-                const newRoutes: Route[] = result.proposedRoutes.map((p, idx) => ({
-                    id: `route-ai-${Date.now()}-${idx}`,
-                    name: `AI Route: ${p.technicianName}`,
+            if (result.routes && result.routes.length > 0) {
+                const newRoutes: Route[] = result.routes.map((p, idx) => ({
+                    id: p.routeId || `route-ai-${Date.now()}-${idx}`,
+                    name: p.estimatedRouteLabel || `AI Route: ${p.technicianName}`,
                     technicianName: p.technicianName,
-                    workOrderIds: p.orderedWorkOrderIds
+                    workOrderIds: p.jobIds
                 }));
 
                 const updatedWorkOrders = allWorkOrders.map(wo => {
@@ -366,7 +365,6 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 });
             }
         } catch (e: any) {
-            // Action now returns safe messages, but we catch unexpected crashes
             toast({ variant: "destructive", title: "Optimization Failure", description: "Auto Dispatch is temporarily unavailable. Please use Manual Dispatch." });
         } finally {
             setIsAiOptimizing(false);

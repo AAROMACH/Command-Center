@@ -26,7 +26,8 @@ import {
     MapPin,
     RotateCcw,
     X,
-    ShieldAlert
+    ShieldAlert,
+    Eye
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';

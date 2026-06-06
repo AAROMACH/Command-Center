@@ -108,7 +108,7 @@ function ImportedJobAudit({
                             type="number"
                             value={totalPay}
                             onChange={(e) => handleFieldUpdate({ pay: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-3.5 p-0 bg-bg-secondary font-mono font-bold" 
+                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono font-bold" 
                         />
                     </div>
                 </div>
@@ -120,7 +120,7 @@ function ImportedJobAudit({
                             type="number"
                             value={reimbursement}
                             onChange={(e) => handleFieldUpdate({ auditReimbursement: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-3.5 p-0 bg-bg-secondary font-mono" 
+                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>
@@ -132,7 +132,7 @@ function ImportedJobAudit({
                             type="number"
                             value={overhead}
                             onChange={(e) => handleFieldUpdate({ auditOverhead: parseFloat(e.target.value) || 0 })}
-                            className="h-4 w-full text-[8px] pl-3.5 p-0 bg-bg-secondary font-mono" 
+                            className="h-4 w-full text-[8px] pl-5 p-0 bg-bg-secondary font-mono" 
                         />
                     </div>
                 </div>

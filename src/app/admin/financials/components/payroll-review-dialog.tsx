@@ -48,7 +48,7 @@ type PayrollReviewDialogProps = {
     setIsOpen: (open: boolean) => void;
     log: WeeklyLog | null;
     technician: Technician | undefined;
-    onStatusChange: (logId: string, status: WeeklyLog['status']) => void;
+    onStatusChange: (logId: string, status: WeeklyLog['status'], total?: number) => void;
 };
 
 const getFieldNationLink = (id: string) => {
@@ -94,9 +94,9 @@ function ImportedJobAudit({
     return (
         <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg text-left">
              <div className="grid grid-cols-3 gap-2 text-left">
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 text-left">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Pay (Gross)</Label>
-                    <div className="relative">
+                    <div className="relative text-left">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
@@ -106,9 +106,9 @@ function ImportedJobAudit({
                         />
                     </div>
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 text-left">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Reimbursement</Label>
-                    <div className="relative">
+                    <div className="relative text-left">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
@@ -118,9 +118,9 @@ function ImportedJobAudit({
                         />
                     </div>
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 text-left">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Overhead</Label>
-                    <div className="relative">
+                    <div className="relative text-left">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input 
                             type="number"
@@ -184,10 +184,27 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             return 'TBD';
         }
     }, [technician]);
+
+    const calculatedTotalPayout = useMemo(() => {
+        if (!localLog) return 0;
+        const assignmentPay = (localLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0);
+        const reimbursementPay = (localLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
+        return assignmentPay + reimbursementPay;
+    }, [localLog]);
     
-    const handleStatusChange = (status: WeeklyLog['status']) => {
+    const handleStatusChange = async (status: WeeklyLog['status']) => {
         if (localLog) {
-            onStatusChange(localLog.id, status);
+            const finalTotal = calculatedTotalPayout;
+            try {
+                const logRef = doc(db, 'weeklyLogs', localLog.id);
+                await updateDoc(logRef, { 
+                    status,
+                    totalPayout: finalTotal
+                });
+                onStatusChange(localLog.id, status, finalTotal);
+            } catch (e: any) {
+                toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            }
         }
     };
 
@@ -211,11 +228,26 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
-    const handleUpdateWorkOrder = useCallback((woId: string, updates: Partial<WorkOrder>) => {
+    const handleUpdateWorkOrder = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
         setLocalWorkOrders(prev => prev.map(wo => 
             wo.id === woId ? { ...wo, ...updates } : wo
         ));
-    }, []);
+
+        if (updates.finalPay !== undefined && localLog) {
+            const updatedItems = (localLog.items || []).map(item => 
+                item.workOrderId === woId ? { ...item, jobPay: updates.finalPay! } : item
+            );
+            
+            try {
+                const logRef = doc(db, 'weeklyLogs', localLog.id);
+                await updateDoc(logRef, { items: updatedItems });
+                setLocalLog({ ...localLog, items: updatedItems });
+                toast({ title: "Pay Registry Updated", description: "Audit adjustment reflected in current manifest." });
+            } catch (e: any) {
+                toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
+            }
+        }
+    }, [localLog, toast]);
 
     const toggleAuditItem = async (itemId: string, workOrderId: string) => {
         if (!localLog) return;
@@ -223,7 +255,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const item = (localLog.items || []).find(i => i.id === itemId);
         if (!item) return;
 
-        // CRITICAL: Use null instead of undefined for Firestore sync
         const nextStatus = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
         const updatedItems = (localLog.items || []).map(i => 
             i.id === itemId ? { ...i, confirmationStatus: nextStatus, isAdminReviewed: !!nextStatus } : i
@@ -269,20 +300,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const totalJobsCount = (localLog?.items?.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
     const auditCompleteCount = (localLog?.items || []).filter(i => i.isAdminReviewed).length + (localLog?.missingAssignmentReports || []).filter(r => (r as any).isAudited).length;
     const isManifestFullyAudited = auditCompleteCount === totalJobsCount && totalJobsCount > 0;
-
-    const calculatedTotalPayout = useMemo(() => {
-        if (!localLog) return 0;
-        const assignmentPay = (localLog.items || [])
-            .filter(i => i.confirmationStatus === 'confirmed' || i.confirmationStatus === 'disputed')
-            .reduce((acc, i) => {
-                const wo = findWorkOrder(i.workOrderId);
-                return acc + (wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0);
-            }, 0);
-        
-        const reimbursementPay = (localLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
-        
-        return assignmentPay + reimbursementPay;
-    }, [localLog, localWorkOrders, findWorkOrder]);
 
     if (!localLog || !technician) return null;
 
@@ -356,7 +373,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <p className="text-[11px] font-black text-text-red uppercase tracking-widest">Unsubmit Request Flagged</p>
                                                     <span className="text-[9px] text-text-muted font-mono uppercase">{localLog.unsubmitRequestedAt ? format(parseISO(localLog.unsubmitRequestedAt), 'MMM d, h:mm a') : ''}</span>
                                                 </div>
-                                                <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic">&quot;{localLog.unsubmitReason}&quot;</p>
+                                                <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">&quot;{localLog.unsubmitReason}&quot;</p>
                                                 <div className="pt-2">
                                                     <Button 
                                                         size="sm" 
@@ -439,7 +456,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <div className="text-right min-w-[70px]">
                                                                     <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
                                                                     <p className="text-sm font-mono font-bold text-text-primary">
-                                                                        ${(wo?.finalPay !== undefined ? wo.finalPay : wo?.pay || 0).toFixed(2)}
+                                                                        ${(item.jobPay || 0).toFixed(2)}
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -504,7 +521,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[8px] font-black text-text-muted uppercase">Base Payout</p>
-                                                            <p className="text-sm font-mono font-bold text-text-red">${(wo?.pay || 0).toFixed(2)}</p>
+                                                            <p className="text-sm font-mono font-bold text-text-red">${(item.jobPay || 0).toFixed(2)}</p>
                                                         </div>
                                                     </div>
                                                     <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
@@ -572,7 +589,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     {discrepancyItems.length === 0 && (
                                         <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                             <CheckCircle2 size={48} className="mx-auto mb-2 text-text-muted" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest italic">Discrepancy registry clear</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Discrepancy registry clear</p>
                                         </div>
                                     )}
                                 </div>

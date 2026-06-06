@@ -155,9 +155,11 @@ export default function FinancialsPage() {
         setIsReviewDialogOpen(true);
     };
     
-    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status']) => {
+    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
         try {
-            await updateDoc(doc(db, 'weeklyLogs', logId), { status });
+            const updates: any = { status };
+            if (total !== undefined) updates.totalPayout = total;
+            await updateDoc(doc(db, 'weeklyLogs', logId), updates);
             toast({
                 title: `Log ${status}`,
                 description: `The weekly log has been ${status.toLowerCase()}.`,
@@ -258,172 +260,174 @@ export default function FinancialsPage() {
                     <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="summary" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {financialMetrics.map((metric, index) => (
-                            <Card key={index} className="bg-bg-tertiary border-border-subtle">
-                                <CardHeader className="pb-4">
-                                    <div className="flex justify-between items-start">
-                                        <span className="text-xs font-bold uppercase tracking-wider text-text-muted">{metric.title}</span>
-                                        <metric.TrendIcon size={16} className={
-                                            metric.trendType === 'positive' ? 'text-text-green' :
-                                            metric.trendType === 'negative' ? 'text-text-red' :
-                                            'text-accent-gold'
-                                        } />
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className={`text-4xl font-bold 
-                                        ${metric.trendType === 'negative' ? 'text-text-red' :
-                                          metric.trendType === 'warning' ? 'text-accent-gold' :
-                                          'text-text-primary'}`
-                                    }>
-                                        {metric.value}
-                                    </p>
-                                    <p className={`text-xs font-semibold tracking-wider uppercase mt-2 
-                                        ${metric.trendType === 'positive' ? 'text-text-green' :
-                                          'text-text-muted'}`
-                                    }>
-                                        {metric.trend}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-                <TabsContent value="payroll" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Payroll Audit</CardTitle>
-                            <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="table-wrap p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
-                                        <TableHead className="text-right pr-6"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredWeeklyLogs.map(log => (
-                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                            <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
-                                            <TableCell className="text-sm font-semibold">{getTechnicianName(log.technicianId)}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
-                                                    {log.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {log.unsubmitRequested && (
-                                                    <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
-                                                        <Undo2 size={8} className="mr-1"/> Unsubmit
+                <div className="mt-6">
+                    <TabsContent value="summary">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {financialMetrics.map((metric, index) => (
+                                <Card key={index} className="bg-bg-tertiary border-border-subtle">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">{metric.title}</span>
+                                            <metric.TrendIcon size={16} className={
+                                                metric.trendType === 'positive' ? 'text-text-green' :
+                                                metric.trendType === 'negative' ? 'text-text-red' :
+                                                'text-accent-gold'
+                                            } />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className={`text-4xl font-bold 
+                                            ${metric.trendType === 'negative' ? 'text-text-red' :
+                                              metric.trendType === 'warning' ? 'text-accent-gold' :
+                                              'text-text-primary'}`
+                                        }>
+                                            {metric.value}
+                                        </p>
+                                        <p className={`text-xs font-semibold tracking-wider uppercase mt-2 
+                                            ${metric.trendType === 'positive' ? 'text-text-green' :
+                                              'text-text-muted'}`
+                                        }>
+                                            {metric.trend}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="payroll">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Payroll Audit</CardTitle>
+                                <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
+                                            <TableHead className="text-right pr-6"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredWeeklyLogs.map(log => (
+                                            <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
+                                                <TableCell className="text-sm font-semibold">{getTechnicianName(log.technicianId)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
+                                                        {log.status}
                                                     </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="font-mono text-text-green font-bold">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
-                                            <TableCell className="text-right pr-6">
-                                                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Review Log</Button>
-                                            </TableCell>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {log.unsubmitRequested && (
+                                                        <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
+                                                            <Undo2 size={8} className="mr-1"/> Unsubmit
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-text-green font-bold">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                    <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Review Log</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="invoices">
+                         <Card>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div className="text-left">
+                                    <CardTitle>Client Invoices</CardTitle>
+                                    <CardDescription>Manage and track all client invoices.</CardDescription>
+                                </div>
+                                <Button onClick={handleCreateNewInvoice} className="h-9 px-6"><Plus size={14} className="mr-2"/>Create New Invoice</Button>
+                            </CardHeader>
+                            <CardContent className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Invoice #</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Client</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Due Date</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Total</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="invoices" className="mt-6">
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div className="text-left">
-                                <CardTitle>Client Invoices</CardTitle>
-                                <CardDescription>Manage and track all client invoices.</CardDescription>
-                            </div>
-                            <Button onClick={handleCreateNewInvoice} className="h-9 px-6"><Plus size={14} className="mr-2"/>Create New Invoice</Button>
-                        </CardHeader>
-                        <CardContent className="table-wrap p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Invoice #</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Client</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Due Date</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Total</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredInvoices.map((invoice) => (
-                                        <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors">
-                                            <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
-                                            <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
-                                            <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
-                                            <TableCell className="font-mono text-sm font-bold text-text-primary">${invoice.total.toFixed(2)}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={getInvoiceStatusVariant(invoice.status)} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
-                                            </TableCell>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredInvoices.map((invoice) => (
+                                            <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
+                                                <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
+                                                <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
+                                                <TableCell className="font-mono text-sm font-bold text-text-primary">${invoice.total.toFixed(2)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getInvoiceStatusVariant(invoice.status)} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="expenses">
+                        <Card>
+                            <CardHeader className="text-left">
+                                <CardTitle>Expense Submissions</CardTitle>
+                                <CardDescription>Review and approve submitted technician expenses.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Submitted By</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Description</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="text-right pr-6"></TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="expenses" className="mt-6">
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>Expense Submissions</CardTitle>
-                            <CardDescription>Review and approve submitted technician expenses.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="table-wrap p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Submitted By</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Description</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                        <TableHead className="text-right pr-6"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredExpenses.map((expense) => (
-                                        <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                            <TableCell className="text-xs text-text-muted pl-6">{expense.date}</TableCell>
-                                            <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>
-                                            <TableCell>
-                                                <div className="font-bold text-text-primary text-xs uppercase">{expense.description}</div>
-                                                <div className="text-[10px] text-text-muted uppercase font-bold">{expense.category}</div>
-                                            </TableCell>
-                                            <TableCell className="font-mono text-sm font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
-                                            <TableCell><Badge variant={expense.status === 'Approved' ? 'active' : expense.status === 'Pending' ? 'onhold' : 'missed'} className="text-[8px] h-4 uppercase">{expense.status}</Badge></TableCell>
-                                            <TableCell className="text-right pr-6">
-                                                 {expense.status === 'Pending' && (
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Rejected')}>Deny</Button>
-                                                        <Button size="sm" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Approved')}>Approve</Button>
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredExpenses.map((expense) => (
+                                            <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                <TableCell className="text-xs text-text-muted pl-6">{expense.date}</TableCell>
+                                                <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>
+                                                <TableCell>
+                                                    <div className="font-bold text-text-primary text-xs uppercase">{expense.description}</div>
+                                                    <div className="text-[10px] text-text-muted uppercase font-bold">{expense.category}</div>
+                                                </TableCell>
+                                                <TableCell className="font-mono text-sm font-bold text-text-primary">${expense.amount.toFixed(2)}</TableCell>
+                                                <TableCell><Badge variant={expense.status === 'Approved' ? 'active' : expense.status === 'Pending' ? 'onhold' : 'missed'} className="text-[8px] h-4 uppercase">{expense.status}</Badge></TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                     {expense.status === 'Pending' && (
+                                                        <div className="flex gap-2 justify-end">
+                                                            <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Rejected')}>Deny</Button>
+                                                            <Button size="sm" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Approved')}>Approve</Button>
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </div>
             </Tabs>
 
             {/* FISCAL PERIOD CLOSURE TERMINAL */}
             <Dialog open={isClosePeriodOpen} onOpenChange={setIsClosePeriodOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <ShieldAlert className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">
@@ -438,7 +442,7 @@ export default function FinancialsPage() {
                     </DialogHeader>
 
                     <div className="p-6 space-y-6">
-                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2">
+                        <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2 text-left">
                             <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Tactical Warning</p>
                             <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
                                 Closing the period transitions all financial records (Invoices, Expenses, Payroll) to a read-only archival state.
@@ -446,7 +450,7 @@ export default function FinancialsPage() {
                         </div>
 
                         {userIsSuperAdmin ? (
-                            <div className="space-y-3 pt-2">
+                            <div className="space-y-3 pt-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
                                 <Input 
                                     placeholder="Type 'CLOSE'..." 
@@ -483,7 +487,7 @@ export default function FinancialsPage() {
             {/* EXPORT CONFIGURATION TERMINAL */}
             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
+                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Download className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Audit Export Configuration</DialogTitle>
@@ -494,9 +498,9 @@ export default function FinancialsPage() {
                     <div className="p-6 space-y-8">
                         {/* Temporal Window */}
                         <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1">Temporal Audit Window</h3>
+                            <h3 className="text-[10px] font-black text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 px-1 text-left">Temporal Audit Window</h3>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
                                         <CalendarIcon size={12} /> From
                                     </Label>
@@ -507,7 +511,7 @@ export default function FinancialsPage() {
                                         className="h-10 bg-bg-primary border-border-sub text-xs"
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
                                         <CalendarIcon size={12} /> To
                                     </Label>

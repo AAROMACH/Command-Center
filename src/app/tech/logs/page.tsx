@@ -193,8 +193,6 @@ export default function TechWeeklyLogPage() {
         }
     };
 
-    // --- FUNCTIONAL VERIFICATION HANDSHAKES ---
-
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
         
@@ -254,10 +252,15 @@ export default function TechWeeklyLogPage() {
 
     const handleSubmit = async () => {
         if (!activeLog) return;
+        
+        const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) + 
+                      (activeLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
+
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { 
                 status: 'Submitted', 
-                submittedAt: new Date().toISOString() 
+                submittedAt: new Date().toISOString(),
+                totalPayout: total
             });
             toast({
                 title: "Log Submitted",
@@ -394,7 +397,7 @@ export default function TechWeeklyLogPage() {
                         </Card>
                     ))}
                     {filteredAndSortedLogs.length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
+                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30 text-left">
                             <LayoutList size={48} className="mx-auto text-text-muted mb-2" />
                             <p className="text-[10px] font-bold uppercase tracking-widest italic">Registry clear for these filters</p>
                         </div>
@@ -407,7 +410,7 @@ export default function TechWeeklyLogPage() {
                             <DialogTitle className="uppercase tracking-widest font-bold">Initialize Weekly Log</DialogTitle>
                             <DialogDescription className="text-xs text-left">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
                         </DialogHeader>
-                        <div className="py-6 flex justify-center border-y border-border-sub my-4">
+                        <div className="py-6 flex justify-center border-y border-border-sub my-4 text-left">
                             <Calendar 
                                 mode="single" 
                                 selected={newLogDate} 
@@ -507,7 +510,7 @@ export default function TechWeeklyLogPage() {
 
             {/* UNSET REASONS WARNING */}
             {!isLocked && counts.pending > 0 && (
-                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse">
+                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
                     <ShieldAlert size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
                         <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Registry Verification Required</p>
@@ -559,10 +562,10 @@ export default function TechWeeklyLogPage() {
                     </DialogHeader>
                     <div className="p-6 space-y-4 text-left">
                         <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2">
+                            <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2 text-left">
                                 <Info size={12}/> Amendment Policy
                             </p>
-                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium">
+                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium text-left">
                                 Unsubmitting a log will pause any active billing audits for this week. You must provide a specific tactical reason for this amendment request.
                             </p>
                         </div>
@@ -709,7 +712,7 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                                         value={notes}
                                         onChange={e => setNotes(e.target.value)}
                                         placeholder="Provide specific details for administrative audit..."
-                                        className="bg-bg-secondary h-20 text-xs font-medium uppercase leading-relaxed"
+                                        className="bg-bg-secondary h-20 text-xs font-medium uppercase leading-relaxed text-left"
                                     />
                                 </div>
                             </div>
@@ -797,10 +800,10 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                     </div>
                     <div className="space-y-2 text-left">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label>
-                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed uppercase font-medium" placeholder="Document site activity and terminal outcomes..." />
+                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed uppercase font-medium text-left" placeholder="Document site activity and terminal outcomes..." />
                     </div>
                     <DialogFooter className="pt-4 border-t border-border-sub flex-row gap-3">
-                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
                         <Button type="submit" className="flex-1 bg-brand-red hover:bg-brand-red-hover h-11 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
                             <Send size={14} className="mr-2" /> Submit Inquiry
                         </Button>

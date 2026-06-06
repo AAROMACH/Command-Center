@@ -48,38 +48,41 @@ const recommendTechnicianPrompt = ai.definePrompt({
   name: 'recommendTechnicianPrompt',
   input: { schema: AdminAssignmentRecommendationInputSchema },
   output: { schema: AdminAssignmentRecommendationOutputSchema },
-  prompt: `You are an intelligent assignment recommendation system for a command center. Your goal is to recommend the best technician for a new work order based on several key factors.
+  prompt: `You are an intelligent assignment recommendation system for a command center. Your goal is to recommend the best technician for a new work order based on three mission-critical factors.
 
-Consider the following details for the new work order:
-Work Order ID: {{{workOrder.id}}}
-Description: {{{workOrder.description}}}
-Location: {{{workOrder.location}}}
-Required Skills: {{#each workOrder.requiredSkills}}- {{{this}}}
+STRICT RANKING CRITERIA:
+1. SKILL ALIGNMENT: The operative MUST possess the required skills mentioned in the work order.
+2. OPERATIONAL RELIABILITY: Prioritize technicians with a higher Reliability Score (0-100).
+3. GEOGRAPHIC PROXIMITY: Prioritize technicians whose Current Location is closest to the Work Order Location.
+
+Mission Parameters:
+- Work Order ID: {{{workOrder.id}}}
+- Description: {{{workOrder.description}}}
+- Location: {{{workOrder.location}}}
+- Required Skills: {{#each workOrder.requiredSkills}}- {{{this}}}
 {{/each}}
-Priority: {{{workOrder.priority}}}
+- Priority: {{{workOrder.priority}}}
 
-Here is a list of available technicians and their current profiles:
+Operative Registry:
 {{#each availableTechnicians}}
-Technician ID: {{{id}}}
-Name: {{{name}}}
-Current Location: {{{currentLocation}}}
-Reliability Score: {{{reliabilityScore}}} (0-100)
-Current Workload: {{{currentWorkload}}}
-Skills: {{#each skills}}- {{{this}}}
-{{/each}}
+- Technician ID: {{{id}}}
+  - Name: {{{name}}}
+  - Location: {{{currentLocation}}}
+  - Reliability Index: {{{reliabilityScore}}}
+  - Current Workload: {{{currentWorkload}}}
+  - Skill Registry: {{#each skills}}{{{this}}}, {{/each}}
 ---
 {{/each}}
 
-Based on the work order requirements and the available technicians, recommend the single best technician to assign to this work order.
-Your recommendation should prioritize:
-1.  Matching all required skills.
-2.  Proximity of the technician's current location to the work order location (closer is better).
-3.  Lower current workload.
-4.  Higher reliability score.
-5.  Consider the priority of the work order; for 'critical' or 'high' priority, prioritize availability and speed.
+Recommendation Protocol:
+Select the single best operative. For 'critical' or 'high' priority missions, the weight of proximity and availability increases. 
 
-Provide a detailed reasoning for your choice, explaining how the technician fits the criteria. Also, suggest up to two alternative technicians if there are other good candidates.
-Output your recommendation in JSON format, strictly adhering to the specified output schema.`,
+Your reasoning must explicitly reference:
+- How their Skills match the requirements.
+- Their Reliability Index status.
+- Their distance/location relative to the site.
+
+Output the recommendation in JSON format matching the schema.`,
 });
 
 // Genkit Flow definition

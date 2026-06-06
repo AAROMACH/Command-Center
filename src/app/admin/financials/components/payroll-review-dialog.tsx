@@ -89,7 +89,7 @@ function ImportedJobAudit({
     };
 
     return (
-        <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg">
+        <div className="flex flex-col gap-2 p-2 bg-bg-primary border border-border-sub rounded-lg text-left">
              <div className="grid grid-cols-3 gap-2 text-left">
                 <div className="space-y-0.5">
                     <Label className="text-[7px] uppercase text-text-muted ml-0.5">Total Pay (Gross)</Label>
@@ -200,7 +200,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const item = (localLog.items || []).find(i => i.id === itemId);
         if (!item) return;
 
-        const nextStatus = item.confirmationStatus === 'confirmed' ? undefined : 'confirmed';
+        // CRITICAL: Firestore does not accept undefined. Use null for reset state.
+        const nextStatus = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
         const updatedItems = (localLog.items || []).map(i => 
             i.id === itemId ? { ...i, confirmationStatus: nextStatus as any, isAdminReviewed: !!nextStatus } : i
         );
@@ -210,7 +211,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             await updateDoc(logRef, { items: updatedItems });
             
             const woRef = doc(db, 'assignments', workOrderId);
-            await updateDoc(woRef, { isAudited: !!nextStatus, auditedAt: new Date().toISOString(), auditedBy: 'Admin' });
+            await updateDoc(woRef, { isAudited: !!nextStatus, auditedAt: nextStatus ? new Date().toISOString() : null, auditedBy: nextStatus ? 'Admin' : null });
 
             setLocalLog({ ...localLog, items: updatedItems });
             toast({ title: nextStatus ? "Item Verified" : "Review Reset", description: "Audit trail synchronized with registry." });
@@ -270,7 +271,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </Avatar>
                             <div className="text-left">
                                 <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary">Registry Audit: {technician.name}</DialogTitle>
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                     Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
                                 </p>
                             </div>
@@ -304,8 +305,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </TabsTrigger>
                         </TabsList>
                         <div className="flex items-center gap-4 text-right">
-                             <div>
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Net Tech Settlement</p>
+                             <div className="text-right">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Net Tech Settlement</p>
                                 <p className="text-lg font-mono font-bold text-text-green leading-none">${calculatedTotalPayout.toFixed(2)}</p>
                             </div>
                         </div>
@@ -347,16 +348,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <Trash2 size={14}/>
                                                         </Button>
                                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{wo?.description}</p>
+                                                    <div className="min-w-0 flex-1 text-left">
+                                                        <div className="flex items-center gap-2 text-left">
+                                                            <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description}</p>
                                                             {isImported && (
                                                                 <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest">
-                                                            <div className="flex items-center gap-1.5">
-                                                              <span className="text-brand-red font-mono">{wo?.id.toUpperCase()}</span>
+                                                        <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                                            <div className="flex items-center gap-1.5 text-left">
+                                                              <span className="text-brand-red font-mono text-left">{wo?.id.toUpperCase()}</span>
                                                               {isImported && wo && (
                                                                 <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
                                                                   <ExternalLink size={10} />
@@ -434,11 +435,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 </Button>
                                                             </div>
                                                             <div className="space-y-0.5 text-left">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase">{wo?.id.toUpperCase()}</span>
+                                                                <div className="flex items-center gap-2 text-left">
+                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{wo?.id.toUpperCase()}</span>
                                                                     <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
                                                                 </div>
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo?.description}</p>
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
@@ -447,10 +448,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                     <div className="p-2 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5">
+                                                        <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
                                                             <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
                                                         </p>
-                                                        <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium">
+                                                        <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
                                                             &quot;{item.disputeNotes}&quot;
                                                         </p>
                                                     </div>
@@ -492,16 +493,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <Wrench size={16}/>
                                                             </div>
                                                             <div className="text-left">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Missing Assignment Report</p>
+                                                                <div className="flex items-center gap-2 text-left">
+                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
                                                                     <Badge variant="onhold" className="text-[7px] h-3.5 px-1.5 uppercase">Manual Pay Required</Badge>
                                                                 </div>
-                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{report.date} · {report.location.split(',')[0]}</p>
+                                                                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="p-2 rounded-lg bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
-                                                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic">&quot;{report.summary}&quot;</p>
+                                                        <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-bold italic text-left">&quot;{report.summary}&quot;</p>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -524,13 +525,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     <div className="p-2 bg-bg-tertiary/10 space-y-1 shrink-0">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <section className="space-y-1 text-left px-4">
-                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 text-left">
                                     <Coins size={10} className="text-accent-gold" /> Expenses
                                 </h3>
                                 <div className="space-y-0.5">
                                     {(localLog?.reimbursements || []).map(item => (
-                                        <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center">
-                                            <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1">{item.description}</p>
+                                        <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center text-left">
+                                            <p className="text-[9px] font-bold text-text-primary uppercase truncate flex-1 text-left">{item.description}</p>
                                             <p className="text-[9px] font-mono font-bold text-text-green ml-2">+${item.amount.toFixed(2)}</p>
                                         </div>
                                     ))}
@@ -538,7 +539,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </section>
 
                             <section className="space-y-1 text-left px-4">
-                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5">
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 text-left">
                                     <FileText size={10} className="text-brand-red" /> Settlement
                                 </h3>
                                 <div className="p-2 rounded-lg bg-bg-secondary border border-green-border/20 space-y-1 shadow-inner">

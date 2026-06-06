@@ -51,7 +51,7 @@ export type WorkOrder = {
   requiredSkills: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed';
-  assignedTechnicianId?: string;
+  assignedTechnicianId?: string | null;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];
   clientName: string;
@@ -64,7 +64,7 @@ export type WorkOrder = {
   blendedIncludedHours?: number;
   blendedHourlyRate?: number;
   isAcknowledged?: boolean;
-  routeId?: string;
+  routeId?: string | null;
   isImported?: boolean;
   source?: 'Imported' | 'Manual' | 'Client';
   history?: { type: 'tech_swap' | 'tech_add' | 'tech_remove' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
@@ -80,8 +80,8 @@ export type WorkOrder = {
   auditReimbursement?: number;
   auditOverhead?: number;
   isAudited?: boolean;
-  auditedAt?: string;
-  auditedBy?: string;
+  auditedAt?: string | null;
+  auditedBy?: string | null;
 };
 
 export type Route = {
@@ -279,7 +279,7 @@ export type AssignmentTimeLog = {
 export type WeeklyLogItem = {
   id: string;
   workOrderId: string;
-  confirmationStatus?: 'confirmed' | 'disputed';
+  confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;
   disputeNotes?: string;
   outcomeCode: 'worked_completed' | 'worked_revisit' | 'other';

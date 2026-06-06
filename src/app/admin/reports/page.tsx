@@ -209,7 +209,7 @@ export default function ActivityAuditPage() {
             timestamp: new Date().toISOString(),
             type: newMessage.type as any,
             targetPortal: newMessage.targetPortal as any,
-            isLocked: newMessage.isLocked,
+            isLocked: !!newMessage.isLocked,
             expiresAt: addHours(new Date(), parseInt(durationHours)).toISOString()
         };
 
@@ -505,7 +505,7 @@ export default function ActivityAuditPage() {
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
                 <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh Registry
                 </Button>
@@ -514,9 +514,9 @@ export default function ActivityAuditPage() {
                 const pts = penaltyEvents.filter(p => p.technicianId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
                 const isReliable = pts <= 2;
                 return (
-                    <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
+                    <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
                         <div className="flex items-center gap-4 text-left">
-                            <div className="relative">
+                            <div className="relative text-left">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
                                     <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
@@ -549,12 +549,12 @@ export default function ActivityAuditPage() {
 
     const renderMessaging = () => (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-xl border border-border-sub">
-                <div className="flex items-center gap-3">
+            <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-xl border border-border-sub text-left">
+                <div className="flex items-center gap-3 text-left">
                     <MessageSquare className="text-brand-red h-5 w-5" />
                     <div className="text-left">
-                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">Operational Communications</h3>
-                        <p className="text-[10px] text-text-muted uppercase tracking-widest">System-wide broadcast terminal</p>
+                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">Operational Communications</h3>
+                        <p className="text-[10px] text-text-muted uppercase tracking-widest text-left">System-wide broadcast terminal</p>
                     </div>
                 </div>
                 <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-widest text-white">
@@ -563,13 +563,13 @@ export default function ActivityAuditPage() {
                 </Button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 text-left">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Message Ledger</h3>
                 <div className="space-y-2">
                     {messages.map(msg => (
-                        <div key={msg.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3">
+                        <div key={msg.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3 text-left">
+                            <div className="flex justify-between items-start text-left">
+                                <div className="flex items-center gap-3 text-left">
                                     <div className={cn(
                                         "p-2 rounded-lg border",
                                         msg.type === 'critical' ? "bg-brand-red-dim text-text-red border-brand-red/30" :
@@ -580,8 +580,8 @@ export default function ActivityAuditPage() {
                                         <ActivityIcon size={14} />
                                     </div>
                                     <div className="text-left">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
+                                        <div className="flex items-center gap-2 text-left">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{msg.subject}</p>
                                             {msg.isLocked && <Lock size={12} className="text-brand-red" />}
                                         </div>
                                         <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-left">
@@ -593,12 +593,12 @@ export default function ActivityAuditPage() {
                                 <Badge variant="outline" className="text-[8px] uppercase">{msg.type}</Badge>
                             </div>
                             <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">{msg.body}</p>
-                            <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
-                                <div className="flex items-center gap-2">
+                            <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center text-left">
+                                <div className="flex items-center gap-2 text-left">
                                     <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
                                         {(msg.senderName || 'A').charAt(0)}
                                     </div>
-                                    <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Sent by {msg.senderName}</span>
+                                    <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest text-left">Sent by {msg.senderName}</span>
                                 </div>
                                 <Button 
                                     variant="ghost" 
@@ -623,10 +623,10 @@ export default function ActivityAuditPage() {
                         </div>
                         <DialogDescription className="text-xs text-left">Transmit a tactical message to the selected portal registry.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4 px-6">
-                        <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-6 py-4 px-6 text-left">
+                        <div className="grid grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Target Portal</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Target Portal</Label>
                                 <Select value={newMessage.targetPortal} onValueChange={(val: any) => setNewMessage({...newMessage, targetPortal: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -638,7 +638,7 @@ export default function ActivityAuditPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Priority Level</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Priority Level</Label>
                                 <Select value={newMessage.type} onValueChange={(val: any) => setNewMessage({...newMessage, type: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -652,7 +652,7 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Subject / Headline</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Subject / Headline</Label>
                             <Input 
                                 placeholder="Clear, concise directive..." 
                                 value={newMessage.subject}
@@ -661,7 +661,7 @@ export default function ActivityAuditPage() {
                             />
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Message Body</Label>
+                            <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Message Body</Label>
                             <Textarea 
                                 placeholder="Provide full context and required actions..." 
                                 value={newMessage.body}
@@ -682,14 +682,14 @@ export default function ActivityAuditPage() {
     );
 
     const renderAuditHeader = (title: string, count: number) => (
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub mb-6 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub mb-6 shadow-sm text-left">
             <div className="flex items-center gap-3 text-left">
                 <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
                     <Filter size={16} />
                 </div>
                 <div className="text-left">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">{title}</h3>
-                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{count} records match registry constraints</p>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary text-left">{title}</h3>
+                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-left">{count} records match registry constraints</p>
                 </div>
             </div>
 
@@ -720,7 +720,7 @@ export default function ActivityAuditPage() {
                             <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[9px] font-bold text-brand-red hover:underline">Reset</button>
                         </div>
                         <div className="p-3 space-y-4 text-left">
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-2 text-left">
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>Full Registry</Button>
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '7d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('7d')}>Last 7 Days</Button>
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '30d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('30d')}>Last 30 Days</Button>
@@ -754,35 +754,35 @@ export default function ActivityAuditPage() {
     const renderSiteActivity = () => {
         if (selectedSiteId && activeSite && siteAuditData) {
             return (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedSiteId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+                <div className="space-y-8 animate-in fade-in duration-300 text-left">
+                    <div className="flex items-center justify-between text-left">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedSiteId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted text-left">
                             <ArrowLeft size={14} className="mr-1.5"/> Back to Site Index
                         </Button>
                     </div>
 
                     <div className="flex items-center gap-6 text-left mb-6">
-                        <div className="p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm">
+                        <div className="p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm text-left">
                             <Building2 size={32} className="text-brand-red" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-bold uppercase tracking-wide text-text-primary">{activeSite.name}</h2>
-                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                        <div className="space-y-1 text-left">
+                            <h2 className="text-2xl font-bold uppercase tracking-wide text-text-primary text-left">{activeSite.name}</h2>
+                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
                                 <MapPin size={12} className="text-brand-red"/> {activeSite.location}
                             </p>
                         </div>
                     </div>
 
-                    <Tabs defaultValue="overview" className="w-full">
-                        <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10">
+                    <Tabs defaultValue="overview" className="w-full text-left">
+                        <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 text-left">
                             <TabsTrigger value="overview" className="tab !px-8 h-full data-[state=active]:bg-brand-red">TACTICAL OVERVIEW</TabsTrigger>
                             <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">ASSIGNMENT HISTORY ({siteAuditData.visits.length})</TabsTrigger>
                             <TabsTrigger value="projects" className="tab !px-8 h-full data-[state=active]:bg-brand-red">PROJECT FOLDERS ({siteAuditData.projects.length})</TabsTrigger>
                             <TabsTrigger value="billing" className="tab !px-8 h-full data-[state=active]:bg-brand-red">FINANCIAL AUDIT</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="overview" className="m-0 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <TabsContent value="overview" className="m-0 space-y-6 text-left">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                                 <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Integrity</p>
                                     <p className="text-3xl font-bold text-text-primary">99.9%</p>
@@ -804,9 +804,9 @@ export default function ActivityAuditPage() {
                             
                             <div className="p-6 rounded-xl border border-border-sub bg-bg-secondary/50 text-left space-y-4">
                                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 text-left">Client Briefing</h3>
-                                <div className="grid grid-cols-2 gap-8">
+                                <div className="grid grid-cols-2 gap-8 text-left">
                                     <div className="space-y-3 text-left">
-                                        <div className="space-y-0.5">
+                                        <div className="space-y-0.5 text-left">
                                             <p className="text-[8px] font-bold text-text-muted uppercase text-left">Affiliated Entity</p>
                                             <p className="text-xs font-bold text-text-primary uppercase text-left">{activeSite.client}</p>
                                         </div>
@@ -825,9 +825,9 @@ export default function ActivityAuditPage() {
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="visits" className="m-0 space-y-4">
+                        <TabsContent value="visits" className="m-0 space-y-4 text-left">
                              {renderAuditHeader("Site Deployment Manifest", sortedAllSiteVisits.length)}
-                             <div className="table-wrap p-0">
+                             <div className="table-wrap p-0 text-left">
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
@@ -842,7 +842,7 @@ export default function ActivityAuditPage() {
                                         {sortedAllSiteVisits.map(wo => {
                                             const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                             return (
-                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                     <TableCell className="text-left py-4 pl-6">
                                                         <div className="flex flex-col gap-0.5 text-left">
                                                             <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none text-left">{(wo.id || '').toUpperCase()}</span>
@@ -850,7 +850,7 @@ export default function ActivityAuditPage() {
                                                             <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5 text-left">{wo.clientName}</p>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                    <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase text-left">
                                                         {formatDateDisplay(wo.scheduleDate)}
                                                     </TableCell>
                                                     <TableCell className="text-center">
@@ -901,11 +901,11 @@ export default function ActivityAuditPage() {
                              </div>
                         </TabsContent>
 
-                        <TabsContent value="projects" className="m-0 space-y-4">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <TabsContent value="projects" className="m-0 space-y-4 text-left">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                                 {siteAuditData.projects.map(p => (
-                                    <Card key={p.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer group" onClick={() => router.push(`/admin/projects/${p.id}`)}>
-                                        <CardContent className="p-4 flex items-center justify-between">
+                                    <Card key={p.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer group text-left" onClick={() => router.push(`/admin/projects/${p.id}`)}>
+                                        <CardContent className="p-4 flex items-center justify-between text-left">
                                             <div className="flex items-center gap-4 text-left">
                                                 <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted group-hover:bg-brand-red-dim group-hover:text-brand-red transition-all">
                                                     <Briefcase size={20} />
@@ -920,29 +920,29 @@ export default function ActivityAuditPage() {
                                     </Card>
                                 ))}
                                 {siteAuditData.projects.length === 0 && (
-                                    <div className="col-span-full py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40">
+                                    <div className="col-span-full py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 text-left">
                                         <Briefcase size={32} className="mx-auto text-text-muted mb-2" />
-                                        <p className="text-[10px] font-bold uppercase tracking-widest">No site-linked project folders found</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-center">No site-linked project folders found</p>
                                     </div>
                                 )}
                              </div>
                         </TabsContent>
 
                         <TabsContent value="billing" className="m-0 space-y-4 text-left">
-                            <div className="table-wrap p-0">
+                            <div className="table-wrap p-0 text-left">
                                 <Table>
                                     <TableHeader className="bg-bg-tertiary">
                                         <TableRow className="hover:bg-transparent border-border-sub">
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Invoice #</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Target Project/WO</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Due Date</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Target Project/WO</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Due Date</TableHead>
                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
                                             <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {siteAuditData.invoices.map(inv => (
-                                            <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                            <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">INV-{inv.invoiceNumber}</TableCell>
                                                 <TableCell className="text-xs uppercase font-bold text-text-primary text-left">
                                                     {inv.projectId ? `Project: ${inv.projectId.toUpperCase()}` : inv.workOrderId ? `Job: ${inv.workOrderId.toUpperCase()}` : 'General Settlement'}
@@ -966,14 +966,14 @@ export default function ActivityAuditPage() {
         }
 
         return (
-            <div className="space-y-2">
+            <div className="space-y-2 text-left">
                 <div className="flex justify-between items-center px-1 mb-4 text-left">
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{siteList.length} Managed Site Coordinates</p>
+                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{siteList.length} Managed Site Coordinates</p>
                 </div>
                 {siteList.map(site => (
-                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group">
+                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
                         <div className="flex items-center gap-4 text-left">
-                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors">
+                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors text-left">
                                 <Building2 size={18} />
                             </div>
                             <div className="text-left">
@@ -989,15 +989,15 @@ export default function ActivityAuditPage() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto space-y-8">
-            <header className="space-y-1 text-center">
-                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em]">Operational Intelligence Terminal</p>
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary">Master Registry Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2">Unified oversight for personnel, sites, and strategic analytics</p>
+        <div className="max-w-[1200px] mx-auto space-y-8 text-left">
+            <header className="space-y-1 text-center text-left">
+                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Operational Intelligence Terminal</p>
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Master Registry Audit</h1>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">Unified oversight for personnel, sites, and strategic analytics</p>
             </header>
 
-            <div className="space-y-6">
-                <div className="relative group">
+            <div className="space-y-6 text-left">
+                <div className="relative group text-left">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted group-focus-within:text-brand-red transition-colors" />
                     <Input 
                         placeholder="Search technicians, assignments, site coordinates, projects…" 
@@ -1008,8 +1008,8 @@ export default function ActivityAuditPage() {
                 </div>
 
                 {!searchQuery ? (
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                        <div className="flex justify-center">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
+                        <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
                                 <TabsTrigger 
                                     value="tech" 
@@ -1033,44 +1033,44 @@ export default function ActivityAuditPage() {
                             </TabsList>
                         </div>
 
-                        <div className="min-h-[500px]">
-                            <TabsContent value="tech" className="m-0">
+                        <div className="min-h-[500px] text-left">
+                            <TabsContent value="tech" className="m-0 text-left">
                                 {selectedTechId && activeTech && techStats ? (
-                                    <div className="space-y-8 animate-in fade-in duration-300">
-                                        <div className="flex items-center justify-between">
-                                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+                                    <div className="space-y-8 animate-in fade-in duration-300 text-left">
+                                        <div className="flex items-center justify-between text-left">
+                                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted text-left">
                                                 <ArrowLeft size={14} className="mr-2"/> Back to Registry
                                             </Button>
                                         </div>
                                         
-                                        <div className="flex flex-col lg:flex-row gap-6">
-                                            <div className="lg:w-1/3 space-y-6">
-                                                <Card className="bg-bg-secondary border-border-main shadow-2xl">
-                                                    <CardContent className="p-8 space-y-8 text-center">
-                                                        <div className="flex flex-col items-center gap-4">
+                                        <div className="flex flex-col lg:flex-row gap-6 text-left">
+                                            <div className="lg:w-1/3 space-y-6 text-left">
+                                                <Card className="bg-bg-secondary border-border-main shadow-2xl text-left">
+                                                    <CardContent className="p-8 space-y-8 text-center text-left">
+                                                        <div className="flex flex-col items-center gap-4 text-left">
                                                             <Avatar className="h-20 w-20 border-2 border-brand-red">
                                                                 <AvatarImage src={activeTech.avatarUrl} />
                                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
-                                                            <div className="space-y-1">
-                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{activeTech.name || 'Unnamed Operative'}</h2>
-                                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email}</p>
+                                                            <div className="space-y-1 text-center">
+                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
+                                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest text-center">{activeTech.email}</p>
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="space-y-6 pt-4 border-t border-border-sub/30">
-                                                            <div className="space-y-1">
-                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust</p>
-                                                                <p className={cn("text-5xl font-mono font-bold tracking-tighter", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
+                                                        <div className="space-y-6 pt-4 border-t border-border-sub/30 text-left">
+                                                            <div className="space-y-1 text-center">
+                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Operational Trust</p>
+                                                                <p className={cn("text-5xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
                                                                 <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
                                                                     {getReliabilityTier(techStats.reliability)}
                                                                 </Badge>
                                                             </div>
-                                                            <div className="flex items-center justify-center gap-1.5 opacity-60">
-                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest">REG ID: {activeTech.id}</span>
+                                                            <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
+                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.id}</span>
                                                             </div>
 
-                                                            <div className="flex justify-center gap-4">
+                                                            <div className="flex justify-center gap-4 text-left">
                                                                 <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
                                                                     <a href={`mailto:${activeTech.email}`}><Mail size={14} className="mr-2"/> Email</a>
                                                                 </Button>
@@ -1082,18 +1082,18 @@ export default function ActivityAuditPage() {
                                                     </CardContent>
                                                 </Card>
                                                 
-                                                <Card className="bg-bg-tertiary/30 border-border-sub">
+                                                <Card className="bg-bg-tertiary/30 border-border-sub text-left">
                                                     <CardHeader className="pb-3 text-left">
-                                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-left">
                                                             <Gauge size={14} className="text-brand-red"/> Performance Index
                                                         </CardTitle>
                                                     </CardHeader>
-                                                    <CardContent className="space-y-3">
-                                                        <div className="flex justify-between items-center px-1">
-                                                            <span className="text-[10px] font-bold text-text-muted uppercase">Mission Success</span>
-                                                            <span className="text-xs font-bold text-text-primary uppercase">{techStats.completed} / {techStats.total}</span>
+                                                    <CardContent className="space-y-3 text-left">
+                                                        <div className="flex justify-between items-center px-1 text-left">
+                                                            <span className="text-[10px] font-bold text-text-muted uppercase text-left">Mission Success</span>
+                                                            <span className="text-xs font-bold text-text-primary uppercase text-right">{techStats.completed} / {techStats.total}</span>
                                                         </div>
-                                                        <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub">
+                                                        <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub text-left">
                                                             <div className="h-full bg-brand-red" style={{ width: `${(techStats.completed / (techStats.total || 1)) * 100}%` }} />
                                                         </div>
                                                         <p className="text-[8px] text-text-muted uppercase italic text-left">Finalized deployments within rolling registry.</p>
@@ -1101,17 +1101,17 @@ export default function ActivityAuditPage() {
                                                 </Card>
                                             </div>
 
-                                            <div className="flex-1 overflow-hidden">
-                                                <Tabs defaultValue="assignments" className="w-full">
-                                                    <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 w-full justify-start gap-8 px-6">
+                                            <div className="flex-1 overflow-hidden text-left">
+                                                <Tabs defaultValue="assignments" className="w-full text-left">
+                                                    <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 w-full justify-start gap-8 px-6 text-left">
                                                         <TabsTrigger value="assignments" className="tab h-full data-[state=active]:bg-brand-red">ASSIGNMENT HISTORY ({techStats.myJobs.length})</TabsTrigger>
                                                         <TabsTrigger value="weeklogs" className="tab h-full data-[state=active]:bg-brand-red">WEEKLOG HISTORY ({techStats.myLogs.length})</TabsTrigger>
                                                         <TabsTrigger value="penalties" className="tab h-full data-[state=active]:bg-brand-red">PENALTY AUDIT</TabsTrigger>
                                                     </TabsList>
 
-                                                    <TabsContent value="assignments" className="m-0 space-y-3">
+                                                    <TabsContent value="assignments" className="m-0 space-y-3 text-left">
                                                         {renderAuditHeader("Assignment Audit Manifest", sortedTechVisits.length)}
-                                                        <div className="table-wrap p-0">
+                                                        <div className="table-wrap p-0 text-left">
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
@@ -1126,15 +1126,15 @@ export default function ActivityAuditPage() {
                                                                     {sortedTechVisits.map(wo => {
                                                                         const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                                                         return (
-                                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                                <TableCell className="text-left py-4 pl-6">
+                                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                                <TableCell className="text-left py-4 pl-6 text-left">
                                                                                     <div className="flex flex-col gap-0.5 text-left">
                                                                                         <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none text-left">{(wo.id || '').toUpperCase()}</span>
                                                                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>
                                                                                         <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5 text-left">{wo.clientName}</p>
                                                                                     </div>
                                                                                 </TableCell>
-                                                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase">
+                                                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase text-left">
                                                                                     {formatDateDisplay(wo.scheduleDate)}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-center">
@@ -1185,22 +1185,22 @@ export default function ActivityAuditPage() {
                                                         </div>
                                                     </TabsContent>
 
-                                                    <TabsContent value="weeklogs" className="m-0 space-y-3">
+                                                    <TabsContent value="weeklogs" className="m-0 space-y-3 text-left">
                                                         {renderAuditHeader("Weekly Log Archive", techStats.myLogs.length)}
-                                                        <div className="table-wrap p-0">
+                                                        <div className="table-wrap p-0 text-left">
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
                                                                         <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Period</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest">Audit Status</TableHead>
+                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Audit Status</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Payout</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {techStats.myLogs.map(log => (
-                                                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                                            <TableCell className="font-bold uppercase text-xs text-left pl-6">Week of {log.weekOf}</TableCell>
-                                                                            <TableCell className="text-left">
+                                                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
+                                                                            <TableCell className="font-bold uppercase text-xs text-left pl-6 text-left">Week of {log.weekOf}</TableCell>
+                                                                            <TableCell className="text-left text-left">
                                                                                 <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
                                                                                     {log.status}
                                                                                 </Badge>
@@ -1218,7 +1218,7 @@ export default function ActivityAuditPage() {
                                                             <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
                                                                 <div className="flex items-center gap-4 text-left">
                                                                     <div className={cn(
-                                                                        "p-2 rounded-lg border",
+                                                                        "p-2 rounded-lg border text-left",
                                                                         p.category === 'critical_failure' ? "bg-brand-red-dim text-text-red border-brand-red/30" : "bg-accent-gold-dim text-accent-gold border-accent-gold/30"
                                                                     )}>
                                                                         <ShieldAlert size={16}/>
@@ -1232,9 +1232,9 @@ export default function ActivityAuditPage() {
                                                             </div>
                                                         ))}
                                                         {techStats.penalties.length === 0 && (
-                                                            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                                                            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
                                                                 <CheckCircle2 size={48} className="mx-auto text-text-green mb-2" />
-                                                                <p className="text-[10px] font-bold uppercase tracking-widest">Clean penalty registry</p>
+                                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">Clean penalty registry</p>
                                                             </div>
                                                         )}
                                                     </TabsContent>
@@ -1245,26 +1245,26 @@ export default function ActivityAuditPage() {
                                 ) : renderTechnicianRoster()}
                             </TabsContent>
 
-                            <TabsContent value="sites" className="m-0">
+                            <TabsContent value="sites" className="m-0 text-left">
                                 {renderSiteActivity()}
                             </TabsContent>
 
-                            <TabsContent value="analytics" className="m-0">
+                            <TabsContent value="analytics" className="m-0 text-left">
                                 <IntelligenceTerminal />
                             </TabsContent>
 
-                            <TabsContent value="messaging" className="m-0">
+                            <TabsContent value="messaging" className="m-0 text-left">
                                 {renderMessaging()}
                             </TabsContent>
 
-                            <TabsContent value="flags" className="m-0">
-                                <div className="space-y-4">
+                            <TabsContent value="flags" className="m-0 text-left">
+                                <div className="space-y-4 text-left">
                                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Anomaly Registry</h3>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0" />
+                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0 text-left" />
                                             <div className="space-y-1 text-left">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide">Field Verification Anomaly</p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Field Verification Anomaly</p>
                                                 <p className="text-[10px] text-text-muted leading-relaxed uppercase text-left">
                                                     Operational discrepancy detected in <code>project_daily_logs</code> registry. Potential temporal ghosting.
                                                 </p>
@@ -1276,10 +1276,10 @@ export default function ActivityAuditPage() {
                         </div>
                     </Tabs>
                 ) : (
-                    <div className="space-y-6 animate-in fade-in duration-300">
+                    <div className="space-y-6 animate-in fade-in duration-300 text-left">
                         {searchResults.length > 0 ? searchResults.map((r, i) => (
                             <div key={i} onClick={() => handleResultClick(r)} className="p-5 rounded-2xl border border-border-main bg-bg-secondary hover:border-brand-red transition-all flex gap-5 group cursor-pointer text-left shadow-sm">
-                                <Badge variant="outline" className={cn("h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black", r.cls)}>
+                                <Badge variant="outline" className={cn("h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black text-left", r.cls)}>
                                     {r.type}
                                 </Badge>
                                 <div className="space-y-1.5 flex-1 min-w-0 text-left">
@@ -1289,9 +1289,9 @@ export default function ActivityAuditPage() {
                                 <ChevronRight size={20} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all self-center" />
                             </div>
                         )) : (
-                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30">
+                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30 text-left">
                                 <SearchX size={48} className="mx-auto text-text-muted mb-4" />
-                                <p className="text-sm font-bold uppercase tracking-widest text-text-muted">No operational matches found</p>
+                                <p className="text-sm font-bold uppercase tracking-widest text-center text-text-muted">No operational matches found</p>
                             </div>
                         )}
                     </div>

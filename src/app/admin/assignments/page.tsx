@@ -302,8 +302,11 @@ export default function AssignmentsHubPage() {
   const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
     const docRef = doc(db, 'assignments', woId);
     updateDoc(docRef, updates).catch((error: any) => {
-        console.error("Field Update Error:", error);
-        toast({ variant: "destructive", title: "Registry Error", description: error.message });
+        const woRef = doc(db, 'workOrders', woId);
+        updateDoc(woRef, updates).catch(err => {
+            console.error("Field Update Error:", err);
+            toast({ variant: "destructive", title: "Registry Error", description: err.message });
+        });
     });
     
     if (selectedJob?.id === woId) {
@@ -314,18 +317,18 @@ export default function AssignmentsHubPage() {
   const hasActiveFilters = !!dateRange?.from || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
   return (
-    <div className="space-y-6">
-      <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="space-y-6 text-left">
+      <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4 text-left">
         <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
+          <p className="page-eyebrow flex items-center gap-2 text-left">
             <CalendarIcon size={12} />
             Assignment Registry Audit
           </p>
-          <h1 className="page-title">Assignments</h1>
-          <p className="page-subtitle">Operational schedule oversight and historical job audit.</p>
+          <h1 className="page-title text-left">Assignments</h1>
+          <p className="page-subtitle text-left">Operational schedule oversight and historical job audit.</p>
         </div>
-        <div className="flex items-center gap-3">
-            <div className="search-wrap">
+        <div className="flex items-center gap-3 text-left">
+            <div className="search-wrap text-left">
               <Search className="h-4 w-4" />
               <input 
                 placeholder="Search Tech, ID, or Title..." 
@@ -337,7 +340,7 @@ export default function AssignmentsHubPage() {
             
             <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                 <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-left">
                         <ArrowUpDown size={14} className="text-text-muted" />
                         <SelectValue placeholder="Sort" />
                     </div>
@@ -360,9 +363,9 @@ export default function AssignmentsHubPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                  <div className="p-4 border-b border-border-sub bg-bg-tertiary">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                  <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
+                    <div className="flex items-center justify-between text-left">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary text-left">Registry Constraints</p>
                       {hasActiveFilters && (
                         <button onClick={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); setSortBy('date'); }} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                           <X size={10} /> Reset
@@ -371,11 +374,11 @@ export default function AssignmentsHubPage() {
                     </div>
                   </div>
                   <div className="p-4 space-y-6 text-left">
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3 text-left">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Priority Audit</p>
+                      <div className="grid grid-cols-2 gap-2 text-left">
                         {['critical', 'high', 'medium', 'low'].map(priority => (
-                          <div key={priority} className="flex items-center space-x-2">
+                          <div key={priority} className="flex items-center space-x-2 text-left">
                             <Checkbox 
                               id={`prio-${priority}`} 
                               checked={activePriorities.includes(priority)}
@@ -383,17 +386,17 @@ export default function AssignmentsHubPage() {
                                 setActivePriorities(prev => checked ? [...prev, priority] : prev.filter(p => p !== priority));
                               }}
                             />
-                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
+                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer text-left">{priority}</Label>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Job Source</p>
-                      <div className="space-y-2">
+                    <div className="space-y-3 text-left">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Job Source</p>
+                      <div className="space-y-2 text-left">
                         {['Imported', 'Manual', 'Client'].map(source => (
-                          <div key={source} className="flex items-center space-x-2">
+                          <div key={source} className="flex items-center space-x-2 text-left">
                             <Checkbox 
                               id={`source-${source}`} 
                               checked={activeSources.includes(source)}
@@ -401,7 +404,7 @@ export default function AssignmentsHubPage() {
                                 setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source));
                               }}
                             />
-                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
+                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer text-left">{source}</Label>
                           </div>
                         ))}
                       </div>
@@ -412,9 +415,9 @@ export default function AssignmentsHubPage() {
         </div>
       </header>
 
-      <Tabs defaultValue="schedule" className="w-full">
-        <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
-          <TabsList className="tabs !mb-0">
+      <Tabs defaultValue="schedule" className="w-full text-left">
+        <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub text-left shadow-sm">
+          <TabsList className="tabs !mb-0 text-left">
             <TabsTrigger value="schedule" className="tab">
               Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
             </TabsTrigger>
@@ -423,11 +426,11 @@ export default function AssignmentsHubPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 text-left">
             <Popover>
               <PopoverTrigger asChild>
                 <div className={cn(
-                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8 text-left",
                     dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                 )}>
                     <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
@@ -456,9 +459,9 @@ export default function AssignmentsHubPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-            <TabsContent value="schedule" className="mt-0 space-y-6">
-                <div className="table-wrap">
+        <div className="space-y-6 text-left">
+            <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
+                <div className="table-wrap text-left">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
@@ -475,11 +478,11 @@ export default function AssignmentsHubPage() {
                                 const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
-                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
+                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
                                         <td className="text-left pl-6 py-4">
-                                            <div className="flex flex-col items-start gap-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="cell-id font-mono text-brand-red font-bold">{(wo.id || '').toUpperCase()}</div>
+                                            <div className="flex flex-col items-start gap-1.5 text-left">
+                                                <div className="flex items-center gap-1.5 text-left">
+                                                    <div className="cell-id font-mono text-brand-red font-bold text-left">{(wo.id || '').toUpperCase()}</div>
                                                     {wo.source === 'Imported' && (
                                                     <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                         <ExternalLink size={10} />
@@ -489,21 +492,21 @@ export default function AssignmentsHubPage() {
                                                 <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                             </div>
                                         </td>
-                                        <td className="text-left pl-0 py-4">
-                                            <div className="flex flex-col min-w-0">
+                                        <td className="text-left pl-0 py-4 text-left">
+                                            <div className="flex flex-col min-w-0 text-left">
                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{wo.clientName}</p>
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1 text-left">{wo.clientName}</p>
                                             </div>
                                         </td>
-                                        <td className="py-4">
-                                            <div className="flex flex-col items-center justify-center">
+                                        <td className="py-4 text-center">
+                                            <div className="flex flex-col items-center justify-center text-center">
                                                 {tech ? (
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-3 text-left">
                                                         <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                                             <AvatarImage src={tech.avatarUrl} />
                                                             <AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback>
                                                         </Avatar>
-                                                        <span className="text-[10px] font-bold text-text-primary uppercase">{tech.name}</span>
+                                                        <span className="text-[10px] font-bold text-text-primary uppercase text-left">{tech.name}</span>
                                                     </div>
                                                 ) : (
                                                     <Button 
@@ -517,37 +520,37 @@ export default function AssignmentsHubPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="py-4 pl-0">
-                                            <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                        <td className="py-4 pl-0 text-left">
+                                            <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase text-left">
                                                 <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal text-left">{formatCityState(wo.location)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 pl-0">
-                                            <div className="flex flex-col items-start justify-center gap-1.5">
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold"><CalendarIcon size={13} className="text-text-muted shrink-0" /><span>{formatDateDisplay(wo.scheduleDate)}</span></div>
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono"><Clock size={13} className="text-text-muted shrink-0" /><span>{wo.scheduleTime}</span></div>
+                                        <td className="py-4 pl-0 text-left">
+                                            <div className="flex flex-col items-start justify-center gap-1.5 text-left">
+                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold text-left"><CalendarIcon size={13} className="text-text-muted shrink-0" /><span>{formatDateDisplay(wo.scheduleDate)}</span></div>
+                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono text-left"><Clock size={13} className="text-text-muted shrink-0" /><span>{wo.scheduleTime}</span></div>
                                             </div>
                                         </td>
-                                        <td className="text-right pr-6 py-4">
-                                            <div className="flex flex-col items-end">
+                                        <td className="text-right pr-6 py-4 text-right">
+                                            <div className="flex flex-col items-end text-right">
                                                 {wo.payType === 'blended' ? (
                                                     <>
-                                                        <span className="text-sm font-mono font-bold text-text-green">
+                                                        <span className="text-sm font-mono font-bold text-text-green text-right">
                                                             ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
                                                         </span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">
                                                             after {wo.blendedIncludedHours || 0} hrs
                                                         </span>
                                                     </>
                                                 ) : wo.payType === 'hourly' ? (
                                                     <>
-                                                        <span className="text-sm font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}/hr</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">hourly labor rate</span>
+                                                        <span className="text-sm font-mono font-bold text-text-green text-right">${(wo.pay || 0).toFixed(2)}/hr</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">hourly labor rate</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <span className="text-sm font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5">fixed labor rate</span>
+                                                        <span className="text-sm font-mono font-bold text-text-green text-right">${(wo.pay || 0).toFixed(2)}</span>
+                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">fixed labor rate</span>
                                                     </>
                                                 )}
                                             </div>
@@ -560,15 +563,15 @@ export default function AssignmentsHubPage() {
                 </div>
 
                 {activeWorkOrders.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 text-left">
                         <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic text-center">No active jobs found matching search criteria</p>
                     </div>
                 )}
             </TabsContent>
 
-            <TabsContent value="archive" className="mt-0">
-                <div className="table-wrap">
+            <TabsContent value="archive" className="mt-0 text-left">
+                <div className="table-wrap text-left">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
@@ -584,12 +587,12 @@ export default function AssignmentsHubPage() {
                                 const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
-                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleCardClick(wo)}>
-                                        <td className="text-left pl-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="flex items-center gap-1.5">
-                                                      <div className="cell-id font-mono text-brand-red">{(wo.id || '').toUpperCase()}</div>
+                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
+                                        <td className="text-left pl-6 py-4 text-left">
+                                            <div className="flex items-center gap-3 text-left">
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="flex items-center gap-1.5 text-center">
+                                                      <div className="cell-id font-mono text-brand-red text-center">{(wo.id || '').toUpperCase()}</div>
                                                       {wo.source === 'Imported' && (
                                                         <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                           <ExternalLink size={10} />
@@ -601,30 +604,30 @@ export default function AssignmentsHubPage() {
                                                 <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
                                             </div>
                                         </td>
-                                        <td className="py-4">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1"><Briefcase size={12}/> {wo.clientName}</div>
-                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase"><CheckCircle2 size={14}/> Successfully Finalized</div>
+                                        <td className="py-4 text-center">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 text-center"><Briefcase size={12}/> {wo.clientName}</div>
+                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase text-center"><CheckCircle2 size={14}/> Successfully Finalized</div>
                                             </div>
-                                        </td>
-                                        <td className="py-4">
-                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal">{formatCityState(wo.location)}</span></div>
                                         </td>
                                         <td className="py-4 text-center">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}</div>
-                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase"><User size={10}/> {tech?.name || 'Field Ops'}</div>
+                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase text-center"><MapPin size={12} className="text-brand-red shrink-0 text-center" /><span className="whitespace-normal text-center">{formatCityState(wo.location)}</span></div>
+                                        </td>
+                                        <td className="py-4 text-center text-center">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight text-center"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}</div>
+                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase text-center"><User size={10}/> {tech?.name || 'Field Ops'}</div>
                                             </div>
                                         </td>
-                                        <td className="py-4 text-right pr-6">
-                                            <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                        <td className="py-4 text-right pr-6 text-right">
+                                            <div className="flex items-center justify-end gap-2 text-right" onClick={e => e.stopPropagation()}>
                                                 {wo.isAudited ? (
-                                                    <Badge variant="active" className="h-7 px-4 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5">
+                                                    <Badge variant="active" className="h-7 px-4 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5 text-right">
                                                         <ShieldCheck size={14} className="text-text-green"/>
                                                         Verified
                                                     </Badge>
                                                 ) : (
-                                                    <div className="flex gap-2">
+                                                    <div className="flex gap-2 text-right">
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm" 
@@ -667,48 +670,48 @@ export default function AssignmentsHubPage() {
         />
         
         <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedJob(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
-          <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
+          <DialogContent className="sm:max-w-[700px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl text-left">
               <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Assignment Parameters</DialogTitle>
-                        <p className="text-xs text-text-muted">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
+                <div className="flex items-center justify-between text-left">
+                    <div className="space-y-1 text-left">
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Update Assignment Parameters</DialogTitle>
+                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
                     </div>
                 </div>
               </DialogHeader>
               {editedOrder && (
-                  <ScrollArea className="flex-1">
-                    <div className="px-6 py-4 space-y-6">
-                        <div className="space-y-4">
+                  <ScrollArea className="flex-1 text-left">
+                    <div className="px-6 py-4 space-y-6 text-left">
+                        <div className="space-y-4 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
                                   <Type size={12} className="text-brand-red"/> Job Title
                                 </Label>
                                 <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
                             </div>
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                            <div className="space-y-2 text-left text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
                                   <FileText size={12} className="text-accent-gold"/> Scope of Work
                                 </Label>
-                                <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                                <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs text-left" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
-                              <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Client / Entity</Label>
+                              <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase text-left" />
                             </div>
-                            <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
-                              <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                            <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Site Location</Label>
+                              <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                          <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Service Category</Label>
                               <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="Installation">Installation</SelectItem>
                                       <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
@@ -718,10 +721,10 @@ export default function AssignmentsHubPage() {
                                   </SelectContent>
                               </Select>
                           </div>
-                          <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
+                          <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Priority Level</Label>
                               <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="low">Low</SelectItem>
                                       <SelectItem value="medium">Medium</SelectItem>
@@ -732,22 +735,22 @@ export default function AssignmentsHubPage() {
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
-                              <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                      <div className="grid grid-cols-2 gap-4 text-left">
+                          <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Schedule Date</Label>
+                              <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                           </div>
-                          <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
-                              <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                          <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Start Window</Label>
+                              <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2 text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                      <div className="grid grid-cols-2 gap-4 text-left">
+                          <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Pay Model</Label>
                               <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
                                       <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
@@ -756,18 +759,18 @@ export default function AssignmentsHubPage() {
                               </Select>
                           </div>
                           {editedOrder.payType !== 'blended' && (
-                              <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Labor Rate ($)</Label>
-                                <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
+                              <div className="space-y-2 text-left text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Labor Rate ($)</Label>
+                                <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green text-left" />
                               </div>
                           )}
                       </div>
 
                       {editedOrder.payType === 'blended' && (
-                          <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
-                              <div className="space-y-2 text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
-                                  <div className="relative">
+                          <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                              <div className="space-y-2 text-left text-left">
+                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Fixed Base ($)</Label>
+                                  <div className="relative text-left">
                                       <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                       <Input 
                                           type="number"
@@ -776,28 +779,28 @@ export default function AssignmentsHubPage() {
                                             const val = parseFloat(e.target.value) || 0;
                                             setEditedOrder({...editedOrder, blendedFixedPay: val, pay: val});
                                           }}
-                                          className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                                          className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px] text-left"
                                       />
                                   </div>
                               </div>
-                              <div className="space-y-2 text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                              <div className="space-y-2 text-left text-left">
+                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Incl. Hours</Label>
                                   <Input 
                                       type="number"
                                       value={editedOrder.blendedIncludedHours || ''}
                                       onChange={(e) => setEditedOrder({...editedOrder, blendedIncludedHours: parseFloat(e.target.value) || 0})}
-                                      className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
+                                      className="bg-bg-primary h-9 font-mono text-text-primary text-[11px] text-left"
                                   />
                               </div>
-                              <div className="space-y-2 text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
-                                  <div className="relative">
+                              <div className="space-y-2 text-left text-left">
+                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Post Rate ($/hr)</Label>
+                                  <div className="relative text-left">
                                       <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                       <Input 
                                           type="number"
                                           value={editedOrder.blendedHourlyRate || ''}
                                           onChange={(e) => setEditedOrder({...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0})}
-                                          className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
+                                          className="bg-bg-primary h-9 font-mono text-text-green text-[11px] text-left"
                                       />
                                   </div>
                               </div>
@@ -805,12 +808,12 @@ export default function AssignmentsHubPage() {
                           </div>
                       )}
 
-                        <Separator className="bg-border-sub" />
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 text-left">
-                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                              <Select value={editedOrder.assignedTechnicianId || editedOrder.techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
-                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
+                        <Separator className="bg-border-sub text-left" />
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block text-left">Technician Allocation</Label>
+                              <Select value={editedOrder.assignedTechnicianId || editedOrder.techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                                <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs text-left">
                                   <SelectValue placeholder="Select Technician" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -819,10 +822,10 @@ export default function AssignmentsHubPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2 text-left">
-                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                            <div className="space-y-2 text-left text-left">
+                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block text-left">Operational Status</Label>
                               <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs">
+                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs text-left">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -840,12 +843,12 @@ export default function AssignmentsHubPage() {
                     </div>
                   </ScrollArea>
               )}
-              <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between">
+              <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between text-left">
                 <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
                     Delete
                 </Button>
-                <div className="flex gap-3">
+                <div className="flex gap-3 text-left">
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
                     <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
                 </div>

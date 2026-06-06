@@ -41,6 +41,11 @@ import {
   Navigation,
   RefreshCw
 } from 'lucide-react';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
 import {
@@ -52,7 +57,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import type { WorkOrder, Assignment, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
+import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -71,23 +76,6 @@ const PAY_TYPE_LABELS: Record<string, string> = {
   fixed:   'Fixed Rate',
   hourly:  'Hourly Labor Rate',
   blended: 'Blended Rate',
-};
-
-const OUTCOME_LABELS: Record<string, string> = {
-  worked_completed:               'Completed',
-  worked_revisit_same_work_order: 'Revisit Required',
-  worked_revisit_new_work_order:  'New Work Order Needed',
-  did_not_work:                   'No Work Performed',
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  completed:    'text-text-green border-green-border/40 bg-green-dim',
-  'checked-out':'text-text-green border-green-border/40 bg-green-dim',
-  'in-progress':'text-accent-gold border-accent-gold/30 bg-accent-gold-dim',
-  'on-my-way':  'text-accent-gold border-accent-gold/30 bg-accent-gold-dim',
-  assigned:     'text-text-muted border-border-sub bg-bg-tertiary',
-  confirmed:    'text-brand-cyan border-brand-cyan/30 bg-brand-cyan/5',
-  unassigned:   'text-text-muted border-border-sub bg-bg-tertiary',
 };
 
 const displayTime = (timeStr?: string) => {
@@ -304,7 +292,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   if (!mission) return null;
 
   const isLocked = mission.status === 'completed';
-  const leadTech = technicians.find(t => t.id === mission.assignedTechnicianId);
+  const leadTech = technicians.find(t => t.id === (mission.assignedTechnicianId || mission.techId));
   const payout = calcPayout(mission);
 
   return (
@@ -508,7 +496,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                         </div>
                                         <Badge variant="active" className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Audit Verified</Badge>
                                     </div>
-                                    <div className="p-4">
+                                    <div className="p-4 text-left">
                                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">
                                             Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span>
                                          </p>

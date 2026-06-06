@@ -2,15 +2,19 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+/**
+ * @fileOverview Firebase Registry Handshake.
+ * Configured to use environment variables for enhanced operational security.
+ */
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCZ3jd1i_QKskjeq2kJSjGV0n7Z4uQYzH0",
-  authDomain: "aaromach-command-center.firebaseapp.com",
-  databaseURL: "https://aaromach-command-center-default-rtdb.firebaseio.com",
-  projectId: "aaromach-command-center",
-  storageBucket: "aaromach-command-center.firebasestorage.app",
-  messagingSenderId: "222038994379",
-  appId: "1:222038994379:web:fb3d2e5e9e587fa5f59a4e",
-  measurementId: "G-FVR8PFVBTC",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = !getApps().length

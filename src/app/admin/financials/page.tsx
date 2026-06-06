@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Expense, Invoice, WeeklyLog, Technician } from '@/lib/types';
+import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -35,7 +35,8 @@ export default function FinancialsPage() {
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
-    const [workOrders, setWorkOrders] = useState<any[]>([]);
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
@@ -77,7 +78,10 @@ export default function FinancialsPage() {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id })));
         });
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
         const userId = localStorage.getItem('currentUserId');
@@ -86,16 +90,18 @@ export default function FinancialsPage() {
                 if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
             });
             return () => {
-                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubUser();
+                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubUser();
             };
         }
 
         return () => {
-            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO();
+            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt();
         };
     }, []);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
+
+    const allMissions = useMemo(() => [...workOrders, ...assignments], [workOrders, assignments]);
 
     const handleExpenseStatusChange = async (id: string, status: 'Approved' | 'Rejected') => {
         try {
@@ -226,14 +232,14 @@ export default function FinancialsPage() {
 
     return (
         <div>
-            <header className="page-header">
-                <div>
+            <header className="page-header text-left">
+                <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <Banknote size={12} />
                         FINANCIAL OPERATIONS HUB
                     </p>
                     <h1 className="page-title">ACCOUNTING</h1>
-                    <p className="page-subtitle">Consolidated management of client revenue, technician payroll, and project overhead.</p>
+                    <p className="page-subtitle text-left">Consolidated management of client revenue, technician payroll, and project overhead.</p>
                 </div>
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
@@ -245,8 +251,8 @@ export default function FinancialsPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>⇩ EXPORT GENERAL LEDGER</Button>
-                    <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)}>
+                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="h-10 text-[10px]">⇩ EXPORT GENERAL LEDGER</Button>
+                    <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)} className="h-10 text-[10px]">
                         {userIsSuperAdmin ? "CLOSE FISCAL PERIOD" : "REQUEST PERIOD CLOSURE"}
                     </Button>
                 </div>
@@ -296,7 +302,7 @@ export default function FinancialsPage() {
                     </TabsContent>
                     <TabsContent value="payroll">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="text-left">
                                 <CardTitle>Payroll Audit</CardTitle>
                                 <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
                             </CardHeader>
@@ -362,7 +368,7 @@ export default function FinancialsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {filteredInvoices.map((invoice) => (
-                                            <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors">
+                                            <TableRow key={invoice.id} onClick={() => handleEditInvoice(invoice)} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
                                                 <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
                                                 <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
@@ -397,7 +403,7 @@ export default function FinancialsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {filteredExpenses.map((expense) => (
-                                            <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                            <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="text-xs text-text-muted pl-6">{expense.date}</TableCell>
                                                 <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>
                                                 <TableCell>
@@ -543,7 +549,7 @@ export default function FinancialsPage() {
                 invoice={selectedInvoice}
                 clients={clients}
                 projects={projects}
-                workOrders={workOrders}
+                workOrders={allMissions}
                 onSave={handleSaveInvoice}
             />
             {selectedLog && (
@@ -552,6 +558,7 @@ export default function FinancialsPage() {
                     setIsOpen={setIsReviewDialogOpen}
                     log={selectedLog}
                     technician={getTechnician(selectedLog.technicianId)}
+                    missions={allMissions}
                     onStatusChange={handleUpdateLogStatus}
                 />
             )}

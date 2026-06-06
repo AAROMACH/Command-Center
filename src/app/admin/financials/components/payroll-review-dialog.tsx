@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { workOrders as initialWorkOrders, assignmentTimeLogs } from '@/lib/data';
+import { assignmentTimeLogs } from '@/lib/data';
 import { 
     AlertTriangle, 
     CheckCircle2, 
@@ -37,7 +37,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { differenceInMinutes, parseISO } from 'date-fns';
+import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -48,6 +48,7 @@ type PayrollReviewDialogProps = {
     setIsOpen: (open: boolean) => void;
     log: WeeklyLog | null;
     technician: Technician | undefined;
+    missions: WorkOrder[];
     onStatusChange: (logId: string, status: WeeklyLog['status'], total?: number) => void;
 };
 
@@ -154,9 +155,8 @@ function ImportedJobAudit({
     );
 }
 
-export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, onStatusChange }: PayrollReviewDialogProps) {
+export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
-    const [localWorkOrders, setLocalWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -166,8 +166,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     }, [isOpen, initialLog]);
 
     const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
-        return localWorkOrders.find(wo => wo.id === id);
-    }, [localWorkOrders]);
+        return missions.find(wo => wo.id === id);
+    }, [missions]);
 
     const getHoursOnsite = useCallback((woId: string) => {
         if (!technician) return 'TBD';
@@ -229,10 +229,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     };
 
     const handleUpdateWorkOrder = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
-        setLocalWorkOrders(prev => prev.map(wo => 
-            wo.id === woId ? { ...wo, ...updates } : wo
-        ));
-
+        // Optimistic update of the log item if pay changed
         if (updates.finalPay !== undefined && localLog) {
             const updatedItems = (localLog.items || []).map(item => 
                 item.workOrderId === woId ? { ...item, jobPay: updates.finalPay! } : item
@@ -246,6 +243,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
             }
+        }
+
+        // Also update the mission itself in the appropriate collection
+        try {
+            const asmtRef = doc(db, 'assignments', woId);
+            const woRef = doc(db, 'workOrders', woId);
+            await updateDoc(asmtRef, updates).catch(async () => {
+                await updateDoc(woRef, updates);
+            });
+        } catch (e: any) {
+            console.error("Registry update error", e);
         }
     }, [localLog, toast]);
 
@@ -264,11 +272,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             const logRef = doc(db, 'weeklyLogs', localLog.id);
             await updateDoc(logRef, { items: updatedItems });
             
-            const woRef = doc(db, 'assignments', workOrderId);
-            await updateDoc(woRef, { 
+            const asmtRef = doc(db, 'assignments', workOrderId);
+            const woRef = doc(db, 'workOrders', workOrderId);
+            
+            const auditUpdates = { 
                 isAudited: !!nextStatus, 
                 auditedAt: nextStatus ? new Date().toISOString() : null, 
                 auditedBy: nextStatus ? 'Admin' : null 
+            };
+
+            await updateDoc(asmtRef, auditUpdates).catch(async () => {
+                await updateDoc(woRef, auditUpdates);
             });
 
             setLocalLog({ ...localLog, items: updatedItems });
@@ -281,7 +295,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const handleDeleteAssignmentRecord = async (woId: string, itemId: string) => {
         if (!localLog) return;
         try {
-            await deleteDoc(doc(db, 'assignments', woId));
+            const asmtRef = doc(db, 'assignments', woId);
+            const woRef = doc(db, 'workOrders', woId);
+            
+            await deleteDoc(asmtRef).catch(async () => {
+                await deleteDoc(woRef);
+            });
+
             const updatedItems = (localLog.items || []).filter(i => i.id !== itemId);
             await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: updatedItems });
             setLocalLog({ ...localLog, items: updatedItems });
@@ -291,7 +311,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
-    const confirmedItems = useMemo(() => localLog?.items?.filter(item => item.confirmationStatus === 'confirmed') || [], [localLog]);
+    const confirmedItems = useMemo(() => localLog?.items?.filter(item => item.confirmationStatus === 'confirmed' || !item.confirmationStatus) || [], [localLog]);
     const discrepancyItems = useMemo(() => [
         ...(localLog?.items?.filter(item => item.confirmationStatus === 'disputed') || []),
         ...(localLog?.missingAssignmentReports || [])
@@ -362,7 +382,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </div>
 
                     <div className="flex-1 overflow-hidden relative">
-                        <TabsContent value="verified" className="m-0 h-full">
+                        <TabsContent value="verified" className="m-0 h-full text-left">
                             <ScrollArea className="h-full p-4">
                                 <div className="space-y-4">
                                     {localLog.unsubmitRequested && (
@@ -422,14 +442,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="flex items-center gap-2 text-left">
-                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Assignment Identification Pending'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate text-left">{wo?.description || 'Mission identifier lookup pending...'}</p>
                                                                 {isImported && (
                                                                     <Badge variant="outline" className="text-[8px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4">IMPORTED</Badge>
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
                                                                 <div className="flex items-center gap-1.5 text-left">
-                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || '').toUpperCase()}</span>
+                                                                  <span className="text-brand-red font-mono text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
                                                                   {isImported && wo && (
                                                                     <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors">
                                                                       <ExternalLink size={10} />
@@ -437,7 +457,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                   )}
                                                                 </div>
                                                                 <span>•</span>
-                                                                <span>{wo?.location.split(',')[0]}</span>
+                                                                <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
+                                                                <span>•</span>
+                                                                <span>{wo?.scheduleDate || 'Schedule Pending'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -467,7 +489,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         }) : (
                                             <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                                 <CheckCircle2 size={48} className="mx-auto text-text-muted mb-2" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">No verified assignments in this manifest</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">No assignments in verified state</p>
                                             </div>
                                         )}
                                     </div>
@@ -475,7 +497,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </ScrollArea>
                         </TabsContent>
 
-                        <TabsContent value="discrepancy" className="m-0 h-full">
+                        <TabsContent value="discrepancy" className="m-0 h-full text-left">
                             <ScrollArea className="h-full p-4">
                                 <div className="space-y-2">
                                     {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
@@ -483,7 +505,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = item.isAdminReviewed;
                                         return (
                                             <Card key={item.id} className={cn(
-                                                "bg-bg-secondary border transition-all",
+                                                "bg-bg-secondary border transition-all text-left",
                                                 isAudited ? "border-green-border/30" : "border-brand-red/30 shadow-sm"
                                             )}>
                                                 <CardContent className="p-3 space-y-3">
@@ -513,10 +535,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </div>
                                                             <div className="space-y-0.5 text-left">
                                                                 <div className="flex items-center gap-2 text-left">
-                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{(wo?.id || '').toUpperCase()}</span>
+                                                                    <span className="text-[9px] font-mono font-bold text-text-red uppercase text-left">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
                                                                     <Badge variant="missed" className="text-[7px] h-3.5 px-1.5 uppercase">Technician Dispute</Badge>
                                                                 </div>
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description || 'Identification Awaiting Audit'}</p>
+                                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{wo?.description || 'Identification Pending Audit'}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
@@ -541,7 +563,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         const isAudited = (report as any).isAudited;
                                         return (
                                             <Card key={report.id} className={cn(
-                                                "bg-bg-secondary border transition-all",
+                                                "bg-bg-secondary border transition-all text-left",
                                                 isAudited ? "border-green-border/30" : "border-accent-gold/30 shadow-sm"
                                             )}>
                                                 <CardContent className="p-3 space-y-3">

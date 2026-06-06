@@ -204,17 +204,34 @@ export default function FinancialsPage() {
     
     const handleSaveInvoice = async (savedInvoice: Invoice) => {
         try {
-            if (savedInvoice.id) {
-                await setDoc(doc(db, 'invoices', savedInvoice.id), savedInvoice);
+            // Registry Protocol: Stripping undefined fields to ensure Firestore handshake success
+            const cleanedData = JSON.parse(JSON.stringify(savedInvoice));
+            const { id, ...data } = cleanedData;
+
+            if (id) {
+                await setDoc(doc(db, 'invoices', id), cleanedData);
                 toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
             } else {
-                await addDoc(collection(db, 'invoices'), savedInvoice);
+                const docRef = await addDoc(collection(db, 'invoices'), data);
+                // Synchronize registry ID within document
+                await updateDoc(docRef, { id: docRef.id });
                 toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
             }
             setIsInvoiceEditorOpen(false);
         } catch (e: any) {
+            console.error("Financial registry write error:", e);
             toast({ variant: "destructive", title: "Save Failed", description: e.message });
         }
+    };
+
+    const handleUpdateLogStatus = async (logId: string, status: WeeklyLog['status'], total?: number) => {
+        // Status updates are handled within the dialog, this just facilitates the local refresh if needed
+        // but since we have a live onSnapshot, it will update automatically.
+    };
+
+    const handleReviewLog = (log: WeeklyLog) => {
+        setSelectedLog(log);
+        setIsReviewDialogOpen(true);
     };
 
     const filteredWeeklyLogs = useMemo(() => {

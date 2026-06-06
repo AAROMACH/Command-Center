@@ -14,6 +14,7 @@ import { Trash2, Plus, FileText, Hammer, Package, DollarSign, Zap } from 'lucide
 import { format, parseISO, addDays } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type InvoiceEditorProps = {
     isOpen: boolean;
@@ -47,6 +48,7 @@ const premadeLineItems = [
 
 export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, workOrders, onSave }: InvoiceEditorProps) {
     const [invoiceData, setInvoiceData] = useState<Partial<Invoice>>({});
+    const { toast } = useToast();
 
     useEffect(() => {
         if (isOpen) {
@@ -83,13 +85,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         } else if (name === 'relatedId') {
             if (value.startsWith('proj-')) {
                 update.projectId = value;
-                update.workOrderId = undefined;
+                update.workOrderId = null as any;
             } else if (value.startsWith('wo-')) {
                 update.workOrderId = value;
-                update.projectId = undefined;
+                update.projectId = null as any;
             } else {
-                 update.workOrderId = undefined;
-                 update.projectId = undefined;
+                 update.workOrderId = null as any;
+                 update.projectId = null as any;
             }
         } else {
             update = { [name]: value };
@@ -183,11 +185,15 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
     const handleSave = () => {
         if (!invoiceData.clientId) {
-            alert('Please select a client.');
+            toast({ variant: 'destructive', title: 'Registry Error', description: 'Target client selection required for authorization.' });
             return;
         }
+
+        // Tactical sanitization: removing undefined keys to prevent Firestore write failure
+        const cleanedData = JSON.parse(JSON.stringify(invoiceData));
+
         const finalInvoice: Invoice = {
-            ...invoiceData,
+            ...cleanedData,
             subtotal,
             tax,
             total,
@@ -402,7 +408,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     </div>
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
-                        <Button onClick={handleSave} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">Commit Registry Entry</Button>
+                        <Button onClick={handleSave} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">Commit Invoice</Button>
                     </div>
                 </div>
             </SheetContent>

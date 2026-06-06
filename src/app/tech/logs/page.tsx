@@ -28,7 +28,10 @@ import {
     Settings,
     Building2,
     ExternalLink,
-    Circle
+    Circle,
+    Info,
+    SearchCheck,
+    RotateCcw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,6 +91,7 @@ export default function TechWeeklyLogPage() {
 
     const { toast } = useToast();
 
+    // 1. Terminal Initialization
     useEffect(() => {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
@@ -106,11 +110,13 @@ export default function TechWeeklyLogPage() {
         }
     }, []);
 
+    // 2. Active Log Resolution (Reactive)
     const activeLog = useMemo(() => {
         if (!selectedLogId) return null;
         return weeklyLogs.find(l => l.id === selectedLogId) || null;
     }, [weeklyLogs, selectedLogId]);
 
+    // 3. Registry Filtering & Sorting
     const filteredAndSortedLogs = useMemo(() => {
         let filtered = weeklyLogs;
         
@@ -149,10 +155,6 @@ export default function TechWeeklyLogPage() {
         });
     }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange]);
 
-    const handleLogSelection = (log: WeeklyLog) => {
-        setSelectedLogId(log.id);
-    };
-
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
 
     const handleCreateLog = async () => {
@@ -184,28 +186,46 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    // --- FUNCTIONAL VERIFICATION HANDSHAKES ---
+
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
+        
         const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
-                ? { ...item, confirmationStatus: 'confirmed' as const, outcomeCode: 'worked_completed' as const, disputeReason: undefined, disputeNotes: undefined } 
+                ? { 
+                    ...item, 
+                    confirmationStatus: 'confirmed' as const, 
+                    outcomeCode: 'worked_completed' as const, 
+                    disputeReason: null, 
+                    disputeNotes: null 
+                  } 
                 : item
         );
+
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { items: updatedItems });
-            toast({ title: "Assignment Verified", description: "Verification saved to cloud manifest." });
+            toast({ title: "Assignment Verified", description: "Confirmation committed to cloud manifest." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Verification Failed", description: e.message });
+            toast({ variant: "destructive", title: "Handshake Failed", description: e.message });
         }
     };
 
     const handleDispute = async (itemId: string, reason: string, notes?: string) => {
         if (!activeLog || isLocked) return;
+        
         const updatedItems = (activeLog.items || []).map(item => 
             item.id === itemId 
-                ? { ...item, confirmationStatus: 'disputed' as const, outcomeCode: 'worked_revisit' as const, disputeReason: reason, disputeNotes: notes } 
+                ? { 
+                    ...item, 
+                    confirmationStatus: 'disputed' as const, 
+                    outcomeCode: 'worked_revisit' as const, 
+                    disputeReason: reason, 
+                    disputeNotes: notes || null 
+                  } 
                 : item
         );
+
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { items: updatedItems });
             toast({ title: "Discrepancy Logged", description: "Dispute parameters committed to audit folder." });
@@ -257,12 +277,12 @@ export default function TechWeeklyLogPage() {
 
     if (!activeLog) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
                 <header className="page-header text-left">
                     <div className="text-left">
                         <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Billing Audit</p>
-                        <h1 className="page-title">Weekly Log Registry</h1>
-                        <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1">Audit terminal for assignment verification and billing.</p>
+                        <h1 className="page-title text-left">Weekly Log Registry</h1>
+                        <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Audit terminal for assignment verification and billing.</p>
                     </div>
                     <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
                         <Plus size={16} className="mr-2" /> Initialize New Log
@@ -270,13 +290,13 @@ export default function TechWeeklyLogPage() {
                 </header>
 
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6 text-left">
-                    <div className="search-wrap flex-1 !mb-0 w-full md:w-auto">
+                    <div className="search-wrap flex-1 !mb-0 w-full md:w-auto text-left">
                         <Search className="h-4 w-4" />
                         <input 
                             placeholder="Filter by week period (MM-DD)..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold uppercase"
+                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold uppercase text-left"
                         />
                     </div>
                     
@@ -312,10 +332,10 @@ export default function TechWeeklyLogPage() {
                         <Card 
                             key={log.id || `log-list-${logIdx}`} 
                             className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
-                            onClick={() => handleLogSelection(log)}
+                            onClick={() => setSelectedLogId(log.id)}
                         >
                             <CardContent className="p-5 flex items-center justify-between">
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-6 text-left">
                                     <div className={cn(
                                         "p-3 rounded-xl border",
                                         log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : 
@@ -342,12 +362,6 @@ export default function TechWeeklyLogPage() {
                             </CardContent>
                         </Card>
                     ))}
-                    {filteredAndSortedLogs.length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
-                            <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-sm font-bold text-text-muted uppercase tracking-[0.2em] italic text-center">Log terminal clear.</p>
-                        </div>
-                    )}
                 </div>
 
                 <Dialog open={isCreateLogOpen} onOpenChange={setIsCreateLogOpen}>
@@ -365,7 +379,7 @@ export default function TechWeeklyLogPage() {
                                 className="bg-bg-primary rounded-md border border-border-sub"
                             />
                         </div>
-                        <DialogFooter className="gap-3">
+                        <DialogFooter className="gap-3 flex-row">
                             <Button variant="outline" onClick={() => setIsCreateLogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
                             <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Initialize Manifest</Button>
                         </DialogFooter>
@@ -376,9 +390,9 @@ export default function TechWeeklyLogPage() {
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <header className="flex items-center gap-4 mb-4">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary">
+        <div className="space-y-8 animate-in fade-in duration-500 text-left">
+            <header className="flex items-center gap-4 mb-4 text-left">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary text-left">
                     <ArrowLeft size={14} className="mr-2"/> Back to Registry
                 </Button>
                 <div className="h-4 w-px bg-border-sub" />
@@ -386,7 +400,7 @@ export default function TechWeeklyLogPage() {
             </header>
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl text-left">
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 text-left">
                     <div className={cn(
                         "p-3 rounded-xl border",
                         activeLog.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : "bg-green-dim border-green-border/30 text-text-green"
@@ -408,17 +422,17 @@ export default function TechWeeklyLogPage() {
                                 <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest text-left">
-                                <Clock size={12} className="h-3 w-3"/> {(activeLog.items || []).filter(i => !i.confirmationStatus).length} Awaiting Action
+                                <Clock size={12} className="h-3 w-3"/> {counts.pending} Awaiting Action
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 text-right">
                     {isLocked ? (
-                        <div className="flex flex-col items-end">
-                            <p className="text-[10px] font-black text-text-green uppercase tracking-widest">Terminal Locked</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
+                        <div className="flex flex-col items-end text-right">
+                            <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Terminal Locked</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">Transmitted: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
                         </div>
                     ) : (
                         <Button 
@@ -432,7 +446,7 @@ export default function TechWeeklyLogPage() {
                 </div>
             </div>
 
-            <div className="space-y-4 max-w-4xl mx-auto">
+            <div className="space-y-4 max-w-4xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
                     {!isLocked && (
@@ -441,7 +455,7 @@ export default function TechWeeklyLogPage() {
                         </Button>
                     )}
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 text-left">
                     {(activeLog.items || []).map((item, itemIdx) => (
                         <JobAuditCard 
                             key={item.id || item.workOrderId || `item-${itemIdx}`} 
@@ -452,13 +466,6 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                         />
                     ))}
-                    {(activeLog.items || []).length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl bg-bg-secondary/30">
-                            <LayoutList size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments in this week's manifest</p>
-                            {!isLocked && <p className="text-[9px] text-text-muted uppercase mt-1 text-center">Use the "Report Missing" tool to manually add job references.</p>}
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -475,140 +482,142 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
+    const [notes, setNotes] = useState(item.disputeNotes || "");
 
     const isConfirmed = item.confirmationStatus === 'confirmed';
     const isDisputed = item.confirmationStatus === 'disputed';
+    const isPending = !item.confirmationStatus;
 
-    if (!job) {
-        return (
-            <Card className="bg-bg-secondary border-border-main border-dashed opacity-50 p-4">
-                <div className="flex items-center justify-between gap-4 text-left">
-                    <div className="flex items-center gap-4 text-left">
-                        <AlertTriangle className="text-accent-gold" />
-                        <div className="text-left">
-                            <p className="text-xs font-bold uppercase text-text-primary text-left">Linked mission data unavailable</p>
-                            <p className="text-[10px] text-text-muted uppercase font-mono text-left">Registry ID: {(item.workOrderId || 'N/A').toUpperCase()}</p>
-                        </div>
-                    </div>
-                    {!isLocked && (
-                         <Button 
-                            variant="outline"
-                            size="sm"
-                            className="h-9 px-4 uppercase text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
-                            onClick={() => setIsDisputing(!isDisputing)}
-                        >
-                            <X size={16} className="mr-1.5"/> Dispute Missing Record
-                        </Button>
-                    )}
-                </div>
-                {isDisputing && (
-                    <div className="mt-4 pt-4 border-t border-border-sub animate-in slide-in-from-top-2 duration-300">
-                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Reason</p>
-                            <RadioGroup 
-                                value={reason} 
-                                onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
-                                className="grid grid-cols-1 md:grid-cols-2 gap-2"
-                                disabled={isLocked}
-                            >
-                                {DISPUTE_REASONS.map((r, idx) => (
-                                    <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                        <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        </div>
-                    </div>
-                )}
-            </Card>
-        );
-    }
+    if (!job) return null;
 
     return (
         <Card className={cn(
-            "bg-bg-secondary border-border-main overflow-hidden transition-all",
-            isDisputed ? "border-brand-red ring-1 ring-brand-red/20" : 
-            isConfirmed ? "border-green-border" : "hover:border-text-muted"
+            "bg-bg-secondary border-border-main overflow-hidden transition-all text-left",
+            isDisputed ? "border-brand-red shadow-[0_0_15px_rgba(204,34,0,0.05)]" : 
+            isConfirmed ? "border-green-border bg-green-dim/5" : "hover:border-text-muted"
         )}>
-            <CardContent className="p-0">
-                <div className="p-4 flex items-center justify-between gap-6">
+            <CardContent className="p-0 text-left">
+                <div className="p-4 flex items-center justify-between gap-6 text-left">
                     <div className="flex items-center gap-6 flex-1 min-w-0 text-left">
                         <div className={cn(
-                            "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0",
+                            "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 shadow-inner",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
-                            isConfirmed ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-primary border-border-sub text-text-muted"
+                            isConfirmed ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-tertiary border-border-sub text-text-muted"
                         )}>
-                            {isDisputed ? <X size={20}/> : isConfirmed ? <Check size={20}/> : <CalendarIcon size={20}/>}
+                            {isDisputed ? <AlertTriangle size={20}/> : isConfirmed ? <CheckCircle2 size={20}/> : <Clock size={20}/>}
                         </div>
                         <div className="min-w-0 text-left flex-1">
-                            {/* Line 1: Title + Badge */}
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[300px]">{job.title || job.description}</h4>
-                                <Badge variant={job.status} className="h-4 uppercase text-[7px] tracking-widest">{job.status}</Badge>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{job.title || job.description}</h4>
+                                {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
+                                {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
                             </div>
-                            {/* Line 2: Location + Date */}
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
-                                <span className="flex items-center gap-1.5"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}</span>
-                            </div>
-                            {/* Line 3: ID */}
-                            <div className="mt-1 text-left">
-                                <span className="font-mono text-brand-red font-bold text-[10px] uppercase tracking-widest">ID: {(job.id || '').toUpperCase()}</span>
+                                <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
+                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}</span>
+                                <span className="font-mono text-brand-red font-bold text-left">ID: {job.id.toUpperCase()}</span>
                             </div>
                         </div>
 
-                        <div className="text-right px-4 border-l border-border-sub/30">
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Job Settlement</p>
-                            <p className="text-sm font-mono font-bold text-text-green">${(item.jobPay || job.pay || 0).toFixed(2)}</p>
+                        <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
+                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Settlement</p>
+                            <p className="text-sm font-mono font-bold text-text-green text-right">${(item.jobPay || 0).toFixed(2)}</p>
                         </div>
                     </div>
 
                     {!isLocked && (
                         <div className="flex items-center gap-2">
-                            <Button 
-                                variant={isConfirmed ? 'default' : 'outline'}
-                                size="sm"
-                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isConfirmed ? "bg-text-green hover:bg-text-green/90" : "border-green-border/40 text-text-green hover:bg-green-dim")}
-                                onClick={() => { onConfirm(item.id); setIsDisputing(false); }}
-                            >
-                                <Check size={14} className="mr-1.5"/> Confirm
-                            </Button>
-                            <Button 
-                                variant={isDisputing ? 'default' : 'outline'}
-                                size="sm"
-                                className={cn("h-8 px-4 uppercase text-[9px] font-bold tracking-widest", isDisputing ? "bg-brand-red hover:bg-brand-red-hover" : "border-border-alert/40 text-text-red hover:bg-brand-red-dim")}
-                                onClick={() => setIsDisputing(!isDisputing)}
-                            >
-                                <X size={14} className="mr-1.5"/> Dispute
-                            </Button>
-                        </div>
-                    )}
-                    {isLocked && isConfirmed && (
-                        <div className="flex items-center gap-2 text-text-green">
-                            <CheckCircle2 size={16} />
-                            <span className="text-[9px] font-black uppercase tracking-widest">Verified</span>
+                            {isPending ? (
+                                <>
+                                    <Button 
+                                        size="sm"
+                                        className="h-8 px-4 bg-text-green hover:bg-text-green/90 uppercase text-[9px] font-bold tracking-widest text-white"
+                                        onClick={() => onConfirm(item.id)}
+                                    >
+                                        <Check size={14} className="mr-1.5"/> Confirm
+                                    </Button>
+                                    <Button 
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-4 uppercase text-[9px] font-bold tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                        onClick={() => setIsDisputing(true)}
+                                    >
+                                        <X size={14} className="mr-1.5"/> Dispute
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 px-3 text-[9px] font-bold uppercase text-text-muted hover:text-text-primary"
+                                    onClick={() => setIsDisputing(!isDisputing)}
+                                >
+                                    <RotateCcw size={12} className="mr-1.5"/> Adjust Decision
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
 
-                {(isDisputing || (isLocked && isDisputed)) && (
-                    <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300">
-                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-4 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Reason</p>
-                            <RadioGroup 
-                                value={reason} 
-                                onValueChange={(val) => { setReason(val); onDispute(item.id, val); }}
-                                className="grid grid-cols-1 md:grid-cols-2 gap-2"
-                                disabled={isLocked}
-                            >
-                                {DISPUTE_REASONS.map((r, idx) => (
-                                    <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer">
-                                        <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                        <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
+                {isDisputing && !isLocked && (
+                    <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
+                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-5 text-left">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Parameters</p>
+                                <button onClick={() => setIsDisputing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                            </div>
+                            
+                            <div className="space-y-4 text-left">
+                                <RadioGroup 
+                                    value={reason} 
+                                    onValueChange={setReason}
+                                    className="grid grid-cols-1 md:grid-cols-2 gap-2 text-left"
+                                >
+                                    {DISPUTE_REASONS.map((r, idx) => (
+                                        <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
+                                            <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
+                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[9px] uppercase font-black text-text-muted ml-1 text-left">Additional Context (Optional)</Label>
+                                    <Textarea 
+                                        value={notes}
+                                        onChange={e => setNotes(e.target.value)}
+                                        placeholder="Provide specific details for administrative audit..."
+                                        className="bg-bg-secondary h-20 text-xs font-medium uppercase leading-relaxed"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" onClick={() => setIsDisputing(false)}>Discard</Button>
+                                <Button 
+                                    size="sm" 
+                                    className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase text-[9px] font-bold tracking-widest"
+                                    disabled={!reason}
+                                    onClick={() => { onDispute(item.id, reason, notes); setIsDisputing(false); }}
+                                >
+                                    Commit Dispute
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isDisputed && (isLocked || !isDisputing) && (
+                    <div className="px-4 pb-4 animate-in fade-in duration-300 text-left">
+                         <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
+                            <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
+                                <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
+                            </p>
+                            {item.disputeNotes && (
+                                <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
+                                    &quot;{item.disputeNotes}&quot;
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -644,17 +653,17 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                     <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 text-left">
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label>
-                            <Input name="assignmentId" className="bg-bg-primary h-10 text-xs" />
+                            <Input name="assignmentId" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
                         </div>
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
-                            <Input name="clientName" className="bg-bg-primary h-10 text-xs" />
+                            <Input name="clientName" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 text-left">
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
                             <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
@@ -668,9 +677,9 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label>
                         <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed uppercase font-medium" placeholder="Document site activity and terminal outcomes..." />
                     </div>
-                    <DialogFooter className="pt-4 border-t border-border-sub">
-                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                        <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover h-10 px-10 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                    <DialogFooter className="pt-4 border-t border-border-sub flex-row gap-3">
+                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button type="submit" className="flex-1 bg-brand-red hover:bg-brand-red-hover h-11 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
                             <Send size={14} className="mr-2" /> Submit Inquiry
                         </Button>
                     </DialogFooter>

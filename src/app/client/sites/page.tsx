@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -22,7 +21,6 @@ import {
     Wrench,
     Activity,
     X,
-    History,
     AlertCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -40,7 +38,6 @@ export default function ClientSitesPage() {
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
-    const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -147,9 +144,6 @@ export default function ClientSitesPage() {
                     <p className="page-subtitle">Real-time status tracking and operational intelligence for all managed properties.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="outline" onClick={() => setIsPendingRequestsOpen(true)}>
-                        <History size={14} className="mr-2"/> Pending Audit
-                    </Button>
                     <Button onClick={() => setIsAddSiteOpen(true)}><Plus size={14} className="mr-2"/> Register new site</Button>
                 </div>
             </header>

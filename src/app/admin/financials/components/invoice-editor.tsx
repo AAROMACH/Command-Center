@@ -177,6 +177,10 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         };
     }, [invoiceData.lineItems]);
 
+    const isAnyMultiplierActive = useMemo(() => 
+        (invoiceData.lineItems || []).some(item => item.category === 'labor' && item.isEmergencyProtocol)
+    , [invoiceData.lineItems]);
+
     const handleSave = () => {
         if (!invoiceData.clientId) {
             alert('Please select a client.');
@@ -194,7 +198,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
     const LineItemRow = ({ item }: { item: InvoiceLineItem }) => {
         const isLabor = item.category === 'labor';
-        const effectivePrice = (isLabor && item.isEmergencyProtocol) ? item.unitPrice * 1.5 : item.unitPrice;
 
         return (
             <div key={item.id} className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
@@ -350,7 +353,9 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </div>
                         <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner">
                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                                <span className="text-text-muted">Labor Subtotal (Multiplier Applied)</span>
+                                <span className="text-text-muted">
+                                    Labor Subtotal {isAnyMultiplierActive ? "(Multiplier Applied)" : ""}
+                                </span>
                                 <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
@@ -383,7 +388,6 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </Select>
                     </div>
                     <div className="flex gap-3">
-                        <DropdownMenuWrapper />
                         <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
                         <Button onClick={handleSave} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">Commit Registry Entry</Button>
                     </div>
@@ -391,8 +395,4 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
             </SheetContent>
         </Sheet>
     );
-}
-
-function DropdownMenuWrapper() {
-  return null; // Logic removed as per user request to clean terminal
 }

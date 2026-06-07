@@ -20,7 +20,7 @@ export async function generateId(prefix: Prefix): Promise<string> {
     const current = snap.exists() ? (snap.data()[prefix] ?? 0) : 0;
     const next = current + 1;
     tx.set(counterRef, { [prefix]: next }, { merge: true });
-    return next;
+    return current;
   });
 
   // Zero-pad to 3 digits, grows naturally past 999 → 1000, 1001, etc.

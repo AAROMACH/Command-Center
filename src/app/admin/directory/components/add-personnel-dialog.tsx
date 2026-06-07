@@ -180,7 +180,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
     const tempPassword = `Temp-${Date.now()}`;
 
-    // Use a secondary app instance to avoid signing out the current user
     const secondaryApp = initializeApp(app.options, `secondary-${Date.now()}`);
     const secondaryAuth = getAuth(secondaryApp);
     
@@ -289,7 +288,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
                     <Label htmlFor="fullName" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Full Legal Name</Label>
-                    <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs font-bold uppercase" />
+                    <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs font-bold" />
                 </div>
                 <div className="space-y-2 text-left">
                     <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
@@ -430,7 +429,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                         placeholder="Enter new company name..." 
                                         value={formData.clientCompany || ''} 
                                         onChange={(e) => setFormData({...formData, clientCompany: e.target.value})} 
-                                        className="bg-bg-primary h-9 text-xs border-border-sub uppercase font-bold" 
+                                        className="bg-bg-primary h-9 text-xs border-border-sub font-bold" 
                                     />
                                 ) : (
                                     <Select 

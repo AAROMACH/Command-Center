@@ -39,7 +39,8 @@ import {
     ExternalLink,
     Activity,
     Lock,
-    UserCheck
+    UserCheck,
+    Gauge
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { AddPersonnelDialog } from './add-personnel-dialog';
@@ -65,6 +66,7 @@ import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 declare global {
   interface Window {
+    google: any;
     gm_authFailure?: () => void;
   }
 }
@@ -109,7 +111,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     }, [searchParams]);
 
     useEffect(() => {
-        // Defensive Protocol: Catch RefererNotAllowedMapError or other auth failures
         window.gm_authFailure = () => {
             console.warn("Google Maps API Handshake Restricted.");
             toast({
@@ -287,7 +288,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         );
     };
 
-    // --- MAP LOGIC ---
     const mapLocations = useMemo(() => {
         const locations: { id: string; name: string; location: string; type: 'tech' | 'site'; isLive?: boolean }[] = [];
         if (mapViewMode === 'techs') {
@@ -436,128 +436,225 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
-                        <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                <div className="text-left pl-0">TECHNICIAN</div>
-                                <div className="text-left">ROLE</div>
-                                <div className="text-left">CONTACT</div>
-                                <div className="text-center">OPERATIONAL TRUST</div>
-                                <div className="text-center">STATUS</div>
+                        {viewMode === 'rows' ? (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                    <div className="text-left pl-0">TECHNICIAN</div>
+                                    <div className="text-left">ROLE</div>
+                                    <div className="text-left">CONTACT</div>
+                                    <div className="text-center">OPERATIONAL TRUST</div>
+                                    <div className="text-center">STATUS</div>
+                                </div>
+                                <ScrollArea className="h-full">
+                                    {paginatedTechnicians.map(tech => {
+                                        const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
+                                        const tierColor = getTierColor(tier);
+                                        const badgeVariant = getTierBadgeVariant(tier);
+                                        const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
+
+                                        return (
+                                        <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
+                                            <div className="flex items-center justify-start gap-3 pl-0">
+                                                <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
+                                                    <AvatarImage src={tech.avatarUrl} />
+                                                    <AvatarFallback className="text-[10px]">{(tech.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col items-start min-w-0">
+                                                    <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name || 'Unnamed'}</span>
+                                                    <span className="text-[9px] font-mono text-brand-red uppercase">{tech.id}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-left">
+                                                <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
+                                            </div>
+                                            <div className="min-w-0 flex flex-col items-start justify-center">
+                                                <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                                    <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                                    <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase tracking-[0.1em] px-2 font-black">
+                                                    {tier}
+                                                </Badge>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Activity size={10} className={tierColor} />
+                                                    <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore || 0}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-center">
+                                                {isRestricted ? (
+                                                    <Badge variant="missed" className="text-[8px] h-4 uppercase tracking-widest gap-1">
+                                                        <Lock size={10}/> FLAG
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )})}
+                                </ScrollArea>
                             </div>
-                            <ScrollArea className="h-full">
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {paginatedTechnicians.map(tech => {
                                     const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
-                                    const tierColor = getTierColor(tier);
                                     const badgeVariant = getTierBadgeVariant(tier);
-                                    const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
-
+                                    const tierColor = getTierColor(tier);
+                                    
                                     return (
-                                    <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
-                                        <div className="flex items-center justify-start gap-3 pl-0">
-                                            <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
-                                                <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{(tech.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col items-start min-w-0">
-                                                <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name || 'Unnamed'}</span>
-                                                <span className="text-[9px] font-mono text-brand-red uppercase">{tech.id}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-left">
-                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
-                                        </div>
-                                        <div className="min-w-0 flex flex-col items-start justify-center">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
-                                                <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
-                                                <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-center justify-center gap-1">
-                                            <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase tracking-[0.1em] px-2 font-black">
-                                                {tier}
-                                            </Badge>
-                                            <div className="flex items-center gap-1.5">
-                                                <Activity size={10} className={tierColor} />
-                                                <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore || 0}%</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-center">
-                                            {isRestricted ? (
-                                                <Badge variant="missed" className="text-[8px] h-4 uppercase tracking-widest gap-1">
-                                                    <Lock size={10}/> FLAG
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                )})}
-                            </ScrollArea>
-                        </div>
+                                        <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
+                                            <CardHeader className="p-4 pb-2 text-left">
+                                                <div className="flex justify-between items-start">
+                                                    <Avatar className="h-12 w-12 border-2 border-border-sub group-hover:scale-105 transition-transform">
+                                                        <AvatarImage src={tech.avatarUrl} />
+                                                        <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <Badge variant={badgeVariant} className="text-[7px] uppercase h-4 px-1.5">{tier}</Badge>
+                                                </div>
+                                                <div className="mt-3 text-left">
+                                                    <CardTitle className="text-xs uppercase font-black truncate">{tech.name}</CardTitle>
+                                                    <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{getPrimaryRoleLabel(tech)}</CardDescription>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-2 space-y-3">
+                                                <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
+                                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-text-muted">
+                                                        <Gauge size={12} className={tierColor}/> Index
+                                                    </div>
+                                                    <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore}%</span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                        <MapPin size={10} className="text-brand-red"/>
+                                                        <span className="truncate">{tech.address || tech.currentLocation}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                        <Mail size={10}/>
+                                                        <span className="truncate">{tech.email}</span>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    )
+                                })}
+                            </div>
+                        )}
                     </TabsContent>
                     
                     <TabsContent value="staff" className="m-0">
-                        <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                <div className="text-left pl-0">STAFF MEMBER</div>
-                                <div className="text-left">ROLE</div>
-                                <div className="text-left">CONTACT</div>
-                            </div>
-                            {paginatedStaff.map(s => (
-                                <div key={s.id} className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
-                                    <div className="flex items-center justify-start gap-3 pl-0">
-                                        <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
-                                            <AvatarImage src={s.avatarUrl} />
-                                            <AvatarFallback className="text-[10px]">{(s.name || 'S').split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name || 'Unnamed'}</span>
-                                    </div>
-                                    <div className="text-left">
-                                        <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
-                                    </div>
-                                    <div className="min-w-0 flex flex-col items-start justify-center">
-                                        <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
-                                            <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
-                                            <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
-                                        </div>
-                                    </div>
+                        {viewMode === 'rows' ? (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                    <div className="text-left pl-0">STAFF MEMBER</div>
+                                    <div className="text-left">ROLE</div>
+                                    <div className="text-left">CONTACT</div>
                                 </div>
-                            ))}
-                        </div>
+                                {paginatedStaff.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
+                                        <div className="flex items-center justify-start gap-3 pl-0">
+                                            <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
+                                                <AvatarImage src={s.avatarUrl} />
+                                                <AvatarFallback className="text-[10px]">{(s.name || 'S').split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name || 'Unnamed'}</span>
+                                        </div>
+                                        <div className="text-left">
+                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
+                                        </div>
+                                        <div className="min-w-0 flex flex-col items-start justify-center">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                                <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                                <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {paginatedStaff.map(s => (
+                                    <Card key={s.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(s)}>
+                                        <CardHeader className="p-4 pb-2 flex flex-row items-center gap-4 text-left">
+                                            <Avatar className="h-12 w-12 border-2 border-border-sub group-hover:scale-105 transition-transform">
+                                                <AvatarImage src={s.avatarUrl} />
+                                                <AvatarFallback>{(s.name || 'S').charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0">
+                                                <CardTitle className="text-xs uppercase font-black truncate">{s.name}</CardTitle>
+                                                <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{getPrimaryRoleLabel(s)}</CardDescription>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="p-4 pt-2 space-y-2">
+                                            <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                <Mail size={10}/>
+                                                <span className="truncate">{s.email}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                <Phone size={10}/>
+                                                <span>{s.phone}</span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
                     </TabsContent>
                     
                     <TabsContent value="clients" className="m-0">
-                        <div className="table-wrap">
-                            <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                <div className="text-left pl-0">CORPORATE ENTITY</div>
-                                <div className="text-left">CLASSIFICATION</div>
-                                <div className="text-center">CONTACTS</div>
-                                <div className="text-center">REGISTRY</div>
-                            </div>
-                            {paginatedCompanies.map(company => (
-                                <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
-                                    <div className="flex items-center justify-start gap-3 pl-0">
-                                        <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
-                                            <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
-                                        </div>
-                                        <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{company.name}</span>
-                                    </div>
-                                    <div className="flex items-center justify-start">
-                                        <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
-                                    </div>
-                                    <div className="text-center flex items-center justify-center">
-                                        <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length}</Badge>
-                                    </div>
-                                    <div className="text-center flex items-center justify-center">
-                                        <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
-                                    </div>
+                        {viewMode === 'rows' ? (
+                            <div className="table-wrap">
+                                <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                    <div className="text-left pl-0">CORPORATE ENTITY</div>
+                                    <div className="text-left">CLASSIFICATION</div>
+                                    <div className="text-center">CONTACTS</div>
+                                    <div className="text-center">REGISTRY</div>
                                 </div>
-                            ))}
-                        </div>
+                                {paginatedCompanies.map(company => (
+                                    <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
+                                        <div className="flex items-center justify-start gap-3 pl-0">
+                                            <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
+                                                <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                            </div>
+                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{company.name}</span>
+                                        </div>
+                                        <div className="flex items-center justify-start">
+                                            <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
+                                        </div>
+                                        <div className="text-center flex items-center justify-center">
+                                            <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length}</Badge>
+                                        </div>
+                                        <div className="text-center flex items-center justify-center">
+                                            <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {paginatedCompanies.map(company => (
+                                    <Card key={company.name} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleCompanyClick(company.name)}>
+                                        <CardHeader className="p-4 pb-2 text-left">
+                                            <div className="p-2 bg-bg-tertiary rounded w-fit border border-border-sub group-hover:bg-brand-red-dim transition-colors mb-2">
+                                                <Building2 size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
+                                            </div>
+                                            <CardTitle className="text-xs uppercase font-black truncate">{company.name}</CardTitle>
+                                            <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{company.businessType || 'Enterprise'}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-4 pt-2">
+                                            <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
+                                                <span className="text-[9px] font-bold text-text-muted uppercase">Primary Contacts</span>
+                                                <Badge variant="outline" className="h-4 text-[8px] font-mono">{company.contacts.length}</Badge>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
                     </TabsContent>
 
                     <TabsContent value="requests" className="m-0 animate-in fade-in duration-300">
@@ -681,7 +778,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     </TabsContent>
 
                     <TabsContent value="map" className="m-0">
-                         {/* Map content left unchanged as it's primarily read-only visualization */}
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[650px] mt-4">
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
@@ -704,7 +800,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </div>
                                      )}
 
-                                    {/* INFO CARD OVERLAY */}
                                     {selectedMapEntity && (
                                         <div className="absolute top-4 left-4 z-20 w-full max-w-[280px] animate-in fade-in slide-in-from-left-4 duration-500">
                                             <Card className="bg-bg-elevated border-border-default shadow-2xl overflow-hidden">
@@ -737,8 +832,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                         </div>
                                                     </div>
                                                 </CardHeader>
-                                                <CardContent className="p-3 space-y-3">
-                                                    <div className="flex items-start gap-2 text-left">
+                                                <CardContent className="p-3 space-y-3 text-left">
+                                                    <div className="flex items-start gap-2">
                                                         <MapPin size={12} className="text-brand-red shrink-0 mt-0.5" />
                                                         <p className="text-[10px] text-text-secondary leading-tight uppercase font-medium">{(selectedMapEntity as any).location}</p>
                                                     </div>

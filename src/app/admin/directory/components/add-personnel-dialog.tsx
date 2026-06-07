@@ -1,6 +1,7 @@
 'use client';
 
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { app } from '@/lib/firebase';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -178,10 +179,15 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     }
 
     const tempPassword = `Temp-${Date.now()}`;
-    const auth = getAuth(app);
 
+    // Use a secondary app instance to avoid signing out the current user
+    const secondaryApp = initializeApp(app.options, `secondary-${Date.now()}`);
+    const secondaryAuth = getAuth(secondaryApp);
+    
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email!, tempPassword);
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email!, tempPassword);
+        await sendPasswordResetEmail(secondaryAuth, formData.email!);
+        await deleteApp(secondaryApp);
         const uid = userCredential.user.uid;
 
         const newPerson: Technician = {
@@ -189,10 +195,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             id: uid,
             role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
         };
-
         onSave(newPerson);
 
-        await sendPasswordResetEmail(auth, formData.email!);
         toast({
             title: "Operative Enrolled",
             description: `Auth account created. Password setup email sent to ${formData.email}.`

@@ -208,17 +208,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         });
     }
 };
-    
-    const newPerson: Technician = {
-        ...formData as Technician,
-        id: `oper-${Date.now()}`,
-        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
-    };
-    
-    onSave(newPerson);
-    handleReset();
-    setIsOpen(false);
-  };
   
   const handleReset = () => {
     setFormData({

@@ -566,6 +566,7 @@ export default function TechAssignmentsPage() {
                                                             "h-8 !text-[10px] bg-text-green hover:bg-text-green/90",
                                                             !isWeekend && "opacity-50"
                                                         )}
+                                                        disabled={!isWeekend}
                                                         onClick={() => handleMarkComplete(wo.id)}
                                                       >
                                                           <CheckCircle2 size={14} className="mr-2"/>

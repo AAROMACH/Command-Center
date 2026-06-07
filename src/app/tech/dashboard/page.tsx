@@ -315,7 +315,7 @@ export default function TechDashboardPage() {
                                 </Button>
                             )}
                             {activeJob.status === 'confirmed' && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                <Button onClick={(e) => { e.stopPropagation(); handleStartTrip(activeJob.id); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
                                     <Navigation size={14} className="mr-2"/> Start Trip
                                 </Button>
                             )}
@@ -348,6 +348,7 @@ export default function TechDashboardPage() {
                                             "h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest",
                                             !isWeekend && "opacity-50"
                                         )}
+                                        disabled={!isWeekend}
                                         onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}
                                     >
                                         <CheckCircle2 size={14} className="mr-2"/> Finalize

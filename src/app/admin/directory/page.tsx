@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { DirectoryClient } from "./components/directory-client";

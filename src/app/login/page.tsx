@@ -1,20 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { collection, onSnapshot } from "firebase/firestore";
-import { technicians as mockTechnicians } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2, UserCheck, Terminal } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,14 +25,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -48,29 +38,11 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showBypass, setShowBypass] = useState(false);
-  const [demoUser, setDemoUser] = useState<string>("");
-  const [registryUsers, setRegistryUsers] = useState<any[]>([]);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
-
-  // Fetch users on mount — not gated behind bypass toggle
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      if (!snap.empty) {
-        setRegistryUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      } else {
-        setRegistryUsers(mockTechnicians);
-      }
-    }, (err) => {
-      console.warn("Registry fetch failed:", err);
-      setRegistryUsers(mockTechnicians);
-    });
-    return () => unsub();
-  }, []);
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
@@ -78,57 +50,22 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const firebaseUser = userCredential.user;
 
-      // Match by Firebase UID first, fall back to email match
-      let user = registryUsers.find(t => t.id === firebaseUser.uid);
-      if (!user) {
-        user = registryUsers.find(
-          t => (t.email || '').toLowerCase() === firebaseUser.email?.toLowerCase()
-        );
-      }
-      if (!user) {
-        user = mockTechnicians.find(
-          t => t.email.toLowerCase() === firebaseUser.email?.toLowerCase()
-        );
-      }
+      toast({
+        title: "Authorization Successful",
+        description: `Terminal access granted.`,
+      });
 
-      if (user) {
-        localStorage.setItem("currentUserId", user.id);
-        toast({
-          title: "Authorization Successful",
-          description: `Terminal access granted for ${user.name || user.fullName || 'Authorized User'}.`,
-        });
-        handleRedirect(user);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Registry Mismatch",
-          description: "Firebase auth succeeded but no matching user record found.",
-        });
-      }
+      handleRedirect(firebaseUser);
     } catch (error: any) {
-      setShowBypass(true);
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: "Invalid credentials. Use the dev bypass or verify your password.",
+        description: "Invalid credentials. Please verify your email and password.",
       });
     } finally {
       setIsLoading(false);
     }
   }
-
-  const handleDemoLogin = () => {
-    if (!demoUser) return;
-    const user = registryUsers.find(t => t.id === demoUser) || mockTechnicians.find(t => t.id === demoUser);
-    if (user) {
-      localStorage.setItem("currentUserId", user.id);
-      toast({
-        title: "Dev Protocol Active",
-        description: `Simulated login as ${user.name || user.fullName} established.`,
-      });
-      handleRedirect(user);
-    }
-  };
 
   const handleRedirect = (user: any) => {
     if (isAdmin(user)) {
@@ -213,51 +150,6 @@ export default function LoginPage() {
               </div>
               {errors.password && (
                 <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.password.message}</p>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-border-sub space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest text-accent-gold flex items-center gap-2">
-                  <Terminal size={12} /> Dev Portal Bypass
-                </p>
-                <Switch
-                  id="bypass-toggle"
-                  checked={showBypass}
-                  onCheckedChange={setShowBypass}
-                  className="scale-75"
-                />
-              </div>
-
-              {showBypass && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <p className="text-[9px] text-text-muted uppercase font-bold text-left leading-relaxed">
-                    Select a real registry account to initialize terminal access.
-                  </p>
-                  <div className="flex gap-2">
-                    <Select value={demoUser} onValueChange={setDemoUser}>
-                      <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-[10px] font-bold uppercase">
-                        <SelectValue placeholder="Select Identity..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {registryUsers.map(t => (
-                          <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
-                            {t.name || t.fullName} ({t.roles ? t.roles.map((r: string) => r.replace(/_/g, ' ')).join(' / ') : t.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDemoLogin}
-                      disabled={!demoUser}
-                      className="h-10 px-3 border-accent-gold text-accent-gold hover:bg-accent-gold-dim"
-                    >
-                      <UserCheck size={16} />
-                    </Button>
-                  </div>
-                </div>
               )}
             </div>
           </CardContent>

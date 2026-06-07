@@ -1,5 +1,7 @@
 'use client';
 
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -165,7 +167,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     return Array.from(companies).sort();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.email || (formData.roles || []).length === 0) {
         toast({
             variant: "destructive",
@@ -174,6 +176,38 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         });
         return;
     }
+
+    const tempPassword = `Temp-${Date.now()}`;
+    const auth = getAuth(app);
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email!, tempPassword);
+        const uid = userCredential.user.uid;
+
+        const newPerson: Technician = {
+            ...formData as Technician,
+            id: uid,
+            role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+        };
+
+        onSave(newPerson);
+
+        await sendPasswordResetEmail(auth, formData.email!);
+        toast({
+            title: "Operative Enrolled",
+            description: `Auth account created. Password setup email sent to ${formData.email}.`
+        });
+
+        handleReset();
+        setIsOpen(false);
+    } catch (e: any) {
+        toast({
+            variant: "destructive",
+            title: "Enrollment Failed",
+            description: e.message
+        });
+    }
+};
     
     const newPerson: Technician = {
         ...formData as Technician,

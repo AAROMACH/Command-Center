@@ -53,6 +53,15 @@ export default function TechDashboardPage() {
     const { toast } = useToast();
     const router = useRouter();
 
+    /**
+     * Finalization Window Validator.
+     * Restricts mission completion to Saturday (6) and Sunday (0).
+     */
+    const isWeekend = useMemo(() => {
+        const day = new Date().getDay();
+        return day === 0 || day === 6;
+    }, []);
+
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         if (!userId) {
@@ -94,15 +103,12 @@ export default function TechDashboardPage() {
      * Prioritizes current sessions (En Route/On Site).
      */
     const activeJob = useMemo(() => {
-        // Priority 1: On-Site Missions (Critical to handle first)
         const onSite = allWorkOrders.find(wo => wo.status === 'in-progress');
         if (onSite) return onSite;
 
-        // Priority 2: In-Flight Missions (En Route or Confirmed)
         const inFlight = allWorkOrders.find(wo => wo.status === 'on-my-way' || wo.status === 'confirmed');
         if (inFlight) return inFlight;
 
-        // Priority 3: Next Mission in Registry (Assigned)
         const upcoming = allWorkOrders
             .filter(wo => wo.status === 'assigned')
             .sort((a, b) => {
@@ -185,6 +191,15 @@ export default function TechDashboardPage() {
     };
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
+        if (newStatus === 'completed' && !isWeekend) {
+            toast({
+                variant: "destructive",
+                title: "Authorization Restricted",
+                description: "Operational Policy: Mission finalization is restricted to weekend registry cycles (Saturday/Sunday).",
+            });
+            return;
+        }
+
         const today = format(new Date(), 'MM-dd-yyyy');
         const nowTime = format(new Date(), 'h:mm a');
         const location = await getTacticalLocation();
@@ -328,7 +343,13 @@ export default function TechDashboardPage() {
                                     >
                                         <RotateCcw size={14} className="mr-2"/> Resume
                                     </Button>
-                                    <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                    <Button 
+                                        className={cn(
+                                            "h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest",
+                                            !isWeekend && "opacity-50"
+                                        )}
+                                        onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}
+                                    >
                                         <CheckCircle2 size={14} className="mr-2"/> Finalize
                                     </Button>
                                 </div>

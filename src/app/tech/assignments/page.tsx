@@ -23,7 +23,8 @@ import {
   RotateCcw,
   X,
   History,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -79,6 +80,15 @@ export default function TechAssignmentsPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const { toast } = useToast();
+
+    /**
+     * Finalization Window Validator.
+     * Restricts mission completion to Saturday (6) and Sunday (0).
+     */
+    const isWeekend = useMemo(() => {
+        const day = new Date().getDay();
+        return day === 0 || day === 6;
+    }, []);
 
     useEffect(() => {
         setMounted(true);
@@ -164,10 +174,6 @@ export default function TechAssignmentsPage() {
             .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || '')),
     [techWorkOrders]);
 
-    /**
-     * Session Lock Validator.
-     * Prevents multi-job check-ins.
-     */
     const hasActiveSession = useMemo(() => {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
@@ -191,6 +197,50 @@ export default function TechAssignmentsPage() {
             if (updatedItems.length !== (data.items || []).length) {
                 await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updatedItems });
             }
+        }
+    };
+
+    const syncToWeeklyLog = async (woId: string) => {
+        if (!currentTechId) return;
+
+        const wo = allWorkOrders.find(w => w.id === woId);
+        if (!wo) return;
+
+        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const weekOf = format(monday, 'MM-dd-yyyy');
+        
+        const logQuery = query(
+            collection(db, 'weeklyLogs'),
+            where('technicianId', '==', currentTechId),
+            where('weekOf', '==', weekOf),
+            where('status', '==', 'Draft')
+        );
+
+        const snap = await getDocs(logQuery);
+        const newItem: WeeklyLogItem = {
+            id: `wli-${Date.now()}`,
+            workOrderId: woId,
+            jobPay: wo.pay,
+            outcomeCode: null, 
+            isComplete: true,
+            isAdminReviewed: false
+        };
+
+        if (!snap.empty) {
+            const logDoc = snap.docs[0];
+            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
+                items: arrayUnion(newItem)
+            });
+        } else {
+            const newLog: Omit<WeeklyLog, 'id'> = {
+                technicianId: currentTechId,
+                weekOf,
+                status: 'Draft',
+                items: [newItem],
+                reimbursements: [],
+                totalPayout: 0
+            };
+            await addDoc(collection(db, 'weeklyLogs'), newLog);
         }
     };
 
@@ -248,51 +298,16 @@ export default function TechAssignmentsPage() {
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
 
-    const syncToWeeklyLog = async (woId: string) => {
-        if (!currentTechId) return;
-
-        const wo = allWorkOrders.find(w => w.id === woId);
-        if (!wo) return;
-
-        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const weekOf = format(monday, 'MM-dd-yyyy');
-        
-        const logQuery = query(
-            collection(db, 'weeklyLogs'),
-            where('technicianId', '==', currentTechId),
-            where('weekOf', '==', weekOf),
-            where('status', '==', 'Draft')
-        );
-
-        const snap = await getDocs(logQuery);
-        const newItem: WeeklyLogItem = {
-            id: `wli-${Date.now()}`,
-            workOrderId: woId,
-            jobPay: wo.pay,
-            outcomeCode: null, // Awaiting verification
-            isComplete: true,
-            isAdminReviewed: false
-        };
-
-        if (!snap.empty) {
-            const logDoc = snap.docs[0];
-            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
-                items: arrayUnion(newItem)
-            });
-        } else {
-            const newLog: Omit<WeeklyLog, 'id'> = {
-                technicianId: currentTechId,
-                weekOf,
-                status: 'Draft',
-                items: [newItem],
-                reimbursements: [],
-                totalPayout: 0
-            };
-            await addDoc(collection(db, 'weeklyLogs'), newLog);
-        }
-    };
-
     const handleMarkComplete = async (woId: string) => {
+        if (!isWeekend) {
+            toast({
+                variant: "destructive",
+                title: "Authorization Restricted",
+                description: "Operational Policy: Mission finalization is restricted to weekend registry cycles (Saturday/Sunday).",
+            });
+            return;
+        }
+
         const now = format(new Date(), 'h:mm a');
         const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
@@ -544,7 +559,15 @@ export default function TechAssignmentsPage() {
                                                           <RotateCcw size={14} className="mr-2"/>
                                                           Check back in
                                                       </Button>
-                                                      <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                                      <Button 
+                                                        variant="default" 
+                                                        size="sm" 
+                                                        className={cn(
+                                                            "h-8 !text-[10px] bg-text-green hover:bg-text-green/90",
+                                                            !isWeekend && "opacity-50"
+                                                        )}
+                                                        onClick={() => handleMarkComplete(wo.id)}
+                                                      >
                                                           <CheckCircle2 size={14} className="mr-2"/>
                                                           Mark Complete
                                                       </Button>

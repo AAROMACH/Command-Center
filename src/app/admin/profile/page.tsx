@@ -37,7 +37,7 @@ export default function ProfilePage() {
         return currentUser.name.split(' ').map((n: string) => n[0]).join('');
     }, [currentUser]);
 
-    if (!mounted) return null;
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
 
     return (
         <div className="space-y-6">

@@ -48,12 +48,14 @@ export default function DirectoryPage() {
         </div>
       </header>
 
-      <DirectoryClient 
-        technicians={technicians} 
-        timeOffRequests={timeOffRequests} 
-        workOrders={workOrders} 
-        siteRequests={siteRequests}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-text-muted text-[10px] uppercase tracking-widest">Loading Registry...</div>}>
+  <DirectoryClient 
+    technicians={technicians} 
+    timeOffRequests={timeOffRequests} 
+    workOrders={workOrders} 
+    siteRequests={siteRequests}
+  />
+</Suspense>
     </div>
   );
 }

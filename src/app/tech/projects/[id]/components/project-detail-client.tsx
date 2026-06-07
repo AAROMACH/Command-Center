@@ -295,9 +295,9 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <h3 className="field-group-title"><Users size={14}/> Team Registry</h3>
                     <div className="space-y-2">
                         {(project.team || []).map(member => {
-                            const t = technicians.find(tech => tech.id === member.technicianId);
+                            const t = technicians.find(tech => tech.id === member.techId);
                             return (
-                                <div key={member.technicianId} className="flex items-center gap-3 p-3 rounded-lg bg-bg-primary border border-border-sub">
+                                <div key={member.techId} className="flex items-center gap-3 p-3 rounded-lg bg-bg-primary border border-border-sub">
                                     <Avatar className="h-8 w-8 border border-border-sub">
                                         <AvatarImage src={t?.avatarUrl} />
                                         <AvatarFallback>{t?.name?.charAt(0)}</AvatarFallback>
@@ -453,7 +453,7 @@ const TimesheetsTab = ({
         ];
         
         dailyLogs.forEach(log => {
-            const tech = technicians.find(t => t.id === log.technicianId);
+            const tech = technicians.find(t => t.id === log.techId);
             rows.push([
                 log.date,
                 tech?.name || 'Unknown',
@@ -603,9 +603,9 @@ const TimesheetsTab = ({
                                 <AccordionContent className="p-3 bg-bg-primary/10">
                                     <div className="space-y-2">
                                         {group.logs.map(log => {
-                                            const tech = technicians.find(t => t.id === log.technicianId);
+                                            const tech = technicians.find(t => t.id === log.techId);
                                             const isLive = !log.checkOutTime;
-                                            const canEditNotes = !isReadOnly && log.technicianId === currentUserId;
+                                            const canEditNotes = !isReadOnly && log.techId === currentUserId;
 
                                             return (
                                                 <div key={log.id} className={cn(
@@ -691,7 +691,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const isReadOnly = project.status === 'completed';
 
     const activeSession = useMemo(() => 
-        dailyLogs.find(log => log.technicianId === currentUserId && !log.checkOutTime),
+        dailyLogs.find(log => log.techId === currentUserId && !log.checkOutTime),
     [dailyLogs, currentUserId]);
 
     const progress = getProgress(project);
@@ -743,7 +743,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
 
         const newLog: Omit<ProjectDailyLog, 'id'> = {
             projectId: project.id,
-            technicianId: currentUserId,
+            techId: currentUserId,
             date: format(now, 'yyyy-MM-dd'),
             hoursWorked: 0,
             totalHours: '0h 0m',

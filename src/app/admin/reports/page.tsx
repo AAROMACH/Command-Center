@@ -283,11 +283,11 @@ export default function ActivityAuditPage() {
         if (!selectedTechId) return null;
         const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
-        const penalties = penaltyEvents.filter(pe => pe.technicianId === selectedTechId);
+        const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
         const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
         const reliability = Math.max(0, 100 - (points * 5));
         
-        const myLogs = weeklyLogs.filter(log => log.technicianId === selectedTechId)
+        const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
             .sort((a, b) => {
                 const [am, ad, ay] = a.weekOf.split('-');
                 const [bm, bd, by] = b.weekOf.split('-');
@@ -558,7 +558,7 @@ export default function ActivityAuditPage() {
                 </Button>
             </div>
             {technicians.filter(t => !t.roles?.includes('client')).map(t => {
-                const pts = penaltyEvents.filter(p => p.technicianId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
+                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
                 const isReliable = pts <= 2;
                 return (
                     <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
@@ -568,7 +568,7 @@ export default function ActivityAuditPage() {
                                     <AvatarImage src={t.avatarUrl} />
                                     <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                {assignmentTimeLogs.some(log => log.technicianId === t.id && !log.checkOutTime) && (
+                                {assignmentTimeLogs.some(log => log.techId === t.id && !log.checkOutTime) && (
                                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
                                 )}
                             </div>

@@ -39,7 +39,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
     const handleAddReimbursement = () => {
         const newReimbursement: FinancialRecord = {
             id: `fr-${Date.now()}`,
-            technicianId: log.technicianId,
+            techId: log.techId,
             date: new Date().toISOString().split('T')[0],
             type: 'reimbursement',
             amount: 0,

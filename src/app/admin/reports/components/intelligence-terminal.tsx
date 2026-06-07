@@ -141,8 +141,8 @@ export function IntelligenceTerminal() {
                     let value = 0;
                     if (metric === 'reliability') value = tech.reliabilityScore || 0;
                     else if (metric === 'assignments') value = filteredWO.filter(wo => wo.assignedTechnicianId === tech.id).length;
-                    else if (metric === 'payouts') value = filteredWeekly.filter(l => l.technicianId === tech.id).reduce((acc, curr) => acc + (curr.totalPayout || 0), 0);
-                    else if (metric === 'hours') value = filteredDaily.filter(l => l.technicianId === tech.id).reduce((acc, curr) => acc + (curr.hoursWorked || 0), 0);
+                    else if (metric === 'payouts') value = filteredWeekly.filter(l => l.techId === tech.id).reduce((acc, curr) => acc + (curr.totalPayout || 0), 0);
+                    else if (metric === 'hours') value = filteredDaily.filter(l => l.techId === tech.id).reduce((acc, curr) => acc + (curr.hoursWorked || 0), 0);
 
                     return { name: tech.name, value: parseFloat((value || 0).toFixed(2)) };
                 })

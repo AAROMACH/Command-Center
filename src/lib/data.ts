@@ -231,7 +231,7 @@ export const assignmentTimeLogs: AssignmentTimeLog[] = [];
 export const weeklyLogs: WeeklyLog[] = [
   {
     id: 'wl-corey-current',
-    technicianId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
+    techId: '1SWDGFnDF6Z4ylbf2AQgRhLua6w2',
     weekOf: '04-20-2026',
     status: 'Draft',
     items: [

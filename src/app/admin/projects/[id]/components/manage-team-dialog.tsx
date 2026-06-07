@@ -41,30 +41,30 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
     const availableTechnicians = allTechnicians.filter(
-        (tech) => !team.some((member) => member.technicianId === tech.id)
+        (tech) => !team.some((member) => member.techId === tech.id)
     );
 
     const filteredTechnicians = availableTechnicians.filter((tech) =>
         (tech.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleRoleChange = (technicianId: string, newRole: string) => {
+    const handleRoleChange = (techId: string, newRole: string) => {
         setTeam(currentTeam => 
             currentTeam.map(member => 
-                member.technicianId === technicianId ? { ...member, role: newRole } : member
+                member.techId === techId ? { ...member, role: newRole } : member
             )
         );
     };
 
-    const handleRemoveTech = (technicianId: string) => {
+    const handleRemoveTech = (techId: string) => {
         setTeam(currentTeam => 
-            currentTeam.filter(member => member.technicianId !== technicianId)
+            currentTeam.filter(member => member.techId !== techId)
         );
     };
 
     const handleAddTech = () => {
         if (newTechId && newTechRole) {
-            setTeam(currentTeam => [...currentTeam, { technicianId: newTechId, role: newTechRole }]);
+            setTeam(currentTeam => [...currentTeam, { techId: newTechId, role: newTechRole }]);
             setNewTechId('');
             setNewTechRole('');
             setSearchQuery('');
@@ -103,13 +103,13 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                         <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2 text-left">Current Team</h3>
                         <div className="space-y-2">
                             {team.map(member => {
-                                const tech = getTechnician(member.technicianId);
+                                const tech = getTechnician(member.techId);
                                 if (!tech) return null;
                                 return (
-                                    <div key={member.technicianId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary border border-border-sub">
+                                    <div key={member.techId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary border border-border-sub">
                                         <Avatar className="h-8 w-8 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback></Avatar>
                                         <div className="flex-1 font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</div>
-                                        <Select value={member.role} onValueChange={(value) => handleRoleChange(member.technicianId, value)}>
+                                        <Select value={member.role} onValueChange={(value) => handleRoleChange(member.techId, value)}>
                                             <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-8 text-[10px] uppercase font-bold">
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
@@ -117,7 +117,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                                 {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
-                                        <button onClick={() => handleRemoveTech(member.technicianId)} className="p-1.5 text-text-muted hover:text-text-red transition-colors">
+                                        <button onClick={() => handleRemoveTech(member.techId)} className="p-1.5 text-text-muted hover:text-text-red transition-colors">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>

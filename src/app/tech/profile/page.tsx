@@ -44,7 +44,7 @@ export default function TechProfilePage() {
         setCurrentTechId(userId);
         if (userId) {
             setTech(technicians.find(t => t.id === userId));
-            setMyTimeOff(initialTimeOffRequests.filter(r => r.technicianId === userId));
+            setMyTimeOff(initialTimeOffRequests.filter(r => r.techId === userId));
         }
     }, []);
 
@@ -55,7 +55,7 @@ export default function TechProfilePage() {
 
     const reliabilityEvents = useMemo(() => {
         if (!currentTechId) return [];
-        return penaltyEvents.filter(p => p.technicianId === currentTechId)
+        return penaltyEvents.filter(p => p.techId === currentTechId)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [currentTechId]);
 
@@ -130,7 +130,7 @@ export default function TechProfilePage() {
         const formData = new FormData(e.currentTarget);
         const newRequest: TimeOffRequest = {
             id: `tor-${Date.now()}`,
-            technicianId: currentTechId,
+            techId: currentTechId,
             startDate: formData.get('startDate') as string,
             endDate: formData.get('endDate') as string,
             type: formData.get('type') as any,

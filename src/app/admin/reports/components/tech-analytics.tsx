@@ -39,7 +39,7 @@ export function TechAnalytics({ technicians, workOrders, weeklyLogs }: TechAnaly
         return activeTechs.map(tech => {
             const myJobs = workOrders.filter(wo => wo.assignedTechnicianId === tech.id);
             const completed = myJobs.filter(wo => wo.status === 'completed').length;
-            const myLogs = weeklyLogs.filter(log => log.technicianId === tech.id);
+            const myLogs = weeklyLogs.filter(log => log.techId === tech.id);
             const totalEarnings = myLogs.reduce((acc, log) => acc + (log.totalPayout || 0), 0);
 
             return {

@@ -72,8 +72,8 @@ export function calculateReliabilityScore(events: ReliabilityEvent[]): number {
 /**
  * Generates a unique key for an automatic reliability event to ensure idempotency.
  */
-export function generateEventKey(technicianId: string, eventType: string, relatedRecordId: string = 'none', dueDate: string = ''): string {
-  return `${technicianId}:${eventType}:${relatedRecordId}:${dueDate}`.toLowerCase().replace(/\s+/g, '-');
+export function generateEventKey(techId: string, eventType: string, relatedRecordId: string = 'none', dueDate: string = ''): string {
+  return `${techId}:${eventType}:${relatedRecordId}:${dueDate}`.toLowerCase().replace(/\s+/g, '-');
 }
 
 /**
@@ -82,7 +82,7 @@ export function generateEventKey(technicianId: string, eventType: string, relate
  */
 export function createAutomaticReliabilityEvent(
   params: {
-    technicianId: string;
+    techId: string;
     eventType: keyof typeof RELIABILITY_EVENT_TYPES.OPERATIONAL | keyof typeof RELIABILITY_EVENT_TYPES.RECOVERY | keyof typeof RELIABILITY_EVENT_TYPES.CRITICAL;
     reason: string;
     relatedAssignmentId?: string;
@@ -99,10 +99,10 @@ export function createAutomaticReliabilityEvent(
   }
 
   const relatedId = params.relatedAssignmentId || params.relatedWeeklyLogId || params.relatedTicketId || 'none';
-  const eventKey = generateEventKey(params.technicianId, option.type, relatedId, params.dueDate);
+  const eventKey = generateEventKey(params.techId, option.type, relatedId, params.dueDate);
 
   return {
-    technicianId: params.technicianId,
+    techId: params.techId,
     eventType: option.type,
     scoreChange: option.scoreChange,
     reason: params.reason,

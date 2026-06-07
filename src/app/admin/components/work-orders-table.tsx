@@ -168,7 +168,7 @@ export const WorkOrdersTable = React.memo(({
       .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
   }, [technicians, techSearchQuery]);
 
-  const handleAssign = useCallback(async (technicianId: string) => {
+  const handleAssign = useCallback(async (techId: string) => {
     if (!selectedOrder) return;
 
     try {
@@ -186,14 +186,14 @@ export const WorkOrdersTable = React.memo(({
           id: assignmentId,
           shortId: shortId,
           workOrderId: selectedOrder.id,
-          techId: technicianId,
-          assignedTechnicianId: technicianId,
+          techId: techId,
+          assignedTechnicianId: techId,
           status: 'assigned',
           assignedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           history: [
             ...(selectedOrder.history || []),
-            { type: 'status_change', date: today, details: `Job assigned to ${technicians.find(t => t.id === technicianId)?.name}.`, user: currentUser?.name || 'Admin' }
+            { type: 'status_change', date: today, details: `Job assigned to ${technicians.find(t => t.id === techId)?.name}.`, user: currentUser?.name || 'Admin' }
           ]
       };
 

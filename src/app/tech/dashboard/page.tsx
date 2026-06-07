@@ -77,7 +77,7 @@ export default function TechDashboardPage() {
             setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
-        const logQ = query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId), where('status', '==', 'Draft'));
+        const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));
         const unsubLogs = onSnapshot(logQ, (snap) => {
             setUnsubmittedLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
@@ -124,7 +124,7 @@ export default function TechDashboardPage() {
         if (!currentTechId) return;
         const logQuery = query(
             collection(db, 'weeklyLogs'),
-            where('technicianId', '==', currentTechId),
+            where('techId', '==', currentTechId),
             where('status', '==', 'Draft')
         );
         const snap = await getDocs(logQuery);
@@ -148,7 +148,7 @@ export default function TechDashboardPage() {
         
         const logQuery = query(
             collection(db, 'weeklyLogs'),
-            where('technicianId', '==', currentTechId),
+            where('techId', '==', currentTechId),
             where('weekOf', '==', weekOf),
             where('status', '==', 'Draft')
         );
@@ -170,7 +170,7 @@ export default function TechDashboardPage() {
             });
         } else {
             const newLog: Omit<WeeklyLog, 'id'> = {
-                technicianId: currentTechId,
+                techId: currentTechId,
                 weekOf,
                 status: 'Draft',
                 items: [newItem],

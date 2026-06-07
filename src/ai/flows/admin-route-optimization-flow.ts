@@ -35,7 +35,7 @@ export type AdminRouteOptimizationInput = z.infer<typeof AdminRouteOptimizationI
 const AdminRouteOptimizationOutputSchema = z.object({
   routes: z.array(z.object({
     routeId: z.string().describe('Internal tactical identifier.'),
-    technicianId: z.string().describe('Assigned operative ID.'),
+    techId: z.string().describe('Assigned operative ID.'),
     technicianName: z.string().describe('Assigned operative name.'),
     jobIds: z.array(z.string()).describe('Sequenced job IDs.'),
     reasoning: z.string().describe('Tactical justification for this route.'),

@@ -26,7 +26,7 @@ export type ReliabilityEventCategory = 'critical_failure' | 'operational_frictio
 
 export type ReliabilityEvent = {
   id: string;
-  technicianId: string;
+  techId: string;
   eventType: string;
   scoreChange: number;
   reason: string;
@@ -187,7 +187,7 @@ export type Recommendation = {
 };
 
 export type ProjectTeamMember = {
-  technicianId: string;
+  techId: string;
   role: string;
 };
 
@@ -243,7 +243,7 @@ export type Task = {
 export type ProjectDailyLog = {
   id: string;
   projectId: string;
-  technicianId: string;
+  techId: string;
   date: string;
   hoursWorked: number;
   totalHours: string;
@@ -279,7 +279,7 @@ export type ProjectDocument = {
 export type TimesheetLog = {
   assignmentId: string;
   projectId: string;
-  technicianId: string;
+  techId: string;
   date: string;
   checkInTime: string;
   checkOutTime: string;
@@ -314,7 +314,7 @@ export type ServiceRequest = {
 export type AssignmentTimeLog = {
   id: string;
   workOrderId: string;
-  technicianId: string;
+  techId: string;
   checkInTime: string;
   checkOutTime?: string;
   minutesWorked?: number;
@@ -345,7 +345,7 @@ export type MissingAssignmentReport = {
 
 export type FinancialRecord = {
   id: string;
-  technicianId: string;
+  techId: string;
   date: string;
   type: 'reimbursement' | 'payout' | 'penalty';
   amount: number;
@@ -354,7 +354,7 @@ export type FinancialRecord = {
 
 export type WeeklyLog = {
   id: string;
-  technicianId: string;
+  techId: string;
   weekOf: string;
   status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected';
   items: WeeklyLogItem[];
@@ -369,7 +369,7 @@ export type WeeklyLog = {
 
 export type TimeOffRequest = {
   id: string;
-  technicianId: string;
+  techId: string;
   startDate: string;
   endDate: string;
   type: 'Vacation' | 'Sick' | 'Personal' | 'Other';

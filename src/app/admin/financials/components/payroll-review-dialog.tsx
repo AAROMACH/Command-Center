@@ -209,7 +209,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
     const getHoursOnsite = useCallback((woId: string) => {
         if (!technician) return 'TBD';
-        const log = assignmentTimeLogs.find(l => l.workOrderId === woId && l.technicianId === technician.id);
+        const log = assignmentTimeLogs.find(l => l.workOrderId === woId && l.techId === technician.id);
         if (!log) return 'TBD';
         if (!log.checkOutTime) return 'ACTIVE';
         

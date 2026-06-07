@@ -21,7 +21,7 @@ export async function getOptimizedRoutes(input: {
 }): Promise<{
   routes: {
     routeId: string;
-    technicianId: string | null;
+    techId: string | null;
     technicianName: string;
     jobIds: string[];
     reasoning: string;
@@ -93,7 +93,7 @@ export async function getOptimizedRoutes(input: {
 
             routes.push({
                 routeId: `route-${Date.now()}-${i}`,
-                technicianId: nearbyTech?.id || null,
+                techId: nearbyTech?.id || null,
                 technicianName: nearbyTech?.name || "",
                 jobIds: routeJobIds,
                 reasoning: `Geographic area anchored to ${cityAnchor}. Sequence optimized by mission priority and start times.`,

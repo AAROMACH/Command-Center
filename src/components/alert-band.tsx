@@ -151,7 +151,7 @@ export function AlertBand() {
       }
 
       const pendingLogsCount = weeklyLogs.filter(log =>
-        log.technicianId === currentUser.id && log.status === 'Draft'
+        log.techId === currentUser.id && log.status === 'Draft'
       ).length;
 
       if (pendingLogsCount > 0) {

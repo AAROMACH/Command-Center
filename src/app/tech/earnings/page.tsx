@@ -59,10 +59,10 @@ export default function TechEarningsPage() {
             const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
                 if (d.exists()) setTech({ ...d.data(), id: d.id } as Technician);
             });
-            const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId)), (snap) => {
+            const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('techId', '==', userId)), (snap) => {
                 setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
             });
-            const unsubExp = onSnapshot(query(collection(db, 'expenses'), where('technicianId', '==', userId)), (snap) => {
+            const unsubExp = onSnapshot(query(collection(db, 'expenses'), where('techId', '==', userId)), (snap) => {
                 setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
             });
             const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {

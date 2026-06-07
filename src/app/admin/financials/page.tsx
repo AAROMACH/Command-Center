@@ -285,7 +285,7 @@ export default function FinancialsPage() {
                     const parts = log.weekOf.split('-');
                     const d = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
                     if (isWithinInterval(d, { start, end })) {
-                        rows.push(['PAY', log.id, log.weekOf, getTechnicianName(log.technicianId), 'Weekly Log Payout', (log.totalPayout || 0).toString(), log.status]);
+                        rows.push(['PAY', log.id, log.weekOf, getTechnicianName(log.techId), 'Weekly Log Payout', (log.totalPayout || 0).toString(), log.status]);
                     }
                 } catch(e) {}
             });
@@ -313,7 +313,7 @@ export default function FinancialsPage() {
 
     const filteredWeeklyLogs = useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return weeklyLogs.filter(log => (log.weekOf || '').includes(q) || getTechnicianName(log.technicianId).toLowerCase().includes(q));
+        return weeklyLogs.filter(log => (log.weekOf || '').includes(q) || getTechnicianName(log.techId).toLowerCase().includes(q));
     }, [weeklyLogs, searchQuery, technicians]);
 
     const filteredInvoices = useMemo(() => {
@@ -428,7 +428,7 @@ export default function FinancialsPage() {
                                         {filteredWeeklyLogs.map(log => (
                                             <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                                 <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
-                                                <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.technicianId)}</TableCell>
+                                                <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.techId)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
                                                         {log.status}
@@ -628,7 +628,7 @@ export default function FinancialsPage() {
             </Dialog>
 
             <InvoiceEditor isOpen={isInvoiceEditorOpen} setIsOpen={setIsInvoiceEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
-            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.technicianId)} missions={allMissions} onStatusChange={handleUpdateLogStatus} />}
+            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.techId)} missions={allMissions} onStatusChange={handleUpdateLogStatus} />}
         </div>
     );
 }

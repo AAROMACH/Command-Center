@@ -164,7 +164,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
             {projects.map(project => {
                 const progress = getProjectProgress(project);
                 const leadMember = project.team?.find(m => m.role === 'Project Lead');
-                const leadTech = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
+                const leadTech = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
 
                 return (
                     <Card key={project.id} className="bg-bg-secondary border-border-main overflow-hidden shadow-sm text-left">

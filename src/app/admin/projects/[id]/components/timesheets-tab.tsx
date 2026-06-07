@@ -141,7 +141,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         if(search) {
             const lowercasedSearch = search.toLowerCase();
             filtered = filtered.filter(log => {
-                const tech = getTechnician(log.technicianId);
+                const tech = getTechnician(log.techId);
                 return tech?.name.toLowerCase().includes(lowercasedSearch) || log.date.toLowerCase().includes(lowercasedSearch);
             });
         }
@@ -152,7 +152,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
     const groupedData = useMemo(() => {
         if (viewBy === 'tech') {
             const byTech = filteredTimesheets.reduce((acc, log) => {
-                const techId = log.technicianId;
+                const techId = log.techId;
                 if (!acc[techId]) {
                     acc[techId] = { logs: [], totalHoursNum: 0 };
                 }
@@ -266,7 +266,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         ];
         
         filteredTimesheets.forEach(log => {
-            const tech = getTechnician(log.technicianId);
+            const tech = getTechnician(log.techId);
             rows.push([
                 log.date,
                 tech?.name || 'Unknown',
@@ -389,7 +389,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                             </AccordionTrigger>
                             <AccordionContent className="accordion-content px-2 pb-2 pt-0 space-y-1">
                                 {group.logs.map((log: ProjectDailyLog) => (
-                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.technicianId)} viewBy={viewBy} onEdit={handleOpenEdit} />
+                                    <TimesheetCard key={log.id} log={log} tech={getTechnician(log.techId)} viewBy={viewBy} onEdit={handleOpenEdit} />
                                 ))}
                             </AccordionContent>
                         </AccordionItem>
@@ -527,7 +527,7 @@ function EditLogDialog({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Operative</Label>
-                                <Select value={formData.technicianId} onValueChange={(val) => setFormData({...formData, technicianId: val})}>
+                                <Select value={formData.techId} onValueChange={(val) => setFormData({...formData, techId: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>)}

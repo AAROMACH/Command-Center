@@ -74,13 +74,13 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
         if (taskEstSum > 0) estimatedHours = taskEstSum;
 
         const laborCost = dailyLogs.reduce((acc, log) => {
-            const tech = allTechnicians.find(t => t.id === log.technicianId);
+            const tech = allTechnicians.find(t => t.id === log.techId);
             const rate = tech?.hourlyRate || 0;
             return acc + ((log.hoursWorked || 0) * rate);
         }, 0);
 
         const rateMissing = dailyLogs.some(log => {
-             const tech = allTechnicians.find(t => t.id === log.technicianId);
+             const tech = allTechnicians.find(t => t.id === log.techId);
              return !tech?.hourlyRate;
         });
 
@@ -413,7 +413,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                         </div>
                         <div className="space-y-3 text-left">
                             {(project.team || []).map(member => {
-                                const tech = getTechnician(member.technicianId);
+                                const tech = getTechnician(member.techId);
                                 if (!tech) return null;
                                 return (
                                     <div key={tech.id} className="flex items-center gap-3 p-3 rounded-md bg-bg-primary border border-border-sub">

@@ -36,7 +36,7 @@ export default function TechProjectsPage() {
     const techProjects = useMemo(() => {
         if (!currentTechId) return [];
         return allProjects
-            .filter(p => (p.team || []).some(member => member.technicianId === currentTechId))
+            .filter(p => (p.team || []).some(member => member.techId === currentTechId))
             .filter(p => 
                 (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||

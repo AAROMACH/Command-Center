@@ -173,7 +173,7 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                         const totalTasks = getTotalTasksCount(project);
                         const team = project.team || [];
                         const leadMember = team.find(m => m.role === 'Project Lead');
-                        const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
+                        const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
@@ -283,7 +283,7 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
     
     const team = project.team || [];
     const leadMember = team.find(m => m.role === 'Project Lead');
-    const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
+    const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
 
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';

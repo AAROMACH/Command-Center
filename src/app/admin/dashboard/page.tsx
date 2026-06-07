@@ -353,7 +353,7 @@ export default function DashboardPage() {
 
                                 <TabsContent value="timeoff" className="m-0 space-y-3">
                                     {pendingRequests.timeOff.map(req => {
-                                        const tech = technicians.find(t => t.id === req.technicianId);
+                                        const tech = technicians.find(t => t.id === req.techId);
                                         return (
                                             <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                 <div className="flex items-center gap-4 text-left">
@@ -379,7 +379,7 @@ export default function DashboardPage() {
 
                                 <TabsContent value="unsubmits" className="m-0 space-y-3">
                                     {pendingRequests.unsubmits.map(log => {
-                                        const tech = technicians.find(t => t.id === log.technicianId);
+                                        const tech = technicians.find(t => t.id === log.techId);
                                         return (
                                             <div key={log.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                 <div className="flex items-center gap-4 text-left">

@@ -114,7 +114,7 @@ export default function TechWeeklyLogPage() {
         setCurrentTechId(userId);
 
         if (userId) {
-            const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('technicianId', '==', userId)), (snap) => {
+            const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('techId', '==', userId)), (snap) => {
                 setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
             });
             const unsubWO = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
@@ -185,7 +185,7 @@ export default function TechWeeklyLogPage() {
         }
 
         const newLog: Omit<WeeklyLog, 'id'> = {
-            technicianId: currentTechId,
+            techId: currentTechId,
             weekOf,
             status: 'Draft',
             items: [],

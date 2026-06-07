@@ -178,7 +178,7 @@ export default function TechAssignmentsPage() {
         if (!currentTechId) return;
         const logQuery = query(
             collection(db, 'weeklyLogs'),
-            where('technicianId', '==', currentTechId),
+            where('techId', '==', currentTechId),
             where('status', '==', 'Draft')
         );
         const snap = await getDocs(logQuery);
@@ -202,7 +202,7 @@ export default function TechAssignmentsPage() {
         
         const logQuery = query(
             collection(db, 'weeklyLogs'),
-            where('technicianId', '==', currentTechId),
+            where('techId', '==', currentTechId),
             where('weekOf', '==', weekOf),
             where('status', '==', 'Draft')
         );
@@ -224,7 +224,7 @@ export default function TechAssignmentsPage() {
             });
         } else {
             const newLog: Omit<WeeklyLog, 'id'> = {
-                technicianId: currentTechId,
+                techId: currentTechId,
                 weekOf,
                 status: 'Draft',
                 items: [newItem],

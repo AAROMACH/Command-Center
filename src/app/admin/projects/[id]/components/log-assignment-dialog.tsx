@@ -21,7 +21,7 @@ type LogAssignmentDialogProps = {
 };
 
 const defaultLogState = {
-    technicianId: '',
+    techId: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     checkInTime: '09:00',
     checkOutTime: '17:00',
@@ -42,7 +42,7 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
     };
     
     const handleSubmit = () => {
-        if (!logData.technicianId || !logData.date || !logData.checkInTime || !logData.checkOutTime) {
+        if (!logData.techId || !logData.date || !logData.checkInTime || !logData.checkOutTime) {
             toast({
                 variant: 'destructive',
                 title: 'Incomplete Parameters',
@@ -71,7 +71,7 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
         const newLog = {
             assignmentId: `ts-${new Date().getTime()}`,
             projectId,
-            technicianId: logData.technicianId,
+            techId: logData.techId,
             date: logData.date,
             checkInTime: logData.checkInTime, // Store raw HH:mm
             checkOutTime: logData.checkOutTime, // Store raw HH:mm
@@ -100,9 +100,9 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
                 <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 text-left">
-                             <Label htmlFor="technicianId" className="text-[10px] uppercase font-bold text-text-muted">Operative Identity</Label>
-                            <Select value={logData.technicianId} onValueChange={(value) => handleSelectChange('technicianId', value)}>
-                                <SelectTrigger id="technicianId" className="bg-bg-primary h-10 text-xs font-bold uppercase">
+                             <Label htmlFor="techId" className="text-[10px] uppercase font-bold text-text-muted">Operative Identity</Label>
+                            <Select value={logData.techId} onValueChange={(value) => handleSelectChange('techId', value)}>
+                                <SelectTrigger id="techId" className="bg-bg-primary h-10 text-xs font-bold uppercase">
                                     <SelectValue placeholder="Select operative" />
                                 </SelectTrigger>
                                 <SelectContent>

@@ -588,7 +588,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {timeOffRequests.filter(r => r.status === 'pending').map(req => {
-                                            const tech = personnel.find(p => p.id === req.technicianId);
+                                            const tech = personnel.find(p => p.id === req.techId);
                                             return (
                                                 <Card key={req.id} className="bg-bg-secondary border-border-sub shadow-sm">
                                                     <CardContent className="p-4 space-y-3">

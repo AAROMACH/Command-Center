@@ -68,7 +68,7 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                         const totalTasks = getTotalTasksCount(project);
                         const team = project.team || [];
                         const leadMember = team.find(m => m.role === 'Project Lead');
-                        const lead = leadMember ? technicians.find(t => t.id === leadMember.technicianId) : null;
+                        const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
 
                         return (
                             <tr key={project.id} onClick={() => router.push(`/tech/projects/${project.id}`)} className="cursor-pointer group">

@@ -102,7 +102,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   const reliabilityEvents = useMemo(() => {
     if (!person) return [];
-    return penaltyEvents.filter(e => e.technicianId === person.id)
+    return penaltyEvents.filter(e => e.techId === person.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [person]);
 
@@ -556,7 +556,7 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
 
         const newEvent: ReliabilityEvent = {
             id: `re-${Date.now()}`,
-            technicianId: person.id,
+            techId: person.id,
             eventType: option.type,
             scoreChange: option.scoreChange,
             reason,

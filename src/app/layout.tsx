@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Aaromach Command Center',
   description: 'Aaromach Command Center for operations management.',

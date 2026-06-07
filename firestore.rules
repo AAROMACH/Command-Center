@@ -39,7 +39,6 @@ service cloud.firestore {
       return d.get('roles', []).hasAny(['client']) || d.get('role', '') == 'client';
     }
 
-    // users
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSuperAdmin();
@@ -50,7 +49,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // assignments — tech queries: where('techId', '==', uid)
     match /assignments/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -63,7 +61,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // workOrders — ghost collection; tech matched on techId or assignedTechnicianId
     match /workOrders/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -78,7 +75,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // weeklyLogs — tech queries: where('techId', '==', uid)
     match /weeklyLogs/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -91,7 +87,17 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // projectDailyLogs — tech queries: where('techId', '==', uid)
+    match /weeklyLogItems/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid)
+      );
+      allow create: if isTech() || isAdmin();
+      allow update: if isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
     match /projectDailyLogs/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -103,7 +109,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // projects — techs see all (team filtering is client-side); clients scoped by clientId
     match /projects/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -115,14 +120,21 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // projectDocuments — queried by projectId; internal to admins and techs
     match /projectDocuments/{id} {
       allow read: if isSignedIn() && (isAdmin() || isTech());
       allow create: if isAdmin() || isTech();
       allow delete: if isAdmin();
     }
 
-    // clientRequests — client queries: where('clientName', '==', clientCompany)
+    match /clients/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isClient() && resource.data.uid == request.auth.uid)
+      );
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
     match /clientRequests/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -135,7 +147,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // siteRequests — client queries: where('clientName', '==', clientCompany)
     match /siteRequests/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -148,17 +159,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // invoices — client queries: where('clientName', '==', clientName)
-    match /invoices/{id} {
-      allow read: if isSignedIn() && (
-          isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany)
-      );
-      allow create, update: if isAdmin();
-      allow delete: if isSuperAdmin();
-    }
-
-    // sites — admin + owning client only
     match /sites/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
@@ -168,7 +168,25 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // timeOffRequests — admin reads all; techs create only
+    match /invoices/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isClient() && resource.data.clientName == userData().clientCompany)
+      );
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /reimbursements/{id} {
+      allow read: if isSignedIn() && (
+          isPayrollAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid)
+      );
+      allow create: if isTech() || isAdmin();
+      allow update: if isPayrollAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
     match /timeOffRequests/{id} {
       allow read: if isAdmin();
       allow create: if isTech();
@@ -176,30 +194,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // notifications — any signed-in user can create; admin manages
+    match /importBatches/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /missingReports/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid)
+      );
+      allow create: if isTech() || isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /notifications/{id} {
       allow create: if isSignedIn();
       allow read, update, delete: if isAdmin();
     }
 
-    // messages — admin broadcast; any signed-in user can read
     match /messages/{id} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    // planTiers — pricing data; any signed-in user can read
     match /planTiers/{id} {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }
 
-    // financialRecords — payroll admin only
     match /financialRecords/{id} {
       allow read, write: if isPayrollAdmin();
     }
 
-    // penaltyEvents — payroll admin only
     match /penaltyEvents/{id} {
       allow read, write: if isPayrollAdmin();
     }

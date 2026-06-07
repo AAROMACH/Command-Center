@@ -7,8 +7,9 @@ import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { isAdmin, isTech, isClient } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
@@ -67,14 +68,20 @@ export default function LoginPage() {
     }
   }
 
-  const handleRedirect = (user: any) => {
-    if (isAdmin(user)) {
-      router.push("/admin/dashboard");
-    } else if (isTech(user)) {
-      router.push("/tech/dashboard");
-    } else if (isClient(user)) {
-      router.push("/client/dashboard");
-    } else {
+  const handleRedirect = async (firebaseUser: any) => {
+    try {
+      const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+      const userData = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+      if (isAdmin(userData as any)) {
+        router.push("/admin/dashboard");
+      } else if (isTech(userData as any)) {
+        router.push("/tech/dashboard");
+      } else if (isClient(userData as any)) {
+        router.push("/client/dashboard");
+      } else {
+        router.push("/admin/dashboard");
+      }
+    } catch {
       router.push("/admin/dashboard");
     }
   };

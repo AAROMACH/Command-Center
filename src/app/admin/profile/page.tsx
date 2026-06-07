@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians } from '@/lib/data';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -20,10 +22,14 @@ export default function ProfilePage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
-        if (userId) {
-            setCurrentUser(technicians.find(t => t.id === userId));
-        }
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            if (!fbUser) return;
+            const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+                if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
+            });
+            return () => unsubUser();
+        });
+        return () => unsubAuth();
     }, []);
 
     const userFallback = useMemo(() => {
@@ -47,9 +53,9 @@ export default function ProfilePage() {
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
                         <Search />
-                        <input 
-                            className="search-input !w-full md:!w-[250px]" 
-                            placeholder="Find setting..." 
+                        <input
+                            className="search-input !w-full md:!w-[250px]"
+                            placeholder="Find setting..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -67,7 +73,7 @@ export default function ProfilePage() {
                         <CardContent className="space-y-6">
                             <div className="flex items-center gap-6">
                                 <Avatar className="h-20 w-20">
-                                    <AvatarImage asChild src={currentUser?.avatarUrl} alt="User Avatar" >
+                                    <AvatarImage asChild src={currentUser?.avatarUrl} alt="User Avatar">
                                        <Image src={currentUser?.avatarUrl || "https://picsum.photos/seed/user1/80/80"} alt="User Avatar" width={80} height={80} data-ai-hint="person face" />
                                     </AvatarImage>
                                     <AvatarFallback>{userFallback}</AvatarFallback>
@@ -135,9 +141,9 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <ChangePasswordDialog 
-                isOpen={isPasswordDialogOpen} 
-                setIsOpen={setIsPasswordDialogOpen} 
+            <ChangePasswordDialog
+                isOpen={isPasswordDialogOpen}
+                setIsOpen={setIsPasswordDialogOpen}
             />
         </div>
     )

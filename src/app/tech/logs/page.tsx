@@ -98,6 +98,15 @@ export default function TechWeeklyLogPage() {
 
     const { toast } = useToast();
 
+    /**
+     * Submission Window Validator.
+     * Restricts weekly log finalization to Saturday (6) and Sunday (0).
+     */
+    const isWeekend = useMemo(() => {
+        const day = new Date().getDay();
+        return day === 0 || day === 6;
+    }, []);
+
     // 1. Terminal Initialization
     useEffect(() => {
         setMounted(true);
@@ -252,6 +261,15 @@ export default function TechWeeklyLogPage() {
 
     const handleSubmit = async () => {
         if (!activeLog) return;
+
+        if (!isWeekend) {
+            toast({
+                variant: "destructive",
+                title: "Submission Restricted",
+                description: "Weekly log finalization is restricted to the weekend cycle (Saturday/Sunday) to ensure all mid-week activity is captured.",
+            });
+            return;
+        }
         
         const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) + 
                       (activeLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
@@ -498,11 +516,15 @@ export default function TechWeeklyLogPage() {
                         </div>
                     ) : (
                         <Button 
-                            disabled={!canSubmit} 
+                            disabled={!canSubmit || !isWeekend} 
                             onClick={handleSubmit}
-                            className="h-12 px-10 bg-brand-red hover:bg-brand-red-hover font-bold uppercase text-[10px] tracking-[0.2em]"
+                            className={cn(
+                                "h-12 px-10 font-bold uppercase text-[10px] tracking-[0.2em]",
+                                canSubmit && isWeekend ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
+                            )}
                         >
-                            <Send size={16} className="mr-2"/> Finalize & Submit Manifest
+                            <Send size={16} className="mr-2"/> 
+                            {isWeekend ? "Finalize & Submit Manifest" : "Weekend Submission Only"}
                         </Button>
                     )}
                 </div>
@@ -516,6 +538,18 @@ export default function TechWeeklyLogPage() {
                         <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Registry Verification Required</p>
                         <p className="text-[10px] text-text-muted leading-relaxed uppercase text-left">
                             You must confirm or dispute the remaining <span className="text-text-red font-black">{counts.pending} assignments</span> before the manifest can be transmitted for billing.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {!isLocked && isWeekend === false && (
+                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
+                    <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-left">
+                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Audit manifest Preparation</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
+                            You can continue verifying missions and logging expenses throughout the week. Final submission is authorized on <span className="text-brand-red font-bold">Saturday and Sunday</span>.
                         </p>
                     </div>
                 </div>

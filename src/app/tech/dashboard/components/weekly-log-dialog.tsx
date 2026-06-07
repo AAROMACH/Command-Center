@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Check, Coins, ScrollText, Trash2, Plus } from 'lucide-react';
+import { Check, Coins, ScrollText, Trash2, Plus, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OUTCOME_CODE_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,11 @@ type WeeklyLogDialogProps = {
 
 export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitted }: WeeklyLogDialogProps) {
     const [log, setLog] = useState<WeeklyLog>(initialLog);
+
+    const isWeekend = (() => {
+        const day = new Date().getDay();
+        return day === 0 || day === 6;
+    })();
 
     const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
 
@@ -56,6 +61,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
     }
 
     const handleSubmit = () => {
+        if (!isWeekend) return;
         onSubmitted();
         setIsOpen(false);
     };
@@ -72,6 +78,15 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                         Audit for week of <span className="text-text-primary font-bold">{log.weekOf}</span>. Ensure all reimbursements are logged.
                     </DialogDescription>
                 </DialogHeader>
+
+                {!isWeekend && (
+                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-start gap-3 mb-4">
+                        <Info size={16} className="text-accent-gold shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-text-muted uppercase font-bold leading-relaxed text-left">
+                            Submission Lock: This manifest can be updated mid-week, but final submission is only authorized on <span className="text-brand-red">Saturday and Sunday</span>.
+                        </p>
+                    </div>
+                )}
 
                 <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
                     <div className="space-y-2">
@@ -156,8 +171,16 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
 
                 <DialogFooter className="border-t border-border-default pt-4">
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit} className="bg-brand-red hover:bg-brand-red-hover">
-                        <Check size={16} className="mr-2"/> Submit Log
+                    <Button 
+                        onClick={handleSubmit} 
+                        disabled={!isWeekend}
+                        className={cn(
+                            "font-bold uppercase text-[10px] tracking-widest h-10 px-8",
+                            isWeekend ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
+                        )}
+                    >
+                        <Check size={16} className="mr-2"/> 
+                        {isWeekend ? "Submit Log" : "Weekend Submission Only"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

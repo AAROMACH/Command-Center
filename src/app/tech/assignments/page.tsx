@@ -81,15 +81,6 @@ export default function TechAssignmentsPage() {
 
     const { toast } = useToast();
 
-    /**
-     * Finalization Window Validator.
-     * Restricts mission completion to Saturday (6) and Sunday (0).
-     */
-    const isWeekend = useMemo(() => {
-        const day = new Date().getDay();
-        return day === 0 || day === 6;
-    }, []);
-
     useEffect(() => {
         setMounted(true);
         const userId = localStorage.getItem('currentUserId');
@@ -299,15 +290,6 @@ export default function TechAssignmentsPage() {
     };
 
     const handleMarkComplete = async (woId: string) => {
-        if (!isWeekend) {
-            toast({
-                variant: "destructive",
-                title: "Authorization Restricted",
-                description: "Operational Policy: Mission finalization is restricted to weekend registry cycles (Saturday/Sunday).",
-            });
-            return;
-        }
-
         const now = format(new Date(), 'h:mm a');
         const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
@@ -562,11 +544,7 @@ export default function TechAssignmentsPage() {
                                                       <Button 
                                                         variant="default" 
                                                         size="sm" 
-                                                        className={cn(
-                                                            "h-8 !text-[10px] bg-text-green hover:bg-text-green/90",
-                                                            !isWeekend && "opacity-50"
-                                                        )}
-                                                        disabled={!isWeekend}
+                                                        className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90"
                                                         onClick={() => handleMarkComplete(wo.id)}
                                                       >
                                                           <CheckCircle2 size={14} className="mr-2"/>

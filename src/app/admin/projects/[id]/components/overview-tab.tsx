@@ -132,7 +132,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
     const handleSaveNote = async () => {
         if (newNoteText.trim() && !isReadOnly) {
             const newNote = {
-                id: `note-${Date.now()}`,
+                id: crypto.randomUUID(),
                 text: newNoteText.trim(),
                 type: 'info' as const
             };

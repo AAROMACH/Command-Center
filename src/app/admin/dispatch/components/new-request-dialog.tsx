@@ -26,6 +26,8 @@ import type { ServiceRequest, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 declare global {
   interface Window {
@@ -184,7 +186,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.clientName || !formData.location || !formData.description) {
       toast({
         variant: "destructive",
@@ -196,7 +198,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
     const newRequest: ServiceRequest = {
       ...formData as ServiceRequest,
-      id: `req-${Date.now().toString().slice(-4)}`,
+      id: await generateId(ID_PREFIXES.CLIENT_REQUEST),
       submittedDate: new Date().toISOString().split('T')[0],
       imageUrls: images,
       documentUrls: docs,

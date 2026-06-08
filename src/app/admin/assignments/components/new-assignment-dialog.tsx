@@ -26,6 +26,8 @@ import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 declare global {
@@ -174,7 +176,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     );
   }, [registrySearch, clients]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title || !formData.description || !formData.location || !formData.clientName) {
       toast({
         variant: "destructive",
@@ -186,7 +188,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
     const newOrder: WorkOrder = {
       ...formData as WorkOrder,
-      id: `wo-${Date.now().toString().slice(-6)}`,
+      id: await generateId(ID_PREFIXES.WORK_ORDER),
       isAcknowledged: false,
       source: 'Manual',
     };

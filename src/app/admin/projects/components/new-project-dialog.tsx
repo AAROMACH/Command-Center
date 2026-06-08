@@ -26,6 +26,8 @@ import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 declare global {
   interface Window {
@@ -186,12 +188,12 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.client || !formData.location) return;
 
     const newProject: Project = {
       ...formData as Project,
-      id: `proj-${Date.now().toString().slice(-4)}`,
+      id: await generateId(ID_PREFIXES.PROJECT),
       assignedTechnicianIds: [],
       team: [],
       phases: [],

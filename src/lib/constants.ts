@@ -167,6 +167,7 @@ export const ID_PREFIXES = {
   PROJECT_DAILY_LOG: 'plog',
   PROJECT_DOCUMENT:  'pdoc',
   REIMBURSEMENT:     'reimb',
+  ROUTE:             'route',
   SITE:              'site',
   SITE_REQUEST:      'sreq',
   TIME_OFF_REQUEST:  'pto',

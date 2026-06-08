@@ -63,6 +63,8 @@ import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 const DISPUTE_REASONS = [
     "Another tech did this job",
@@ -786,11 +788,11 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
 }
 
 function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (report: MissingAssignmentReport) => void }) {
-    const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         onSave({
-            id: `mar-${Date.now()}`,
+            id: await generateId(ID_PREFIXES.MISSING_REPORT),
             assignmentId: formData.get('assignmentId') as string,
             clientName: formData.get('clientName') as string,
             date: formData.get('date') as string,

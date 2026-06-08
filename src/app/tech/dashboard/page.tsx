@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { technicians as mockTechnicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -155,10 +157,10 @@ export default function TechDashboardPage() {
 
         const snap = await getDocs(logQuery);
         const newItem: WeeklyLogItem = {
-            id: `wli-${Date.now()}`,
+            id: await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM),
             workOrderId: woId,
             jobPay: wo.pay,
-            outcomeCode: null, 
+            outcomeCode: null,
             isComplete: true,
             isAdminReviewed: false
         };
@@ -169,15 +171,16 @@ export default function TechDashboardPage() {
                 items: arrayUnion(newItem)
             });
         } else {
-            const newLog: Omit<WeeklyLog, 'id'> = {
+            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            await setDoc(doc(db, 'weeklyLogs', logId), {
+                id: logId,
                 techId: currentTechId,
                 weekOf,
                 status: 'Draft',
                 items: [newItem],
                 reimbursements: [],
                 totalPayout: 0
-            };
-            await addDoc(collection(db, 'weeklyLogs'), newLog);
+            });
         }
     };
 

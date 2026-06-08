@@ -78,6 +78,8 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { penaltyEvents } from '@/lib/data';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
@@ -192,14 +194,14 @@ export default function ActivityAuditPage() {
         setMessages(localMsgs);
     }, []);
 
-    const handleBroadcast = useCallback(() => {
+    const handleBroadcast = useCallback(async () => {
         if (!newMessage.subject || !newMessage.body) {
             toast({ variant: 'destructive', title: 'Transmission Error', description: 'Subject and body are required for broadcast.' });
             return;
         }
 
         const msg: AdminMessage = {
-            id: `msg-${Date.now()}`,
+            id: await generateId(ID_PREFIXES.MESSAGE),
             senderId: currentUser?.id || 'admin',
             senderName: currentUser?.name || 'System Admin',
             subject: newMessage.subject!,

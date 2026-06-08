@@ -137,6 +137,7 @@ export type Route = {
 
 export type Technician = {
   id: string;
+  userId?: string;
   name: string;
   role: string;
   roles?: AppRole[];

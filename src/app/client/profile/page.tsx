@@ -1,21 +1,20 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians } from '@/lib/data';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-    User, 
-    Building2, 
+import {
+    User,
+    Building2,
     ShieldCheck,
-    Pencil,
     Search,
     Banknote,
     Mail,
-    FileText,
-    Clock,
     Key,
     CreditCard,
     ChevronRight
@@ -27,9 +26,10 @@ import { useToast } from '@/hooks/use-toast';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function ClientProfilePage() {
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -38,19 +38,26 @@ export default function ClientProfilePage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
-        setCurrentUserId(userId);
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            if (!fbUser) return;
+            const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+                if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
+            });
+            return () => unsubUser();
+        });
+        return () => unsubAuth();
     }, []);
 
-    const user = useMemo(() => 
-        currentUserId ? technicians.find(t => t.id === currentUserId) : null
-    , [currentUserId]);
+    const userFallback = useMemo(() => {
+        if (!currentUser?.name) return 'CL';
+        return currentUser.name.split(' ').map((n: string) => n[0]).join('');
+    }, [currentUser]);
 
     const handleSave = () => {
         toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
     };
 
-    if (!mounted || !currentUserId || !user) return null;
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 text-left">
@@ -66,9 +73,9 @@ export default function ClientProfilePage() {
                 <div className="page-header-right items-center">
                     <div className="search-wrap">
                         <Search />
-                        <input 
-                            className="search-input !w-full md:!w-[200px]" 
-                            placeholder="Find detail..." 
+                        <input
+                            className="search-input !w-full md:!w-[200px]"
+                            placeholder="Find detail..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -86,13 +93,15 @@ export default function ClientProfilePage() {
                         <CardContent className="pt-8 pb-8 space-y-4">
                             <div className="flex justify-center">
                                 <Avatar className="h-24 w-24 border-2 border-border-sub">
-                                    <AvatarImage src={user.avatarUrl} />
-                                    <AvatarFallback className="text-2xl font-bold">{user.name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage asChild src={currentUser?.avatarUrl}>
+                                        <Image src={currentUser?.avatarUrl || "https://picsum.photos/seed/client/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
+                                    </AvatarImage>
+                                    <AvatarFallback className="text-2xl font-bold">{userFallback}</AvatarFallback>
                                 </Avatar>
                             </div>
                             <div className="space-y-1 text-center">
-                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{user.name}</h2>
-                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest text-center">{user.role}</p>
+                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{currentUser?.name || '—'}</h2>
+                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest text-center">{currentUser?.role || 'Client'}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -142,11 +151,11 @@ export default function ClientProfilePage() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Email</Label>
-                                            <Input defaultValue={user.email} className="bg-bg-primary h-11 text-xs" />
+                                            <Input defaultValue={currentUser?.email || ''} className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Direct Line</Label>
-                                            <Input defaultValue={user.phone} className="bg-bg-primary h-11 text-xs" />
+                                            <Input defaultValue={currentUser?.phone || ''} className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -163,8 +172,8 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-1 text-left">
                                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Affiliated Organization</p>
-                                            <h3 className="text-xl font-bold text-text-primary uppercase tracking-wide text-left">{user.clientCompany || 'Independent'}</h3>
-                                            <p className="text-xs text-accent-gold font-black uppercase tracking-widest text-left">{user.businessType || 'Service Partner'}</p>
+                                            <h3 className="text-xl font-bold text-text-primary uppercase tracking-wide text-left">{currentUser?.clientCompany || 'Independent'}</h3>
+                                            <p className="text-xs text-accent-gold font-black uppercase tracking-widest text-left">{currentUser?.businessType || 'Service Partner'}</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -184,26 +193,26 @@ export default function ClientProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Contact Name</Label>
-                                            <Input 
-                                                placeholder="Accounts Payable / Name" 
-                                                defaultValue={user.billingDetails?.contactName}
-                                                className="bg-bg-primary h-11 text-xs uppercase font-bold" 
+                                            <Input
+                                                placeholder="Accounts Payable / Name"
+                                                defaultValue={currentUser?.billingDetails?.contactName || ''}
+                                                className="bg-bg-primary h-11 text-xs uppercase font-bold"
                                             />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Email Address</Label>
                                             <div className="relative">
                                                 <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                                                <Input 
-                                                    placeholder="ap@organization.com" 
-                                                    defaultValue={user.billingDetails?.email}
-                                                    className="bg-bg-primary pl-9 h-11 text-xs" 
+                                                <Input
+                                                    placeholder="ap@organization.com"
+                                                    defaultValue={currentUser?.billingDetails?.email || ''}
+                                                    className="bg-bg-primary pl-9 h-11 text-xs"
                                                 />
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Payment Terms</Label>
-                                            <Select defaultValue={user.billingDetails?.terms || 'Net 30'}>
+                                            <Select defaultValue={currentUser?.billingDetails?.terms || 'Net 30'}>
                                                 <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>
@@ -217,7 +226,7 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Invoice Delivery Mode</Label>
-                                            <Select defaultValue={user.billingDetails?.deliveryMethod || 'Portal'}>
+                                            <Select defaultValue={currentUser?.billingDetails?.deliveryMethod || 'Portal'}>
                                                 <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>
@@ -250,8 +259,8 @@ export default function ClientProfilePage() {
                                         </div>
                                         <Badge variant="active" className="text-[8px] h-5">Primary</Badge>
                                     </div>
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         className="w-full h-11 uppercase font-bold text-[10px] tracking-widest"
                                         onClick={() => router.push('/client/billing')}
                                     >
@@ -265,9 +274,9 @@ export default function ClientProfilePage() {
                 </div>
             </div>
 
-            <ChangePasswordDialog 
-                isOpen={isPasswordDialogOpen} 
-                setIsOpen={setIsPasswordDialogOpen} 
+            <ChangePasswordDialog
+                isOpen={isPasswordDialogOpen}
+                setIsOpen={setIsPasswordDialogOpen}
             />
         </div>
     );

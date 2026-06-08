@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, addDoc, doc } from 'firebase/firestore';
+import { uploadFile } from '@/lib/upload';
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -187,7 +188,7 @@ export default function ClientTicketsPage() {
             status: 'new',
             submittedDate: new Date().toISOString().split('T')[0],
             imageUrls: attachments.filter(a => a.type === 'image').map(a => a.url || ''),
-            documentUrls: attachments.filter(a => a.type === 'doc').map(a => a.name)
+            documentUrls: attachments.filter(a => a.type === 'doc').map(a => a.url || '')
         };
 
         try {
@@ -207,7 +208,7 @@ export default function ClientTicketsPage() {
         setAttachments([]);
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -216,16 +217,17 @@ export default function ClientTicketsPage() {
           return;
       }
 
-      const isImage = file.type.startsWith('image/');
-      const newAsset = {
-          name: file.name,
-          type: isImage ? 'image' : 'doc',
-          url: isImage ? URL.createObjectURL(file) : undefined
-      };
-
-      setAttachments([...attachments, newAsset]);
-      toast({ title: "Asset Buffered", description: `${file.name} ready for intake.` });
-      e.target.value = '';
+      try {
+          const isImage = file.type.startsWith('image/');
+          const storagePath = `ticketAttachments/pending/${Date.now()}-${file.name}`;
+          const { url } = await uploadFile(storagePath, file);
+          setAttachments(prev => [...prev, { name: file.name, type: isImage ? 'image' : 'doc', url }]);
+          toast({ title: "Asset Buffered", description: `${file.name} ready for intake.` });
+      } catch (err: any) {
+          toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+      } finally {
+          e.target.value = '';
+      }
     };
 
     const removeAttachment = (index: number) => {

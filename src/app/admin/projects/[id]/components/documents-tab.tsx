@@ -4,26 +4,28 @@ import type { Project, ProjectDocument, Phase, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Upload, 
-  FileText, 
-  Image as ImageIcon, 
-  Download, 
-  Trash2, 
-  Milestone, 
-  Plus, 
-  User, 
+import {
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  Download,
+  Trash2,
+  Milestone,
+  Plus,
+  User,
   FileSpreadsheet,
   ShieldCheck,
   Check,
   X,
-  Type
+  Type,
+  Loader2
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
+import { uploadFile } from '@/lib/upload';
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import {
@@ -65,6 +67,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     
     // Naming Dialog State
     const [isNamingOpen, setIsNamingOpen] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [customName, setCustomName] = useState("");
     const [pendingUpload, setPendingUpload] = useState<{
         file: File;
@@ -98,25 +101,29 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
         else if (['jpg', 'jpeg', 'png', 'webp'].includes(extension || '')) type = 'img';
         else if (['doc', 'docx', 'txt'].includes(extension || '')) type = 'doc';
         else if (extension === 'csv') type = 'csv';
-        
-        const displayName = customName.trim() || file.name;
-        
-        const docData: any = {
-            projectId: project.id,
-            name: displayName,
-            originalName: file.name,
-            type: type,
-            label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
-            uploader: 'System Admin',
-            uploadDate: format(new Date(), 'MM-dd-yyyy'),
-            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-            url: URL.createObjectURL(file), 
-        };
 
-        if (phaseId) docData.phaseId = phaseId;
-        if (taskId) docData.taskId = taskId;
+        const displayName = customName.trim() || file.name;
+        setIsUploading(true);
 
         try {
+            const storagePath = `projectDocuments/${project.id}/${Date.now()}-${file.name}`;
+            const { url, size } = await uploadFile(storagePath, file);
+
+            const docData: any = {
+                projectId: project.id,
+                name: displayName,
+                originalName: file.name,
+                type: type,
+                label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
+                uploader: 'System Admin',
+                uploadDate: format(new Date(), 'MM-dd-yyyy'),
+                size,
+                url,
+            };
+
+            if (phaseId) docData.phaseId = phaseId;
+            if (taskId) docData.taskId = taskId;
+
             await addDoc(collection(db, 'projectDocuments'), docData);
             toast({
                 title: "Registry Handshake Successful",
@@ -125,6 +132,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
         } finally {
+            setIsUploading(false);
             setIsNamingOpen(false);
             setPendingUpload(null);
         }
@@ -265,8 +273,9 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     </div>
                     <DialogFooter className="p-6 border-t border-border-default bg-bg-tertiary/30 gap-3">
                         <Button variant="outline" onClick={() => setIsNamingOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Discard</Button>
-                        <Button onClick={handleExecuteUpload} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">
-                            <Upload size={16} className="mr-2"/> Commit Asset
+                        <Button onClick={handleExecuteUpload} disabled={isUploading} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">
+                            {isUploading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
+                            {isUploading ? 'Uploading...' : 'Commit Asset'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

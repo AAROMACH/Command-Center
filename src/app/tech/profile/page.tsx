@@ -13,14 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Timer, Settings2, Sliders, Search, Banknote, History, CheckCircle2, Lock, Key } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Search, History, CheckCircle2, Key } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { subDays, isAfter, format, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,10 +34,16 @@ export default function TechProfilePage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'identity');
     const { toast } = useToast();
-    
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [timeOffForm, setTimeOffForm] = useState({
+        type: 'Vacation' as TimeOffRequest['type'],
+        startDate: '',
+        endDate: '',
+        reason: '',
+    });
 
     useEffect(() => {
         setMounted(true);
@@ -53,5 +57,379 @@ export default function TechProfilePage() {
             return () => unsubUser();
         });
         return () => unsubAuth();
-    }, []);}
-    // ... rest of the file is unchanged from what you pasted
+    }, []);
+
+    const myReliabilityEvents = useMemo<ReliabilityEvent[]>(() => {
+        if (!currentTechId) return [];
+        return penaltyEvents.filter(e => e.techId === currentTechId);
+    }, [currentTechId]);
+
+    const reliabilityScore = tech?.reliabilityScore ?? 100;
+    const reliabilityTier = getReliabilityTier(reliabilityScore);
+
+    const userFallback = useMemo(() => {
+        if (!tech) return 'FT';
+        return tech.name.split(' ').map((n: string) => n[0]).join('');
+    }, [tech]);
+
+    const handleTimeOffSubmit = () => {
+        if (!timeOffForm.startDate || !timeOffForm.endDate || !timeOffForm.reason) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in all required fields.' });
+            return;
+        }
+        const newRequest: TimeOffRequest = {
+            id: `tor-${Date.now()}`,
+            techId: currentTechId!,
+            type: timeOffForm.type,
+            startDate: timeOffForm.startDate,
+            endDate: timeOffForm.endDate,
+            reason: timeOffForm.reason,
+            status: 'pending',
+        };
+        setMyTimeOff(prev => [newRequest, ...prev]);
+        toast({ title: 'Request Submitted', description: 'Your time-off request is pending review.' });
+        setIsTimeOffDialogOpen(false);
+        setTimeOffForm({ type: 'Vacation', startDate: '', endDate: '', reason: '' });
+    };
+
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
+
+    return (
+        <div className="space-y-6">
+            <header className="page-header">
+                <div>
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <User size={12} />
+                        Field Terminal
+                    </p>
+                    <h1 className="page-title">My Profile</h1>
+                    <p className="page-subtitle">Manage your identity, reliability record, and time-off requests.</p>
+                </div>
+                <div className="page-header-right items-center">
+                    <div className="search-wrap">
+                        <Search />
+                        <input
+                            className="search-input !w-full md:!w-[220px]"
+                            placeholder="Find setting..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* LEFT: Identity card */}
+                <div className="space-y-6">
+                    <Card className="bg-bg-secondary border-border-main text-center">
+                        <CardContent className="pt-8 pb-8 space-y-4">
+                            <div className="flex justify-center relative">
+                                <Avatar className="h-24 w-24 border-2 border-border-sub">
+                                    <AvatarImage asChild src={tech?.avatarUrl}>
+                                        <Image src={tech?.avatarUrl || "https://picsum.photos/seed/tech/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
+                                    </AvatarImage>
+                                    <AvatarFallback className="text-2xl font-bold">{userFallback}</AvatarFallback>
+                                </Avatar>
+                                <button
+                                    className="absolute bottom-0 right-1/3 translate-x-1/2 p-1.5 rounded-full bg-bg-primary border border-border-sub hover:bg-bg-tertiary transition-colors"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <Key size={12} className="text-text-muted" />
+                                </button>
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
+                            </div>
+                            <div className="space-y-1 text-center">
+                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{tech?.name || '—'}</h2>
+                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest">{tech?.role || 'Field Technician'}</p>
+                            </div>
+                            <div className="flex justify-center">
+                                <Badge variant={getTierBadgeVariant(reliabilityTier)} className="uppercase text-[9px] tracking-widest">
+                                    {reliabilityTier}
+                                </Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-sm">
+                                <Gauge size={14} className={getTierColor(reliabilityTier)} />
+                                Reliability Score
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex items-end gap-2">
+                                <span className={cn("text-4xl font-black", getTierColor(reliabilityTier))}>{reliabilityScore}</span>
+                                <span className="text-text-muted text-sm mb-1">/100</span>
+                            </div>
+                            <div className="w-full bg-bg-tertiary rounded-full h-2">
+                                <div
+                                    className={cn("h-2 rounded-full transition-all", reliabilityScore >= 80 ? "bg-text-green" : reliabilityScore >= 60 ? "bg-accent-gold" : "bg-brand-red")}
+                                    style={{ width: `${reliabilityScore}%` }}
+                                />
+                            </div>
+                            <p className="text-[9px] uppercase tracking-widest text-text-muted">30-day rolling score</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Security</CardTitle>
+                            <CardDescription>Manage your access credentials.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button variant="outline" className="w-full h-10 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsPasswordDialogOpen(true)}>
+                                <Key size={14} className="mr-2" /> Change Password
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* RIGHT: Tabs */}
+                <div className="lg:col-span-2">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
+                            <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
+                            <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
+                            <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
+                        </TabsList>
+
+                        {/* IDENTITY TAB */}
+                        <TabsContent value="identity" className="m-0 space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Personal Information</CardTitle>
+                                    <CardDescription>Your contact details on file.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><User size={10} /> Full Name</Label>
+                                            <Input defaultValue={tech?.name || ''} className="h-11 text-xs" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
+                                            <Input type="email" defaultValue={tech?.email || ''} className="h-11 text-xs" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
+                                            <Input defaultValue={tech?.phone || ''} className="h-11 text-xs" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Location</Label>
+                                            <Input defaultValue={tech?.currentLocation || ''} className="h-11 text-xs" />
+                                        </div>
+                                        {tech?.address && (
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Address</Label>
+                                                <Input defaultValue={tech.address} className="h-11 text-xs" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-end pt-2">
+                                        <Button onClick={() => toast({ title: "Profile Updated", description: "Your information has been saved." })}>
+                                            Save Changes
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {tech?.emergencyContact && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Emergency Contact</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Name</Label>
+                                                <Input defaultValue={tech.emergencyContact.name} className="h-11 text-xs" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Relation</Label>
+                                                <Input defaultValue={tech.emergencyContact.relation} className="h-11 text-xs" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
+                                                <Input defaultValue={tech.emergencyContact.phone} className="h-11 text-xs" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Skills</CardTitle>
+                                    <CardDescription>Certified capabilities on record.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(tech?.skills || []).map(skill => (
+                                            <Badge key={skill} variant="outline" className="text-[10px] uppercase tracking-widest">{skill}</Badge>
+                                        ))}
+                                        {(!tech?.skills || tech.skills.length === 0) && (
+                                            <p className="text-xs text-text-muted">No skills on record.</p>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* RELIABILITY TAB */}
+                        <TabsContent value="reliability" className="m-0 space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Activity size={16} className="text-brand-red" />
+                                        Reliability Event Log
+                                    </CardTitle>
+                                    <CardDescription>Recent events affecting your operational score.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {myReliabilityEvents.length === 0 ? (
+                                        <div className="py-12 text-center space-y-2">
+                                            <CheckCircle2 size={32} className="mx-auto text-text-green opacity-50" />
+                                            <p className="text-xs text-text-muted uppercase tracking-widest">No reliability events on record.</p>
+                                        </div>
+                                    ) : (
+                                        <ScrollArea className="h-[400px]">
+                                            <div className="space-y-3 pr-4">
+                                                {myReliabilityEvents.map(event => (
+                                                    <div key={event.id} className="flex items-start gap-4 p-4 rounded-lg bg-bg-secondary border border-border-sub">
+                                                        <div className={cn("p-2 rounded border", event.scoreChange >= 0 ? "bg-text-green/10 border-text-green/30 text-text-green" : "bg-brand-red/10 border-brand-red/30 text-brand-red")}>
+                                                            <ShieldAlert size={14} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{event.eventType.replace(/_/g, ' ')}</p>
+                                                                <span className={cn("text-sm font-black shrink-0", event.scoreChange >= 0 ? "text-text-green" : "text-brand-red")}>
+                                                                    {event.scoreChange > 0 ? '+' : ''}{event.scoreChange}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10px] text-text-muted mt-1">{event.reason}</p>
+                                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-2">
+                                                                {format(parseISO(event.createdAt), 'MMM d, yyyy')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* TIME OFF TAB */}
+                        <TabsContent value="timeoff" className="m-0 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">Time-Off Requests</h3>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">Submit and track your leave requests.</p>
+                                </div>
+                                <Button
+                                    className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                                    onClick={() => setIsTimeOffDialogOpen(true)}
+                                >
+                                    <Plus size={14} className="mr-2" /> New Request
+                                </Button>
+                            </div>
+
+                            {myTimeOff.length === 0 ? (
+                                <Card>
+                                    <CardContent className="py-16 text-center space-y-2">
+                                        <CalendarIcon size={32} className="mx-auto text-text-muted opacity-40" />
+                                        <p className="text-xs text-text-muted uppercase tracking-widest">No time-off requests on file.</p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <div className="space-y-3">
+                                    {myTimeOff.map(req => (
+                                        <Card key={req.id} className="bg-bg-secondary border-border-sub">
+                                            <CardContent className="p-4">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-2.5 bg-bg-tertiary rounded border border-border-sub text-text-muted">
+                                                            <CalendarIcon size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.type}</p>
+                                                            <p className="text-[10px] text-text-muted mt-0.5">
+                                                                {format(parseISO(req.startDate), 'MMM d')} — {format(parseISO(req.endDate), 'MMM d, yyyy')}
+                                                            </p>
+                                                            {req.reason && <p className="text-[10px] text-text-muted mt-0.5 italic">{req.reason}</p>}
+                                                        </div>
+                                                    </div>
+                                                    <Badge
+                                                        variant={req.status === 'approved' ? 'active' : req.status === 'denied' ? 'high' : req.status === 'cancelled' ? 'outline' : 'onhold'}
+                                                        className="text-[9px] uppercase tracking-widest shrink-0"
+                                                    >
+                                                        {req.status}
+                                                    </Badge>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </div>
+
+            {/* Time Off Dialog */}
+            <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
+                <DialogContent className="sm:max-w-[440px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <DialogTitle className="uppercase tracking-widest text-sm font-bold flex items-center gap-2">
+                            <CalendarIcon size={16} className="text-brand-red" /> New Time-Off Request
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">Submit a leave request for admin review.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Type</Label>
+                            <Select value={timeOffForm.type} onValueChange={(v) => setTimeOffForm(p => ({ ...p, type: v as TimeOffRequest['type'] }))}>
+                                <SelectTrigger className="h-11 text-xs font-bold uppercase">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Vacation">Vacation</SelectItem>
+                                    <SelectItem value="Sick">Sick</SelectItem>
+                                    <SelectItem value="Personal">Personal</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Start Date</Label>
+                                <Input type="date" value={timeOffForm.startDate} onChange={(e) => setTimeOffForm(p => ({ ...p, startDate: e.target.value }))} className="h-11 text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">End Date</Label>
+                                <Input type="date" value={timeOffForm.endDate} onChange={(e) => setTimeOffForm(p => ({ ...p, endDate: e.target.value }))} className="h-11 text-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Reason</Label>
+                            <Textarea
+                                placeholder="Brief explanation..."
+                                value={timeOffForm.reason}
+                                onChange={(e) => setTimeOffForm(p => ({ ...p, reason: e.target.value }))}
+                                className="h-20 text-xs resize-none"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsTimeOffDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleTimeOffSubmit}>Submit Request</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <ChangePasswordDialog isOpen={isPasswordDialogOpen} setIsOpen={setIsPasswordDialogOpen} />
+        </div>
+    );
+}

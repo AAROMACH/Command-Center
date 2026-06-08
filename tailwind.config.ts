@@ -65,6 +65,7 @@ export default {
         'text-red': 'var(--text-red)',
         'text-gold': 'var(--text-gold)',
         'text-green': 'var(--text-green)',
+        'border-default': 'var(--border-main)',
         'border-main': 'var(--border-main)',
         'border-sub': 'var(--border-sub)',
         'border-alert': 'var(--border-alert)',

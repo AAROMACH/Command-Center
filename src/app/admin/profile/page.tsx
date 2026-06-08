@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { uploadAvatar } from '@/lib/upload';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Search } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { User, Search, Loader2, Camera } from "lucide-react";
 import Image from "next/image";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -20,12 +23,32 @@ export default function ProfilePage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+
+    const [emailNotif, setEmailNotif] = useState(true);
+    const [pushNotif, setPushNotif] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
     useEffect(() => {
         setMounted(true);
         const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
             if (!fbUser) return;
             const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
-                if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setCurrentUser({ ...data, id: snap.id });
+                    setName(data.name || '');
+                    setEmail(data.email || '');
+                    setAvatarUrl(data.avatarUrl);
+                    setEmailNotif(data.notificationPreferences?.email ?? true);
+                    setPushNotif(data.notificationPreferences?.push ?? false);
+                }
             });
             return () => unsubUser();
         });
@@ -36,6 +59,48 @@ export default function ProfilePage() {
         if (!currentUser) return 'SA';
         return currentUser.name.split(' ').map((n: string) => n[0]).join('');
     }, [currentUser]);
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !currentUser?.id) return;
+        setIsUploading(true);
+        try {
+            const url = await uploadAvatar(currentUser.id, file);
+            setAvatarUrl(url);
+            toast({ title: "Avatar Updated", description: "Your profile photo has been uploaded." });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleSave = async () => {
+        if (!currentUser?.id) return;
+        setIsSaving(true);
+        try {
+            await updateDoc(doc(db, 'users', currentUser.id), { name, email });
+            toast({ title: "Profile Saved", description: "Your personal information has been updated." });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleNotifChange = async (key: 'email' | 'push', value: boolean) => {
+        if (key === 'email') setEmailNotif(value);
+        else setPushNotif(value);
+        if (!currentUser?.id) return;
+        try {
+            await updateDoc(doc(db, 'users', currentUser.id), {
+                [`notificationPreferences.${key}`]: value,
+            });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+        }
+    };
 
     if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
 
@@ -72,30 +137,54 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex items-center gap-6">
-                                <Avatar className="h-20 w-20">
-                                    <AvatarImage asChild src={currentUser?.avatarUrl} alt="User Avatar">
-                                       <Image src={currentUser?.avatarUrl || "https://picsum.photos/seed/user1/80/80"} alt="User Avatar" width={80} height={80} data-ai-hint="person face" />
-                                    </AvatarImage>
-                                    <AvatarFallback>{userFallback}</AvatarFallback>
-                                </Avatar>
+                                <div className="relative">
+                                    <Avatar className="h-20 w-20">
+                                        <AvatarImage asChild src={avatarUrl} alt="User Avatar">
+                                            <Image src={avatarUrl || "https://picsum.photos/seed/user1/80/80"} alt="User Avatar" width={80} height={80} data-ai-hint="person face" />
+                                        </AvatarImage>
+                                        <AvatarFallback>{userFallback}</AvatarFallback>
+                                    </Avatar>
+                                    {isUploading && (
+                                        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                                            <Loader2 size={20} className="animate-spin text-white" />
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="space-y-2">
-                                    <Button variant="outline">Change Avatar</Button>
-                                    <p className="text-xs text-text-muted">JPG, GIF or PNG. 1MB max.</p>
+                                    <Button
+                                        variant="outline"
+                                        disabled={isUploading}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Camera size={14} className="mr-2" />
+                                        {isUploading ? 'Uploading...' : 'Change Avatar'}
+                                    </Button>
+                                    <p className="text-xs text-text-muted">JPG, GIF, PNG or WebP. 5 MB max.</p>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        className="hidden"
+                                        onChange={handleAvatarChange}
+                                    />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="fullName">Full Name</Label>
-                                    <Input id="fullName" defaultValue={currentUser?.name || "System Administrator"} />
+                                    <Input id="fullName" value={name} onChange={(e) => setName(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" defaultValue={currentUser?.email || "admin@aaromach.com"} />
+                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="border-t px-6 py-4">
-                            <Button>Save Changes</Button>
+                            <Button onClick={handleSave} disabled={isSaving}>
+                                {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                                Save Changes
+                            </Button>
                         </CardFooter>
                     </Card>
                 </div>
@@ -108,7 +197,18 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>Change Password</Button>
-                            <Button variant="outline" className="w-full">Enable Two-Factor Authentication</Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="block w-full">
+                                            <Button variant="outline" className="w-full" disabled>Enable Two-Factor Authentication</Button>
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Two-factor authentication setup coming soon.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </CardContent>
                     </Card>
 
@@ -125,7 +225,11 @@ export default function ProfilePage() {
                                         Receive updates and alerts via email.
                                     </span>
                                 </Label>
-                                <Switch id="email-notifications" defaultChecked />
+                                <Switch
+                                    id="email-notifications"
+                                    checked={emailNotif}
+                                    onCheckedChange={(v) => handleNotifChange('email', v)}
+                                />
                             </div>
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="push-notifications" className="flex flex-col space-y-1">
@@ -134,7 +238,11 @@ export default function ProfilePage() {
                                         Get notified on your mobile device.
                                     </span>
                                 </Label>
-                                <Switch id="push-notifications" />
+                                <Switch
+                                    id="push-notifications"
+                                    checked={pushNotif}
+                                    onCheckedChange={(v) => handleNotifChange('push', v)}
+                                />
                             </div>
                         </CardContent>
                     </Card>
@@ -146,5 +254,5 @@ export default function ProfilePage() {
                 setIsOpen={setIsPasswordDialogOpen}
             />
         </div>
-    )
+    );
 }

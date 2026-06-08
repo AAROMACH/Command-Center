@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Banknote, CreditCard, Download, Plus, Landmark, ArrowRightLeft, ShieldCheck, Search } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const billingHistory = [
     { invoice: 'INV-2024-001', date: 'July 1, 2024', amount: '$5,000.00', status: 'Paid', type: 'Subscription' },
@@ -65,7 +66,14 @@ export default function BillingPage() {
                         />
                     </div>
                     {userIsClient && (
-                        <Button variant="outline">Upgrade Plan</Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span><Button variant="outline" disabled>Upgrade Plan</Button></span>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Payment integration coming soon.</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
                 </div>
             </header>
@@ -133,7 +141,14 @@ export default function BillingPage() {
                                     <p className="text-xs text-text-muted mt-1 uppercase tracking-widest font-bold">Standard Billing: $5,000.00 / Mo</p>
                                 </CardContent>
                                 <CardFooter className="pt-0">
-                                    <Button variant="outline" className="w-full h-9 text-[10px]">Manage Subscription</Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="w-full"><Button variant="outline" className="w-full h-9 text-[10px]" disabled>Manage Subscription</Button></span>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Payment integration coming soon.</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </CardFooter>
                             </Card>
                         )}
@@ -181,14 +196,30 @@ export default function BillingPage() {
                                                 <p className="text-[9px] text-text-muted uppercase tracking-widest">Expires 12/2026</p>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="sm" className="h-7 text-[9px]">Edit</Button>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span><Button variant="ghost" size="sm" className="h-7 text-[9px]" disabled>Edit</Button></span>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>Payment integration coming soon.</p></TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </div>
                                 )}
 
-                                <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-[0.15em]">
-                                    <Plus className="mr-2 h-3.5 w-3.5" /> 
-                                    Add {userIsTech ? "Account" : "Payment Method"}
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="w-full">
+                                                <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-[0.15em]" disabled>
+                                                    <Plus className="mr-2 h-3.5 w-3.5" />
+                                                    Add {userIsTech ? "Account" : "Payment Method"}
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Payment integration coming soon.</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </CardContent>
                         </Card>
                         

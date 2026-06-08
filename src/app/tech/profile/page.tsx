@@ -4,7 +4,8 @@ import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { uploadAvatar } from '@/lib/upload';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Search, History, CheckCircle2, Key } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Search, CheckCircle2, Key, Loader2, Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,6 +39,19 @@ export default function TechProfilePage() {
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Controlled form state
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [location, setLocation] = useState('');
+    const [address, setAddress] = useState('');
+    const [ecName, setEcName] = useState('');
+    const [ecRelation, setEcRelation] = useState('');
+    const [ecPhone, setEcPhone] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
     const [timeOffForm, setTimeOffForm] = useState({
         type: 'Vacation' as TimeOffRequest['type'],
         startDate: '',
@@ -52,7 +66,19 @@ export default function TechProfilePage() {
             setCurrentTechId(fbUser.uid);
             setMyTimeOff(initialTimeOffRequests.filter(r => r.techId === fbUser.uid));
             const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
-                if (snap.exists()) setTech({ ...snap.data(), id: snap.id } as Technician);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setTech({ ...data, id: snap.id } as Technician);
+                    setName(data.name || '');
+                    setEmail(data.email || '');
+                    setPhone(data.phone || '');
+                    setLocation(data.currentLocation || '');
+                    setAddress(data.address || '');
+                    setAvatarUrl(data.avatarUrl);
+                    setEcName(data.emergencyContact?.name || '');
+                    setEcRelation(data.emergencyContact?.relation || '');
+                    setEcPhone(data.emergencyContact?.phone || '');
+                }
             });
             return () => unsubUser();
         });
@@ -71,6 +97,39 @@ export default function TechProfilePage() {
         if (!tech) return 'FT';
         return tech.name.split(' ').map((n: string) => n[0]).join('');
     }, [tech]);
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !currentTechId) return;
+        setIsUploading(true);
+        try {
+            const url = await uploadAvatar(currentTechId, file);
+            setAvatarUrl(url);
+            toast({ title: 'Avatar Updated', description: 'Your profile photo has been uploaded.' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleSave = async () => {
+        if (!currentTechId) return;
+        setIsSaving(true);
+        try {
+            const updates: Record<string, any> = { name, email, phone, currentLocation: location, address };
+            if (tech?.emergencyContact) {
+                updates.emergencyContact = { name: ecName, relation: ecRelation, phone: ecPhone };
+            }
+            await updateDoc(doc(db, 'users', currentTechId), updates);
+            toast({ title: 'Profile Saved', description: 'Your information has been updated.' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleTimeOffSubmit = () => {
         if (!timeOffForm.startDate || !timeOffForm.endDate || !timeOffForm.reason) {
@@ -125,18 +184,30 @@ export default function TechProfilePage() {
                         <CardContent className="pt-8 pb-8 space-y-4">
                             <div className="flex justify-center relative">
                                 <Avatar className="h-24 w-24 border-2 border-border-sub">
-                                    <AvatarImage asChild src={tech?.avatarUrl}>
-                                        <Image src={tech?.avatarUrl || "https://picsum.photos/seed/tech/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
+                                    <AvatarImage asChild src={avatarUrl}>
+                                        <Image src={avatarUrl || "https://picsum.photos/seed/tech/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
                                     </AvatarImage>
                                     <AvatarFallback className="text-2xl font-bold">{userFallback}</AvatarFallback>
                                 </Avatar>
+                                {isUploading && (
+                                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                                        <Loader2 size={20} className="animate-spin text-white" />
+                                    </div>
+                                )}
                                 <button
                                     className="absolute bottom-0 right-1/3 translate-x-1/2 p-1.5 rounded-full bg-bg-primary border border-border-sub hover:bg-bg-tertiary transition-colors"
                                     onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
                                 >
-                                    <Key size={12} className="text-text-muted" />
+                                    <Camera size={12} className="text-text-muted" />
                                 </button>
-                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    className="hidden"
+                                    onChange={handleAvatarChange}
+                                />
                             </div>
                             <div className="space-y-1 text-center">
                                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{tech?.name || '—'}</h2>
@@ -205,29 +276,30 @@ export default function TechProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><User size={10} /> Full Name</Label>
-                                            <Input defaultValue={tech?.name || ''} className="h-11 text-xs" />
+                                            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
-                                            <Input type="email" defaultValue={tech?.email || ''} className="h-11 text-xs" />
+                                            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
-                                            <Input defaultValue={tech?.phone || ''} className="h-11 text-xs" />
+                                            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Location</Label>
-                                            <Input defaultValue={tech?.currentLocation || ''} className="h-11 text-xs" />
+                                            <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-11 text-xs" />
                                         </div>
-                                        {tech?.address && (
+                                        {(tech?.address !== undefined || address) && (
                                             <div className="space-y-2 md:col-span-2">
                                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Address</Label>
-                                                <Input defaultValue={tech.address} className="h-11 text-xs" />
+                                                <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-11 text-xs" />
                                             </div>
                                         )}
                                     </div>
                                     <div className="flex justify-end pt-2">
-                                        <Button onClick={() => toast({ title: "Profile Updated", description: "Your information has been saved." })}>
+                                        <Button onClick={handleSave} disabled={isSaving}>
+                                            {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                                             Save Changes
                                         </Button>
                                     </div>
@@ -243,15 +315,15 @@ export default function TechProfilePage() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Name</Label>
-                                                <Input defaultValue={tech.emergencyContact.name} className="h-11 text-xs" />
+                                                <Input value={ecName} onChange={(e) => setEcName(e.target.value)} className="h-11 text-xs" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Relation</Label>
-                                                <Input defaultValue={tech.emergencyContact.relation} className="h-11 text-xs" />
+                                                <Input value={ecRelation} onChange={(e) => setEcRelation(e.target.value)} className="h-11 text-xs" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
-                                                <Input defaultValue={tech.emergencyContact.phone} className="h-11 text-xs" />
+                                                <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" />
                                             </div>
                                         </div>
                                     </CardContent>

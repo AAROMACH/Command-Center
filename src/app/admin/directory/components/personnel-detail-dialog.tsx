@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, ProjectDailyLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,17 +14,17 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { 
-    Mail, 
-    Phone, 
-    Shield, 
-    Calendar as CalendarIcon, 
+import {
+    Mail,
+    Phone,
+    Shield,
+    Calendar as CalendarIcon,
     History,
     Plus,
     X,
-    Pencil, 
-    Activity, 
-    ShieldAlert, 
+    Pencil,
+    Activity,
+    ShieldAlert,
     CheckCircle2,
     Check,
     Settings,
@@ -41,7 +41,8 @@ import {
     ClipboardCheck,
     Gauge,
     Activity as ActivityIcon,
-    DollarSign
+    DollarSign,
+    Loader2
 } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -55,6 +56,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { uploadFile } from '@/lib/upload';
 
 type PersonnelDocument = {
     id: string;
@@ -63,6 +67,7 @@ type PersonnelDocument = {
     size: string;
     uploadedAt: string;
     uploader: string;
+    url?: string;
 }
 
 type PersonnelDetailDialogProps = {
@@ -76,12 +81,19 @@ type PersonnelDetailDialogProps = {
 
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
-  const [documents, setDocuments] = useState<PersonnelDocument[]>([
-    { id: 'doc-1', name: 'OSHA_30_Certification.pdf', type: 'pdf', size: '1.2MB', uploadedAt: '2024-05-12T10:00:00Z', uploader: 'System Admin' },
-    { id: 'doc-2', name: 'FL_Drivers_License_Verification.jpg', type: 'img', size: '450KB', uploadedAt: '2024-03-20T14:30:00Z', uploader: 'System Admin' }
-  ]);
+  const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isOpen || !person?.id) return;
+    const q = query(collection(db, 'personnelDocuments'), where('personnelId', '==', person.id));
+    const unsub = onSnapshot(q, (snap) => {
+      setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
+    });
+    return () => unsub();
+  }, [isOpen, person?.id]);
 
   const isTechnician = useMemo(() => {
     if (!person) return false;
@@ -148,32 +160,46 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && person) {
-        const newDoc: PersonnelDocument = {
-            id: `doc-${Date.now()}`,
+    if (!file || !person) return;
+    setIsUploading(true);
+    try {
+        const storagePath = `personnelDocuments/${person.id}/${Date.now()}-${file.name}`;
+        const { url, size } = await uploadFile(storagePath, file);
+        const docData = {
+            personnelId: person.id,
             name: file.name,
-            type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
-            size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+            type: (file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc') as 'pdf' | 'doc' | 'img',
+            size,
             uploadedAt: new Date().toISOString(),
-            uploader: 'System Admin' 
+            uploader: 'System Admin',
+            url,
         };
-        setDocuments(prev => [newDoc, ...prev]);
+        await addDoc(collection(db, 'personnelDocuments'), docData);
         toast({
             title: "Document Registered",
             description: `${file.name} has been added to the personnel folder.`,
         });
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+    } finally {
+        setIsUploading(false);
+        e.target.value = '';
     }
   };
 
-  const handleDeleteDoc = (id: string) => {
-    setDocuments(prev => prev.filter(d => d.id !== id));
-    toast({
-        variant: "destructive",
-        title: "Asset Removed",
-        description: "Document has been purged from the personnel registry.",
-    });
+  const handleDeleteDoc = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, 'personnelDocuments', id));
+        toast({
+            variant: "destructive",
+            title: "Asset Removed",
+            description: "Document has been purged from the personnel registry.",
+        });
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+    }
   };
 
   if (!person) return null;
@@ -394,8 +420,9 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   className="hidden" 
                                   onChange={handleFileChange}
                                 />
-                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red text-white" onClick={handleUploadClick}>
-                                  <Upload size={14} className="mr-1.5"/> Upload Asset
+                              <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red text-white" onClick={handleUploadClick} disabled={isUploading}>
+                                  {isUploading ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Upload size={14} className="mr-1.5" />}
+                                  {isUploading ? 'Uploading...' : 'Upload Asset'}
                               </Button>
                           </div>
 
@@ -419,7 +446,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           </div>
                                       </div>
                                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary" onClick={() => doc.url && window.open(doc.url, '_blank')}>
                                               <Download size={14}/>
                                           </Button>
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>

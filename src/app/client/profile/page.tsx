@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { uploadAvatar } from '@/lib/upload';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,9 @@ import {
     Mail,
     Key,
     CreditCard,
-    ChevronRight
+    ChevronRight,
+    Camera,
+    Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +36,17 @@ export default function ClientProfilePage() {
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+
+    const [phone, setPhone] = useState("");
+    const [billingContactName, setBillingContactName] = useState("");
+    const [billingEmail, setBillingEmail] = useState("");
+    const [billingTerms, setBillingTerms] = useState("Net 30");
+    const [billingDelivery, setBillingDelivery] = useState("Portal");
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -41,7 +55,16 @@ export default function ClientProfilePage() {
         const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
             if (!fbUser) return;
             const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
-                if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setCurrentUser({ ...data, id: snap.id });
+                    setPhone(data.phone || '');
+                    setAvatarUrl(data.avatarUrl);
+                    setBillingContactName(data.billingDetails?.contactName || '');
+                    setBillingEmail(data.billingDetails?.email || '');
+                    setBillingTerms(data.billingDetails?.terms || 'Net 30');
+                    setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
+                }
             });
             return () => unsubUser();
         });
@@ -53,8 +76,41 @@ export default function ClientProfilePage() {
         return currentUser.name.split(' ').map((n: string) => n[0]).join('');
     }, [currentUser]);
 
-    const handleSave = () => {
-        toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !currentUser?.id) return;
+        setIsUploading(true);
+        try {
+            const url = await uploadAvatar(currentUser.id, file);
+            setAvatarUrl(url);
+            toast({ title: "Avatar Updated", description: "Your profile photo has been uploaded." });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleSave = async () => {
+        if (!currentUser?.id) return;
+        setIsSaving(true);
+        try {
+            await updateDoc(doc(db, 'users', currentUser.id), {
+                phone,
+                billingDetails: {
+                    contactName: billingContactName,
+                    email: billingEmail,
+                    terms: billingTerms,
+                    deliveryMethod: billingDelivery,
+                },
+            });
+            toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
@@ -80,7 +136,8 @@ export default function ClientProfilePage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={handleSave} className="h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                    <Button onClick={handleSave} disabled={isSaving} className="h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                        {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                         Commit Changes
                     </Button>
                 </div>
@@ -92,12 +149,33 @@ export default function ClientProfilePage() {
                     <Card className="bg-bg-secondary border-border-main text-center">
                         <CardContent className="pt-8 pb-8 space-y-4">
                             <div className="flex justify-center">
-                                <Avatar className="h-24 w-24 border-2 border-border-sub">
-                                    <AvatarImage asChild src={currentUser?.avatarUrl}>
-                                        <Image src={currentUser?.avatarUrl || "https://picsum.photos/seed/client/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
-                                    </AvatarImage>
-                                    <AvatarFallback className="text-2xl font-bold">{userFallback}</AvatarFallback>
-                                </Avatar>
+                                <div className="relative">
+                                    <Avatar className="h-24 w-24 border-2 border-border-sub">
+                                        <AvatarImage asChild src={avatarUrl}>
+                                            <Image src={avatarUrl || "https://picsum.photos/seed/client/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
+                                        </AvatarImage>
+                                        <AvatarFallback className="text-2xl font-bold">{userFallback}</AvatarFallback>
+                                    </Avatar>
+                                    {isUploading && (
+                                        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                                            <Loader2 size={20} className="animate-spin text-white" />
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading}
+                                        className="absolute bottom-0 right-0 p-1.5 rounded-full bg-bg-elevated border border-border-sub text-text-muted hover:text-text-primary transition-colors"
+                                    >
+                                        <Camera size={12} />
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        className="hidden"
+                                        onChange={handleAvatarChange}
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-1 text-center">
                                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{currentUser?.name || '—'}</h2>
@@ -151,11 +229,11 @@ export default function ClientProfilePage() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Email</Label>
-                                            <Input defaultValue={currentUser?.email || ''} className="bg-bg-primary h-11 text-xs" />
+                                            <Input value={currentUser?.email || ''} readOnly className="bg-bg-primary h-11 text-xs opacity-60 cursor-not-allowed" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Direct Line</Label>
-                                            <Input defaultValue={currentUser?.phone || ''} className="bg-bg-primary h-11 text-xs" />
+                                            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -195,7 +273,8 @@ export default function ClientProfilePage() {
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Contact Name</Label>
                                             <Input
                                                 placeholder="Accounts Payable / Name"
-                                                defaultValue={currentUser?.billingDetails?.contactName || ''}
+                                                value={billingContactName}
+                                                onChange={(e) => setBillingContactName(e.target.value)}
                                                 className="bg-bg-primary h-11 text-xs uppercase font-bold"
                                             />
                                         </div>
@@ -205,14 +284,15 @@ export default function ClientProfilePage() {
                                                 <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                                                 <Input
                                                     placeholder="ap@organization.com"
-                                                    defaultValue={currentUser?.billingDetails?.email || ''}
+                                                    value={billingEmail}
+                                                    onChange={(e) => setBillingEmail(e.target.value)}
                                                     className="bg-bg-primary pl-9 h-11 text-xs"
                                                 />
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Payment Terms</Label>
-                                            <Select defaultValue={currentUser?.billingDetails?.terms || 'Net 30'}>
+                                            <Select value={billingTerms} onValueChange={setBillingTerms}>
                                                 <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>
@@ -226,7 +306,7 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Invoice Delivery Mode</Label>
-                                            <Select defaultValue={currentUser?.billingDetails?.deliveryMethod || 'Portal'}>
+                                            <Select value={billingDelivery} onValueChange={setBillingDelivery}>
                                                 <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>

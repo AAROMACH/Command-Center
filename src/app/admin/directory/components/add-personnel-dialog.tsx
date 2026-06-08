@@ -18,6 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import { 
   User, 
@@ -188,10 +190,12 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         await sendPasswordResetEmail(secondaryAuth, formData.email!);
         await deleteApp(secondaryApp);
         const uid = userCredential.user.uid;
+        const userId = await generateId(ID_PREFIXES.USER);
 
         const newPerson: Technician = {
             ...formData as Technician,
             id: uid,
+            userId,
             role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
         };
         onSave(newPerson);

@@ -170,7 +170,7 @@ export const ID_PREFIXES = {
   SITE:              'site',
   SITE_REQUEST:      'sreq',
   TIME_OFF_REQUEST:  'pto',
-  USER:              'usr',
+  USER:              'uID',
   WEEKLY_LOG:        'wlog',
   WEEKLY_LOG_ITEM:   'wli',
   WORK_ORDER:        'wo',

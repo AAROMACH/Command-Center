@@ -77,10 +77,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { 
-    penaltyEvents,
-    assignmentTimeLogs,
-} from '@/lib/data';
+import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
@@ -312,34 +309,14 @@ export default function ActivityAuditPage() {
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
         technicians.forEach(t => {
-            t.managedSites?.forEach(s => uniqueSites.set(s.location, { 
-                ...s, 
+            t.managedSites?.forEach(s => uniqueSites.set(s.id, {
+                ...s,
                 client: t.clientCompany || 'Strategic Partner',
-                clientId: t.id 
+                clientId: t.id
             }));
         });
-        workOrders.forEach(wo => {
-            if (!uniqueSites.has(wo.location)) {
-                uniqueSites.set(wo.location, { 
-                    id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, 
-                    name: wo.location.split(',')[0], 
-                    location: wo.location, 
-                    client: wo.clientName 
-                });
-            }
-        });
-        assignments.forEach(wo => {
-            if (!uniqueSites.has(wo.location)) {
-                uniqueSites.set(wo.location, { 
-                    id: `site-${wo.location.replace(/\s+/g, '-').toLowerCase()}`, 
-                    name: wo.location.split(',')[0], 
-                    location: wo.location, 
-                    client: wo.clientName 
-                });
-            }
-        });
         return Array.from(uniqueSites.values());
-    }, [workOrders, assignments, technicians]);
+    }, [technicians]);
 
     const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
 
@@ -461,10 +438,8 @@ export default function ActivityAuditPage() {
     };
 
     const anomalyCounts = useMemo(() => {
-        const unassignedCount = workOrders.filter(wo => wo.status === 'unassigned').length;
-        const overdueLogs = weeklyLogs.filter(wl => wl.status === 'Draft').length;
-        const openCheckins = assignmentTimeLogs.filter(atl => !atl.checkOutTime).length;
-        return unassignedCount + overdueLogs + openCheckins;
+        return workOrders.filter(wo => wo.status === 'unassigned').length
+             + weeklyLogs.filter(wl => wl.status === 'Draft').length;
     }, [workOrders, weeklyLogs]);
 
     const handleTabChange = (val: string) => {
@@ -561,16 +536,13 @@ export default function ActivityAuditPage() {
                 const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
                 const isReliable = pts <= 2;
                 return (
-                    <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
-                        <div className="flex items-center gap-4 text-left">
+                    <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
+                        <div className="flex items-center gap-3 text-left">
                             <div className="relative text-left">
                                 <Avatar className="h-10 w-10 border border-border-sub">
                                     <AvatarImage src={t.avatarUrl} />
                                     <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                {assignmentTimeLogs.some(log => log.techId === t.id && !log.checkOutTime) && (
-                                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-text-green rounded-full border-2 border-bg-secondary animate-pulse" />
-                                )}
                             </div>
                             <div className="text-left">
                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{t.name || 'Unnamed Operative'}</p>
@@ -812,9 +784,9 @@ export default function ActivityAuditPage() {
                         </Button>
                     </div>
 
-                    <div className="flex items-center gap-6 text-left mb-6">
-                        <div className="p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm text-left">
-                            <Building2 size={32} className="text-brand-red" />
+                    <div className="flex items-center gap-4 text-left mb-4">
+                        <div className="p-3 bg-bg-secondary rounded-lg border border-border-sub shadow-sm text-left">
+                            <Building2 size={28} className="text-brand-red" />
                         </div>
                         <div className="space-y-1 text-left">
                             <h2 className="text-2xl font-bold uppercase tracking-wide text-text-primary text-left">{activeSite.name}</h2>
@@ -834,26 +806,26 @@ export default function ActivityAuditPage() {
 
                         <TabsContent value="overview" className="m-0 space-y-6 text-left">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Integrity</p>
-                                    <p className="text-3xl font-bold text-text-primary">99.9%</p>
+                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
                                     <Badge variant="active" className="h-4 text-[7px] uppercase">Compliant</Badge>
                                 </Card>
-                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
-                                    <p className="text-3xl font-bold text-text-primary">{siteAuditData.visits.filter(wo => wo.status !== 'completed').length}</p>
+                                    <p className="text-2xl font-bold text-text-primary">{siteAuditData.visits.filter(wo => wo.status !== 'completed').length}</p>
                                     <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? "text-accent-gold" : "text-text-green")}>
                                         {siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? 'Active Queue' : 'Clean'}
                                     </p>
                                 </Card>
-                                <Card className="bg-bg-secondary border-border-main text-center p-6 space-y-2">
+                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Strategic Value</p>
-                                    <p className="text-3xl font-mono font-bold text-text-green">${siteAuditData.invoices.reduce((a, b) => a + b.total, 0).toLocaleString()}</p>
+                                    <p className="text-2xl font-mono font-bold text-text-green">${siteAuditData.invoices.reduce((a, b) => a + b.total, 0).toLocaleString()}</p>
                                     <p className="text-[8px] text-text-muted uppercase font-bold">settled invoices</p>
                                 </Card>
                             </div>
                             
-                            <div className="p-6 rounded-xl border border-border-sub bg-bg-secondary/50 text-left space-y-4">
+                            <div className="p-4 rounded-lg border border-border-sub bg-bg-secondary/50 text-left space-y-3">
                                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 text-left">Client Briefing</h3>
                                 <div className="grid grid-cols-2 gap-8 text-left">
                                     <div className="space-y-3 text-left">
@@ -1022,10 +994,10 @@ export default function ActivityAuditPage() {
                     <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{siteList.length} Managed Site Coordinates</p>
                 </div>
                 {siteList.map(site => (
-                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors text-left">
-                                <Building2 size={18} />
+                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors text-left">
+                                <Building2 size={16} />
                             </div>
                             <div className="text-left">
                                 <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{site.name}</p>
@@ -1097,49 +1069,49 @@ export default function ActivityAuditPage() {
                                         <div className="flex flex-col lg:flex-row gap-6 text-left">
                                             <div className="lg:w-1/3 space-y-6 text-left">
                                                 <Card className="bg-bg-secondary border-border-main shadow-2xl text-left">
-                                                    <CardContent className="p-8 space-y-8 text-center text-left">
-                                                        <div className="flex flex-col items-center gap-4 text-left">
-                                                            <Avatar className="h-20 w-20 border-2 border-brand-red">
+                                                    <CardContent className="p-5 space-y-4 text-center text-left">
+                                                        <div className="flex flex-col items-center gap-2 text-left">
+                                                            <Avatar className="h-14 w-14 border-2 border-brand-red">
                                                                 <AvatarImage src={activeTech.avatarUrl} />
                                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
-                                                            <div className="space-y-1 text-center">
-                                                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
+                                                            <div className="space-y-0.5 text-center">
+                                                                <h2 className="text-lg font-bold text-text-primary uppercase tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
                                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest text-center">{activeTech.email}</p>
                                                             </div>
                                                         </div>
-                                                        
-                                                        <div className="space-y-6 pt-4 border-t border-border-sub/30 text-left">
+
+                                                        <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
                                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Operational Trust</p>
-                                                                <p className={cn("text-5xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
+                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
                                                                 <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
                                                                     {getReliabilityTier(techStats.reliability)}
                                                                 </Badge>
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
-                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.id}</span>
+                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.userId || activeTech.id}</span>
                                                             </div>
 
-                                                            <div className="flex justify-center gap-4 text-left">
-                                                                <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                            <div className="flex justify-center gap-3 text-left">
+                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-widest" asChild>
                                                                     <a href={`mailto:${activeTech.email}`}><Mail size={14} className="mr-2"/> Email</a>
                                                                 </Button>
-                                                                <Button variant="outline" size="sm" className="flex-1 h-9 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-widest" asChild>
                                                                     <a href={`tel:${activeTech.phone}`}><Phone size={14} className="mr-2"/> Call</a>
                                                                 </Button>
                                                             </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
-                                                
+
                                                 <Card className="bg-bg-tertiary/30 border-border-sub text-left">
-                                                    <CardHeader className="pb-3 text-left">
+                                                    <CardHeader className="p-4 pb-2 text-left">
                                                         <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-left">
                                                             <Gauge size={14} className="text-brand-red"/> Performance Index
                                                         </CardTitle>
                                                     </CardHeader>
-                                                    <CardContent className="space-y-3 text-left">
+                                                    <CardContent className="p-4 pt-0 space-y-3 text-left">
                                                         <div className="flex justify-between items-center px-1 text-left">
                                                             <span className="text-[10px] font-bold text-text-muted uppercase text-left">Mission Success</span>
                                                             <span className="text-xs font-bold text-text-primary uppercase text-right">{techStats.completed} / {techStats.total}</span>
@@ -1266,7 +1238,7 @@ export default function ActivityAuditPage() {
 
                                                     <TabsContent value="penalties" className="m-0 space-y-3 text-left">
                                                         {techStats.penalties.map(p => (
-                                                            <div key={p.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
+                                                            <div key={p.id} className="p-2.5 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-brand-red transition-all text-left">
                                                                 <div className="flex items-center gap-4 text-left">
                                                                     <div className={cn(
                                                                         "p-2 rounded-lg border text-left",
@@ -1311,17 +1283,37 @@ export default function ActivityAuditPage() {
                             <TabsContent value="flags" className="m-0 text-left">
                                 <div className="space-y-4 text-left">
                                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Anomaly Registry</h3>
-                                    <div className="space-y-2 text-left">
-                                        <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex gap-4 text-left">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-text-red mt-1 shrink-0 text-left" />
-                                            <div className="space-y-1 text-left">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Field Verification Anomaly</p>
-                                                <p className="text-[10px] text-text-muted leading-relaxed uppercase text-left">
-                                                    Operational discrepancy detected in <code>project_daily_logs</code> registry. Potential temporal ghosting.
-                                                </p>
-                                            </div>
+                                    {anomalyCounts === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                                            <ShieldCheck size={28} className="text-text-green" />
+                                            <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
+                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="space-y-2 text-left">
+                                            {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
+                                                <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
+                                                    <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
+                                                    <div className="space-y-0.5 text-left min-w-0">
+                                                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
+                                                        <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {weeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
+                                                const tech = technicians.find(t => t.id === wl.techId);
+                                                return (
+                                                    <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
+                                                        <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
+                                                        <div className="space-y-0.5 text-left min-w-0">
+                                                            <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
+                                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </TabsContent>
                         </div>

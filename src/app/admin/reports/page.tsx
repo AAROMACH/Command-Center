@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, setDoc } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -214,7 +214,10 @@ export default function ActivityAuditPage() {
         const updatedMessages = [msg, ...messages];
         setMessages(updatedMessages);
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
-        
+
+        // Persist to Firestore so other users' browsers receive the broadcast
+        setDoc(doc(db, 'broadcasts', msg.id), { ...msg, revokedBy: [] }).catch(() => {});
+
         window.dispatchEvent(new Event('storage'));
 
         toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
@@ -237,7 +240,10 @@ export default function ActivityAuditPage() {
         const updated = messages.filter(m => m.id !== id);
         setMessages(updated);
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updated));
-        
+
+        // Mark revoked in Firestore so all clients stop showing it
+        updateDoc(doc(db, 'broadcasts', id), { revoked: true }).catch(() => {});
+
         window.dispatchEvent(new Event('storage'));
         toast({ variant: "destructive", title: "Broadcast Revoked", description: "Directive purged from all target terminals." });
     }, [messages, toast]);

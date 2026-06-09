@@ -1,9 +1,7 @@
 'use client';
 
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { app } from '@/lib/firebase';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { createAuthUser } from '../actions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -204,16 +202,24 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         return;
     }
 
-    const tempPassword = `Temp-${Date.now()}`;
-    const secondaryApp = initializeApp(app.options, `secondary-${Date.now()}`);
-    const secondaryAuth = getAuth(secondaryApp);
-
     try {
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email!, tempPassword);
-        await sendPasswordResetEmail(secondaryAuth, formData.email!);
-        await deleteApp(secondaryApp);
-        const uid = userCredential.user.uid;
-        const userId = await generateId(ID_PREFIXES.USER);
+        const { uid, error } = await createAuthUser(formData.email!);
+
+        if (error || !uid) {
+            const isAlreadyExists = error?.toLowerCase().includes('already exists') || error?.toLowerCase().includes('already in use');
+            if (isAlreadyExists) {
+                toast({
+                    variant: "destructive",
+                    title: "Auth Account Already Exists",
+                    description: "This email already has a Firebase Auth account. Paste their Firebase UID in the field below to link the profile."
+                });
+            } else {
+                toast({ variant: "destructive", title: "Enrollment Failed", description: error ?? 'Auth user creation failed.' });
+            }
+            return;
+        }
+
+        const userId = await generateId(ID_PREFIXES.USER).catch(() => `usr-${Date.now()}`);
 
         const newPerson: Technician = {
             ...formData as Technician,
@@ -231,16 +237,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         handleReset();
         setIsOpen(false);
     } catch (e: any) {
-        await deleteApp(secondaryApp).catch(() => {});
-        if (e.code === 'auth/email-already-in-use') {
-            toast({
-                variant: "destructive",
-                title: "Auth Account Already Exists",
-                description: "This email already has a Firebase Auth account. Paste their Firebase UID in the field below to link the profile."
-            });
-        } else {
-            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
-        }
+        toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
     }
 };
   

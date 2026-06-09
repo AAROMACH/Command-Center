@@ -60,7 +60,7 @@ export const technicians: Technician[] = [
       preferredJobTypes: ['Networking', 'Camera Systems'],
       availabilityOverride: false,
     },
-    payoutPreferences: { method: 'ach', notes: null }
+    payoutPreferences: { method: 'ach', notes: undefined }
   },
   {
     id: 'tech-001',

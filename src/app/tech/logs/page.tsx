@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-    Check, 
-    X, 
+    Check,
+    X,
     Calendar as CalendarIcon,
     Send,
     History,
@@ -34,7 +34,8 @@ import {
     RotateCcw,
     Undo2,
     MessageSquare,
-    AlertCircle
+    AlertCircle,
+    Activity as ActivityIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';

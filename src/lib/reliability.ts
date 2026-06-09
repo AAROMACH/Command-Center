@@ -92,7 +92,8 @@ export function createAutomaticReliabilityEvent(
   }
 ): Omit<ReliabilityEvent, 'id' | 'createdAt'> {
   const allEventOptions = getAllEventOptions();
-  const option = allEventOptions.find(o => o.type === params.eventType || (o as any).id === params.eventType);
+  const eventTypeStr = params.eventType as string;
+  const option = allEventOptions.find(o => o.type === eventTypeStr || (o as any).id === eventTypeStr);
   
   if (!option) {
     throw new Error(`Invalid event type: ${params.eventType}`);

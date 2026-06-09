@@ -72,8 +72,10 @@ const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
         const parts = dateStr.split(/[-/]/);
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
-        else { 
+        let d: Date;
+        if (parts[0].length === 4) {
+            d = new Date(dateStr);
+        } else {
             const [m, day, y] = parts;
             if (y && m && day) {
                 d = new Date(`${y}-${m}-${day}T12:00:00`);
@@ -218,8 +220,8 @@ export const WorkOrdersTable = React.memo(({
     const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedJob.pay;
-      finalUpdate.payType = selectedJob.payType;
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -279,8 +281,8 @@ export const WorkOrdersTable = React.memo(({
 
   return (
     <div className="w-full space-y-4">
-      <div className="table-wrap border-none rounded-none">
-        <table className="tbl">
+      <div className="table-wrap border-none rounded-none overflow-x-auto">
+        <table className="tbl min-w-[700px]">
           <thead>
             <tr className="bg-bg-tertiary">
               <th className="text-center w-[160px] pl-0">Status & ID</th>
@@ -302,7 +304,7 @@ export const WorkOrdersTable = React.memo(({
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
+                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status === 'completed' ? 'completed' : order.status === 'checked-out' ? 'checked-out' : order.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
                       <div className="flex items-center gap-1.5">
                         <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{(displayId || '').toUpperCase()}</div>
                         {order.source === 'Imported' && (

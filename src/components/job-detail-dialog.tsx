@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { cn, formatCityState } from '@/lib/utils';
 import {
   MapPin,

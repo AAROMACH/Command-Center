@@ -7,7 +7,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   MapPin,
@@ -43,6 +43,13 @@ function getStatusVariant(status: string) {
     case 'on-my-way': return 'active';
     default: return 'scheduled';
   }
+}
+
+function getAccentColor(status: string) {
+  if (status === 'in-progress') return 'bg-text-green';
+  if (status === 'on-my-way' || status === 'confirmed') return 'bg-blue-400';
+  if (status === 'checked-out') return 'bg-border-main';
+  return 'bg-brand-red';
 }
 
 function formatScheduleDate(dateStr: string) {
@@ -117,7 +124,7 @@ export default function TechMapPage() {
         <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2">
             <MapPin size={12} />
-            Field Navigation
+            Field Map
           </p>
           <h1 className="page-title">Job Map</h1>
           <p className="page-subtitle">Your upcoming assignments and site locations.</p>
@@ -200,32 +207,34 @@ export default function TechMapPage() {
               const hasCoordsForMap = !!(job.lat && job.lng);
 
               return (
-                <Card
+                <div
                   key={job.id}
                   className={cn(
-                    'border cursor-pointer transition-all',
+                    'relative overflow-hidden rounded-lg border cursor-pointer transition-all',
                     isSelected
-                      ? 'border-brand-red bg-brand-red-dim'
-                      : 'border-border-main bg-bg-secondary hover:border-border-sub'
+                      ? 'border-brand-red bg-brand-red-dim/10 shadow-sm'
+                      : 'border-border-sub bg-bg-secondary hover:border-border-main hover:bg-bg-tertiary'
                   )}
                   onClick={() => setSelectedJob(isSelected ? null : job)}
                 >
-                  <CardHeader className="pb-2 pt-4 px-4">
+                  {/* Status accent bar */}
+                  <div className={cn('absolute left-0 top-0 bottom-0 w-1', getAccentColor(job.status))} />
+                  <div className="pl-4 pt-4 pb-2 pr-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-text-muted">
                           {index + 1}
                         </span>
-                        <CardTitle className="text-xs font-bold uppercase tracking-wide truncate">
+                        <p className="text-xs font-bold uppercase tracking-wide truncate text-text-primary">
                           {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
-                        </CardTitle>
+                        </p>
                       </div>
                       <Badge variant={getStatusVariant(job.status)} className="h-4 text-[8px] uppercase flex-shrink-0">
                         {job.status}
                       </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 space-y-3">
+                  </div>
+                  <div className="px-4 pb-4 space-y-3">
                     <div className="space-y-1.5 text-[10px] text-text-muted">
                       <div className="flex items-start gap-2">
                         <MapPin size={10} className="text-brand-red mt-0.5 flex-shrink-0" />
@@ -269,8 +278,8 @@ export default function TechMapPage() {
                         · Not visible on map
                       </p>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })
           )}

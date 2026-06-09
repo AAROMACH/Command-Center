@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
@@ -7,8 +8,10 @@ import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/type
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  Clock, 
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Clock,
   Play,
   ClipboardList,
   Receipt,
@@ -20,8 +23,19 @@ import {
   Building2,
   MapPin,
   Activity,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Map as MapIcon,
+  AlertCircle,
 } from 'lucide-react';
+
+const MapView = dynamic(() => import('../map/components/map-view'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-bg-secondary">
+      <MapIcon size={28} className="text-text-muted animate-pulse" />
+    </div>
+  ),
+});
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
@@ -32,7 +46,7 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { format, startOfWeek } from 'date-fns';
+import { format, startOfWeek, isToday, isTomorrow, parseISO } from 'date-fns';
 import { cn, getTacticalLocation } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -48,6 +62,8 @@ export default function TechDashboardPage() {
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isMapOpen, setIsMapOpen] = useState(false);
+    const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
     
     const { toast } = useToast();
     const router = useRouter();
@@ -115,6 +131,42 @@ export default function TechDashboardPage() {
     const hasActiveSession = useMemo(() => {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
+
+    // Jobs for the map popup — today or future, not completed
+    const mapJobs = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return allWorkOrders
+            .filter(wo => {
+                if (wo.status === 'completed') return false;
+                if (!wo.scheduleDate) return true;
+                const d = new Date(wo.scheduleDate);
+                d.setHours(0, 0, 0, 0);
+                return d >= today;
+            })
+            .sort((a, b) => {
+                const da = a.scheduleDate ? new Date(a.scheduleDate).getTime() : Infinity;
+                const db_ = b.scheduleDate ? new Date(b.scheduleDate).getTime() : Infinity;
+                return da - db_;
+            });
+    }, [allWorkOrders]);
+
+    const mappableJobs = useMemo(() => mapJobs.filter(j => j.lat && j.lng), [mapJobs]);
+
+    function formatMapDate(dateStr: string) {
+        if (!dateStr) return 'TBD';
+        try {
+            const d = parseISO(dateStr);
+            if (isToday(d)) return 'Today';
+            if (isTomorrow(d)) return 'Tomorrow';
+            return format(d, 'MMM d');
+        } catch { return dateStr; }
+    }
+
+    function openDirections(job: WorkOrder) {
+        const q = encodeURIComponent(job.location || '');
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${q}`, '_blank', 'noopener');
+    }
 
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
@@ -247,8 +299,8 @@ export default function TechDashboardPage() {
                 <NotificationBell />
             </header>
 
-            {/* Primary Action Buttons — large tap targets for field use */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Primary Action Buttons — 2×2 grid, large tap targets for field use */}
+            <div className="grid grid-cols-2 gap-3">
                 <Button
                     variant="outline"
                     className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all"
@@ -257,6 +309,15 @@ export default function TechDashboardPage() {
                 >
                     <Play size={18} className="text-brand-red" aria-hidden="true" />
                     <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
+                </Button>
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-blue-500 hover:bg-blue-500/5 transition-all"
+                    onClick={() => setIsMapOpen(true)}
+                    aria-label="View job map"
+                >
+                    <MapIcon size={18} className="text-blue-400" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Job Map</span>
                 </Button>
                 <Button
                     variant="outline"
@@ -363,6 +424,16 @@ export default function TechDashboardPage() {
                 </Card>
             )}
 
+            {!activeJob && (
+                <Card className="border border-border-sub bg-bg-secondary">
+                    <CardContent className="py-8 text-center space-y-2">
+                        <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
+                        <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
+                    </CardContent>
+                </Card>
+            )}
+
             <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
 
             <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
@@ -370,6 +441,92 @@ export default function TechDashboardPage() {
             <CheckInDialog isOpen={isCheckInDialogOpen} setIsOpen={setIsCheckInDialogOpen} workOrders={allWorkOrders.filter(w => w.status === 'assigned')} projects={[]} />
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
             {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
+
+            {/* Map Sheet Popup */}
+            <Sheet open={isMapOpen} onOpenChange={setIsMapOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+                    <SheetHeader className="p-4 border-b border-border-sub shrink-0">
+                        <SheetTitle className="text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                            <MapIcon size={14} className="text-blue-400" />
+                            Job Map
+                        </SheetTitle>
+                        <p className="text-[9px] text-text-muted uppercase font-medium">{mapJobs.length} upcoming assignment{mapJobs.length !== 1 ? 's' : ''}</p>
+                    </SheetHeader>
+
+                    {/* Map */}
+                    <div className="shrink-0 border-b border-border-sub" style={{ height: '45%' }}>
+                        {mappableJobs.length > 0 ? (
+                            <MapView jobs={mappableJobs} selectedJob={mapSelectedJob} onSelectJob={setMapSelectedJob} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full bg-bg-secondary">
+                                <div className="text-center space-y-2 px-6">
+                                    <MapIcon size={28} className="mx-auto text-text-muted opacity-30" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                                        {mapJobs.length > 0 ? 'No coordinates set for upcoming jobs' : 'No upcoming assignments'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Job List */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {mapJobs.length === 0 ? (
+                            <div className="py-10 text-center space-y-2">
+                                <CalendarIcon size={24} className="mx-auto text-text-muted opacity-20" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No upcoming jobs in registry</p>
+                            </div>
+                        ) : mapJobs.map((job, index) => {
+                            const isSelected = mapSelectedJob?.id === job.id;
+                            const statusColor = job.status === 'in-progress' ? 'bg-text-green' : job.status === 'on-my-way' || job.status === 'confirmed' ? 'bg-blue-400' : 'bg-border-main';
+                            return (
+                                <div
+                                    key={job.id}
+                                    className={cn(
+                                        'flex gap-3 p-3 rounded-lg border cursor-pointer transition-all overflow-hidden relative',
+                                        isSelected ? 'border-brand-red bg-brand-red-dim/10' : 'border-border-sub bg-bg-secondary hover:border-border-main'
+                                    )}
+                                    onClick={() => setMapSelectedJob(isSelected ? null : job)}
+                                >
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
+                                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-text-muted mt-0.5 ml-1">
+                                        {index + 1}
+                                    </span>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-text-primary truncate">
+                                            {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
+                                        </p>
+                                        <div className="flex items-center gap-3 text-[9px] text-text-muted">
+                                            <span className="flex items-center gap-1"><MapPin size={9} className="text-brand-red" />{job.location || 'TBD'}</span>
+                                            <span className="flex items-center gap-1"><CalendarIcon size={9} />{formatMapDate(job.scheduleDate)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <Badge variant={job.status === 'in-progress' ? 'inprogress' : job.status === 'completed' ? 'completed' : 'scheduled'} className="h-4 text-[7px]">
+                                            {job.status}
+                                        </Badge>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 px-2 text-[8px] uppercase font-bold"
+                                            onClick={(e) => { e.stopPropagation(); openDirections(job); }}
+                                        >
+                                            <Navigation size={9} className="mr-1" />
+                                            Go
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {mappableJobs.length < mapJobs.length && mapJobs.length > 0 && (
+                            <div className="flex items-center gap-1.5 text-[9px] text-accent-gold font-bold uppercase px-1">
+                                <AlertCircle size={10} />
+                                {mapJobs.length - mappableJobs.length} job{mapJobs.length - mappableJobs.length > 1 ? 's' : ''} without map coordinates
+                            </div>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

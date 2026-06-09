@@ -80,6 +80,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     }
   });
 
+  const [existingUid, setExistingUid] = useState('');
   const [isNewCompany, setIsNewCompany] = useState(false);
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
@@ -180,11 +181,33 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         return;
     }
 
-    const tempPassword = `Temp-${Date.now()}`;
+    // If an existing Firebase UID is provided, skip auth creation entirely
+    if (existingUid.trim()) {
+        try {
+            const userId = await generateId(ID_PREFIXES.USER);
+            const newPerson: Technician = {
+                ...formData as Technician,
+                id: existingUid.trim(),
+                userId,
+                role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+            };
+            onSave(newPerson);
+            toast({
+                title: "Operative Linked",
+                description: `Firestore profile created and linked to existing auth account for ${formData.email}.`
+            });
+            handleReset();
+            setIsOpen(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+        }
+        return;
+    }
 
+    const tempPassword = `Temp-${Date.now()}`;
     const secondaryApp = initializeApp(app.options, `secondary-${Date.now()}`);
     const secondaryAuth = getAuth(secondaryApp);
-    
+
     try {
         const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email!, tempPassword);
         await sendPasswordResetEmail(secondaryAuth, formData.email!);
@@ -208,11 +231,16 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         handleReset();
         setIsOpen(false);
     } catch (e: any) {
-        toast({
-            variant: "destructive",
-            title: "Enrollment Failed",
-            description: e.message
-        });
+        await deleteApp(secondaryApp).catch(() => {});
+        if (e.code === 'auth/email-already-in-use') {
+            toast({
+                variant: "destructive",
+                title: "Auth Account Already Exists",
+                description: "This email already has a Firebase Auth account. Paste their Firebase UID in the field below to link the profile."
+            });
+        } else {
+            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+        }
     }
 };
   
@@ -237,6 +265,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             availabilityOverride: false
         }
     });
+    setExistingUid('');
     setIsNewCompany(false);
   }
 
@@ -298,6 +327,19 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
                     <Input id="email" type="email" value={formData.email || ''} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
+             </div>
+             <div className="space-y-2 text-left">
+                <Label htmlFor="existingUid" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
+                    <Lock size={10} className="text-text-muted" />
+                    Firebase UID <span className="text-text-muted font-normal normal-case tracking-normal">(optional — paste if auth account already exists)</span>
+                </Label>
+                <Input
+                    id="existingUid"
+                    placeholder="e.g. aBcDeFgHiJkLmNoPqRsT1234"
+                    value={existingUid}
+                    onChange={(e) => setExistingUid(e.target.value)}
+                    className="bg-bg-primary h-9 text-xs font-mono"
+                />
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">

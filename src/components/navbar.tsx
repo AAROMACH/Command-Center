@@ -16,7 +16,8 @@ import {
   Activity,
   Calendar,
   ScrollText,
-  Coins
+  Coins,
+  FolderKanban
 } from 'lucide-react';
 import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -46,7 +47,7 @@ const adminNavItems: NavItem[] = [
 
 const techNavItems: NavItem[] = [
   { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
-  { href: '/tech/map', label: 'Map', icon: MapPin, permission: 'field_checkin' },
+  { href: '/tech/projects', label: 'Projects', icon: FolderKanban, permission: 'view_projects' },
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
   { href: '/tech/earnings', label: 'Earnings', icon: Coins, permission: 'field_logs' },

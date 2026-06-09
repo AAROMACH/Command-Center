@@ -213,6 +213,16 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    match /broadcasts/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /systemConfig/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /messages/{id} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
@@ -229,6 +239,22 @@ service cloud.firestore {
 
     match /penaltyEvents/{id} {
       allow read, write: if isPayrollAdmin();
+    }
+
+    match /expenses/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid)
+      );
+      allow create: if isTech() || isAdmin();
+      allow update: if isPayrollAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid);
+      allow delete: if isPayrollAdmin();
+    }
+
+    match /reliabilityEvents/{id} {
+      allow read: if isSignedIn() && (isAdmin() || isTech());
+      allow write: if isAdmin();
     }
   }
 }

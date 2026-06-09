@@ -46,10 +46,10 @@ const adminNavItems: NavItem[] = [
 
 const techNavItems: NavItem[] = [
   { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
-  { href: '/tech/projects', label: 'Projects', icon: Briefcase, permission: 'view_assigned_projects_only' },
+  { href: '/tech/map', label: 'Map', icon: MapPin, permission: 'field_checkin' },
   { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
   { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
-  { href: '/tech/earnings', label: 'earnings', icon: Coins, permission: 'field_logs' },
+  { href: '/tech/earnings', label: 'Earnings', icon: Coins, permission: 'field_logs' },
 ];
 
 const clientNavItems: NavItem[] = [

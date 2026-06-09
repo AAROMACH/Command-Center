@@ -292,7 +292,7 @@ export default function FinancialsPage() {
         }
 
         if (rows.length === 1) {
-            toast({ variant: 'warning', title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
+            toast({ title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
             return;
         }
 

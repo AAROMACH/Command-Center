@@ -53,9 +53,10 @@ type DocumentsTabProps = {
 };
 
 const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
-    if (type === 'pdf') return <FileText className="text-[#FF6644]"/>;
+    if (type === 'pdf') return <FileText className="text-brand-red"/>;
     if (type === 'img') return <ImageIcon className="text-text-green"/>;
-    if (type === 'doc') return <FileText className="text-[#4488DD]"/>;
+    if (type === 'doc') return <FileText className="text-text-secondary"/>;
+
     if (type === 'csv') return <FileSpreadsheet className="text-text-green"/>;
     return <FileText className="text-text-muted"/>;
 };

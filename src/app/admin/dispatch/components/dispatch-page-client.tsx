@@ -119,9 +119,10 @@ export function DispatchPageClient() {
     const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
     });
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician)));
-    });
+    const unsubTech = onSnapshot(
+      query(collection(db, 'users'), where('roles', 'array-contains-any', ['field_technician', 'project_lead'])),
+      (snap) => { setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician))); }
+    );
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
       setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)));
     });

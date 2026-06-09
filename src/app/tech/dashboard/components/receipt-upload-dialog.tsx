@@ -158,11 +158,12 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     {step === 'upload' && (
                         <div className="space-y-4">
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="image/*" 
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                capture="environment"
                                 onChange={handleFileChange}
                             />
                             <div 

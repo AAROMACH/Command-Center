@@ -28,7 +28,7 @@ import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { 
     Dialog, 
     DialogContent, 
@@ -63,47 +63,67 @@ export default function DashboardPage() {
     const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
     const router = useRouter();
 
-    // 1. Initialize Real-time Registry Listeners
+    // 1. Initialize Real-time Registry Listeners (role-filtered to minimize reads)
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-        });
+        const userId = localStorage.getItem('currentUserId');
 
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
-            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-        });
+        // Current user — single doc read
+        const unsubUser = userId
+            ? onSnapshot(doc(db, 'users', userId), (d) => {
+                if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
+              })
+            : () => {};
 
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-            const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
-            setTechnicians(techs);
-            
-            const userId = localStorage.getItem('currentUserId');
-            if (userId) {
-                setCurrentUser(techs.find(t => t.id === userId) || null);
-            }
-        });
+        // Active/unassigned work orders only — exclude historical completed records
+        const unsubWO = onSnapshot(
+            query(collection(db, 'workOrders'), where('status', 'in', ['unassigned', 'assigned', 'confirmed', 'on-my-way', 'in-progress', 'checked-out'])),
+            (snap) => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+        );
 
-        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
-            setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
-        });
+        // Active assignments only
+        const unsubAsmt = onSnapshot(
+            query(collection(db, 'assignments'), where('status', 'in', ['assigned', 'confirmed', 'on-my-way', 'in-progress', 'checked-out'])),
+            (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+        );
 
-        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
-            setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
-        });
+        // Tech/staff only — exclude client accounts from workload chart
+        const unsubTech = onSnapshot(
+            query(collection(db, 'users'), where('roles', 'array-contains-any', ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'project_lead', 'field_technician'])),
+            (snap) => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))
+        );
 
-        const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
-            setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
-        });
+        // Active/on-hold projects only
+        const unsubProj = onSnapshot(
+            query(collection(db, 'projects'), where('status', 'in', ['active', 'on-hold'])),
+            (snap) => setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)))
+        );
 
-        const unsubClientReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
-            setClientRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
-        });
+        // Submitted logs only — for unsubmit requests and pending review counts
+        const unsubLogs = onSnapshot(
+            query(collection(db, 'weeklyLogs'), where('status', 'in', ['Submitted', 'Approved'])),
+            (snap) => setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)))
+        );
 
-        const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
-            setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
-        });
+        // Pending site requests only
+        const unsubSite = onSnapshot(
+            query(collection(db, 'siteRequests'), where('status', '==', 'pending')),
+            (snap) => setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)))
+        );
+
+        // New client requests only
+        const unsubClientReq = onSnapshot(
+            query(collection(db, 'clientRequests'), where('status', '==', 'new')),
+            (snap) => setClientRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)))
+        );
+
+        // Pending time-off requests only
+        const unsubTOR = onSnapshot(
+            query(collection(db, 'timeOffRequests'), where('status', '==', 'pending')),
+            (snap) => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)))
+        );
 
         return () => {
+            unsubUser();
             unsubWO();
             unsubAsmt();
             unsubTech();
@@ -132,16 +152,14 @@ export default function DashboardPage() {
     , [technicians, assignments]);
 
     const pendingRequests = useMemo(() => {
-        const tickets = clientRequests.filter(r => r.status === 'new');
-        const sites = siteRequests.filter(s => s.status === 'pending');
-        const timeOff = timeOffRequests.filter(t => t.status === 'pending');
+        // Collections are pre-filtered at query level — no secondary filtering needed
         const unsubmits = weeklyLogs.filter(l => l.unsubmitRequested);
         return {
-            tickets,
-            sites,
-            timeOff,
+            tickets: clientRequests,
+            sites: siteRequests,
+            timeOff: timeOffRequests,
             unsubmits,
-            total: tickets.length + sites.length + timeOff.length + unsubmits.length
+            total: clientRequests.length + siteRequests.length + timeOffRequests.length + unsubmits.length
         };
     }, [clientRequests, siteRequests, timeOffRequests, weeklyLogs]);
 

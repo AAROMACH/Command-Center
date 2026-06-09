@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
-import { technicians as mockTechnicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -61,9 +60,6 @@ export default function TechDashboardPage() {
         }
         
         setCurrentTechId(userId);
-
-        const initialTech = mockTechnicians.find(t => t.id === userId);
-        if (initialTech) setTech(initialTech);
 
         const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
             if (d.exists()) {
@@ -206,9 +202,8 @@ export default function TechDashboardPage() {
             });
             
             if (newStatus === 'in-progress' || newStatus === 'completed') {
-                const adminIds = mockTechnicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
-                await NotificationService.broadcast(
-                    adminIds,
+                // Notify via server-side notification service (admin IDs resolved server-side)
+                await NotificationService.notifyAdmins(
                     `Status Alert: ${newStatus.toUpperCase()}`,
                     `Technician ${tech?.name} has transitioned to ${newStatus} for mission ${woId.toUpperCase()} at ${location}.`,
                     { id: woId, type: 'assignment' }
@@ -239,22 +234,52 @@ export default function TechDashboardPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center text-left">
-                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary text-left">{TERMINOLOGY.PORTAL.TECH}</h1>
+        <div className="space-y-5">
+            <header className="page-header">
+                <div className="text-left">
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <Activity size={12} />
+                        {TERMINOLOGY.PORTAL.TECH}
+                    </p>
+                    <h1 className="page-title">Field Terminal</h1>
+                    <p className="page-subtitle">Welcome back, {tech.name?.split(' ')[0] || 'Operative'}.</p>
+                </div>
                 <NotificationBell />
-            </div>
+            </header>
 
-            <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsCheckInDialogOpen(true)}>
-                    <Play size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Check In</span>
+            {/* Primary Action Buttons — large tap targets for field use */}
+            <div className="grid grid-cols-3 gap-3">
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all"
+                    onClick={() => setIsCheckInDialogOpen(true)}
+                    aria-label="Check in to a job"
+                >
+                    <Play size={18} className="text-brand-red" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
                 </Button>
-                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsReceiptDialogOpen(true)}>
-                    <Receipt size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Upload Receipt</span>
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all"
+                    onClick={() => setIsReceiptDialogOpen(true)}
+                    aria-label="Upload a receipt"
+                >
+                    <Receipt size={18} className="text-accent-gold" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
                 </Button>
-                <Button variant="outline" className="flex-1 h-12 relative bg-bg-secondary" onClick={() => setIsLogSelectionOpen(true)}>
-                    <ClipboardList size={16} className="text-accent-gold mr-2" /><span className="text-[10px] font-bold uppercase">Submit weekly log</span>
-                    {unsubmittedLogs.length > 0 && <Badge className="absolute -top-1 -right-1 bg-brand-red">{unsubmittedLogs.length}</Badge>}
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all"
+                    onClick={() => setIsLogSelectionOpen(true)}
+                    aria-label={`Submit weekly log${unsubmittedLogs.length > 0 ? ` — ${unsubmittedLogs.length} pending` : ''}`}
+                >
+                    <ClipboardList size={18} className="text-text-green" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                    {unsubmittedLogs.length > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">
+                            {unsubmittedLogs.length}
+                        </Badge>
+                    )}
                 </Button>
             </div>
 
@@ -297,7 +322,7 @@ export default function TechDashboardPage() {
                                 </Button>
                             )}
                             {activeJob.status === 'confirmed' && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleStartTrip(activeJob.id); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
                                     <Navigation size={14} className="mr-2"/> Start Trip
                                 </Button>
                             )}

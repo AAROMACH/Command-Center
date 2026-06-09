@@ -105,6 +105,8 @@ export type WorkOrder = {
   gpsRequired?: boolean;
   revisitCount?: number;
   externalWorkOrderId?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export type Assignment = {

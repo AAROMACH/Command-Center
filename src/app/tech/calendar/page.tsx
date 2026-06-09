@@ -35,7 +35,7 @@ export default function TechCalendarPage() {
         return () => unsub();
     }, [currentTechId]);
 
-    const handleDayClick = (day: Date) => {
+    const handleDayClick = (day: Date | undefined) => {
         setDate(day);
     };
 

@@ -56,6 +56,8 @@ export default function LoginPage() {
       const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
       const userData = snap.exists() ? { ...snap.data(), id: snap.id } : null;
       localStorage.setItem('currentUserId', firebaseUser.uid);
+      // Set session cookie so middleware can protect routes server-side
+      document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=86400; SameSite=Strict`;
       if (isAdmin(userData as any)) {
         router.push("/admin/dashboard");
       } else if (isTech(userData as any)) {

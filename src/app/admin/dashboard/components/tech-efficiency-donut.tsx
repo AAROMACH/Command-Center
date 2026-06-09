@@ -7,7 +7,7 @@ const data = [
   { name: 'Pending', value: 7 },
 ];
 
-const COLORS = ['var(--brand-red)', 'var(--accent-gold)', '#444444'];
+const COLORS = ['var(--brand-red)', 'var(--accent-gold)', 'var(--border-main)'];
 
 export function TechEfficiencyDonut() {
   return (
@@ -20,7 +20,7 @@ export function TechEfficiencyDonut() {
                     cy="50%"
                     innerRadius={50}
                     outerRadius={65}
-                    fill="#8884d8"
+                    fill="var(--brand-red)"
                     paddingAngle={0}
                     dataKey="value"
                     stroke="none"

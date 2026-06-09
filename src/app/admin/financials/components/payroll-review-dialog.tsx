@@ -300,8 +300,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const item = (localLog.items || []).find(i => i.id === itemId);
         if (!item) return;
 
-        const nextStatus = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
-        const updatedItems = (localLog.items || []).map(i => 
+        const nextStatus: 'confirmed' | null = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
+        const updatedItems = (localLog.items || []).map(i =>
             i.id === itemId ? { ...i, confirmationStatus: nextStatus, isAdminReviewed: !!nextStatus } : i
         );
         

@@ -46,7 +46,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
     const parsePastedText = (text: string): WorkOrder[] => {
       const blocks = text.split(/\n\s*\n/).filter(b => b.trim());
       
-      return blocks.map(block => {
+      return blocks.map((block): WorkOrder | null => {
         const lines = block.split('\n').map(l => l.trim());
         if (lines.length < 5) return null;
 

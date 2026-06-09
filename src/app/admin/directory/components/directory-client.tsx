@@ -782,11 +782,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                             <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
                                      {MAPS_API_KEY ? (
-                                         <iframe 
-                                            src={selectedMapAddress 
-                                                ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedMapAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
-                                                : "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1500000!2d-84.5!3d44.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1778360117229!5m2!1sen!2sus"
-                                            } 
+                                         <iframe
+                                            src={selectedMapAddress
+                                                ? `https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(selectedMapAddress)}`
+                                                : `https://www.google.com/maps/embed/v1/search?key=${MAPS_API_KEY}&q=Michigan`
+                                            }
                                             width="100%" 
                                             height="100%" 
                                             style={{ border: 0 }} 

@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import type { WorkOrder, TimeOffRequest } from '@/lib/types';
-import { workOrders } from '@/lib/data';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
@@ -12,16 +13,27 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export default function TechCalendarPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-    const [date, setDate] = useState<Date | undefined>(new Date('2024-07-28T12:00:00Z'));
+    const [date, setDate] = useState<Date | undefined>(new Date());
     const [selectedEvent, setSelectedEvent] = useState<WorkOrder | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [techWorkOrders, setTechWorkOrders] = useState<WorkOrder[]>([]);
 
     useEffect(() => {
         const userId = localStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
 
-    const techWorkOrders = workOrders.filter(wo => wo.assignedTechnicianId === currentTechId);
+    useEffect(() => {
+        if (!currentTechId) return;
+        const q = query(
+            collection(db, 'workOrders'),
+            where('assignedTechnicianId', '==', currentTechId)
+        );
+        const unsub = onSnapshot(q, (snap) => {
+            setTechWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+        return () => unsub();
+    }, [currentTechId]);
 
     const handleDayClick = (day: Date) => {
         setDate(day);

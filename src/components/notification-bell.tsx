@@ -130,13 +130,20 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group">
-          <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
+        <Button
+          variant="outline"
+          aria-label={`Notifications${messages.length > 0 ? ` — ${messages.length} unread` : ''}`}
+          className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group"
+        >
+          <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" aria-hidden="true" />
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
-            Global Alert
+            Alerts
           </span>
           {messages.length > 0 && (
-            <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]" />
+            <div
+              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]"
+              aria-hidden="true"
+            />
           )}
         </Button>
       </PopoverTrigger>
@@ -182,12 +189,12 @@ export function NotificationBell() {
                                 
                                 {/* Acknowledge / Seen Button - Only show if not locked */}
                                 {!msg.isLocked && (
-                                    <button 
+                                    <button
                                         onClick={() => handleClearMessage(msg.id, msg.subject)}
-                                        title="Acknowledge Directive"
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100"
+                                        aria-label={`Acknowledge: ${msg.subject}`}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-red"
                                     >
-                                        <Eye size={16} />
+                                        <Eye size={16} aria-hidden="true" />
                                     </button>
                                 )}
 

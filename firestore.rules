@@ -116,7 +116,11 @@ service cloud.firestore {
           || (isClient() && resource.data.clientId == request.auth.uid)
       );
       allow create: if isAdmin();
-      allow update: if isAdmin() || isTech();
+      allow update: if isAdmin()
+          || (isTech() && (
+              resource.data.assignedTechnicianIds.hasAny([request.auth.uid])
+              || resource.data.projectLeadId == request.auth.uid
+          ));
       allow delete: if isSuperAdmin();
     }
 
@@ -138,24 +142,34 @@ service cloud.firestore {
     match /clientRequests/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany)
+          || (isClient() && (
+              resource.data.clientId == request.auth.uid
+              || resource.data.clientName == userData().clientCompany
+          ))
       );
       allow create: if isSignedIn() && (isClient() || isAdmin());
       allow update: if isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany
-              && resource.data.status == 'pending');
+          || (isClient() && (
+              resource.data.clientId == request.auth.uid
+              || resource.data.clientName == userData().clientCompany
+          ) && resource.data.status == 'pending');
       allow delete: if isAdmin();
     }
 
     match /siteRequests/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany)
+          || (isClient() && (
+              resource.data.clientId == request.auth.uid
+              || resource.data.clientName == userData().clientCompany
+          ))
       );
       allow create: if isSignedIn() && (isClient() || isAdmin());
       allow update: if isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany
-              && resource.data.status == 'pending');
+          || (isClient() && (
+              resource.data.clientId == request.auth.uid
+              || resource.data.clientName == userData().clientCompany
+          ) && resource.data.status == 'pending');
       allow delete: if isAdmin();
     }
 
@@ -171,7 +185,10 @@ service cloud.firestore {
     match /invoices/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
-          || (isClient() && resource.data.clientName == userData().clientCompany)
+          || (isClient() && (
+              resource.data.clientId == request.auth.uid
+              || resource.data.clientName == userData().clientCompany
+          ))
       );
       allow create, update: if isAdmin();
       allow delete: if isSuperAdmin();

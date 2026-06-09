@@ -1,7 +1,7 @@
 'use client';
 
 import { db } from './firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import type { Technician, Notification } from './types';
 
 /**
@@ -60,5 +60,22 @@ export const NotificationService = {
    */
   async broadcast(userIds: string[], title: string, body: string, entity?: { id: string, type: 'assignment' | 'project' | 'request' }) {
     return Promise.all(userIds.map(id => this.notify(id, title, body, entity)));
+  },
+
+  /**
+   * Notify all admins without requiring a pre-loaded admin list on the client.
+   * Resolves admin IDs from Firestore directly — eliminates mock data dependency.
+   */
+  async notifyAdmins(title: string, body: string, entity?: { id: string, type: 'assignment' | 'project' | 'request' }) {
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'users'),
+          where('roles', 'array-contains-any', ['super_admin', 'dispatch_admin']))
+      );
+      const adminIds = snap.docs.map(d => d.id);
+      return this.broadcast(adminIds, title, body, entity);
+    } catch (e) {
+      console.error('Admin notification broadcast failed:', e);
+    }
   }
 };

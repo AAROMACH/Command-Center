@@ -17,7 +17,9 @@ import { cn } from '@/lib/utils';
 import { LogAssignmentDialog } from './log-assignment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -193,8 +195,10 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
     const handleManualLog = async (newLog: any) => {
         try {
             const logHours = newLog.totalMinutes / 60;
-            await addDoc(collection(db, 'projectDailyLogs'), {
+            const logId = await generateId(ID_PREFIXES.PROJECT_DAILY_LOG);
+            await setDoc(doc(db, 'projectDailyLogs', logId), {
                 ...newLog,
+                id: logId,
                 projectId: project.id,
                 hoursWorked: logHours
             });

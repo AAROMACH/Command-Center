@@ -28,6 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { generateId } from '@/lib/generateId';
+import { SLA_DEFAULTS } from '@/lib/sla';
 
 declare global {
   interface Window {
@@ -440,7 +441,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
-                  <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
+                  <Select value={formData.priority} onValueChange={(val: any) => {
+                    const defaults = SLA_DEFAULTS[val] || SLA_DEFAULTS.medium;
+                    setFormData({...formData, priority: val, slaResponseTarget: defaults.responseMinutes, slaResolutionTarget: defaults.resolutionHours});
+                  }}>
                     <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low" className="text-xs font-bold uppercase">Low</SelectItem>
@@ -463,6 +467,29 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                       <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SLA Response Target (min)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.slaResponseTarget ?? (SLA_DEFAULTS[formData.priority || 'medium']?.responseMinutes)}
+                    onChange={(e) => setFormData({...formData, slaResponseTarget: parseInt(e.target.value) || 0})}
+                    className="bg-bg-primary h-10 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SLA Resolution Target (hr)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.slaResolutionTarget ?? (SLA_DEFAULTS[formData.priority || 'medium']?.resolutionHours)}
+                    onChange={(e) => setFormData({...formData, slaResolutionTarget: parseInt(e.target.value) || 0})}
+                    className="bg-bg-primary h-10 text-xs font-mono"
+                  />
                 </div>
               </div>
             </div>

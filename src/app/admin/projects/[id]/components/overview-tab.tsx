@@ -327,6 +327,58 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                             </div>
                         </div>
 
+                        {/* Burn rate bars */}
+                        {(projectEconomics.estimatedHours > 0 || project.projectBudget) && (
+                            <div className="space-y-3 mb-4 px-0.5">
+                                {projectEconomics.estimatedHours > 0 && (
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-text-muted">
+                                            <span>Hours Burn Rate</span>
+                                            <span className={cn(
+                                                projectEconomics.loggedHours > projectEconomics.estimatedHours ? 'text-text-red' :
+                                                projectEconomics.loggedHours / projectEconomics.estimatedHours > 0.8 ? 'text-accent-gold' : 'text-text-green'
+                                            )}>
+                                                {projectEconomics.loggedHours.toFixed(1)} / {projectEconomics.estimatedHours}h
+                                                {' '}({Math.min(Math.round((projectEconomics.loggedHours / projectEconomics.estimatedHours) * 100), 999)}%)
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+                                            <div
+                                                className={cn('h-full rounded-full transition-all',
+                                                    projectEconomics.loggedHours > projectEconomics.estimatedHours ? 'bg-text-red' :
+                                                    projectEconomics.loggedHours / projectEconomics.estimatedHours > 0.8 ? 'bg-accent-gold' : 'bg-text-green'
+                                                )}
+                                                style={{ width: `${Math.min((projectEconomics.loggedHours / projectEconomics.estimatedHours) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {project.projectBudget && projectEconomics.actualCost > 0 && (
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-text-muted">
+                                            <span>Budget Consumed</span>
+                                            <span className={cn(
+                                                projectEconomics.actualCost > project.projectBudget ? 'text-text-red' :
+                                                projectEconomics.actualCost / project.projectBudget > 0.8 ? 'text-accent-gold' : 'text-text-green'
+                                            )}>
+                                                {formatCurrency(projectEconomics.actualCost)} / {formatCurrency(project.projectBudget)}
+                                                {' '}({Math.min(Math.round((projectEconomics.actualCost / project.projectBudget) * 100), 999)}%)
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+                                            <div
+                                                className={cn('h-full rounded-full transition-all',
+                                                    projectEconomics.actualCost > project.projectBudget ? 'bg-text-red' :
+                                                    projectEconomics.actualCost / project.projectBudget > 0.8 ? 'bg-accent-gold' : 'bg-text-green'
+                                                )}
+                                                style={{ width: `${Math.min((projectEconomics.actualCost / project.projectBudget) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <Collapsible open={isEconomicDetailsOpen} onOpenChange={setIsEconomicDetailsOpen}>
                             <CollapsibleTrigger asChild>
                                 <Button variant="ghost" className="w-full h-8 flex items-center justify-center gap-2 hover:bg-bg-tertiary transition-colors group">

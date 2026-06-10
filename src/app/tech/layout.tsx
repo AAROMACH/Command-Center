@@ -16,7 +16,7 @@ export default function TechPortalLayout({
         <Navbar />
         <AlertBand />
       </div>
-      <div className="page-wrapper pt-[92px]">
+      <div className="page-wrapper pt-[92px] pb-16 md:pb-0">
         <div className="page-content">{children}</div>
       </div>
     </>

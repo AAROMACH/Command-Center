@@ -2,7 +2,7 @@
 'use client';
 
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity } from "lucide-react";
@@ -58,8 +58,7 @@ export default function ProjectsPage() {
 
   const handleNewProject = async (newProject: Project) => {
     try {
-        const { id, ...data } = newProject;
-        await addDoc(collection(db, 'projects'), data);
+        await setDoc(doc(db, 'projects', newProject.id), { ...newProject });
         toast({
           title: "Project Registry Initialized",
           description: `${newProject.name} has been staged in the operational registry.`,

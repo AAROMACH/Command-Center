@@ -27,6 +27,8 @@ import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog } from "./import-jobs-dialog";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -137,7 +139,7 @@ export function DispatchPageClient() {
 
   const handleAddNewOrder = async (order: WorkOrder) => {
     try {
-        await addDoc(collection(db, 'workOrders'), { ...sanitize(order), source: 'Manual' });
+        await setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Manual' });
         toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." });
         
         const client = technicians.find(t => t.clientCompany === order.clientName);
@@ -482,7 +484,7 @@ export function DispatchPageClient() {
                 const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
                 
                 for (const wo of newlyAssigned) {
-                    const asmtId = `asmt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                    const asmtId = await generateId(ID_PREFIXES.ASSIGNMENT);
                     const asmtRef = doc(db, 'assignments', asmtId);
                     const woRef = doc(db, 'workOrders', wo.id);
                     

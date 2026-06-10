@@ -66,7 +66,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
@@ -266,8 +268,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     if (blendedHourly) newWO.blendedHourlyRate = blendedHourly;
                 }
 
-                const createdRef = await addDoc(collection(db, 'workOrders'), newWO);
-                newId = createdRef.id;
+                newId = await generateId(ID_PREFIXES.WORK_ORDER);
+                await setDoc(doc(db, 'workOrders', newId), { ...newWO, id: newId });
             } else {
                 const newProject: any = {
                     name: conversionTitle.trim(),
@@ -286,8 +288,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     actualBudget: 0,
                     actualHours: 0
                 };
-                const createdRef = await addDoc(collection(db, 'projects'), newProject);
-                newId = createdRef.id;
+                newId = await generateId(ID_PREFIXES.PROJECT);
+                await setDoc(doc(db, 'projects', newId), { ...newProject, id: newId });
             }
 
             await updateDoc(docRef, { 

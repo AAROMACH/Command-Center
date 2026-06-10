@@ -69,6 +69,7 @@ export default function TechMapPage() {
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [techId, setTechId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<'map' | 'jobs'>('map');
 
   useEffect(() => {
     const userId = localStorage.getItem('currentUserId');
@@ -131,10 +132,40 @@ export default function TechMapPage() {
         </div>
       </header>
 
+      {/* Mobile tab switcher — hidden on lg+ where both panels show side by side */}
+      <div className="flex lg:hidden gap-1 p-1 bg-bg-secondary border border-border-main rounded-lg">
+        <button
+          className={cn(
+            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
+            mobileTab === 'map' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
+          )}
+          onClick={() => setMobileTab('map')}
+        >
+          <MapIcon size={12} />
+          Map
+        </button>
+        <button
+          className={cn(
+            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
+            mobileTab === 'jobs' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
+          )}
+          onClick={() => setMobileTab('jobs')}
+        >
+          <Calendar size={12} />
+          {todayJobs.length} Jobs
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ minHeight: '70vh' }}>
 
         {/* Map Panel */}
-        <div className="lg:col-span-2 rounded-lg overflow-hidden border border-border-main" style={{ minHeight: '400px', height: '70vh' }}>
+        <div
+          className={cn(
+            'lg:col-span-2 rounded-lg overflow-hidden border border-border-main',
+            mobileTab === 'jobs' ? 'hidden lg:block' : ''
+          )}
+          style={{ minHeight: '400px', height: '70vh' }}
+        >
           {loading ? (
             <div className="flex items-center justify-center h-full bg-bg-secondary">
               <div className="text-center space-y-3">
@@ -173,7 +204,13 @@ export default function TechMapPage() {
         </div>
 
         {/* Job List Panel */}
-        <div className="space-y-3 overflow-y-auto" style={{ maxHeight: '70vh' }}>
+        <div
+          className={cn(
+            'space-y-3 overflow-y-auto',
+            mobileTab === 'map' ? 'hidden lg:block' : ''
+          )}
+          style={{ maxHeight: '70vh' }}
+        >
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
               {todayJobs.length} Upcoming Job{todayJobs.length !== 1 ? 's' : ''}

@@ -101,7 +101,7 @@ export function IntelligenceTerminal() {
             if (!dateRange?.from || !wo.scheduleDate) return true;
             try {
                 const parts = wo.scheduleDate.split(/[-/]/);
-                const d = parts[0].length === 4 ? new Date(wo.scheduleDate) : new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
+                const d = parts[0].length === 4 ? new Date(wo.scheduleDate + 'T12:00:00') : new Date(`${parts[2]}-${parts[0]}-${parts[1]}T12:00:00`);
                 const start = startOfDay(dateRange.from);
                 const end = dateRange.to ? startOfDay(dateRange.to) : start;
                 return isWithinInterval(startOfDay(d), { start, end });

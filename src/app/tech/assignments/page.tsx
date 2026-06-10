@@ -123,7 +123,7 @@ export default function TechAssignmentsPage() {
                         const parts = (wo.scheduleDate || '').split(/[-/]/);
                         let woDate;
                         if (parts[0] && parts[0].length === 4) {
-                            woDate = startOfDay(new Date(wo.scheduleDate));
+                            woDate = startOfDay(new Date(wo.scheduleDate + 'T12:00:00'));
                         } else {
                             const [m, d, y] = parts;
                             if (y && m && d) {

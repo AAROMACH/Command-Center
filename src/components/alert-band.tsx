@@ -159,7 +159,7 @@ export function AlertBand() {
       const now = new Date();
       const upcomingJobsCount = assignments.filter(wo =>
         (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) &&
-        new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
+        new Date(wo.scheduleDate + 'T12:00:00') >= now && new Date(wo.scheduleDate + 'T12:00:00') < tomorrow &&
         (wo.status === 'assigned' || wo.status === 'confirmed')
       ).length;
 

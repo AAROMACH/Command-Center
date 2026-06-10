@@ -191,6 +191,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   const handleSave = async () => {
     if (!formData.name || !formData.client || !formData.location) return;
 
+    try {
     const id = await generateId(ID_PREFIXES.PROJECT);
     const newProject: Project = {
       ...formData as Project,
@@ -218,6 +219,9 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       onsiteContactName: '',
       onsiteContactPhone: '',
     });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    }
   };
 
   return (

@@ -122,7 +122,7 @@ export function DispatchPageClient() {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
     });
     const unsubTech = onSnapshot(
-      query(collection(db, 'users'), where('roles', 'array-contains-any', ['field_technician', 'project_lead'])),
+      collection(db, 'users'),
       (snap) => { setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician))); }
     );
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
@@ -208,7 +208,7 @@ export function DispatchPageClient() {
           try {
               const parts = (order.scheduleDate || '').split(/[-/]/);
               let woDate;
-              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate)); } 
+              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate + 'T12:00:00')); } 
               else { 
                 const [m, d, y] = parts;
                 if (y && m && d) {

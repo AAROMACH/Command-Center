@@ -196,18 +196,21 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       return;
     }
 
-    const id = await generateId(ID_PREFIXES.CLIENT_REQUEST);
-    const newRequest: ServiceRequest = {
-      ...formData as ServiceRequest,
-      id,
-      submittedDate: new Date().toISOString().split('T')[0],
-      imageUrls: images,
-      documentUrls: docs,
-    };
-
-    onSave(newRequest);
-    setIsOpen(false);
-    handleReset();
+    try {
+      const id = await generateId(ID_PREFIXES.CLIENT_REQUEST);
+      const newRequest: ServiceRequest = {
+        ...formData as ServiceRequest,
+        id,
+        submittedDate: new Date().toISOString().split('T')[0],
+        imageUrls: images,
+        documentUrls: docs,
+      };
+      onSave(newRequest);
+      setIsOpen(false);
+      handleReset();
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    }
   };
 
   const handleReset = () => {

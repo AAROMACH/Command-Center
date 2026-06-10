@@ -142,7 +142,7 @@ export default function TechDashboardPage() {
             .filter(wo => {
                 if (wo.status === 'completed') return false;
                 if (!wo.scheduleDate) return true;
-                const d = new Date(wo.scheduleDate);
+                const d = new Date(wo.scheduleDate + 'T12:00:00');
                 d.setHours(0, 0, 0, 0);
                 return d >= today;
             })
@@ -158,7 +158,7 @@ export default function TechDashboardPage() {
     function formatMapDate(dateStr: string) {
         if (!dateStr) return 'TBD';
         try {
-            const d = parseISO(dateStr);
+            const d = new Date(dateStr + 'T12:00:00');
             if (isToday(d)) return 'Today';
             if (isTomorrow(d)) return 'Tomorrow';
             return format(d, 'MMM d');

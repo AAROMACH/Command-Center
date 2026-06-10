@@ -15,15 +15,18 @@ type Prefix = typeof ID_PREFIXES[keyof typeof ID_PREFIXES];
 export async function generateId(prefix: Prefix): Promise<string> {
   const counterRef = doc(db, 'systemConfig', 'idCounters');
 
-  const newCount = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(counterRef);
-    const current = snap.exists() ? (snap.data()[prefix] ?? 0) : 0;
-    const next = current + 1;
-    tx.set(counterRef, { [prefix]: next }, { merge: true });
-    return current;
-  });
-
-  // Zero-pad to 3 digits, grows naturally past 999 → 1000, 1001, etc.
-  const padded = String(newCount).padStart(3, '0');
-  return `${prefix}-${padded}`;
+  try {
+    const newCount = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(counterRef);
+      const current = snap.exists() ? (snap.data()[prefix] ?? 0) : 0;
+      const next = current + 1;
+      tx.set(counterRef, { [prefix]: next }, { merge: true });
+      return current;
+    });
+    const padded = String(newCount).padStart(3, '0');
+    return `${prefix}-${padded}`;
+  } catch {
+    // Fallback when systemConfig/idCounters is unreachable (first deploy, strict rules, etc.)
+    return `${prefix}-${Date.now().toString(36)}`;
+  }
 }

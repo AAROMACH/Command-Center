@@ -19,7 +19,7 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { format, isToday, isTomorrow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Leaflet must be loaded client-side only — no SSR
@@ -55,7 +55,7 @@ function getAccentColor(status: string) {
 function formatScheduleDate(dateStr: string) {
   if (!dateStr) return 'TBD';
   try {
-    const d = parseISO(dateStr);
+    const d = new Date(dateStr + 'T12:00:00');
     if (isToday(d)) return 'Today';
     if (isTomorrow(d)) return 'Tomorrow';
     return format(d, 'MMM d');
@@ -97,7 +97,7 @@ export default function TechMapPage() {
       .filter(job => {
         if (job.status === 'completed') return false;
         if (!job.scheduleDate) return true; // unscheduled — still show
-        const d = new Date(job.scheduleDate);
+        const d = new Date(job.scheduleDate + 'T12:00:00');
         d.setHours(0, 0, 0, 0);
         return d >= today;
       })

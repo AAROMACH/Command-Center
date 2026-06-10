@@ -180,17 +180,20 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       return;
     }
 
-    const id = await generateId(ID_PREFIXES.WORK_ORDER);
-    const newOrder: WorkOrder = {
-      ...formData as WorkOrder,
-      id,
-      isAcknowledged: false,
-      source: 'Manual',
-    };
-
-    onSave(newOrder);
-    setIsOpen(false);
-    handleReset();
+    try {
+      const id = await generateId(ID_PREFIXES.WORK_ORDER);
+      const newOrder: WorkOrder = {
+        ...formData as WorkOrder,
+        id,
+        isAcknowledged: false,
+        source: 'Manual',
+      };
+      onSave(newOrder);
+      setIsOpen(false);
+      handleReset();
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    }
   };
 
   const handleReset = () => {

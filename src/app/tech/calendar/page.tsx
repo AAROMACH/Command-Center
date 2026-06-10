@@ -116,7 +116,7 @@ export default function TechCalendarPage() {
                                 }}
                                 modifiers={{
                                     hasEvent: techWorkOrders
-                                        .map(wo => { try { return parseISO(wo.scheduleDate); } catch { return null; } })
+                                        .map(wo => { try { return new Date(wo.scheduleDate + 'T12:00:00'); } catch { return null; } })
                                         .filter(Boolean) as Date[],
                                 }}
                                 modifiersClassNames={{

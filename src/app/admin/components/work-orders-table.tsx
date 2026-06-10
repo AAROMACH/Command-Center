@@ -75,7 +75,7 @@ const formatDateDisplay = (dateStr: string) => {
         const parts = dateStr.split(/[-/]/);
         let d: Date;
         if (parts[0].length === 4) {
-            d = new Date(dateStr);
+            d = new Date(dateStr + 'T12:00:00');
         } else {
             const [m, day, y] = parts;
             if (y && m && day) {

@@ -244,6 +244,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [auditEvents, setAuditEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
@@ -261,13 +262,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
     Promise.all([
       getDocs(query(collection(db, 'weeklyLogs'), where('items', 'array-contains', { workOrderId: woId }))),
-    ]).then(([logSnap]) => {
+      getDocs(query(collection(db, 'auditLog', woId, 'events'), orderBy('changedAt', 'desc'), limit(50))),
+    ]).then(([logSnap, auditSnap]) => {
       const linkedSessionLogs = assignmentTimeLogs.filter(l => l.workOrderId === woId);
-      
+
       setAdminData({
         weeklyLog: !logSnap.empty ? { ...logSnap.docs[0].data(), id: logSnap.docs[0].id } as WeeklyLog : null,
         sessionLogs: linkedSessionLogs
       });
+      setAuditEvents(auditSnap.docs.map(d => d.data()));
     }).catch(console.error).finally(() => setLoadingAdmin(false));
   }, [activeTab, mission, isOpen]);
 
@@ -554,6 +557,36 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                                 )}
                             </div>
                         </div>
+                        {auditEvents.length > 0 && (
+                            <div className="space-y-4 text-left mt-8">
+                                <SectionLabel>Field Audit Trail</SectionLabel>
+                                <div className="space-y-1">
+                                    {auditEvents.map((ev, idx) => (
+                                        <div key={idx} className="flex items-start gap-3 px-3 py-2 rounded border border-border-sub/40 bg-bg-secondary text-left">
+                                            <div className="flex-shrink-0 w-1.5 h-1.5 mt-1.5 rounded-full bg-text-muted opacity-40" />
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-[9px] font-black text-text-primary uppercase tracking-widest">{ev.field === '__action__' ? ev.newValue : ev.field}</span>
+                                                    {ev.field !== '__action__' && (
+                                                        <span className="text-[9px] text-text-muted font-mono">
+                                                            <span className="text-text-red">{String(ev.oldValue ?? '—')}</span>
+                                                            <span className="mx-1 text-text-muted">→</span>
+                                                            <span className="text-text-green">{String(ev.newValue ?? '—')}</span>
+                                                        </span>
+                                                    )}
+                                                    {ev.details && <span className="text-[9px] text-text-muted">{ev.details}</span>}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[8px] text-text-muted font-mono">{ev.changedByName || ev.changedBy}</span>
+                                                    <span className="text-[8px] text-text-muted">·</span>
+                                                    <span className="text-[8px] text-text-muted font-mono">{ev.changedAt ? new Date(ev.changedAt).toLocaleString() : '—'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </TabsContent>

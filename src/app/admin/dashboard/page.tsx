@@ -43,6 +43,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest } from '@/lib/types';
+import { computeSla, slaStatusColor } from '@/lib/sla';
+import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 
 // Performance: Code-splitting heavy chart library
 const WorkloadChart = dynamic(() => import('./components/workload-chart').then(mod => mod.WorkloadChart), {
@@ -166,6 +168,21 @@ export default function DashboardPage() {
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
 
+    const slaAlerts = useMemo(() => {
+        const active = [...workOrders, ...assignments].filter(wo =>
+            wo.status !== 'completed' && (wo.priority === 'critical' || wo.priority === 'high' || wo.priority === 'medium')
+        );
+        return active
+            .map(wo => ({ wo, sla: computeSla(wo) }))
+            .filter(({ sla }) => sla.status === 'breached' || sla.status === 'at-risk')
+            .sort((a, b) => {
+                if (a.sla.status === 'breached' && b.sla.status !== 'breached') return -1;
+                if (b.sla.status === 'breached' && a.sla.status !== 'breached') return 1;
+                return 0;
+            })
+            .slice(0, 5);
+    }, [workOrders, assignments]);
+
     const handleSwapPortal = useCallback(() => {
         if (techPortal) router.push(techPortal.path);
     }, [router, techPortal]);
@@ -232,6 +249,28 @@ export default function DashboardPage() {
                     />
                 </div>
             </div>
+
+            {slaAlerts.length > 0 && (
+                <div className="mb-6 rounded-lg border border-brand-red/30 bg-brand-red/5 p-3 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                        <SlaAlertIcon size={12} className="text-brand-red" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-red">SLA Alerts — {slaAlerts.length} job{slaAlerts.length !== 1 ? 's' : ''} require attention</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {slaAlerts.map(({ wo, sla }) => (
+                            <Link key={wo.id} href="/admin/dispatch" className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-bg-secondary hover:border-brand-red transition-colors"
+                                style={{ borderColor: sla.status === 'breached' ? 'rgb(204,34,0)' : 'rgb(255,180,0,0.4)' }}>
+                                <Timer size={10} className={slaStatusColor(sla.status)} />
+                                <span className="text-[9px] font-bold uppercase tracking-wide text-text-primary">{wo.shortId || wo.id.slice(0, 8).toUpperCase()}</span>
+                                <span className={`text-[9px] font-bold uppercase ${slaStatusColor(sla.status)}`}>
+                                    {sla.status === 'breached' ? 'BREACHED' : 'AT RISK'}
+                                </span>
+                                <span className="text-[9px] text-text-muted uppercase font-bold">{wo.clientName}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">

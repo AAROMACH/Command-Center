@@ -56,7 +56,8 @@ import {
   CheckCircle2,
   Wrench,
   Target,
-  Loader2
+  Loader2,
+  Timer
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,8 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { generateId } from '@/lib/generateId';
+import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
+import { auditFieldChange } from '@/lib/audit';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -240,7 +243,16 @@ export const WorkOrdersTable = React.memo(({
 
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const docRef = doc(db, collectionName, editedOrder.id);
-    updateDoc(docRef, { ...finalUpdate }).catch((e: any) => {
+    updateDoc(docRef, { ...finalUpdate }).then(() => {
+      const auditableFields = ['status', 'priority', 'pay', 'payType', 'scheduleDate', 'scheduleTime', 'assignedTechnicianId', 'location', 'slaResponseTarget', 'slaResolutionTarget'];
+      const oldVals: Record<string, unknown> = {};
+      const newVals: Record<string, unknown> = {};
+      for (const f of auditableFields) {
+        oldVals[f] = (selectedOrder as any)[f];
+        newVals[f] = (finalUpdate as any)[f];
+      }
+      auditFieldChange(collectionName, editedOrder.id, currentUser?.id || 'unknown', currentUser?.name || 'Admin', oldVals, newVals).catch(console.warn);
+    }).catch((e: any) => {
         console.error("Save Changes Error:", e);
         toast({ variant: "destructive", title: "Save Failed", description: e.message });
     });
@@ -314,6 +326,16 @@ export const WorkOrdersTable = React.memo(({
                           </a>
                         )}
                       </div>
+                      {order.status !== 'completed' && (() => {
+                        const sla = computeSla(order);
+                        if (sla.status === 'on-track') return null;
+                        return (
+                          <div className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest ${slaStatusColor(sla.status)}`}>
+                            <Timer size={8} />
+                            {sla.status === 'breached' ? 'SLA Breached' : sla.status === 'at-risk' ? `SLA ${formatSlaCountdown(sla.hoursUntilResolutionBreach)}` : ''}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="!py-4 text-left pl-0">

@@ -1,7 +1,9 @@
 'use client';
 
 import { db } from './firebase';
-import { collection, addDoc, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { generateId } from './generateId';
+import { ID_PREFIXES } from './constants';
 import type { Technician, Notification } from './types';
 
 /**
@@ -44,7 +46,8 @@ export const NotificationService = {
           relatedEntityId: entity?.id,
           relatedEntityType: entity?.type
         };
-        return addDoc(collection(db, 'notifications'), notification);
+        const id = await generateId(ID_PREFIXES.NOTIFICATION);
+        return setDoc(doc(db, 'notifications', id), { ...notification, id });
       });
 
       await Promise.all(writePromises);

@@ -166,7 +166,7 @@ export function DispatchPageClient() {
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
     try {
-        await addDoc(collection(db, 'clientRequests'), sanitize(request));
+        await setDoc(doc(db, 'clientRequests', request.id), sanitize(request));
         toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
         
         const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);

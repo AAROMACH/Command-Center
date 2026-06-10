@@ -46,7 +46,9 @@ import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 const formatDateStr = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -208,11 +210,12 @@ export default function TechAssignmentsPage() {
         );
 
         const snap = await getDocs(logQuery);
+        const itemId = await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM);
         const newItem: WeeklyLogItem = {
-            id: `wli-${Date.now()}`,
+            id: itemId,
             workOrderId: woId,
             jobPay: wo.pay,
-            outcomeCode: null, 
+            outcomeCode: null,
             isComplete: true,
             isAdminReviewed: false
         };
@@ -223,15 +226,16 @@ export default function TechAssignmentsPage() {
                 items: arrayUnion(newItem)
             });
         } else {
-            const newLog: Omit<WeeklyLog, 'id'> = {
+            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            await setDoc(doc(db, 'weeklyLogs', logId), {
+                id: logId,
                 techId: currentTechId,
                 weekOf,
                 status: 'Draft',
                 items: [newItem],
                 reimbursements: [],
                 totalPayout: 0
-            };
-            await addDoc(collection(db, 'weeklyLogs'), newLog);
+            });
         }
     };
 

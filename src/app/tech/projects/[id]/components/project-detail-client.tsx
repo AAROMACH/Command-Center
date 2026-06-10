@@ -67,7 +67,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 // --- UTILITIES ---
 
@@ -759,7 +761,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         };
 
         try {
-            await addDoc(collection(db, 'projectDailyLogs'), newLog);
+            const logId = await generateId(ID_PREFIXES.PROJECT_DAILY_LOG);
+            await setDoc(doc(db, 'projectDailyLogs', logId), { ...newLog, id: logId });
             toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });

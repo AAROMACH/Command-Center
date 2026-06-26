@@ -14,7 +14,7 @@ export default function TechProjectsPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentTechId(userId);
 
         if (userId) {

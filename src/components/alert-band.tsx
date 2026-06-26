@@ -66,7 +66,7 @@ export function AlertBand() {
 
   // Effect 1: Get current user document
   useEffect(() => {
-    const storedId = localStorage.getItem('currentUserId');
+    const storedId = sessionStorage.getItem('currentUserId');
     if (!storedId) return;
 
     const unsubUser = onSnapshot(doc(db, 'users', storedId), (snap) => {

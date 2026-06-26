@@ -72,7 +72,7 @@ export default function TechMapPage() {
   const [mobileTab, setMobileTab] = useState<'map' | 'jobs'>('map');
 
   useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
+    const userId = sessionStorage.getItem('currentUserId');
     if (!userId) return;
     setTechId(userId);
 

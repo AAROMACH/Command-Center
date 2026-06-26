@@ -36,7 +36,7 @@ export default function TechCalendarPage() {
     const [techWorkOrders, setTechWorkOrders] = useState<WorkOrder[]>([]);
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentTechId(userId);
     }, []);
 

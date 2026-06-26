@@ -113,7 +113,7 @@ export default function TechWeeklyLogPage() {
     // 1. Terminal Initialization
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentTechId(userId);
 
         if (userId) {

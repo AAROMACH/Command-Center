@@ -26,7 +26,7 @@ export default function ClientSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);

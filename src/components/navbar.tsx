@@ -78,14 +78,14 @@ export function Navbar() {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
           } else {
-            const storedId = localStorage.getItem('currentUserId');
+            const storedId = sessionStorage.getItem('currentUserId');
             const registryUser = technicians.find(t => t.id === fbUser.uid || t.id === storedId);
             setCurrentUser(registryUser);
           }
         });
         return () => unsubUser();
       } else {
-        const storedId = localStorage.getItem('currentUserId');
+        const storedId = sessionStorage.getItem('currentUserId');
         if (storedId) {
             const registryUser = technicians.find(t => t.id === storedId);
             setCurrentUser(registryUser);

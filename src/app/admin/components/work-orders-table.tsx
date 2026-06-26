@@ -125,7 +125,7 @@ export const WorkOrdersTable = React.memo(({
   const { toast } = useToast();
 
   useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
+    const userId = sessionStorage.getItem('currentUserId');
     if (userId) {
       setCurrentUser(technicians.find(t => t.id === userId) || null);
     }

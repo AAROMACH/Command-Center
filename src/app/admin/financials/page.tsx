@@ -84,7 +84,7 @@ export default function FinancialsPage() {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
                 if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);

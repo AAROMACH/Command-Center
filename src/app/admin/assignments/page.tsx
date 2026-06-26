@@ -153,7 +153,7 @@ export default function AssignmentsHubPage() {
       const techs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician));
       setTechnicians(techs);
       
-      const userId = localStorage.getItem('currentUserId');
+      const userId = sessionStorage.getItem('currentUserId');
       if (userId) {
         setCurrentUser(techs.find(t => t.id === userId) || null);
       }

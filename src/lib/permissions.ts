@@ -23,7 +23,12 @@ export type Permission =
   | 'view_assigned_projects_only'
   | 'view_assigned_work_only'
   | 'approve_pay_changes'
-  | 'view_reports';
+  | 'view_reports'
+  | 'view_leads'
+  | 'manage_leads'
+  | 'view_crm'
+  | 'manage_safety_events'
+  | 'manage_certifications';
 
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
@@ -50,6 +55,11 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'field_logs',
     'approve_pay_changes',
     'view_reports',
+    'view_leads',
+    'manage_leads',
+    'view_crm',
+    'manage_safety_events',
+    'manage_certifications',
   ],
   dispatch_admin: [
     'view_dashboard',
@@ -95,6 +105,29 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'view_dashboard',
     'client_portal',
   ],
+  sales: [
+    'view_dashboard',
+    'view_leads',
+    'manage_leads',
+    'view_crm',
+    'view_projects',
+    'view_directory',
+    'view_reports',
+  ],
+  safety_officer: [
+    'view_dashboard',
+    'view_assignments',
+    'view_projects',
+    'view_directory',
+    'manage_safety_events',
+    'view_reports',
+  ],
+  training_coordinator: [
+    'view_dashboard',
+    'view_directory',
+    'manage_certifications',
+    'view_reports',
+  ],
 };
 
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
@@ -108,6 +141,9 @@ export function hasPermission(user: Technician | null | undefined, permission: P
   if (currentRole.includes('client')) userRoles.push('client');
   if (currentRole.includes('lead')) userRoles.push('project_lead');
   if (currentRole.includes('tech')) userRoles.push('field_technician');
+  if (currentRole === 'sales' || currentRole.includes('sales')) userRoles.push('sales');
+  if (currentRole.includes('safety')) userRoles.push('safety_officer');
+  if (currentRole.includes('training')) userRoles.push('training_coordinator');
 
   const uniqueRoles = Array.from(new Set(userRoles));
   return uniqueRoles.some(role => ROLE_PERMISSIONS[role as AppRole]?.includes(permission));
@@ -115,11 +151,17 @@ export function hasPermission(user: Technician | null | undefined, permission: P
 
 export function isAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
-  const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+  const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'sales', 'safety_officer', 'training_coordinator'];
   const userRoles: AppRole[] = user.roles || [];
   const currentRole = user.role?.toLowerCase() || '';
   const isLegacyAdmin = currentRole.includes('admin') || currentRole.includes('dispatcher') || currentRole.includes('manager');
   return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
+}
+
+export function isSales(user: Technician | null | undefined): boolean {
+  if (!user) return false;
+  const currentRole = user.role?.toLowerCase() || '';
+  return user.roles?.includes('sales') || currentRole === 'sales' || currentRole.includes('sales');
 }
 
 export function isSuperAdmin(user: Technician | null | undefined): boolean {

@@ -1,11 +1,14 @@
-export type AppRole = 
-  | 'super_admin' 
-  | 'dispatch_admin' 
-  | 'payroll_admin' 
-  | 'project_manager' 
-  | 'project_lead' 
-  | 'field_technician' 
-  | 'client';
+export type AppRole =
+  | 'super_admin'
+  | 'dispatch_admin'
+  | 'payroll_admin'
+  | 'project_manager'
+  | 'project_lead'
+  | 'field_technician'
+  | 'client'
+  | 'sales'
+  | 'safety_officer'
+  | 'training_coordinator';
 
 export type AdminMessage = {
   id: string;

@@ -26,8 +26,9 @@ import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 declare global {
   interface Window {

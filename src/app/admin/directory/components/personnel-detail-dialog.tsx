@@ -51,6 +51,8 @@ import { penaltyEvents, assignmentTimeLogs } from '@/lib/data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOptions } from '@/lib/reliability';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -577,12 +579,12 @@ function LogReliabilityEventDialog({ isOpen, setIsOpen, person, onSave }: { isOp
     const [reason, setReason] = useState("");
     const [assignmentId, setAssignmentId] = useState("");
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const option = manualOptions.find(o => o.type === selectedType);
         if (!option || !reason) return;
 
         const newEvent: ReliabilityEvent = {
-            id: `re-${Date.now()}`,
+            id: await generateId(ID_PREFIXES.PENALTY_EVENT),
             techId: person.id,
             eventType: option.type,
             scoreChange: option.scoreChange,

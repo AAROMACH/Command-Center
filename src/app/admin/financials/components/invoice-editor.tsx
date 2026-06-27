@@ -125,7 +125,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
     const addLineItem = (category: 'labor' | 'material') => {
         const newItem: InvoiceLineItem = { 
-            id: `li-${Date.now()}`,
+            id: crypto.randomUUID(),
             description: '',
             quantity: 1,
             unitPrice: 0,

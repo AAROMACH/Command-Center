@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import type { WorkOrder, Technician } from '@/lib/types';
+import type { WorkOrder, Technician, TimeOffRequest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Calendar, ChevronLeft, ChevronRight, Users, Filter,
-  Clock, MapPin, User, AlertCircle,
+  Clock, MapPin, User, AlertCircle, Umbrella,
 } from 'lucide-react';
 import {
   format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays,
@@ -45,6 +45,7 @@ export default function AdminCalendarPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterTech, setFilterTech] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -57,7 +58,10 @@ export default function AdminCalendarPage() {
     const unsubTechs = onSnapshot(collection(db, 'users'), (snap) => {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
-    return () => { unsubWO(); unsubTechs(); };
+    const unsubPTO = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+      setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+    });
+    return () => { unsubWO(); unsubTechs(); unsubPTO(); };
   }, []);
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -92,6 +96,16 @@ export default function AdminCalendarPage() {
         try { return isSameDay(parseISO(wo.scheduleDate), day); } catch { return false; }
       })
       .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+
+  const ptoForDay = (day: Date) =>
+    timeOffRequests.filter(req => {
+      if (req.status !== 'approved') return false;
+      try {
+        const start = parseISO(req.startDate);
+        const end = parseISO(req.endDate);
+        return day >= start && day <= end;
+      } catch { return false; }
+    });
 
   const adminTechs = useMemo(() =>
     technicians.filter(t => !t.roles?.includes('client')),
@@ -182,6 +196,19 @@ export default function AdminCalendarPage() {
 
           return (
             <div key={day.toISOString()} className="space-y-2">
+              {/* PTO blocks */}
+              {ptoForDay(day).map(pto => {
+                const tech = technicians.find(t => t.id === pto.techId);
+                return (
+                  <div key={pto.id} className="rounded-md border border-blue-400/30 bg-blue-400/5 px-2.5 py-1.5 flex items-center gap-1.5">
+                    <Umbrella size={9} className="text-blue-400 shrink-0" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 truncate">
+                      {tech?.name || 'Tech'} — {pto.type}
+                    </span>
+                  </div>
+                );
+              })}
+
               {/* Day header */}
               <div className={cn(
                 'rounded-lg px-2.5 py-2 border text-center',

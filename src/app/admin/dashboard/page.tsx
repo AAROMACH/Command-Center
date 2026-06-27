@@ -42,7 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest } from '@/lib/types';
+import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { computeSla, slaStatusColor } from '@/lib/sla';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 
@@ -61,6 +61,7 @@ export default function DashboardPage() {
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [clientRequests, setClientRequests] = useState<ServiceRequest[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
     const router = useRouter();
@@ -124,6 +125,11 @@ export default function DashboardPage() {
             (snap) => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)))
         );
 
+        // Pending invoices
+        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+            setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+        });
+
         return () => {
             unsubUser();
             unsubWO();
@@ -134,6 +140,7 @@ export default function DashboardPage() {
             unsubSite();
             unsubClientReq();
             unsubTOR();
+            unsubInv();
         };
     }, []);
 
@@ -211,7 +218,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-5 gap-px overflow-hidden rounded-lg border border-border-default bg-border-default">
                 <Link href="/admin/dispatch?subtab=assignments">
                     <StatCard 
                         label={`Active ${TERMINOLOGY.ENTITIES.ASSIGNMENT}s`} 
@@ -231,12 +238,21 @@ export default function DashboardPage() {
                     />
                 </Link>
                 <Link href="/admin/financials?tab=payroll">
-                    <StatCard 
-                        label="Pending Weeklogs" 
-                        value={weeklyLogs.filter(l => l.status === 'Submitted').length.toString()} 
-                        delta="Awaiting Audit" 
+                    <StatCard
+                        label="Pending Weeklogs"
+                        value={weeklyLogs.filter(l => l.status === 'Submitted').length.toString()}
+                        delta="Awaiting Audit"
                         deltaType="warning"
                         icon="ClipboardList"
+                    />
+                </Link>
+                <Link href="/admin/financials?tab=invoices">
+                    <StatCard
+                        label="Pending Invoices"
+                        value={invoices.filter(inv => !inv.status || inv.status === 'pending' || inv.status === 'unpaid').length.toString()}
+                        delta="Awaiting Payment"
+                        deltaType="warning"
+                        icon="Coins"
                     />
                 </Link>
                 <div className="cursor-pointer" onClick={() => setIsPendingDialogOpen(true)}>

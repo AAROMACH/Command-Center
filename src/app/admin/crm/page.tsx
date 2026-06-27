@@ -230,41 +230,57 @@ export default function CRMPage() {
           <h1 className="page-title">CRM Pipeline</h1>
           <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
         </div>
-        <div className="page-header-right items-center gap-2">
-          <div className="search-wrap">
-            <Search />
-            <input
-              className="search-input !w-full md:!w-[220px]"
-              placeholder="Search leads..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-          {/* View toggle */}
-          <div className="flex items-center border border-border-main rounded-md overflow-hidden h-8">
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={cn('h-8 w-8 flex items-center justify-center transition-colors', viewMode === 'kanban' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
-            >
-              <LayoutGrid size={13} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn('h-8 w-8 flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
-            >
-              <List size={13} />
-            </button>
-          </div>
-          <Button
-            size="sm"
-            className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white shrink-0"
-            onClick={() => setIsNewLeadOpen(true)}
-          >
-            <Plus size={12} className="mr-1.5" />
-            New Lead
-          </Button>
-        </div>
       </header>
+
+      {/* Universal Search/Sort/Filter Bar */}
+      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+            placeholder="Search leads..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={listSort.col} onValueChange={(v: any) => setListSort(prev => ({ ...prev, col: v }))}>
+          <SelectTrigger className="h-9 w-[150px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-widest">
+            <div className="flex items-center gap-2">
+              <ArrowUpDown size={12} className="text-text-muted" />
+              <SelectValue />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated" className="text-[10px] uppercase font-bold">Last Updated</SelectItem>
+            <SelectItem value="stage" className="text-[10px] uppercase font-bold">By Stage</SelectItem>
+            <SelectItem value="value" className="text-[10px] uppercase font-bold">By Value</SelectItem>
+            <SelectItem value="company" className="text-[10px] uppercase font-bold">By Company</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'kanban' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+          >
+            <LayoutGrid size={13} />
+          </button>
+          <div className="w-px h-full bg-border-main" />
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+          >
+            <List size={13} />
+          </button>
+        </div>
+        <Button
+          size="sm"
+          className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white shrink-0 ml-auto"
+          onClick={() => setIsNewLeadOpen(true)}
+        >
+          <Plus size={12} className="mr-1.5" />
+          New Lead
+        </Button>
+      </div>
 
       {/* Pipeline Stats */}
       <div className="flex items-center gap-6 px-1">

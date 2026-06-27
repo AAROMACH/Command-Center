@@ -42,7 +42,7 @@ export function DispatchTabs({
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
         </TabsTrigger>
         <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
-          Groups <span className="tab-count">({routes.length})</span>
+          Routes <span className="tab-count">({routes.length})</span>
         </TabsTrigger>
       </TabsList>
       

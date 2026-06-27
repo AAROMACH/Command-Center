@@ -99,6 +99,11 @@ export default function AdminCalendarPage() {
     [workOrders]
   );
 
+  const adminTechs = useMemo(() =>
+    technicians.filter(t => !t.roles?.includes('client')),
+    [technicians]
+  );
+
   const techColorMap = useMemo(() => {
     const map: Record<string, string> = {};
     adminTechs.forEach((t, i) => { map[t.id] = TECH_PALETTE[i % TECH_PALETTE.length]; });
@@ -143,11 +148,6 @@ export default function AdminCalendarPage() {
       } catch { return false; }
     });
   };
-
-  const adminTechs = useMemo(() =>
-    technicians.filter(t => !t.roles?.includes('client')),
-    [technicians]
-  );
 
   const uniqueStatuses = useMemo(() =>
     [...new Set(workOrders.map(wo => wo.status).filter(Boolean))],

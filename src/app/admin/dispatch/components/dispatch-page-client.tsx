@@ -27,8 +27,7 @@ import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog } from "./import-jobs-dialog";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -484,7 +483,7 @@ export function DispatchPageClient() {
                 const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
                 
                 for (const wo of newlyAssigned) {
-                    const asmtId = await createDocId(ID_PREFIXES.ASSIGNMENT);
+                    const asmtId = await makeAssignmentId();
                     const asmtRef = doc(db, 'assignments', asmtId);
                     const woRef = doc(db, 'workOrders', wo.id);
                     

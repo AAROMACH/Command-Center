@@ -33,8 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeRouteId } from '@/lib/doc-ids';
 import { Badge } from '@/components/ui/badge';
 import { 
     Select, 
@@ -248,7 +247,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleCreateRoute = async () => {
         if (!newRouteName.trim()) return;
         const newRoute: Route = {
-            id: await createDocId(ID_PREFIXES.ROUTE),
+            id: await makeRouteId(),
             name: newRouteName,
             workOrderIds: [],
             technicianName: ""
@@ -330,12 +329,12 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
 
             if (result.routes && result.routes.length > 0) {
-                const newRoutes: Route[] = result.routes.map((p, idx) => ({
-                    id: p.routeId || `route-area-${Date.now()}-${idx}`,
+                const newRoutes: Route[] = await Promise.all(result.routes.map(async (p) => ({
+                    id: await makeRouteId(),
                     name: p.estimatedRouteLabel || `Area: ${p.technicianName || 'Unassigned'}`,
                     technicianName: p.technicianName || "",
                     workOrderIds: p.jobIds
-                }));
+                })));
 
                 const updatedWorkOrders = allWorkOrders.map(wo => {
                     const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));

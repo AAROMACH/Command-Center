@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, Expense, Technician } from '@/lib/types';
+import type { WeeklyLog, Expense, Technician, ProjectPayout } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -43,6 +43,7 @@ export default function TechEarningsPage() {
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [workOrders, setWorkOrders] = useState<any[]>([]);
+    const [projectPayouts, setProjectPayouts] = useState<ProjectPayout[]>([]);
     
     const [mounted, setMounted] = useState(false);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
@@ -68,9 +69,12 @@ export default function TechEarningsPage() {
             const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
             });
+            const unsubPayouts = onSnapshot(query(collection(db, 'projectPayouts'), where('technicianId', '==', userId)), (snap) => {
+                setProjectPayouts(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectPayout)));
+            });
 
             return () => {
-                unsubTech(); unsubLogs(); unsubExp(); unsubWO();
+                unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubPayouts();
             };
         }
     }, []);
@@ -223,7 +227,50 @@ export default function TechEarningsPage() {
                 </CardContent>
             </Card>
 
-            <ReceiptUploadDialog 
+            {/* Project Payouts Section */}
+            {projectPayouts.length > 0 && (
+                <Card>
+                    <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <CardTitle>Project Earnings</CardTitle>
+                        <CardDescription>Payouts tied to project work — separate from weekly assignment logs.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent border-border-sub">
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Project</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Role</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {projectPayouts.map(pp => (
+                                    <TableRow key={pp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
+                                        <TableCell className="text-xs font-bold uppercase pl-4">{pp.projectId.slice(0, 8)}</TableCell>
+                                        <TableCell className="text-xs text-text-muted capitalize">{pp.role}</TableCell>
+                                        <TableCell className="text-xs text-text-muted capitalize">{pp.payType.replace('_', ' ')}</TableCell>
+                                        <TableCell className="font-mono text-sm font-bold tabular-nums">${pp.amount.toFixed(2)}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'}
+                                                className="text-[8px] h-4 uppercase"
+                                            >
+                                                {pp.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{pp.notes || '—'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
+
+            <ReceiptUploadDialog
                 isOpen={isReceiptDialogOpen}
                 setIsOpen={setIsReceiptDialogOpen}
                 workOrders={workOrders}

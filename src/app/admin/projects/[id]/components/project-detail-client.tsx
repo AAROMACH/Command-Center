@@ -30,6 +30,7 @@ import { OverviewTab } from './overview-tab';
 import { MilestonesTab } from './milestones-tab';
 import { DocumentsTab } from './documents-tab';
 import { TimesheetsTab } from './timesheets-tab';
+import { PayoutsTab } from './payouts-tab';
 import {
   Dialog,
   DialogContent,
@@ -192,6 +193,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
+                <button className={`detail-tab ${activeTab === 'payouts' ? 'active' : ''}`} onClick={() => setActiveTab('payouts')}>Payouts</button>
             </div>
 
             <div className="tab-content">
@@ -199,6 +201,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 {activeTab === 'milestones' && <MilestonesTab project={project} />}
                 {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
                 {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} project={project} />}
+                {activeTab === 'payouts' && <PayoutsTab projectId={project.id} technicians={technicians} />}
             </div>
 
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

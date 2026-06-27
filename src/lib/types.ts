@@ -1,11 +1,14 @@
-export type AppRole = 
-  | 'super_admin' 
-  | 'dispatch_admin' 
-  | 'payroll_admin' 
-  | 'project_manager' 
-  | 'project_lead' 
-  | 'field_technician' 
-  | 'client';
+export type AppRole =
+  | 'super_admin'
+  | 'dispatch_admin'
+  | 'payroll_admin'
+  | 'project_manager'
+  | 'project_lead'
+  | 'field_technician'
+  | 'client'
+  | 'sales'
+  | 'safety_officer'
+  | 'training_coordinator';
 
 export type AdminMessage = {
   id: string;
@@ -457,4 +460,65 @@ export type PlanTier = {
   siteLimit: number;
   responseTime: string;
   type: 'standard' | 'custom';
+};
+
+export type TripLog = {
+  id: string;
+  technicianId: string;
+  technicianName?: string;
+  workOrderId?: string;
+  projectId?: string;
+  date: string;
+  startLocation: string;
+  endLocation: string;
+  miles: number;
+  purpose: string;
+  reimbursable: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+};
+
+export type Lead = {
+  id: string;
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  source: 'referral' | 'website' | 'cold_call' | 'field_nation' | 'other';
+  stage: 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiating' | 'won' | 'lost';
+  estimatedValue: number;
+  assignedTo: string;
+  notes: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  lostReason?: string;
+};
+
+export type LeadActivity = {
+  id: string;
+  leadId: string;
+  type: 'note' | 'call' | 'email' | 'meeting' | 'proposal' | 'follow_up';
+  description: string;
+  createdBy: string;
+  createdAt: string;
+  scheduledAt?: string;
+};
+
+export type ProjectPayout = {
+  id: string;
+  projectId: string;
+  technicianId: string;
+  technicianName?: string;
+  role: 'lead' | 'crew';
+  payType: 'fixed' | 'hourly' | 'percentage';
+  amount: number;
+  hoursWorked?: number;
+  totalPayout?: number;
+  status: 'pending' | 'approved' | 'paid';
+  weeklyLogId?: string;
+  notes: string;
+  createdAt: string;
+  paidAt?: string;
 };

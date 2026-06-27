@@ -49,6 +49,8 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { Car } from 'lucide-react';
+import { LogTripDialog } from './components/log-trip-dialog';
 
 const formatDateStr = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -80,6 +82,7 @@ export default function TechAssignmentsPage() {
     
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
 
     const { toast } = useToast();
 
@@ -355,18 +358,33 @@ export default function TechAssignmentsPage() {
                     <h1 className="page-title">Assignments</h1>
                     <p className="page-subtitle text-left">Manage tactical assignments and historical performance audit.</p>
                 </div>
-                <div className="page-header-right items-center">
+                <div className="page-header-right items-center gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-[10px] font-bold uppercase tracking-wider border-border-main text-text-muted hover:text-text-primary shrink-0"
+                        onClick={() => setIsTripDialogOpen(true)}
+                    >
+                        <Car size={12} className="mr-1.5" />
+                        Log Trip
+                    </Button>
                     <div className="search-wrap">
                         <Search />
-                        <input 
-                            className="search-input !w-full md:!w-[250px]" 
-                            placeholder="Search assignments..." 
+                        <input
+                            className="search-input !w-full md:!w-[250px]"
+                            placeholder="Search assignments..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                 </div>
             </header>
+
+            <LogTripDialog
+                open={isTripDialogOpen}
+                onClose={() => setIsTripDialogOpen(false)}
+                technicianId={currentTechId || ''}
+            />
 
             {hasActiveSession && (
                 <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left mb-6">

@@ -4,13 +4,13 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity, Car, Navigation } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder } from '@/lib/types';
+import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, TripLog } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { RevenueChart } from './components/revenue-chart';
@@ -40,6 +40,7 @@ export default function FinancialsPage() {
     const [projects, setProjects] = useState<any[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+    const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
     
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
@@ -83,6 +84,9 @@ export default function FinancialsPage() {
         const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
+        const unsubTrips = onSnapshot(collection(db, 'tripLogs'), (snap) => {
+            setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
+        });
 
         const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
@@ -90,12 +94,12 @@ export default function FinancialsPage() {
                 if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
             });
             return () => {
-                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubUser();
+                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubTrips(); unsubUser();
             };
         }
 
         return () => {
-            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt();
+            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubTrips();
         };
     }, []);
 
@@ -357,6 +361,7 @@ export default function FinancialsPage() {
                     <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
                     <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
                     <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
+                    <TabsTrigger value="mileage" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MILEAGE</TabsTrigger>
                 </TabsList>
                 
                 <div className="mt-6 text-left">
@@ -532,6 +537,102 @@ export default function FinancialsPage() {
                                                 </TableCell>
                                             </TableRow>
                                         ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="mileage" className="m-0">
+                        <Card>
+                            <CardHeader className="text-left">
+                                <CardTitle className="flex items-center gap-2">
+                                    <Car size={16} className="text-brand-red" />
+                                    Mileage Logs
+                                </CardTitle>
+                                <CardDescription>Review and approve technician trip mileage for reimbursement.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="table-wrap p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Route</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Miles</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Purpose</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Reimb.</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="text-right pr-6"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {tripLogs.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
+                                                    No mileage logs recorded yet.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            [...tripLogs]
+                                                .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                                                .map((trip) => (
+                                                    <TableRow key={trip.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
+                                                        <TableCell className="text-xs text-text-muted pl-6">{trip.date}</TableCell>
+                                                        <TableCell className="text-xs font-bold uppercase">{trip.technicianName || trip.technicianId.slice(0, 8)}</TableCell>
+                                                        <TableCell className="text-xs text-text-muted">
+                                                            <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                                                                <Navigation size={9} />
+                                                                <span className="truncate max-w-[120px]">{trip.startLocation}</span>
+                                                                <span>→</span>
+                                                                <span className="truncate max-w-[120px]">{trip.endLocation}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="font-mono text-sm font-bold tabular-nums">{trip.miles.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{trip.purpose || '—'}</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={trip.reimbursable ? 'active' : 'default'} className="text-[8px] h-4 uppercase">
+                                                                {trip.reimbursable ? 'Yes' : 'No'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge
+                                                                variant={trip.status === 'approved' ? 'completed' : trip.status === 'rejected' ? 'missed' : 'scheduled'}
+                                                                className="text-[8px] h-4 uppercase"
+                                                            >
+                                                                {trip.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-6">
+                                                            {trip.status === 'pending' && trip.reimbursable && (
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="destructive-outline"
+                                                                        className="h-7 text-[9px]"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await updateDoc(doc(db, 'tripLogs', trip.id), { status: 'rejected' });
+                                                                                toast({ title: 'Trip rejected' });
+                                                                            } catch { toast({ title: 'Error', variant: 'destructive' }); }
+                                                                        }}
+                                                                    >Deny</Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await updateDoc(doc(db, 'tripLogs', trip.id), { status: 'approved' });
+                                                                                toast({ title: 'Trip approved' });
+                                                                            } catch { toast({ title: 'Error', variant: 'destructive' }); }
+                                                                        }}
+                                                                    >Approve</Button>
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>

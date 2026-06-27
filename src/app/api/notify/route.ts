@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Install these when keys are ready: npm install twilio @sendgrid/mail
-// For now the route logs and returns success so the client path is wired correctly.
-
 type NotifyPayload = {
   type: 'email' | 'sms' | 'push';
-  to: string;        // phone number (E.164) for SMS, email address for email
+  to: string;
   title: string;
   body: string;
 };
@@ -34,9 +31,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'Twilio not configured' });
       }
 
-      // Dynamic import — install `twilio` package to enable
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const twilio = require('twilio');
+      // webpackIgnore keeps this out of the bundle; package must be installed at runtime
+      const twilio = (await import(/* webpackIgnore: true */ 'twilio' as any)).default;
       const client = twilio(sid, token);
       await client.messages.create({ body: `${title}\n\n${body}`, from, to });
       return NextResponse.json({ status: 'sent', channel: 'sms' });
@@ -51,14 +47,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'SendGrid not configured' });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const sgMail = require('@sendgrid/mail');
+      const sgMail = (await import(/* webpackIgnore: true */ '@sendgrid/mail' as any)).default;
       sgMail.setApiKey(apiKey);
       await sgMail.send({ to, from: fromEmail, subject: title, text: body, html: `<p>${body.replace(/\n/g, '<br/>')}</p>` });
       return NextResponse.json({ status: 'sent', channel: 'email' });
     }
 
-    // push — not yet wired to FCM; fall through
     return NextResponse.json({ status: 'skipped', reason: 'Push not yet configured' });
   } catch (err: any) {
     console.error('[notify] Delivery error:', err);

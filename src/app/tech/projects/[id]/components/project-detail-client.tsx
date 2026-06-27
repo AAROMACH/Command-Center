@@ -67,7 +67,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn, getTacticalLocation, reverseGeocode, calculateDistance } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 
 // --- UTILITIES ---
 
@@ -476,7 +478,7 @@ const TimesheetsTab = ({
         toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
     };
 
-    const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
+    const currentUserId = typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -687,7 +689,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const [activeTab, setActiveTab] = useState('overview');
     const { toast } = useToast();
 
-    const currentUserId = useMemo(() => typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null, []);
+    const currentUserId = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null, []);
     const isReadOnly = project.status === 'completed';
 
     const activeSession = useMemo(() => 
@@ -759,7 +761,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         };
 
         try {
-            await addDoc(collection(db, 'projectDailyLogs'), newLog);
+            const logId = await generateId(ID_PREFIXES.PROJECT_DAILY_LOG);
+            await setDoc(doc(db, 'projectDailyLogs', logId), { ...newLog, id: logId });
             toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });

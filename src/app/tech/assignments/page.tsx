@@ -46,7 +46,7 @@ import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, addDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 import { generateId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
@@ -85,7 +85,7 @@ export default function TechAssignmentsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentTechId(userId);
 
         if (userId) {
@@ -123,7 +123,7 @@ export default function TechAssignmentsPage() {
                         const parts = (wo.scheduleDate || '').split(/[-/]/);
                         let woDate;
                         if (parts[0] && parts[0].length === 4) {
-                            woDate = startOfDay(new Date(wo.scheduleDate));
+                            woDate = startOfDay(new Date(wo.scheduleDate + 'T12:00:00'));
                         } else {
                             const [m, d, y] = parts;
                             if (y && m && d) {
@@ -210,8 +210,9 @@ export default function TechAssignmentsPage() {
         );
 
         const snap = await getDocs(logQuery);
+        const itemId = await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM);
         const newItem: WeeklyLogItem = {
-            id: await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM),
+            id: itemId,
             workOrderId: woId,
             jobPay: wo.pay,
             outcomeCode: null,

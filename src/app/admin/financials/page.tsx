@@ -20,7 +20,9 @@ import { Input } from '@/components/ui/input';
 import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval, parseISO, startOfDay } from 'date-fns';
 
 /**
@@ -82,7 +84,7 @@ export default function FinancialsPage() {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
 
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
                 if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
@@ -215,8 +217,8 @@ export default function FinancialsPage() {
                 await setDoc(doc(db, 'invoices', id), cleanedData);
                 toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
             } else {
-                const docRef = await addDoc(collection(db, 'invoices'), data);
-                await updateDoc(docRef, { id: docRef.id });
+                const newId = await generateId(ID_PREFIXES.INVOICE);
+                await setDoc(doc(db, 'invoices', newId), { ...data, id: newId });
                 toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
             }
             setIsInvoiceEditorOpen(false);
@@ -292,7 +294,7 @@ export default function FinancialsPage() {
         }
 
         if (rows.length === 1) {
-            toast({ variant: 'warning', title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
+            toast({ title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
             return;
         }
 

@@ -23,7 +23,7 @@ export default function BillingPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             setCurrentUser(technicians.find(t => t.id === userId));
         }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, Info, AlertTriangle, Clock, CheckCircle2, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,17 +16,39 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, isAfter } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 export function NotificationBell() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
+  const [firestoreBroadcasts, setFirestoreBroadcasts] = useState<AdminMessage[]>([]);
 
-  const fetchMessages = () => {
+  // Listen to Firestore broadcasts in real-time
+  useEffect(() => {
+    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    const q = query(collection(db, 'broadcasts'));
+    const unsub = onSnapshot(q, (snap) => {
+        const now = new Date();
+        const docs = snap.docs
+            .map(d => ({ ...d.data(), id: d.id } as AdminMessage & { revoked?: boolean }))
+            .filter(m => {
+                const matchesPortal = m.targetPortal === 'all' || m.targetPortal === currentPortal;
+                const isNotRevoked = !m.revoked;
+                const isNotExpired = !m.expiresAt || isAfter(parseISO(m.expiresAt), now);
+                return matchesPortal && isNotRevoked && isNotExpired;
+            });
+        setFirestoreBroadcasts(docs);
+    });
+    return () => unsub();
+  }, [pathname]);
+
+  const fetchMessages = useCallback(() => {
     const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
     const now = new Date();
-    
-    // 1. Load Broadcast Ledger (Custom messages)
+
+    // 1. Load Broadcast Ledger (Custom messages from same device/session)
     let storedMessages: AdminMessage[] = [];
     try {
         const json = localStorage.getItem('aaromach_broadcast_ledger');
@@ -47,24 +69,25 @@ export function NotificationBell() {
         if (revokedJson) revokedIds = JSON.parse(revokedJson);
     } catch (e) {}
 
-    const allMessages = [...storedMessages, ...initialMessages];
-    
+    // Merge localStorage broadcasts with Firestore broadcasts (deduplicate by id)
+    const allMessages = [...firestoreBroadcasts, ...storedMessages, ...initialMessages];
+
     // Filter by Portal AND verify not cleared AND not revoked AND not expired
     const filtered = allMessages.filter(m => {
         const matchesPortal = (m.targetPortal === 'all' || m.targetPortal === currentPortal);
         const isNotCleared = !clearedIds.includes(m.id);
         const isNotRevoked = !revokedIds.includes(m.id);
         const isNotExpired = !m.expiresAt || isAfter(parseISO(m.expiresAt), now);
-        
+
         return matchesPortal && isNotCleared && isNotRevoked && isNotExpired;
     });
-    
+
     // Deduplicate and Sort
     const unique = Array.from(new Map(filtered.map(m => [m.id, m])).values());
     const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
+
     setMessages(sorted);
-  };
+  }, [pathname, firestoreBroadcasts]);
 
   useEffect(() => {
     fetchMessages();
@@ -75,7 +98,7 @@ export function NotificationBell() {
         window.removeEventListener('storage', fetchMessages);
         clearInterval(interval);
     };
-  }, [pathname]);
+  }, [fetchMessages]);
 
   const handleClearMessage = (id: string, subject: string) => {
     let clearedIds: string[] = [];
@@ -107,13 +130,20 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group">
-          <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
+        <Button
+          variant="outline"
+          aria-label={`Notifications${messages.length > 0 ? ` — ${messages.length} unread` : ''}`}
+          className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group"
+        >
+          <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" aria-hidden="true" />
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
-            Global Alert
+            Alerts
           </span>
           {messages.length > 0 && (
-            <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]" />
+            <div
+              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]"
+              aria-hidden="true"
+            />
           )}
         </Button>
       </PopoverTrigger>
@@ -159,12 +189,12 @@ export function NotificationBell() {
                                 
                                 {/* Acknowledge / Seen Button - Only show if not locked */}
                                 {!msg.isLocked && (
-                                    <button 
+                                    <button
                                         onClick={() => handleClearMessage(msg.id, msg.subject)}
-                                        title="Acknowledge Directive"
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100"
+                                        aria-label={`Acknowledge: ${msg.subject}`}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-red"
                                     >
-                                        <Eye size={16} />
+                                        <Eye size={16} aria-hidden="true" />
                                     </button>
                                 )}
 

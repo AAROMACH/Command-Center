@@ -53,7 +53,7 @@ export default function ClientBillingPage() {
 
     useEffect(() => {
         setMounted(true);
-        setCurrentUserId(localStorage.getItem('currentUserId'));
+        setCurrentUserId(sessionStorage.getItem('currentUserId'));
     }, []);
 
     const currentUser = useMemo(() => 

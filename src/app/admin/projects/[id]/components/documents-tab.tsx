@@ -26,7 +26,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { uploadFile } from '@/lib/upload';
-import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -53,9 +55,10 @@ type DocumentsTabProps = {
 };
 
 const DocIcon = ({ type }: { type: ProjectDocument['type'] }) => {
-    if (type === 'pdf') return <FileText className="text-[#FF6644]"/>;
+    if (type === 'pdf') return <FileText className="text-brand-red"/>;
     if (type === 'img') return <ImageIcon className="text-text-green"/>;
-    if (type === 'doc') return <FileText className="text-[#4488DD]"/>;
+    if (type === 'doc') return <FileText className="text-text-secondary"/>;
+
     if (type === 'csv') return <FileSpreadsheet className="text-text-green"/>;
     return <FileText className="text-text-muted"/>;
 };
@@ -124,7 +127,8 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
             if (phaseId) docData.phaseId = phaseId;
             if (taskId) docData.taskId = taskId;
 
-            await addDoc(collection(db, 'projectDocuments'), docData);
+            const docId = await generateId(ID_PREFIXES.PROJECT_DOCUMENT);
+            await setDoc(doc(db, 'projectDocuments', docId), { ...docData, id: docId });
             toast({
                 title: "Registry Handshake Successful",
                 description: `${displayName} has been synchronized with the project registry.`,

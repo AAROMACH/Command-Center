@@ -14,10 +14,11 @@
       "computedHash": "163d0bbfcb2a067d4cd56d6c27725c23cd628084df94409b31c803e1d24dc3b6"
     },
     "developing-genkit-js": {
-      "source": "firebase/agent-skills",
+      "source": "genkit-ai/skills",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/developing-genkit-js/SKILL.md",
-      "computedHash": "2fa9adb27f7cfc4635decebea65222cd56e36b5de34781f7862be888504c04f4"
+      "computedHash": "511fbb0045b1e5150d529140055a5ddb47d504918be34052f8fde93109dba146"
     },
     "developing-genkit-python": {
       "source": "firebase/agent-skills",

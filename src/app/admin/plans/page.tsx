@@ -166,7 +166,7 @@ export default function PlansPage() {
     const { toast } = useToast();
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             setCurrentUser(localTechs.find(t => t.id === userId) || null);
         }

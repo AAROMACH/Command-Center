@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-    Check, 
-    X, 
+    Check,
+    X,
     Calendar as CalendarIcon,
     Send,
     History,
@@ -34,7 +34,8 @@ import {
     RotateCcw,
     Undo2,
     MessageSquare,
-    AlertCircle
+    AlertCircle,
+    Activity as ActivityIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,7 +63,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { generateId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
@@ -112,7 +113,7 @@ export default function TechWeeklyLogPage() {
     // 1. Terminal Initialization
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentTechId(userId);
 
         if (userId) {
@@ -196,7 +197,8 @@ export default function TechWeeklyLogPage() {
         };
 
         try {
-            await addDoc(collection(db, 'weeklyLogs'), newLog);
+            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            await setDoc(doc(db, 'weeklyLogs', logId), { ...newLog, id: logId });
             toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
             setIsCreateLogOpen(false);
         } catch (e: any) {

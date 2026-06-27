@@ -1,17 +1,19 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 import { generateId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
-import { technicians as mockTechnicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  Clock, 
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Clock,
   Play,
   ClipboardList,
   Receipt,
@@ -23,8 +25,19 @@ import {
   Building2,
   MapPin,
   Activity,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Map as MapIcon,
+  AlertCircle,
 } from 'lucide-react';
+
+const MapView = dynamic(() => import('../map/components/map-view'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-bg-secondary">
+      <MapIcon size={28} className="text-text-muted animate-pulse" />
+    </div>
+  ),
+});
 import { ScheduleBox } from './components/schedule-box';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
@@ -35,7 +48,7 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { format, startOfWeek } from 'date-fns';
+import { format, startOfWeek, isToday, isTomorrow, parseISO } from 'date-fns';
 import { cn, getTacticalLocation } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -51,21 +64,20 @@ export default function TechDashboardPage() {
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isMapOpen, setIsMapOpen] = useState(false);
+    const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
     
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (!userId) {
             router.push('/login');
             return;
         }
         
         setCurrentTechId(userId);
-
-        const initialTech = mockTechnicians.find(t => t.id === userId);
-        if (initialTech) setTech(initialTech);
 
         const unsubTech = onSnapshot(doc(db, 'users', userId), (d) => {
             if (d.exists()) {
@@ -122,6 +134,42 @@ export default function TechDashboardPage() {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
 
+    // Jobs for the map popup — today or future, not completed
+    const mapJobs = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return allWorkOrders
+            .filter(wo => {
+                if (wo.status === 'completed') return false;
+                if (!wo.scheduleDate) return true;
+                const d = new Date(wo.scheduleDate + 'T12:00:00');
+                d.setHours(0, 0, 0, 0);
+                return d >= today;
+            })
+            .sort((a, b) => {
+                const da = a.scheduleDate ? new Date(a.scheduleDate).getTime() : Infinity;
+                const db_ = b.scheduleDate ? new Date(b.scheduleDate).getTime() : Infinity;
+                return da - db_;
+            });
+    }, [allWorkOrders]);
+
+    const mappableJobs = useMemo(() => mapJobs.filter(j => j.lat && j.lng), [mapJobs]);
+
+    function formatMapDate(dateStr: string) {
+        if (!dateStr) return 'TBD';
+        try {
+            const d = new Date(dateStr + 'T12:00:00');
+            if (isToday(d)) return 'Today';
+            if (isTomorrow(d)) return 'Tomorrow';
+            return format(d, 'MMM d');
+        } catch { return dateStr; }
+    }
+
+    function openDirections(job: WorkOrder) {
+        const q = encodeURIComponent(job.location || '');
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${q}`, '_blank', 'noopener');
+    }
+
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
         const logQuery = query(
@@ -156,8 +204,9 @@ export default function TechDashboardPage() {
         );
 
         const snap = await getDocs(logQuery);
+        const itemId = await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM);
         const newItem: WeeklyLogItem = {
-            id: await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM),
+            id: itemId,
             workOrderId: woId,
             jobPay: wo.pay,
             outcomeCode: null,
@@ -209,9 +258,8 @@ export default function TechDashboardPage() {
             });
             
             if (newStatus === 'in-progress' || newStatus === 'completed') {
-                const adminIds = mockTechnicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
-                await NotificationService.broadcast(
-                    adminIds,
+                // Notify via server-side notification service (admin IDs resolved server-side)
+                await NotificationService.notifyAdmins(
                     `Status Alert: ${newStatus.toUpperCase()}`,
                     `Technician ${tech?.name} has transitioned to ${newStatus} for mission ${woId.toUpperCase()} at ${location}.`,
                     { id: woId, type: 'assignment' }
@@ -242,22 +290,61 @@ export default function TechDashboardPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center text-left">
-                <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary text-left">{TERMINOLOGY.PORTAL.TECH}</h1>
+        <div className="space-y-5">
+            <header className="page-header">
+                <div className="text-left">
+                    <p className="page-eyebrow flex items-center gap-2">
+                        <Activity size={12} />
+                        {TERMINOLOGY.PORTAL.TECH}
+                    </p>
+                    <h1 className="page-title">Field Terminal</h1>
+                    <p className="page-subtitle">Welcome back, {tech.name?.split(' ')[0] || 'Operative'}.</p>
+                </div>
                 <NotificationBell />
-            </div>
+            </header>
 
-            <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsCheckInDialogOpen(true)}>
-                    <Play size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Check In</span>
+            {/* Primary Action Buttons — 2×2 grid, large tap targets for field use */}
+            <div className="grid grid-cols-2 gap-3">
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all"
+                    onClick={() => setIsCheckInDialogOpen(true)}
+                    aria-label="Check in to a job"
+                >
+                    <Play size={18} className="text-brand-red" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
                 </Button>
-                <Button variant="outline" className="flex-1 h-12 bg-bg-secondary" onClick={() => setIsReceiptDialogOpen(true)}>
-                    <Receipt size={16} className="text-text-muted mr-2" /><span className="text-[10px] font-bold uppercase">Upload Receipt</span>
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-blue-500 hover:bg-blue-500/5 transition-all"
+                    onClick={() => setIsMapOpen(true)}
+                    aria-label="View job map"
+                >
+                    <MapIcon size={18} className="text-blue-400" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Job Map</span>
                 </Button>
-                <Button variant="outline" className="flex-1 h-12 relative bg-bg-secondary" onClick={() => setIsLogSelectionOpen(true)}>
-                    <ClipboardList size={16} className="text-accent-gold mr-2" /><span className="text-[10px] font-bold uppercase">Submit weekly log</span>
-                    {unsubmittedLogs.length > 0 && <Badge className="absolute -top-1 -right-1 bg-brand-red">{unsubmittedLogs.length}</Badge>}
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all"
+                    onClick={() => setIsReceiptDialogOpen(true)}
+                    aria-label="Upload a receipt"
+                >
+                    <Receipt size={18} className="text-accent-gold" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
+                </Button>
+                <Button
+                    variant="outline"
+                    className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all"
+                    onClick={() => setIsLogSelectionOpen(true)}
+                    aria-label={`Submit weekly log${unsubmittedLogs.length > 0 ? ` — ${unsubmittedLogs.length} pending` : ''}`}
+                >
+                    <ClipboardList size={18} className="text-text-green" aria-hidden="true" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                    {unsubmittedLogs.length > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">
+                            {unsubmittedLogs.length}
+                        </Badge>
+                    )}
                 </Button>
             </div>
 
@@ -300,7 +387,7 @@ export default function TechDashboardPage() {
                                 </Button>
                             )}
                             {activeJob.status === 'confirmed' && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleStartTrip(activeJob.id); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
                                     <Navigation size={14} className="mr-2"/> Start Trip
                                 </Button>
                             )}
@@ -341,6 +428,16 @@ export default function TechDashboardPage() {
                 </Card>
             )}
 
+            {!activeJob && (
+                <Card className="border border-border-sub bg-bg-secondary">
+                    <CardContent className="py-8 text-center space-y-2">
+                        <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
+                        <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
+                    </CardContent>
+                </Card>
+            )}
+
             <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
 
             <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
@@ -348,6 +445,92 @@ export default function TechDashboardPage() {
             <CheckInDialog isOpen={isCheckInDialogOpen} setIsOpen={setIsCheckInDialogOpen} workOrders={allWorkOrders.filter(w => w.status === 'assigned')} projects={[]} />
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
             {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
+
+            {/* Map Sheet Popup */}
+            <Sheet open={isMapOpen} onOpenChange={setIsMapOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+                    <SheetHeader className="p-4 border-b border-border-sub shrink-0">
+                        <SheetTitle className="text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                            <MapIcon size={14} className="text-blue-400" />
+                            Job Map
+                        </SheetTitle>
+                        <p className="text-[9px] text-text-muted uppercase font-medium">{mapJobs.length} upcoming assignment{mapJobs.length !== 1 ? 's' : ''}</p>
+                    </SheetHeader>
+
+                    {/* Map */}
+                    <div className="shrink-0 border-b border-border-sub" style={{ height: '45%' }}>
+                        {mappableJobs.length > 0 ? (
+                            <MapView jobs={mappableJobs} selectedJob={mapSelectedJob} onSelectJob={setMapSelectedJob} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full bg-bg-secondary">
+                                <div className="text-center space-y-2 px-6">
+                                    <MapIcon size={28} className="mx-auto text-text-muted opacity-30" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                                        {mapJobs.length > 0 ? 'No coordinates set for upcoming jobs' : 'No upcoming assignments'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Job List */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {mapJobs.length === 0 ? (
+                            <div className="py-10 text-center space-y-2">
+                                <CalendarIcon size={24} className="mx-auto text-text-muted opacity-20" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No upcoming jobs in registry</p>
+                            </div>
+                        ) : mapJobs.map((job, index) => {
+                            const isSelected = mapSelectedJob?.id === job.id;
+                            const statusColor = job.status === 'in-progress' ? 'bg-text-green' : job.status === 'on-my-way' || job.status === 'confirmed' ? 'bg-blue-400' : 'bg-border-main';
+                            return (
+                                <div
+                                    key={job.id}
+                                    className={cn(
+                                        'flex gap-3 p-3 rounded-lg border cursor-pointer transition-all overflow-hidden relative',
+                                        isSelected ? 'border-brand-red bg-brand-red-dim/10' : 'border-border-sub bg-bg-secondary hover:border-border-main'
+                                    )}
+                                    onClick={() => setMapSelectedJob(isSelected ? null : job)}
+                                >
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
+                                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-text-muted mt-0.5 ml-1">
+                                        {index + 1}
+                                    </span>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-text-primary truncate">
+                                            {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
+                                        </p>
+                                        <div className="flex items-center gap-3 text-[9px] text-text-muted">
+                                            <span className="flex items-center gap-1"><MapPin size={9} className="text-brand-red" />{job.location || 'TBD'}</span>
+                                            <span className="flex items-center gap-1"><CalendarIcon size={9} />{formatMapDate(job.scheduleDate)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <Badge variant={job.status === 'in-progress' ? 'inprogress' : job.status === 'completed' ? 'completed' : 'scheduled'} className="h-4 text-[7px]">
+                                            {job.status}
+                                        </Badge>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 px-2 text-[8px] uppercase font-bold"
+                                            onClick={(e) => { e.stopPropagation(); openDirections(job); }}
+                                        >
+                                            <Navigation size={9} className="mr-1" />
+                                            Go
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {mappableJobs.length < mapJobs.length && mapJobs.length > 0 && (
+                            <div className="flex items-center gap-1.5 text-[9px] text-accent-gold font-bold uppercase px-1">
+                                <AlertCircle size={10} />
+                                {mapJobs.length - mappableJobs.length} job{mapJobs.length - mappableJobs.length > 1 ? 's' : ''} without map coordinates
+                            </div>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

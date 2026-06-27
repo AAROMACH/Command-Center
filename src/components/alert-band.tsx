@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  AlertTriangle, 
-  Clock, 
-  FileCheck, 
-  CalendarCheck, 
+import {
+  AlertTriangle,
+  Clock,
+  FileCheck,
+  CalendarCheck,
   FileWarning,
   Briefcase,
   ClipboardList,
@@ -14,9 +14,6 @@ import {
   Activity,
   ChevronRight,
   Info,
-  ExternalLink,
-  Mail,
-  MessageSquare,
   Users,
   MapPin,
   Banknote
@@ -51,62 +48,90 @@ type Alert = {
 export function AlertBand() {
   const pathname = usePathname();
   const router = useRouter();
-  
-  // Real-time states
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Role-specific data — only what is needed per portal
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [assignments, setAssignments] = useState<WorkOrder[]>([]);
 
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 1. Initialize Real-time Registry Listeners
+  // Effect 1: Get current user document
   useEffect(() => {
-    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
-      setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-    });
-    const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
-      setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-    });
-    const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
-      setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
-    });
-    const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
-      setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
-    });
-    const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
-      setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
-    });
-    const unsubTimeOff = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
-      setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
-    });
-    const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
-      setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
-    });
-    const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
-      setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+    const storedId = sessionStorage.getItem('currentUserId');
+    if (!storedId) return;
+
+    const unsubUser = onSnapshot(doc(db, 'users', storedId), (snap) => {
+      if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
     });
 
-    const storedId = localStorage.getItem('currentUserId');
-    if (storedId) {
-      const unsubUser = onSnapshot(doc(db, 'users', storedId), (snap) => {
-        if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id });
-      });
-      return () => {
-        unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubInv(); unsubUser();
-      };
+    return () => unsubUser();
+  }, []);
+
+  // Effect 2: Set up role-specific, filtered listeners once user is known
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubs: (() => void)[] = [];
+
+    if (pathname.startsWith('/tech')) {
+      // Tech: only own assignments and only draft logs
+      unsubs.push(onSnapshot(
+        query(collection(db, 'assignments'), where('techId', '==', currentUser.id)),
+        (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'weeklyLogs'),
+          where('techId', '==', currentUser.id),
+          where('status', '==', 'Draft')),
+        (snap) => setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)))
+      ));
+    } else if (pathname.startsWith('/client')) {
+      const company = currentUser.clientCompany;
+      if (!company) return;
+      // Client: only own active projects, new requests, and own invoices
+      unsubs.push(onSnapshot(
+        query(collection(db, 'projects'), where('client', '==', company), where('status', '==', 'active')),
+        (snap) => setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'clientRequests'), where('clientName', '==', company), where('status', '==', 'new')),
+        (snap) => setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'invoices'), where('clientName', '==', company)),
+        (snap) => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)))
+      ));
+    } else {
+      // Admin: filtered to only the status values needed for alerts
+      unsubs.push(onSnapshot(
+        query(collection(db, 'workOrders'), where('status', '==', 'unassigned')),
+        (snap) => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'weeklyLogs'), where('status', '==', 'Submitted')),
+        (snap) => setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'timeOffRequests'), where('status', '==', 'pending')),
+        (snap) => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'siteRequests'), where('status', '==', 'pending')),
+        (snap) => setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)))
+      ));
     }
 
-    return () => {
-      unsubWO(); unsubAsmt(); unsubLogs(); unsubProj(); unsubReq(); unsubTimeOff(); unsubSite(); unsubInv();
-    };
-  }, []);
+    return () => unsubs.forEach(u => u());
+  }, [currentUser?.id, pathname]);
 
   const alerts = useMemo(() => {
     if (!currentUser) return [];
@@ -114,15 +139,15 @@ export function AlertBand() {
     const currentAlerts: Alert[] = [];
 
     if (pathname.startsWith('/tech')) {
-      const activeJob = assignments.find(wo => 
-        (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) && 
+      const activeJob = assignments.find(wo =>
+        (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) &&
         wo.status === 'in-progress'
       );
       if (activeJob) {
         currentAlerts.push({
           id: 'tech-active',
           type: 'success',
-          text: `LIVE SESSION`,
+          text: 'LIVE SESSION',
           description: `You are currently checked into mission ${activeJob.id.toUpperCase()}. Ensure you finalize the session and upload any site photos before checking out.`,
           icon: Play,
           actionPath: '/tech/dashboard',
@@ -134,7 +159,7 @@ export function AlertBand() {
       const now = new Date();
       const upcomingJobsCount = assignments.filter(wo =>
         (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) &&
-        new Date(wo.scheduleDate) >= now && new Date(wo.scheduleDate) < tomorrow &&
+        new Date(wo.scheduleDate + 'T12:00:00') >= now && new Date(wo.scheduleDate + 'T12:00:00') < tomorrow &&
         (wo.status === 'assigned' || wo.status === 'confirmed')
       ).length;
 
@@ -150,15 +175,12 @@ export function AlertBand() {
         });
       }
 
-      const pendingLogsCount = weeklyLogs.filter(log =>
-        log.techId === currentUser.id && log.status === 'Draft'
-      ).length;
-
-      if (pendingLogsCount > 0) {
+      // weeklyLogs is already filtered to Draft status for this tech
+      if (weeklyLogs.length > 0) {
         currentAlerts.push({
           id: 'tech-logs',
           type: 'warning',
-          text: `${pendingLogsCount} log${pendingLogsCount > 1 ? 's' : ''} pending`,
+          text: `${weeklyLogs.length} log${weeklyLogs.length > 1 ? 's' : ''} pending`,
           description: `Your weekly work log is currently in draft status. Submit for administrative audit to avoid payout delays.`,
           icon: FileWarning,
           actionPath: '/tech/logs',
@@ -166,71 +188,63 @@ export function AlertBand() {
         });
       }
     } else if (pathname.startsWith('/client')) {
-      const company = currentUser.clientCompany;
-      if (company) {
-        const activeProjectsCount = projects.filter(p => p.client === company && p.status === 'active').length;
-        const pendingRequestsCount = serviceRequests.filter(r => r.clientName === company && r.status === 'new').length;
-        const pendingInvoicesCount = invoices.filter(inv => inv.clientName === company && (inv.status === 'sent' || inv.status === 'overdue')).length;
-
-        if (activeProjectsCount > 0) {
-          currentAlerts.push({
-            id: 'client-projects',
-            type: 'info',
-            text: `${activeProjectsCount} projects`,
-            description: `Aaromach technicians are currently executing phase-based infrastructure deployment across ${activeProjectsCount} of your sites.`,
-            icon: Briefcase,
-            actionPath: '/client/projects?tab=active',
-            actionLabel: 'Track Progress'
-          });
-        }
-
-        if (pendingRequestsCount > 0) {
-          currentAlerts.push({
-            id: 'client-tickets',
-            type: 'warning',
-            text: `${pendingRequestsCount} pending tickets`,
-            description: `Your recently submitted service tickets are currently undergoing administrative audit at the Command Center.`,
-            icon: ClipboardList,
-            actionPath: '/client/tickets?tab=requested',
-            actionLabel: 'View Tickets'
-          });
-        }
-
-        if (pendingInvoicesCount > 0) {
-          currentAlerts.push({
-            id: 'client-invoices',
-            type: 'critical',
-            text: `${pendingInvoicesCount} pending invoice${pendingInvoicesCount > 1 ? 's' : ''}`,
-            description: `You have ${pendingInvoicesCount} outstanding invoice(s) awaiting settlement. Review details in the Billing Terminal.`,
-            icon: Banknote,
-            actionPath: '/client/financials',
-            actionLabel: 'View Billing'
-          });
-        }
+      // projects filtered to active already
+      if (projects.length > 0) {
+        currentAlerts.push({
+          id: 'client-projects',
+          type: 'info',
+          text: `${projects.length} project${projects.length > 1 ? 's' : ''}`,
+          description: `Aaromach technicians are currently executing phase-based infrastructure deployment across ${projects.length} of your sites.`,
+          icon: Briefcase,
+          actionPath: '/client/projects?tab=active',
+          actionLabel: 'Track Progress'
+        });
       }
-    } else { 
-      const unassignedJobsCount = workOrders.filter(wo => wo.status === 'unassigned').length;
-      const logsToAuditCount = weeklyLogs.filter(log => log.status === 'Submitted').length;
-      const pendingPersonnelCount = timeOffRequests.filter(r => r.status === 'pending').length;
-      const pendingSiteCount = siteRequests.filter(r => r.status === 'pending').length;
 
-      if (unassignedJobsCount > 0) {
+      // serviceRequests filtered to new status already
+      if (serviceRequests.length > 0) {
+        currentAlerts.push({
+          id: 'client-tickets',
+          type: 'warning',
+          text: `${serviceRequests.length} pending ticket${serviceRequests.length > 1 ? 's' : ''}`,
+          description: `Your recently submitted service tickets are currently undergoing administrative audit at the Command Center.`,
+          icon: ClipboardList,
+          actionPath: '/client/tickets?tab=requested',
+          actionLabel: 'View Tickets'
+        });
+      }
+
+      const pendingInvoicesCount = invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').length;
+      if (pendingInvoicesCount > 0) {
+        currentAlerts.push({
+          id: 'client-invoices',
+          type: 'critical',
+          text: `${pendingInvoicesCount} pending invoice${pendingInvoicesCount > 1 ? 's' : ''}`,
+          description: `You have ${pendingInvoicesCount} outstanding invoice(s) awaiting settlement. Review details in the Billing Terminal.`,
+          icon: Banknote,
+          actionPath: '/client/financials',
+          actionLabel: 'View Billing'
+        });
+      }
+    } else {
+      // Admin: all collections are pre-filtered to alert-relevant statuses
+      if (workOrders.length > 0) {
         currentAlerts.push({
           id: 'admin-unassigned',
           type: 'critical',
-          text: `${unassignedJobsCount} unassigned jobs`,
-          description: `There are ${unassignedJobsCount} missions in the active window requiring operative allocation. Immediate dispatch required.`,
+          text: `${workOrders.length} unassigned job${workOrders.length > 1 ? 's' : ''}`,
+          description: `There are ${workOrders.length} missions in the active window requiring operative allocation. Immediate dispatch required.`,
           icon: AlertTriangle,
           actionPath: '/admin/dispatch?tab=dispatch',
           actionLabel: 'Dispatch Hub'
         });
       }
 
-      if (logsToAuditCount > 0) {
+      if (weeklyLogs.length > 0) {
         currentAlerts.push({
           id: 'admin-audit',
           type: 'info',
-          text: `${logsToAuditCount} logs pending`,
+          text: `${weeklyLogs.length} log${weeklyLogs.length > 1 ? 's' : ''} pending`,
           description: `Field operatives have submitted weekly logs that require financial and operational authorization.`,
           icon: FileCheck,
           actionPath: '/admin/financials?tab=payroll',
@@ -238,11 +252,11 @@ export function AlertBand() {
         });
       }
 
-      if (pendingPersonnelCount > 0) {
+      if (timeOffRequests.length > 0) {
         currentAlerts.push({
           id: 'admin-personnel-requests',
           type: 'info',
-          text: `${pendingPersonnelCount} personnel requests`,
+          text: `${timeOffRequests.length} personnel request${timeOffRequests.length > 1 ? 's' : ''}`,
           description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
           icon: Users,
           actionPath: '/admin/directory?tab=requests&subtab=personnel',
@@ -250,11 +264,11 @@ export function AlertBand() {
         });
       }
 
-      if (pendingSiteCount > 0) {
+      if (siteRequests.length > 0) {
         currentAlerts.push({
           id: 'admin-site-requests',
           type: 'warning',
-          text: `${pendingSiteCount} site requests`,
+          text: `${siteRequests.length} site request${siteRequests.length > 1 ? 's' : ''}`,
           description: `Clients have submitted new site coordinates that require verification and authorization before they can be used for assignments.`,
           icon: MapPin,
           actionPath: '/admin/directory?tab=requests&subtab=client',
@@ -286,6 +300,10 @@ export function AlertBand() {
             <div
               key={alert.id}
               onClick={() => handleAlertClick(alert)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Alert: ${alert.text}`}
+              onKeyDown={(e) => e.key === 'Enter' && handleAlertClick(alert)}
               className={cn(
                 'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
                 {
@@ -302,8 +320,8 @@ export function AlertBand() {
           ))}
           {alerts.length === 0 && (
             <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
-                <Activity size={12}/>
-                Registry Nominal
+              <Activity size={12} />
+              Registry Nominal
             </div>
           )}
         </div>
@@ -325,7 +343,7 @@ export function AlertBand() {
                 </div>
               )}
               <div className="text-left">
-                <DialogTitle className="uppercase tracking-widest text-text-primary text-base">Operational Alert Briefing</DialogTitle>
+                <DialogTitle className="uppercase tracking-widest text-text-primary text-base">Operational Alert</DialogTitle>
                 <p className={cn(
                   "text-[10px] font-bold uppercase tracking-widest",
                   selectedAlert?.type === 'critical' ? 'text-text-red' : 'text-text-muted'
@@ -336,24 +354,16 @@ export function AlertBand() {
             </div>
           </DialogHeader>
 
-          <div className="py-6">
+          <div className="py-4">
             {selectedAlert && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub">
-                  <p className="text-xs text-text-primary font-bold uppercase mb-2 flex items-center gap-2">
-                    <Info size={14} className="text-brand-red" />
-                    Strategic Context
-                  </p>
-                  <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">
-                    {selectedAlert.description}
-                  </p>
-                </div>
-                
-                <div className="p-3 rounded-lg bg-bg-primary/50 border border-dashed border-border-sub text-center">
-                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
-                    Registry Event: {selectedAlert.id.toUpperCase()}
-                  </p>
-                </div>
+              <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub">
+                <p className="text-xs text-text-primary font-bold uppercase mb-2 flex items-center gap-2">
+                  <Info size={14} className="text-brand-red" />
+                  Details
+                </p>
+                <p className="text-xs text-text-secondary leading-relaxed text-left">
+                  {selectedAlert.description}
+                </p>
               </div>
             )}
           </div>

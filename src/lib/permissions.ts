@@ -103,7 +103,7 @@ export function hasPermission(user: Technician | null | undefined, permission: P
   const userRoles: AppRole[] = [...(user.roles || [])];
   
   const currentRole = user.role?.toLowerCase() || '';
-  if (currentRole.includes('admin')) userRoles.push('super_admin');
+  if (currentRole === 'admin' || currentRole === 'super_admin') userRoles.push('super_admin');
   if (currentRole.includes('dispatcher')) userRoles.push('dispatch_admin');
   if (currentRole.includes('client')) userRoles.push('client');
   if (currentRole.includes('lead')) userRoles.push('project_lead');
@@ -125,7 +125,8 @@ export function isAdmin(user: Technician | null | undefined): boolean {
 export function isSuperAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
-  return userRoles.includes('super_admin') || (user.role?.toLowerCase() || '').includes('admin');
+  const legacyRole = user.role?.toLowerCase() || '';
+  return userRoles.includes('super_admin') || legacyRole === 'admin' || legacyRole === 'super_admin';
 }
 
 export function isDispatchAdmin(user: Technician | null | undefined): boolean {

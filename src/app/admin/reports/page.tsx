@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -163,7 +165,7 @@ export default function ActivityAuditPage() {
         const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
             const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
             setTechnicians(techs);
-            const userId = localStorage.getItem('currentUserId');
+            const userId = sessionStorage.getItem('currentUserId');
             if (userId) {
                 const user = techs.find(t => t.id === userId);
                 if (user) setCurrentUser(user);
@@ -200,8 +202,9 @@ export default function ActivityAuditPage() {
             return;
         }
 
+        const msgId = await generateId(ID_PREFIXES.MESSAGE);
         const msg: AdminMessage = {
-            id: await generateId(ID_PREFIXES.MESSAGE),
+            id: msgId,
             senderId: currentUser?.id || 'admin',
             senderName: currentUser?.name || 'System Admin',
             subject: newMessage.subject!,
@@ -216,7 +219,10 @@ export default function ActivityAuditPage() {
         const updatedMessages = [msg, ...messages];
         setMessages(updatedMessages);
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updatedMessages));
-        
+
+        // Persist to Firestore so other users' browsers receive the broadcast
+        setDoc(doc(db, 'broadcasts', msg.id), { ...msg, revokedBy: [] }).catch(() => {});
+
         window.dispatchEvent(new Event('storage'));
 
         toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
@@ -239,7 +245,10 @@ export default function ActivityAuditPage() {
         const updated = messages.filter(m => m.id !== id);
         setMessages(updated);
         localStorage.setItem('aaromach_broadcast_ledger', JSON.stringify(updated));
-        
+
+        // Mark revoked in Firestore so all clients stop showing it
+        updateDoc(doc(db, 'broadcasts', id), { revoked: true }).catch(() => {});
+
         window.dispatchEvent(new Event('storage'));
         toast({ variant: "destructive", title: "Broadcast Revoked", description: "Directive purged from all target terminals." });
     }, [messages, toast]);
@@ -283,7 +292,7 @@ export default function ActivityAuditPage() {
         const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
-        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.points), 0);
+        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.scoreChange), 0);
         const reliability = Math.max(0, 100 - (points * 5));
         
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
@@ -535,7 +544,7 @@ export default function ActivityAuditPage() {
                 </Button>
             </div>
             {technicians.filter(t => !t.roles?.includes('client')).map(t => {
-                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.points), 0);
+                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.scoreChange), 0);
                 const isReliable = pts <= 2;
                 return (
                     <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">

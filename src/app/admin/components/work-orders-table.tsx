@@ -56,7 +56,8 @@ import {
   CheckCircle2,
   Wrench,
   Target,
-  Loader2
+  Loader2,
+  Timer
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -68,13 +69,17 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { generateId } from '@/lib/generateId';
+import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
+import { auditFieldChange } from '@/lib/audit';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
     try {
         const parts = dateStr.split(/[-/]/);
-        if (parts[0].length === 4) { d = new Date(dateStr); } 
-        else { 
+        let d: Date;
+        if (parts[0].length === 4) {
+            d = new Date(dateStr + 'T12:00:00');
+        } else {
             const [m, day, y] = parts;
             if (y && m && day) {
                 d = new Date(`${y}-${m}-${day}T12:00:00`);
@@ -120,7 +125,7 @@ export const WorkOrdersTable = React.memo(({
   const { toast } = useToast();
 
   useEffect(() => {
-    const userId = localStorage.getItem('currentUserId');
+    const userId = sessionStorage.getItem('currentUserId');
     if (userId) {
       setCurrentUser(technicians.find(t => t.id === userId) || null);
     }
@@ -219,8 +224,8 @@ export const WorkOrdersTable = React.memo(({
     const payChanged = (editedOrder.pay || 0) !== (selectedOrder.pay || 0) || editedOrder.payType !== selectedOrder.payType;
 
     if (payChanged && !payAdmin) {
-      finalUpdate.pay = selectedJob.pay;
-      finalUpdate.payType = selectedJob.payType;
+      finalUpdate.pay = selectedOrder.pay;
+      finalUpdate.payType = selectedOrder.payType;
       finalUpdate.payChangeRequest = {
         pay: editedOrder.pay || 0,
         payType: editedOrder.payType || 'fixed',
@@ -238,7 +243,16 @@ export const WorkOrdersTable = React.memo(({
 
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const docRef = doc(db, collectionName, editedOrder.id);
-    updateDoc(docRef, { ...finalUpdate }).catch((e: any) => {
+    updateDoc(docRef, { ...finalUpdate }).then(() => {
+      const auditableFields = ['status', 'priority', 'pay', 'payType', 'scheduleDate', 'scheduleTime', 'assignedTechnicianId', 'location', 'slaResponseTarget', 'slaResolutionTarget'];
+      const oldVals: Record<string, unknown> = {};
+      const newVals: Record<string, unknown> = {};
+      for (const f of auditableFields) {
+        oldVals[f] = (selectedOrder as any)[f];
+        newVals[f] = (finalUpdate as any)[f];
+      }
+      auditFieldChange(collectionName, editedOrder.id, currentUser?.id || 'unknown', currentUser?.name || 'Admin', oldVals, newVals).catch(console.warn);
+    }).catch((e: any) => {
         console.error("Save Changes Error:", e);
         toast({ variant: "destructive", title: "Save Failed", description: e.message });
     });
@@ -280,8 +294,8 @@ export const WorkOrdersTable = React.memo(({
 
   return (
     <div className="w-full space-y-4">
-      <div className="table-wrap border-none rounded-none">
-        <table className="tbl">
+      <div className="table-wrap border-none rounded-none overflow-x-auto">
+        <table className="tbl min-w-[700px]">
           <thead>
             <tr className="bg-bg-tertiary">
               <th className="text-center w-[160px] pl-0">Status & ID</th>
@@ -303,7 +317,7 @@ export const WorkOrdersTable = React.memo(({
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
+                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status === 'completed' ? 'completed' : order.status === 'checked-out' ? 'checked-out' : order.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
                       <div className="flex items-center gap-1.5">
                         <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{(displayId || '').toUpperCase()}</div>
                         {order.source === 'Imported' && (
@@ -312,6 +326,16 @@ export const WorkOrdersTable = React.memo(({
                           </a>
                         )}
                       </div>
+                      {order.status !== 'completed' && (() => {
+                        const sla = computeSla(order);
+                        if (sla.status === 'on-track') return null;
+                        return (
+                          <div className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest ${slaStatusColor(sla.status)}`}>
+                            <Timer size={8} />
+                            {sla.status === 'breached' ? 'SLA Breached' : sla.status === 'at-risk' ? `SLA ${formatSlaCountdown(sla.hoursUntilResolutionBreach)}` : ''}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="!py-4 text-left pl-0">

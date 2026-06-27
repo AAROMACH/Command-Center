@@ -4,6 +4,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { RequestsTabs } from "./components/requests-tabs";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Plus, Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";

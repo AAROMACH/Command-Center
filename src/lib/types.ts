@@ -58,6 +58,8 @@ export type Notification = {
   relatedEntityType?: 'assignment' | 'project' | 'request';
 };
 
+export type SlaStatus = 'on-track' | 'at-risk' | 'breached' | 'met';
+
 export type WorkOrder = {
   id: string;
   workOrderId?: string;
@@ -105,6 +107,14 @@ export type WorkOrder = {
   gpsRequired?: boolean;
   revisitCount?: number;
   externalWorkOrderId?: string;
+  lat?: number;
+  lng?: number;
+  // SLA tracking
+  slaResponseTarget?: number;   // minutes until first response required
+  slaResolutionTarget?: number; // hours until resolution required
+  firstResponseAt?: string;     // ISO timestamp of first tech acknowledgment
+  slaStatus?: SlaStatus;
+  slaBreachNotifiedAt?: string; // ISO timestamp when breach notification was sent
 };
 
 export type Assignment = {

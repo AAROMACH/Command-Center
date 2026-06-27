@@ -26,8 +26,8 @@ import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { generateId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { generateId } from '@/lib/generateId';
 
 declare global {
   interface Window {
@@ -191,9 +191,11 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   const handleSave = async () => {
     if (!formData.name || !formData.client || !formData.location) return;
 
+    try {
+    const id = await generateId(ID_PREFIXES.PROJECT);
     const newProject: Project = {
       ...formData as Project,
-      id: await generateId(ID_PREFIXES.PROJECT),
+      id,
       assignedTechnicianIds: [],
       team: [],
       phases: [],
@@ -217,6 +219,9 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       onsiteContactName: '',
       onsiteContactPhone: '',
     });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    }
   };
 
   return (

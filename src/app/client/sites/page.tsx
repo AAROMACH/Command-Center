@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import type { Technician, WorkOrder, SiteRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +45,7 @@ export default function ClientSitesPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentUserId(userId);
 
         if (userId) {
@@ -122,7 +124,8 @@ export default function ClientSitesPage() {
         };
 
         try {
-            await addDoc(collection(db, 'siteRequests'), newRequest);
+            const siteReqId = await generateId(ID_PREFIXES.SITE_REQUEST);
+            await setDoc(doc(db, 'siteRequests', siteReqId), { ...newRequest, id: siteReqId });
             toast({
                 title: "Registration Transmitted",
                 description: "New site coordinate has been submitted for administrative audit.",

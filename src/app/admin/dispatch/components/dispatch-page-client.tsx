@@ -29,6 +29,8 @@ import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog } from "./import-jobs-dialog";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -121,9 +123,10 @@ export function DispatchPageClient() {
     const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
     });
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician)));
-    });
+    const unsubTech = onSnapshot(
+      collection(db, 'users'),
+      (snap) => { setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician))); }
+    );
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
       setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)));
     });
@@ -138,7 +141,7 @@ export function DispatchPageClient() {
 
   const handleAddNewOrder = async (order: WorkOrder) => {
     try {
-        await setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), id: order.id, source: 'Manual' });
+        await setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Manual' });
         toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." });
         
         const client = technicians.find(t => t.clientCompany === order.clientName);
@@ -165,7 +168,7 @@ export function DispatchPageClient() {
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
     try {
-        await setDoc(doc(db, 'clientRequests', request.id), { ...sanitize(request), id: request.id });
+        await setDoc(doc(db, 'clientRequests', request.id), sanitize(request));
         toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
         
         const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
@@ -207,7 +210,7 @@ export function DispatchPageClient() {
           try {
               const parts = (order.scheduleDate || '').split(/[-/]/);
               let woDate;
-              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate)); } 
+              if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(order.scheduleDate + 'T12:00:00')); } 
               else { 
                 const [m, d, y] = parts;
                 if (y && m && d) {

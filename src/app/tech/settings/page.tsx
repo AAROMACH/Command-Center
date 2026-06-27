@@ -32,10 +32,11 @@ export default function TechSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const isLight = document.documentElement.classList.contains('light');
+        const saved = localStorage.getItem('aaromach_theme');
+        const isLight = saved ? saved === 'light' : document.documentElement.classList.contains('light');
         setTheme(isLight ? 'light' : 'dark');
 
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
@@ -64,6 +65,7 @@ export default function TechSettingsPage() {
 
     const toggleTheme = (newTheme: 'dark' | 'light') => {
         setTheme(newTheme);
+        localStorage.setItem('aaromach_theme', newTheme);
         if (newTheme === 'light') {
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light');

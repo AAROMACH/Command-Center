@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, addDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { uploadFile } from '@/lib/upload';
 import type { ServiceRequest, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +85,7 @@ export default function ClientTicketsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentUserId(userId);
 
         if (userId) {
@@ -192,7 +194,8 @@ export default function ClientTicketsPage() {
         };
 
         try {
-            await addDoc(collection(db, 'clientRequests'), newTicket);
+            const ticketId = await generateId(ID_PREFIXES.CLIENT_REQUEST);
+            await setDoc(doc(db, 'clientRequests', ticketId), { ...newTicket, id: ticketId });
             toast({
                 title: "Request Transmitted",
                 description: "Service ticket has been added to the command intake queue.",

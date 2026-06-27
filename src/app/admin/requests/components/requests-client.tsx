@@ -107,7 +107,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const user = technicians.find(t => t.id === userId);
             setCurrentUser(user || null);

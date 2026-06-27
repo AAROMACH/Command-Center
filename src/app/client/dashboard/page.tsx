@@ -36,7 +36,7 @@ export default function ClientDashboardPage() {
 
     // Effect 1: Fetch current user document
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (!userId) {
             router.push('/login');
             return;

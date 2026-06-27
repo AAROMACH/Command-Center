@@ -84,7 +84,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
     const router = useRouter();
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             setCurrentUser(technicians.find(t => t.id === userId) || null);
         }

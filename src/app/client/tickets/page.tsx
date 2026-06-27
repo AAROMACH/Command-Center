@@ -85,7 +85,7 @@ export default function ClientTicketsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         setCurrentUserId(userId);
 
         if (userId) {

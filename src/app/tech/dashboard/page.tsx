@@ -71,7 +71,7 @@ export default function TechDashboardPage() {
     const router = useRouter();
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (!userId) {
             router.push('/login');
             return;

@@ -67,7 +67,7 @@ export default function DashboardPage() {
 
     // 1. Initialize Real-time Registry Listeners (role-filtered to minimize reads)
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
 
         // Current user — single doc read
         const unsubUser = userId

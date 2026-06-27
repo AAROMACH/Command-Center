@@ -61,7 +61,7 @@ export function UserNav() {
         });
         return () => unsubDoc();
       } else {
-        const storedId = localStorage.getItem('currentUserId');
+        const storedId = sessionStorage.getItem('currentUserId');
         if (storedId) {
             const registryUser = technicians.find(t => t.id === storedId);
             setCurrentUser(registryUser);
@@ -162,7 +162,8 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => {
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('currentUserId');
+                sessionStorage.removeItem('currentUserId');
+                document.cookie = 'aaromach_session=; path=/; max-age=0; SameSite=Strict';
             }
             auth.signOut();
             router.push('/login');

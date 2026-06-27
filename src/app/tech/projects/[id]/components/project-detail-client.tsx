@@ -478,7 +478,7 @@ const TimesheetsTab = ({
         toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
     };
 
-    const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
+    const currentUserId = typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -689,7 +689,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const [activeTab, setActiveTab] = useState('overview');
     const { toast } = useToast();
 
-    const currentUserId = useMemo(() => typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null, []);
+    const currentUserId = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null, []);
     const isReadOnly = project.status === 'completed';
 
     const activeSession = useMemo(() => 

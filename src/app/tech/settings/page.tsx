@@ -36,7 +36,7 @@ export default function TechSettingsPage() {
         const isLight = saved ? saved === 'light' : document.documentElement.classList.contains('light');
         setTheme(isLight ? 'light' : 'dark');
 
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);

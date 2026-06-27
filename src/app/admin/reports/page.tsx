@@ -163,7 +163,7 @@ export default function ActivityAuditPage() {
         const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
             const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
             setTechnicians(techs);
-            const userId = localStorage.getItem('currentUserId');
+            const userId = sessionStorage.getItem('currentUserId');
             if (userId) {
                 const user = techs.find(t => t.id === userId);
                 if (user) setCurrentUser(user);

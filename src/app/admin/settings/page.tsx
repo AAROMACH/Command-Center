@@ -26,7 +26,7 @@ export default function AdminSettingsPage() {
     const { toast } = useToast();
 
     useEffect(() => {
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);

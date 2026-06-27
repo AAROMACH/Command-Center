@@ -33,7 +33,7 @@ export default function ClientFinancialsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = localStorage.getItem('currentUserId');
+        const userId = sessionStorage.getItem('currentUserId');
         if (!userId) return;
 
         const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {

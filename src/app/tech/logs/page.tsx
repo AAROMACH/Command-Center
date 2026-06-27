@@ -794,7 +794,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         onSave({
-            id: await generateId(ID_PREFIXES.MISSING_REPORT),
+            id: await createDocId(ID_PREFIXES.MISSING_REPORT),
             assignmentId: formData.get('assignmentId') as string,
             clientName: formData.get('clientName') as string,
             date: formData.get('date') as string,

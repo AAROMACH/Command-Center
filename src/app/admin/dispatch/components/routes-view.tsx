@@ -33,7 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -248,7 +248,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleCreateRoute = async () => {
         if (!newRouteName.trim()) return;
         const newRoute: Route = {
-            id: await generateId(ID_PREFIXES.ROUTE),
+            id: await createDocId(ID_PREFIXES.ROUTE),
             name: newRouteName,
             workOrderIds: [],
             technicianName: ""

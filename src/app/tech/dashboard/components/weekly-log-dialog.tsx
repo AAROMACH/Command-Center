@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { WeeklyLog, FinancialRecord } from '@/lib/types';
 import { workOrders } from '@/lib/data';
@@ -40,7 +40,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
 
     const handleAddReimbursement = async () => {
         const newReimbursement: FinancialRecord = {
-            id: await generateId(ID_PREFIXES.FINANCIAL_RECORD),
+            id: await createDocId(ID_PREFIXES.FINANCIAL_RECORD),
             techId: log.techId,
             date: new Date().toISOString().split('T')[0],
             type: 'reimbursement',

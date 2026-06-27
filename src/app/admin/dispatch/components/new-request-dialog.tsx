@@ -26,7 +26,7 @@ import type { ServiceRequest, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 declare global {
@@ -198,7 +198,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
     const newRequest: ServiceRequest = {
       ...formData as ServiceRequest,
-      id: await generateId(ID_PREFIXES.CLIENT_REQUEST),
+      id: await createDocId(ID_PREFIXES.CLIENT_REQUEST),
       submittedDate: new Date().toISOString().split('T')[0],
       imageUrls: images,
       documentUrls: docs,

@@ -136,7 +136,7 @@ export function CompanyDetailDialog({ isOpen, setIsOpen, companyName, personnel 
     const file = e.target.files?.[0];
     if (file) {
         const newDoc: CompanyDocument = {
-            id: `cd-${Date.now()}`,
+            id: crypto.randomUUID(),
             name: file.name,
             type: file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc',
             size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,

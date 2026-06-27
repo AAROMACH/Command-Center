@@ -42,6 +42,7 @@ import {
   MapPin,
   BarChart2,
   Target,
+  CalendarDays,
 } from "lucide-react";
 
 type NavItem = {
@@ -59,6 +60,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
   { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
   { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
+  { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, permission: "view_assignments" },
   { href: "/admin/map", label: "Map", icon: MapPin, permission: "manage_assignments" },
   { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
   { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },

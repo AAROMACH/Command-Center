@@ -1,0 +1,58 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRoles() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.roles;
+    }
+
+    function isAdmin() {
+      return userRoles().hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager']);
+    }
+
+    function isTech() {
+      return userRoles().hasAny(['project_lead', 'field_technician']);
+    }
+
+    function isClient() {
+      return userRoles().hasAny(['client']);
+    }
+
+    // Profile avatars: user writes their own only; all signed-in users read
+    match /avatars/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Project documents: admin/tech upload; all signed-in read
+    match /projectDocuments/{projectId}/{filename} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+                   && (isAdmin() || isTech())
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Personnel documents: admin upload; admin + tech read
+    match /personnelDocuments/{personId}/{filename} {
+      allow read: if isSignedIn() && (isAdmin() || isTech());
+      allow write: if isSignedIn()
+                   && isAdmin()
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Ticket attachments: client/admin upload and read
+    match /ticketAttachments/pending/{filename} {
+      allow read: if isSignedIn() && (isAdmin() || isClient());
+      allow write: if isSignedIn()
+                   && (isAdmin() || isClient())
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}

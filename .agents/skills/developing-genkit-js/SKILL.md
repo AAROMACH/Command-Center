@@ -1,8 +1,6 @@
 ---
 name: developing-genkit-js
 description: Develop AI-powered applications using Genkit in Node.js/TypeScript. Use when the user asks about Genkit, AI agents, flows, or tools in JavaScript/TypeScript, or when encountering Genkit errors, validation issues, type errors, or API problems.
-metadata:
-  genkit-managed: true
 ---
 
 # Genkit JS
@@ -32,7 +30,7 @@ export const myFlow = ai.defineFlow({
   outputSchema: z.string(),
 }, async (subject) => {
   const response = await ai.generate({
-    model: googleAI.model('gemini-2.5-flash'),
+    model: googleAI.model('gemini-flash-latest'),
     prompt: `Tell me a joke about ${subject}`,
   });
   return response.text;

@@ -66,6 +66,7 @@ const adminNavItems: NavItem[] = [
 const techNavItems: NavItem[] = [
   { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
   { href: "/tech/assignments", label: "Assignments", icon: Calendar, permission: "view_assigned_work_only" },
+  { href: "/tech/calendar", label: "Schedule", icon: Calendar, permission: "view_assigned_work_only" },
   { href: "/tech/projects", label: "Projects", icon: FolderKanban, permission: "view_projects" },
   { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "field_logs" },
   { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "field_logs" },

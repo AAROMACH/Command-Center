@@ -21,8 +21,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeRouteId } from '@/lib/doc-ids';
 import { Badge } from '@/components/ui/badge';
 import { 
     Select, 
@@ -210,7 +209,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleCreateRoute = async () => {
         if (!newRouteName.trim()) return;
         const newRoute: Route = {
-            id: await createDocId(ID_PREFIXES.ROUTE),
+            id: await makeRouteId(),
             name: newRouteName,
             workOrderIds: [],
             technicianName: ""

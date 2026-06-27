@@ -97,6 +97,7 @@ export default function LoginPage() {
       await handleRedirect(firebaseUser);
     } catch (err: any) {
       const code: string = err.code || "";
+      console.error("[google-auth] full error:", err);
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         // User dismissed — no toast needed
       } else if (code === "auth/operation-not-allowed") {
@@ -105,8 +106,12 @@ export default function LoginPage() {
         toast({ variant: "destructive", title: "Popup Blocked", description: "Allow popups for this site in your browser, then try again." });
       } else if (code.includes("requests-from-referer") || code === "auth/unauthorized-domain") {
         toast({ variant: "destructive", title: "Domain Not Authorized", description: `Add "${window.location.hostname}" to Firebase Console → Authentication → Settings → Authorized Domains.` });
+      } else if (code === "auth/internal-error") {
+        toast({ variant: "destructive", title: "OAuth Not Configured", description: "Check Google Cloud Console: OAuth consent screen must be published and Google provider enabled in Firebase." });
+      } else if (code === "auth/invalid-api-key") {
+        toast({ variant: "destructive", title: "Invalid API Key", description: "Update NEXT_PUBLIC_FIREBASE_API_KEY in Firebase App Hosting environment variables." });
       } else {
-        toast({ variant: "destructive", title: "Google Sign-In Failed", description: err.message || "Could not complete Google authentication." });
+        toast({ variant: "destructive", title: "Google Sign-In Failed", description: `[${code}] ${err.message || "Could not complete Google authentication."}` });
       }
       console.error("[google-auth]", code, err.message);
     } finally {

@@ -59,8 +59,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
+import { Switch } from '@/components/ui/switch';
+import type { Permission } from '@/lib/permissions';
 
 type PersonnelDocument = {
     id: string;
@@ -81,12 +83,43 @@ type PersonnelDetailDialogProps = {
   onEdit?: () => void;
 };
 
+type PersonnelNote = {
+  id: string;
+  text: string;
+  author: string;
+  createdAt: string;
+};
+
+const ALL_PERMISSIONS: { key: Permission; label: string }[] = [
+  { key: 'view_dashboard', label: 'View Dashboard' },
+  { key: 'view_assignments', label: 'View Assignments' },
+  { key: 'manage_assignments', label: 'Manage Assignments' },
+  { key: 'view_projects', label: 'View Projects' },
+  { key: 'manage_projects', label: 'Manage Projects' },
+  { key: 'view_directory', label: 'View Directory' },
+  { key: 'manage_personnel', label: 'Manage Personnel' },
+  { key: 'view_financials', label: 'View Financials' },
+  { key: 'manage_payroll', label: 'Manage Payroll' },
+  { key: 'view_reports', label: 'View Reports' },
+  { key: 'view_crm', label: 'View CRM' },
+  { key: 'manage_leads', label: 'Manage Leads' },
+  { key: 'approve_pay_changes', label: 'Approve Pay Changes' },
+  { key: 'field_checkin', label: 'Field Check-In' },
+  { key: 'field_logs', label: 'Field Logs' },
+  { key: 'manage_safety_events', label: 'Manage Safety Events' },
+  { key: 'manage_certifications', label: 'Manage Certifications' },
+];
+
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const [notes, setNotes] = useState<PersonnelNote[]>([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !person?.id) return;
@@ -96,6 +129,60 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     });
     return () => unsub();
   }, [isOpen, person?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !person?.id) return;
+    const q = collection(db, 'users', person.id, 'notes');
+    const unsub = onSnapshot(q, (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ ...d.data(), id: d.id } as PersonnelNote))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      setNotes(sorted);
+    });
+    return () => unsub();
+  }, [isOpen, person?.id]);
+
+  const handleAddNote = async () => {
+    if (!newNoteText.trim() || !person?.id) return;
+    setIsSavingNote(true);
+    try {
+      await addDoc(collection(db, 'users', person.id, 'notes'), {
+        text: newNoteText.trim(),
+        author: 'Admin',
+        createdAt: new Date().toISOString(),
+      });
+      setNewNoteText('');
+      toast({ title: 'Note Added' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!person?.id) return;
+    await deleteDoc(doc(db, 'users', person.id, 'notes', noteId));
+    toast({ variant: 'destructive', title: 'Note Deleted' });
+  };
+
+  const handleTogglePermission = async (permission: Permission, current: boolean | undefined) => {
+    if (!person?.id) return;
+    const overrides = { ...(person.permissionOverrides || {}) };
+    if (current === true) {
+      overrides[permission] = false;
+    } else if (current === false) {
+      delete overrides[permission];
+    } else {
+      overrides[permission] = true;
+    }
+    try {
+      await updateDoc(doc(db, 'users', person.id), { permissionOverrides: overrides });
+      toast({ title: 'Permission Updated' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
+  };
 
   const isTechnician = useMemo(() => {
     if (!person) return false;
@@ -255,6 +342,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       {(isTechnician || isStaff) && <TabsTrigger value="documents" className="tab-trigger-personnel">Documents</TabsTrigger>}
                       <TabsTrigger value="schedule" className="tab-trigger-personnel">Schedule</TabsTrigger>
                       {isTechnician && <TabsTrigger value="assignments" className="tab-trigger-personnel">Assignments</TabsTrigger>}
+                      <TabsTrigger value="notes" className="tab-trigger-personnel">Notes</TabsTrigger>
+                      <TabsTrigger value="permissions" className="tab-trigger-personnel">Permissions</TabsTrigger>
                   </TabsList>
               </div>
               
@@ -348,7 +437,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       <TabsContent value="reliability" className="m-0 space-y-6 animate-in fade-in duration-300">
                           <div className="flex justify-between items-center mb-4 px-1">
                               <div className="space-y-1 text-left">
-                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Operational Trust Manifest</h3>
+                                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Reliability Manifest</h3>
                                   <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Rolling 30-day window active for operational friction events.</p>
                               </div>
                               <Button className="h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red text-white" onClick={() => setIsLogEventOpen(true)}>
@@ -538,12 +627,91 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                               </div>
                           </div>
                       </TabsContent>
+
+                      <TabsContent value="notes" className="m-0 space-y-4">
+                          <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Admin Notes</h3>
+                          <div className="space-y-2">
+                              <Textarea
+                                  placeholder="Add a note about this personnel member..."
+                                  value={newNoteText}
+                                  onChange={(e) => setNewNoteText(e.target.value)}
+                                  className="min-h-[80px] bg-bg-secondary border-border-main text-xs resize-none"
+                                  onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) handleAddNote(); }}
+                              />
+                              <Button
+                                  size="sm"
+                                  className="h-8 text-[10px] uppercase font-bold tracking-widest"
+                                  onClick={handleAddNote}
+                                  disabled={!newNoteText.trim() || isSavingNote}
+                              >
+                                  <Plus size={13} className="mr-1.5" /> Add Note
+                              </Button>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                              {notes.length === 0 && (
+                                  <p className="text-[10px] text-text-muted uppercase tracking-widest py-6 text-center">No notes yet</p>
+                              )}
+                              {notes.map(note => (
+                                  <div key={note.id} className="p-3 rounded-lg bg-bg-secondary border border-border-sub group relative">
+                                      <div className="flex items-center justify-between mb-1.5">
+                                          <div className="flex items-center gap-2">
+                                              <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">{note.author}</span>
+                                              <span className="text-[8px] text-text-muted">·</span>
+                                              <span className="text-[9px] text-text-muted font-mono">
+                                                  {format(new Date(note.createdAt), 'MM-dd-yyyy HH:mm')}
+                                              </span>
+                                          </div>
+                                          <button
+                                              onClick={() => handleDeleteNote(note.id)}
+                                              className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-brand-red"
+                                          >
+                                              <Trash2 size={12} />
+                                          </button>
+                                      </div>
+                                      <p className="text-xs text-text-primary whitespace-pre-wrap">{note.text}</p>
+                                  </div>
+                              ))}
+                          </div>
+                      </TabsContent>
+
+                      <TabsContent value="permissions" className="m-0 space-y-4">
+                          <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
+                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Access & Permissions</h3>
+                              <p className="text-[9px] text-text-muted uppercase">Overrides take precedence over role defaults</p>
+                          </div>
+                          <div className="space-y-1">
+                              {ALL_PERMISSIONS.map(({ key, label }) => {
+                                  const override = person?.permissionOverrides?.[key];
+                                  const isOn = override === true ? true : override === false ? false : undefined;
+                                  return (
+                                      <div key={key} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-bg-secondary transition-colors group">
+                                          <div className="flex items-center gap-3">
+                                              <Switch
+                                                  checked={isOn === true}
+                                                  onCheckedChange={() => handleTogglePermission(key, isOn)}
+                                                  className="scale-75"
+                                              />
+                                              <div>
+                                                  <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{label}</p>
+                                                  <p className="text-[9px] text-text-muted font-mono">{key}</p>
+                                              </div>
+                                          </div>
+                                          {isOn !== undefined && (
+                                              <Badge variant={isOn ? 'active' : 'destructive'} className="text-[8px] uppercase h-4 px-1.5">
+                                                  {isOn ? 'Override: ON' : 'Override: OFF'}
+                                              </Badge>
+                                          )}
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </TabsContent>
                   </div>
               </ScrollArea>
           </Tabs>
 
           <DialogFooter className="p-6 border-t border-border-sub bg-bg-tertiary/30">
-              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Exit Terminal</Button>
+              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Close</Button>
               <Button onClick={onEdit} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red text-white">
                   <Pencil size={14} className="mr-2"/> Modify Identity Registry
               </Button>

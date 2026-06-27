@@ -192,6 +192,9 @@ export type Technician = {
     deliveryMethod: 'Email' | 'Portal' | 'Both' | string;
   };
   notificationPreferences?: NotificationPreferences;
+  permissionOverrides?: Record<string, boolean>;
+  googleCalendarSyncEnabled?: boolean;
+  googleCalendarToken?: string;
 };
 
 export type Recommendation = {
@@ -401,6 +404,27 @@ export type SiteRequest = {
   managerPhone?: string;
   status: 'pending' | 'approved' | 'denied';
   submittedDate: string;
+};
+
+export type SiteNote = {
+  id: string;
+  text: string;
+  author: string;
+  createdAt: string;
+};
+
+export type Site = {
+  id: string;
+  name: string;
+  clientId?: string;
+  clientName: string;
+  location: string;
+  lat?: number;
+  lng?: number;
+  managerName?: string;
+  managerPhone?: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
 };
 
 export type PenaltyEvent = ReliabilityEvent;

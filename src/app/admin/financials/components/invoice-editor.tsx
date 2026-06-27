@@ -185,7 +185,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
     const handleSave = () => {
         if (!invoiceData.clientId) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: 'Target client selection required for authorization.' });
+            toast({ variant: 'destructive', title: 'Missing Client', description: 'Please select a client before saving.' });
             return;
         }
 

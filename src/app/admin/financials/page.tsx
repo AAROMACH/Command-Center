@@ -61,7 +61,7 @@ export default function FinancialsPage() {
 
     const { toast } = useToast();
 
-    // 1. Initialize Registry Handshake
+    // 1. Initialize Data Listeners
     useEffect(() => {
         const unsubExp = onSnapshot(collection(db, 'expenses'), (snap) => {
             setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
@@ -356,12 +356,14 @@ export default function FinancialsPage() {
             </header>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-left">
-                <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                <TabsList className="tabs !p-0 !bg-bg-tertiary flex flex-wrap">
                     <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
-                    <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">PAYROLL AUDIT</TabsTrigger>
                     <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
                     <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
                     <TabsTrigger value="mileage" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MILEAGE</TabsTrigger>
+                    <div className="flex-1" />
+                    <div className="w-px bg-border-main self-stretch my-1" />
+                    <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white border-l border-border-main">PAYROLL AUDIT</TabsTrigger>
                 </TabsList>
                 
                 <div className="mt-6 text-left">
@@ -419,43 +421,59 @@ export default function FinancialsPage() {
                                 <CardTitle>Payroll Audit</CardTitle>
                                 <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
                             </CardHeader>
-                            <CardContent className="table-wrap p-0">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
-                                            <TableHead className="text-right pr-6"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredWeeklyLogs.map(log => (
-                                            <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
-                                                <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.techId)}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
-                                                        {log.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {log.unsubmitRequested && (
-                                                        <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
-                                                            <Undo2 size={8} className="mr-1"/> Unsubmit
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-text-green font-bold tabular-nums">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit log</Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <CardContent className="p-0">
+                                <Tabs defaultValue="unpaid" className="w-full">
+                                    <TabsList className="tabs !rounded-none border-b border-border-sub !bg-transparent !p-0 w-full justify-start">
+                                        <TabsTrigger value="unpaid" className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                                            Unpaid <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status !== 'Approved').length})</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger value="paid" className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                                            Paid <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status === 'Approved').length})</span>
+                                        </TabsTrigger>
+                                    </TabsList>
+                                    {(['unpaid', 'paid'] as const).map(subTab => (
+                                        <TabsContent key={subTab} value={subTab} className="m-0">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="hover:bg-transparent border-border-sub">
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
+                                                        <TableHead className="text-right pr-6"></TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {filteredWeeklyLogs
+                                                        .filter(l => subTab === 'unpaid' ? l.status !== 'Approved' : l.status === 'Approved')
+                                                        .map(log => (
+                                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                            <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
+                                                            <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.techId)}</TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
+                                                                    {log.status}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                {log.unsubmitRequested && (
+                                                                    <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
+                                                                        <Undo2 size={8} className="mr-1"/> Unsubmit
+                                                                    </Badge>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="font-mono text-text-green font-bold tabular-nums">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
+                                                            <TableCell className="text-right pr-6">
+                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit log</Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TabsContent>
+                                    ))}
+                                </Tabs>
                             </CardContent>
                         </Card>
                     </TabsContent>

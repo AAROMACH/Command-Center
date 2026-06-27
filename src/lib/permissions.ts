@@ -132,9 +132,15 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
 
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
   if (!user) return false;
-  
+
+  // Per-user overrides take precedence over role defaults
+  if (user.permissionOverrides) {
+    if (user.permissionOverrides[permission] === true) return true;
+    if (user.permissionOverrides[permission] === false) return false;
+  }
+
   const userRoles: AppRole[] = [...(user.roles || [])];
-  
+
   const currentRole = user.role?.toLowerCase() || '';
   if (currentRole === 'admin' || currentRole === 'super_admin') userRoles.push('super_admin');
   if (currentRole.includes('dispatcher')) userRoles.push('dispatch_admin');

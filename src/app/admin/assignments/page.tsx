@@ -7,11 +7,11 @@ import { collection, doc, updateDoc, onSnapshot, query, where, deleteDoc } from 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Calendar as CalendarIcon, 
-  MapPin, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Calendar as CalendarIcon,
+  MapPin,
+  Clock,
+  CheckCircle2,
   Search,
   User,
   Briefcase,
@@ -31,8 +31,11 @@ import {
   Type,
   FileText,
   Trash2,
-  Check
+  Check,
+  List,
+  Map
 } from "lucide-react";
+import AdminMapView from '@/app/admin/map/components/admin-map-view';
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -94,6 +97,7 @@ export default function AssignmentsHubPage() {
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const { toast } = useToast();
 
@@ -140,7 +144,7 @@ export default function AssignmentsHubPage() {
     }
   };
 
-  // 1. Initialize Registry Listeners
+  // 1. Initialize Data Listeners
   useEffect(() => {
     const q = query(collection(db, 'assignments'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -279,7 +283,7 @@ export default function AssignmentsHubPage() {
     setIsEditDialogOpen(false);
     setSelectedJob(null);
     setEditedOrder(null);
-    toast({ title: "Registry Updated", description: "Assignment parameters committed to Firestore." });
+    toast({ title: "Updated", description: "Assignment parameters committed to Firestore." });
   };
 
   const handleDeleteOrder = () => {
@@ -287,12 +291,12 @@ export default function AssignmentsHubPage() {
     const docRef = doc(db, 'assignments', selectedJob.id);
     deleteDoc(docRef).catch((e: any) => {
       console.error("Purge Error:", e);
-      toast({ variant: "destructive", title: "Purge Failed", description: e.message });
+      toast({ variant: "destructive", title: "Delete Failed", description: e.message });
     });
     setIsEditDialogOpen(false);
     setSelectedJob(null);
     setEditedOrder(null);
-    toast({ title: "Registry Purged", description: "Assignment removed from operational ledger." });
+    toast({ title: "Deleted", description: "Assignment removed from record." });
   };
 
   const handleVerifyAssignment = async (woId: string) => {
@@ -303,7 +307,7 @@ export default function AssignmentsHubPage() {
             auditedAt: new Date().toISOString(), 
             auditedBy: currentUser?.name || 'Admin' 
         });
-        toast({ title: "Registry Verified", description: `Mission record ${woId.toUpperCase()} has been confirmed.` });
+        toast({ title: "Verified", description: `Job ${woId.toUpperCase()} has been confirmed.` });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Audit Failure', description: e.message });
     }
@@ -315,7 +319,7 @@ export default function AssignmentsHubPage() {
         const woRef = doc(db, 'workOrders', woId);
         updateDoc(woRef, sanitize(updates)).catch(err => {
             console.error("Field Update Error:", err);
-            toast({ variant: "destructive", title: "Registry Error", description: err.message });
+            toast({ variant: "destructive", title: "Update Failed", description: err.message });
         });
     });
     
@@ -332,12 +336,33 @@ export default function AssignmentsHubPage() {
         <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2 text-left">
             <CalendarIcon size={12} />
-            Assignment Registry Audit
+            Assignment Tracker
           </p>
           <h1 className="page-title text-left">Assignments</h1>
-          <p className="page-subtitle text-left">Operational schedule oversight and historical job audit.</p>
+          <p className="page-subtitle text-left">Schedule and history and historical job audit.</p>
         </div>
         <div className="flex items-center gap-3 text-left">
+            <div className="flex items-center rounded-md border border-border-main overflow-hidden h-10 bg-bg-secondary shrink-0">
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  "px-3 h-full flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
+                  viewMode === 'list' ? "bg-bg-tertiary text-text-primary" : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                <List size={13} /> List
+              </button>
+              <div className="w-px h-full bg-border-main" />
+              <button
+                onClick={() => setViewMode('map')}
+                className={cn(
+                  "px-3 h-full flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
+                  viewMode === 'map' ? "bg-bg-tertiary text-text-primary" : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                <Map size={13} /> Map
+              </button>
+            </div>
             <div className="search-wrap text-left">
               <Search className="h-4 w-4" />
               <input 
@@ -375,7 +400,7 @@ export default function AssignmentsHubPage() {
                 <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                   <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                     <div className="flex items-center justify-between text-left">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary text-left">Registry Constraints</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary text-left">Filters</p>
                       {hasActiveFilters && (
                         <button onClick={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); setSortBy('date'); }} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                           <X size={10} /> Reset
@@ -425,7 +450,17 @@ export default function AssignmentsHubPage() {
         </div>
       </header>
 
-      <Tabs defaultValue="schedule" className="w-full text-left">
+      {viewMode === 'map' && (
+        <div className="h-[70vh] rounded-lg overflow-hidden border border-border-main">
+          <AdminMapView
+            jobs={filteredWorkOrders}
+            selectedJob={selectedJob}
+            onSelectJob={(job) => { setSelectedJob(job); setIsDetailOpen(true); }}
+          />
+        </div>
+      )}
+
+      {viewMode === 'list' && <Tabs defaultValue="schedule" className="w-full text-left">
         <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub text-left shadow-sm">
           <TabsList className="tabs !mb-0 text-left">
             <TabsTrigger value="schedule" className="tab">
@@ -860,12 +895,12 @@ export default function AssignmentsHubPage() {
                 </Button>
                 <div className="flex gap-3 text-left">
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Commit Registry Updates</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Save Changes</Button>
                 </div>
               </DialogFooter>
           </DialogContent>
         </Dialog>
-      </Tabs>
+      </Tabs>}
     </div>
   );
 }

@@ -84,7 +84,7 @@ interface AdminReviewData {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const TABS = ['SOW & Requirements', 'Activity Ledger', 'Admin Review'] as const;
+const TABS = ['Overview', 'Scope', 'Activity Ledger', 'Admin Review'] as const;
 type Tab = typeof TABS[number];
 
 const FIELD_NATION_BASE = 'https://app.fieldnation.com/workorders/';
@@ -271,7 +271,7 @@ export default function AssignmentDetailModal({
   isOpen,
   onClose,
 }: AssignmentDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('SOW & Requirements');
+  const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [adminData, setAdminData] = useState<AdminReviewData>({
     financialRecord: null,
     penaltyEvents: [],
@@ -331,7 +331,7 @@ export default function AssignmentDetailModal({
   // Reset tab on close
   useEffect(() => {
     if (!isOpen) {
-      setActiveTab('SOW & Requirements');
+      setActiveTab('Overview');
       setAdminData({ financialRecord: null, penaltyEvents: [], history: [] });
     }
   }, [isOpen]);
@@ -372,7 +372,7 @@ export default function AssignmentDetailModal({
               {isLocked && (
                 <div className="flex items-center gap-1.5 text-[9px] font-black text-text-muted uppercase tracking-widest">
                   <Lock size={11} className="text-text-muted" />
-                  Registry Locked
+                  Record Locked
                 </div>
               )}
               <button
@@ -420,14 +420,81 @@ export default function AssignmentDetailModal({
         {/* ── Body (scrollable) ─────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-1">
 
-          {/* ══ SOW & Requirements ══════════════════════════════════════ */}
-          {activeTab === 'SOW & Requirements' && (
+          {/* ══ Overview ════════════════════════════════════════════════ */}
+          {activeTab === 'Overview' && (
+            <div className="space-y-5">
+              {/* Job details grid */}
+              <div>
+                <SectionLabel>Job Details</SectionLabel>
+                <InfoGrid items={[
+                  { label: 'Client',     value: workOrder.clientName || '—' },
+                  { label: 'Job Type',   value: workOrder.jobType || workOrder.projectType || '—' },
+                  { label: 'Priority',   value: workOrder.priority ? (workOrder.priority.charAt(0).toUpperCase() + workOrder.priority.slice(1)) : '—' },
+                  { label: 'Pay Type',   value: PAY_TYPE_LABELS[workOrder.payType || 'fixed'] || '—' },
+                  { label: 'Date',       value: workOrder.scheduleDate || assignment.currentScheduledDate || '—' },
+                  { label: 'Time',       value: workOrder.scheduleTime || '—' },
+                ]} />
+              </div>
+
+              {/* Location */}
+              <div>
+                <SectionLabel>Location</SectionLabel>
+                <div className="bg-bg-secondary border border-border-sub rounded-xl p-3 flex items-start gap-3 mb-5">
+                  <MapPin size={14} className="text-brand-red shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-text-secondary leading-relaxed">{workOrder.locationText || workOrder.location || '—'}</p>
+                </div>
+              </div>
+
+              {/* Assigned tech */}
+              <div>
+                <SectionLabel>Assigned Technician</SectionLabel>
+                <div className="bg-bg-secondary border border-border-sub rounded-xl p-3 flex items-center gap-3 mb-5">
+                  <div className="w-9 h-9 rounded-full bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center shrink-0">
+                    <span className="text-[11px] font-black text-brand-cyan">
+                      {(assignment.techName || 'T').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-bold text-text-primary uppercase">{assignment.techName || 'Unassigned'}</p>
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider mt-0.5">Field Technician</p>
+                  </div>
+                  <span className={cn(
+                    'text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',
+                    STATUS_COLOR[statusKey] ?? 'text-text-muted border-border-sub bg-bg-tertiary'
+                  )}>
+                    {statusLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Pay summary */}
+              <div>
+                <SectionLabel>Pay Summary</SectionLabel>
+                <div className="bg-bg-secondary border border-green-border/20 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">{PAY_TYPE_LABELS[workOrder.payType || 'fixed'] || 'Fixed Rate'}</p>
+                    <p className="text-2xl font-black font-mono text-text-green">${payout.amount.toFixed(2)}</p>
+                  </div>
+                  <div className="flex flex-col gap-1 text-right">
+                    {payout.lines.map(({ label, value }, i) => (
+                      <div key={i} className="text-[10px] text-text-muted">
+                        <span className="font-bold">{label}:</span> {value}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══ Scope ════════════════════════════════════════════════════ */}
+          {activeTab === 'Scope' && (
             <div className="space-y-5">
 
-              {/* Scope briefing */}
+              {/* Scope description */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <SectionLabel>Project Scope Briefing</SectionLabel>
+                  <SectionLabel>Scope of Work</SectionLabel>
                   <a
                     href={getFieldNationUrl(workOrder)}
                     target="_blank"
@@ -435,11 +502,11 @@ export default function AssignmentDetailModal({
                     className="flex items-center gap-1.5 text-[9px] font-black text-brand-red uppercase tracking-widest hover:opacity-80 transition-opacity"
                   >
                     <ExternalLink size={11} />
-                    Field Nation Registry
+                    Field Nation
                   </a>
                 </div>
-                <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 text-[12px] text-text-secondary leading-relaxed text-left italic">
-                  &quot;{workOrder.description || 'No scope description provided.'}&quot;
+                <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 text-[12px] text-text-secondary leading-relaxed text-left">
+                  {workOrder.description || 'No scope description provided.'}
                 </div>
               </div>
 
@@ -484,13 +551,23 @@ export default function AssignmentDetailModal({
                 </div>
               )}
 
-              {/* Financial settlement */}
+              {/* Documents placeholder */}
               <div>
-                <SectionLabel>Financial Settlement Model</SectionLabel>
+                <SectionLabel>Documents</SectionLabel>
+                <div className="bg-bg-secondary border border-dashed border-border-sub rounded-xl p-6 text-center">
+                  <FileText size={20} className="text-text-muted mx-auto mb-2" />
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No documents attached</p>
+                  <p className="text-[9px] text-text-muted mt-1">Document upload available for completed assignments.</p>
+                </div>
+              </div>
+
+              {/* Pay model */}
+              <div>
+                <SectionLabel>Pay Structure</SectionLabel>
                 <div className="bg-bg-secondary border border-green-border/20 rounded-xl p-4 flex items-center justify-between mb-3">
                   <div className="text-left">
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 text-left">
-                      Authorized Structure
+                      Pay Type
                     </p>
                     <p className="text-[13px] font-black text-text-primary uppercase tracking-wide text-left">
                       {PAY_TYPE_LABELS[workOrder.payType || 'fixed'] || 'Fixed Rate'}
@@ -521,43 +598,20 @@ export default function AssignmentDetailModal({
                 </div>
               </div>
 
-              {/* Personnel */}
-              <div>
-                <SectionLabel>Personnel Allocation</SectionLabel>
-                <div className="bg-bg-secondary border border-border-sub rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center shrink-0">
-                    <span className="text-[11px] font-black text-brand-cyan">
-                      {(assignment.techName || 'T').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-[12px] font-bold text-text-primary uppercase text-left">{assignment.techName || 'Unassigned'}</p>
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider mt-0.5 text-left">
-                      Field Technician — Lead
-                    </p>
-                  </div>
-                  <span className={cn(
-                    'text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',
-                    STATUS_COLOR[statusKey] ?? 'text-text-muted border-border-sub bg-bg-tertiary'
-                  )}>
-                    {statusLabel}
-                  </span>
-                </div>
-              </div>
             </div>
           )}
 
           {/* ══ Activity Ledger ══════════════════════════════════════════ */}
           {activeTab === 'Activity Ledger' && (
             <div>
-              <SectionLabel>Operational Timeline</SectionLabel>
+              <SectionLabel>Assignment Timeline</SectionLabel>
               <div className="mt-1">
                 <LedgerEntry
                   dot="blue"
                   time={assignment.assignedAt ? format(parseISO(assignment.assignedAt), 'MMM d, h:mm a') : '—'}
-                  title="Assignment Dispatched"
-                  note="Work order created and pushed to Field Terminal."
-                  by={`By: ${assignment.assignedBy || 'Admin'} — Command Center`}
+                  title="Assignment Created"
+                  note="Work order assigned and sent to technician."
+                  by={`By: ${assignment.assignedBy || 'Admin'}`}
                 />
                 <LedgerEntry
                   dot={assignment.acknowledgmentMissed ? 'red' : 'gold'}
@@ -566,17 +620,17 @@ export default function AssignmentDetailModal({
                   note={
                     assignment.acknowledgmentMissed
                       ? 'Acknowledgment window elapsed without tech response. Penalty event recorded.'
-                      : 'Technician confirmed receipt via Field Terminal.'
+                      : 'Technician confirmed receipt.'
                   }
-                  by={assignment.acknowledgmentMissed ? 'By: System — Auto' : `By: ${assignment.techName} — Field Terminal`}
+                  by={assignment.acknowledgmentMissed ? 'By: System — Auto' : `By: ${assignment.techName}`}
                 />
                 {assignment.status === 'on-my-way' || assignment.status === 'in-progress' || assignment.status === 'checked-out' || assignment.status === 'completed' ? (
                   <LedgerEntry
                     dot="gold"
                     time="—"
                     title="En Route — Status Update"
-                    note="Technician set status to On My Way via Field Terminal."
-                    by={`By: ${assignment.techName} — Field Terminal`}
+                    note="Technician updated status to On My Way."
+                    by={`By: ${assignment.techName}`}
                   />
                 ) : null}
                 {(assignment.status === 'in-progress' || assignment.status === 'checked-out' || assignment.status === 'completed') && (
@@ -584,8 +638,8 @@ export default function AssignmentDetailModal({
                     dot="green"
                     time={assignment.confirmedStartAt ? format(parseISO(assignment.confirmedStartAt), 'MMM d, h:mm a') : '—'}
                     title="Check-In — On Site"
-                    note="Technician checked in at job location. GPS coordinates logged."
-                    by={`By: ${assignment.techName} — Field Terminal`}
+                    note="Technician checked in at job location."
+                    by={`By: ${assignment.techName}`}
                   />
                 )}
                 {(assignment.status === 'checked-out' || assignment.status === 'completed') && (
@@ -594,14 +648,14 @@ export default function AssignmentDetailModal({
                     time="—"
                     title="Check-Out — Work Complete"
                     note={`Outcome: ${OUTCOME_LABELS[assignment.latestOutcomeCode || 'worked_completed'] || 'Completed'}.${assignment.revisitCount && assignment.revisitCount > 0 ? ` Revisit count: ${assignment.revisitCount}.` : ' No revisit required.'}`}
-                    by={`By: ${assignment.techName} — Field Terminal`}
+                    by={`By: ${assignment.techName}`}
                   />
                 )}
                 {assignment.status === 'completed' && (
                   <LedgerEntry
                     dot="blue"
                     time={assignment.updatedAt ? format(parseISO(assignment.updatedAt), 'MMM d, h:mm a') : '—'}
-                    title="Registry Locked — Assignment Closed"
+                    title="Assignment Closed"
                     note="Assignment finalized. Payout queued for payroll processing."
                     by="By: System — Auto"
                     isLast
@@ -686,7 +740,7 @@ export default function AssignmentDetailModal({
 
                   {/* Financial record */}
                   <div>
-                    <SectionLabel>Settlement Record</SectionLabel>
+                    <SectionLabel>Payout Record</SectionLabel>
                     {adminData.financialRecord ? (
                       <div className="bg-bg-secondary border border-border-sub rounded-xl overflow-hidden mb-1">
                         <div className="flex items-center justify-between p-4 border-b border-border-sub">
@@ -826,7 +880,7 @@ export default function AssignmentDetailModal({
         <div className="shrink-0 px-6 py-4 border-t border-border-sub flex items-center justify-between bg-bg-tertiary/20">
           <div className="flex items-center gap-2 text-[9px] font-black text-text-muted uppercase tracking-widest">
             <Lock size={11} />
-            {isLocked ? 'Terminal Locked' : 'Terminal Active'}
+            {isLocked ? 'Record Locked' : 'Record Active'}
           </div>
           <Button
             variant="outline"
@@ -834,7 +888,7 @@ export default function AssignmentDetailModal({
             onClick={onClose}
             className="h-9 px-6 text-[10px] font-black uppercase tracking-widest border-border-sub hover:border-border-main"
           >
-            Exit Operational Terminal
+            Close
           </Button>
         </div>
 

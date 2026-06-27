@@ -274,7 +274,7 @@ export const WorkOrdersTable = React.memo(({
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
     setEditedOrder(null);
-    toast({ title: "Registry Purged", description: "Assignment removed from operational ledger." });
+    toast({ title: "Assignment Deleted", description: "Assignment removed from the system." });
   };
 
   const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {

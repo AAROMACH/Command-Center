@@ -12,8 +12,10 @@ import { LeadDetailDrawer } from './components/lead-detail-drawer';
 import { cn } from '@/lib/utils';
 import {
   Target, Plus, Search, DollarSign, Phone, Mail, User, TrendingUp,
-  CheckCircle2, XCircle, ChevronRight,
+  CheckCircle2, XCircle, ChevronRight, LayoutGrid, List, ArrowUpDown,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
 type Stage = Lead['stage'];
@@ -121,6 +123,8 @@ export default function CRMPage() {
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [listSort, setListSort] = useState<{ col: 'company' | 'stage' | 'value' | 'updated'; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
 
   useEffect(() => {
     const userId = sessionStorage.getItem('currentUserId') || '';
@@ -174,6 +178,32 @@ export default function CRMPage() {
     [leads]
   );
 
+  const sortedListLeads = useMemo(() => {
+    const sorted = [...filteredLeads];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      if (listSort.col === 'company') cmp = a.companyName.localeCompare(b.companyName);
+      else if (listSort.col === 'stage') cmp = STAGES.findIndex(s => s.key === a.stage) - STAGES.findIndex(s => s.key === b.stage);
+      else if (listSort.col === 'value') cmp = (b.estimatedValue || 0) - (a.estimatedValue || 0);
+      else if (listSort.col === 'updated') cmp = (b.updatedAt || '').localeCompare(a.updatedAt || '');
+      return listSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }, [filteredLeads, listSort]);
+
+  function toggleSort(col: typeof listSort['col']) {
+    setListSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
+  }
+
+  async function handleSetStage(lead: Lead, stage: Stage) {
+    if (stage === lead.stage) return;
+    try {
+      await updateDoc(doc(db, 'leads', lead.id), { stage, updatedAt: new Date().toISOString() });
+    } catch {
+      toast({ title: 'Failed to update stage', variant: 'destructive' });
+    }
+  }
+
   async function handleMoveNext(lead: Lead) {
     const stageIdx = STAGES.findIndex(s => s.key === lead.stage);
     const nextStage = STAGES[stageIdx + 1];
@@ -210,6 +240,21 @@ export default function CRMPage() {
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
+          {/* View toggle */}
+          <div className="flex items-center border border-border-main rounded-md overflow-hidden h-8">
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={cn('h-8 w-8 flex items-center justify-center transition-colors', viewMode === 'kanban' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+            >
+              <LayoutGrid size={13} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn('h-8 w-8 flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+            >
+              <List size={13} />
+            </button>
+          </div>
           <Button
             size="sm"
             className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white shrink-0"
@@ -245,8 +290,70 @@ export default function CRMPage() {
         </div>
       </div>
 
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div className="rounded-xl border border-border-sub overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border-sub">
+                <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-primary" onClick={() => toggleSort('company')}>
+                  <span className="flex items-center gap-1.5">Company <ArrowUpDown size={10} /></span>
+                </TableHead>
+                <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact</TableHead>
+                <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-primary" onClick={() => toggleSort('stage')}>
+                  <span className="flex items-center gap-1.5">Stage <ArrowUpDown size={10} /></span>
+                </TableHead>
+                <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-primary" onClick={() => toggleSort('value')}>
+                  <span className="flex items-center gap-1.5">Value <ArrowUpDown size={10} /></span>
+                </TableHead>
+                <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-primary" onClick={() => toggleSort('updated')}>
+                  <span className="flex items-center gap-1.5">Updated <ArrowUpDown size={10} /></span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedListLeads.map(lead => {
+                const stageInfo = STAGES.find(s => s.key === lead.stage);
+                return (
+                  <TableRow key={lead.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                    <TableCell className="text-[10px] text-text-muted">
+                      <div>{lead.contactName}</div>
+                      {lead.contactEmail && <div className="text-[9px] mt-0.5">{lead.contactEmail}</div>}
+                    </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <Select value={lead.stage} onValueChange={v => handleSetStage(lead, v as Stage)}>
+                        <SelectTrigger className={cn('h-7 text-[9px] font-black uppercase border-0 bg-transparent w-[140px]', stageInfo?.color)}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-bg-elevated border-border-main">
+                          {STAGES.map(s => <SelectItem key={s.key} value={s.key} className={cn('text-[9px] font-bold uppercase', s.color)}>{s.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-[11px] font-black font-mono text-text-green">
+                      {lead.estimatedValue > 0 ? `$${lead.estimatedValue.toLocaleString()}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-[10px] text-text-muted">
+                      {lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '—'}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {sortedListLeads.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">
+                    No leads found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
       {/* Kanban Board */}
-      <div className="overflow-x-auto pb-4">
+      {viewMode === 'kanban' && <div className="overflow-x-auto pb-4">
         <div className="flex gap-3 min-w-max">
           {pipeline.map((col) => (
             <div key={col.key} className="w-[240px] flex-shrink-0 space-y-3">
@@ -284,7 +391,7 @@ export default function CRMPage() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       <NewLeadDialog
         open={isNewLeadOpen}

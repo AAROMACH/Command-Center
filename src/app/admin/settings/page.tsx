@@ -2,28 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Settings as SettingsIcon,
   MapPin,
   Activity,
   CheckCircle2,
   Globe,
-  Bell
+  Bell,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
+import { isSuperAdmin } from '@/lib/permissions';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 
 
 export default function AdminSettingsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    const [newPin, setNewPin] = useState('');
+    const [currentPin, setCurrentPin] = useState('••••');
+    const [showPin, setShowPin] = useState(false);
+    const [savingPin, setSavingPin] = useState(false);
     const { toast } = useToast();
+
+    const userIsSuperAdmin = isSuperAdmin(currentUser);
 
     useEffect(() => {
         const userId = sessionStorage.getItem('currentUserId');
@@ -34,6 +46,32 @@ export default function AdminSettingsPage() {
             return () => unsub();
         }
     }, []);
+
+    useEffect(() => {
+        getDoc(doc(db, 'adminConfig', 'plans')).then(snap => {
+            if (snap.exists() && snap.data()?.editPin) {
+                setCurrentPin(snap.data()!.editPin);
+            }
+        }).catch(() => {});
+    }, []);
+
+    const handleSavePin = async () => {
+        if (!newPin || newPin.length < 4) {
+            toast({ variant: 'destructive', title: 'Invalid PIN', description: 'PIN must be at least 4 characters.' });
+            return;
+        }
+        setSavingPin(true);
+        try {
+            await setDoc(doc(db, 'adminConfig', 'plans'), { editPin: newPin }, { merge: true });
+            setCurrentPin(newPin);
+            setNewPin('');
+            toast({ title: 'Plans PIN updated', description: 'The new PIN is now active.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to update PIN', description: e.message });
+        } finally {
+            setSavingPin(false);
+        }
+    };
 
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
@@ -141,6 +179,56 @@ export default function AdminSettingsPage() {
                         </CardContent>
                     </Card>
                 </section>
+
+                {/* PLANS PIN (super admin only) */}
+                {userIsSuperAdmin && (
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Lock size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Plans Security</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Plans Edit PIN</CardTitle>
+                            <CardDescription>Control access to plan edits. Required before any create, edit, or delete action on the Plans page.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-3 p-3 rounded-lg border border-border-sub bg-bg-primary">
+                                <Lock size={14} className="text-text-muted shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-0.5">Current PIN</p>
+                                    <p className="text-sm font-mono font-bold text-text-primary tracking-[0.4em]">
+                                        {showPin ? currentPin : '••••'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowPin(s => !s)}
+                                    className="text-text-muted hover:text-text-primary transition-colors"
+                                >
+                                    {showPin ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Input
+                                    type="password"
+                                    placeholder="New PIN (min 4 chars)"
+                                    value={newPin}
+                                    onChange={e => setNewPin(e.target.value)}
+                                    className="h-9 flex-1 text-[11px] bg-bg-primary border-border-main font-mono"
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={handleSavePin}
+                                    disabled={savingPin || !newPin}
+                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    {savingPin ? 'Saving...' : 'Save PIN'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+                )}
 
                 {/* INTEGRATIONS */}
                 <section className="space-y-4">

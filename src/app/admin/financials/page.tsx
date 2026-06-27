@@ -356,15 +356,25 @@ export default function FinancialsPage() {
             </header>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-left">
-                <TabsList className="tabs !p-0 !bg-bg-tertiary flex flex-wrap">
-                    <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
-                    <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
-                    <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
-                    <TabsTrigger value="mileage" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MILEAGE</TabsTrigger>
-                    <div className="flex-1" />
-                    <div className="w-px bg-border-main self-stretch my-1" />
-                    <TabsTrigger value="payroll" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white border-l border-border-main">PAYROLL AUDIT</TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between gap-4">
+                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                        <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
+                        <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
+                        <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
+                        <TabsTrigger value="mileage" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MILEAGE</TabsTrigger>
+                    </TabsList>
+                    <button
+                        onClick={() => setActiveTab('payroll')}
+                        className={cn(
+                            "tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-black uppercase tracking-widest transition-colors",
+                            activeTab === 'payroll'
+                                ? "bg-brand-red text-white border-brand-red"
+                                : "bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
+                        )}
+                    >
+                        PAYROLL AUDIT
+                    </button>
+                </div>
                 
                 <div className="mt-6 text-left">
                     <TabsContent value="summary" className="m-0 space-y-8">

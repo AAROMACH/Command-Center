@@ -82,13 +82,13 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
             </div>
             
             <TabsContent value="active" className="mt-0">
-              <ProjectsClient projects={activeProjects} technicians={technicians} sortBy={sortBy} />
+              <ProjectsClient projects={activeProjects} technicians={technicians} sortBy={sortBy} statusLabel="Active" />
             </TabsContent>
             <TabsContent value="on-hold" className="mt-0">
-              <ProjectsClient projects={onHoldProjects} technicians={technicians} sortBy={sortBy} />
+              <ProjectsClient projects={onHoldProjects} technicians={technicians} sortBy={sortBy} statusLabel="On-Hold" />
             </TabsContent>
             <TabsContent value="completed" className="mt-0">
-              <ProjectsClient projects={completedProjects} technicians={technicians} sortBy={sortBy} />
+              <ProjectsClient projects={completedProjects} technicians={technicians} sortBy={sortBy} statusLabel="Completed" />
             </TabsContent>
       </Tabs>
     );

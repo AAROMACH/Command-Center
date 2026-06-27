@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { db } from '@/lib/firebase';
+import { getDoc, doc } from 'firebase/firestore';
 import { 
     Zap, 
     Plus, 
@@ -190,6 +192,13 @@ export default function PlansPage() {
     const [planToDelete, setPlanToDelete] = useState<PlanTier | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
+    // PIN Gate State
+    const [isPlansAuthed, setIsPlansAuthed] = useState(false);
+    const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+    const [pinInput, setPinInput] = useState('');
+    const [pinError, setPinError] = useState('');
+    const pendingActionRef = useRef<(() => void) | null>(null);
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -314,6 +323,41 @@ export default function PlansPage() {
         });
     };
 
+    function requirePin(action: () => void) {
+        if (isPlansAuthed) {
+            action();
+        } else {
+            pendingActionRef.current = action;
+            setPinInput('');
+            setPinError('');
+            setIsPinDialogOpen(true);
+        }
+    }
+
+    async function handlePinSubmit() {
+        try {
+            const snap = await getDoc(doc(db, 'adminConfig', 'plans'));
+            const expectedPin: string = snap.exists() ? (snap.data()?.editPin || '1234') : '1234';
+            if (pinInput === expectedPin) {
+                setIsPlansAuthed(true);
+                setIsPinDialogOpen(false);
+                pendingActionRef.current?.();
+                pendingActionRef.current = null;
+            } else {
+                setPinError('Incorrect PIN');
+            }
+        } catch {
+            if (pinInput === '1234') {
+                setIsPlansAuthed(true);
+                setIsPinDialogOpen(false);
+                pendingActionRef.current?.();
+                pendingActionRef.current = null;
+            } else {
+                setPinError('Incorrect PIN');
+            }
+        }
+    }
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <header className="page-header">
@@ -336,7 +380,7 @@ export default function PlansPage() {
                         />
                     </div>
                     {userIsSuperAdmin && (
-                        <Button onClick={() => handleOpenTerminal('create')} className="h-10 px-6 font-bold uppercase tracking-widest">
+                        <Button onClick={() => requirePin(() => handleOpenTerminal('create'))} className="h-10 px-6 font-bold uppercase tracking-widest">
                             <Plus size={16} className="mr-2" />
                             Architect Custom Plan
                         </Button>
@@ -398,12 +442,12 @@ export default function PlansPage() {
                 <TabsContent value="all" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.map(plan => (
-                            <PlanCard 
-                                key={plan.id} 
-                                plan={plan} 
-                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                            <PlanCard
+                                key={plan.id}
+                                plan={plan}
+                                onEdit={(p) => requirePin(() => handleOpenTerminal('edit', p))}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(p) => confirmDeleteRequest(p)}
+                                onDelete={(p) => requirePin(() => confirmDeleteRequest(p))}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -509,14 +553,14 @@ export default function PlansPage() {
                                             size="sm"
                                             variant="outline"
                                             className="h-8 text-[9px] uppercase font-bold border-border-sub"
-                                            onClick={() => handleDiscardRequest(client.id)}
+                                            onClick={() => requirePin(() => handleDiscardRequest(client.id))}
                                         >
                                             Discard Request
                                         </Button>
                                         <Button
                                             size="sm"
                                             className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90"
-                                            onClick={() => handleInitializeQuote(client.id)}
+                                            onClick={() => requirePin(() => handleInitializeQuote(client.id))}
                                         >
                                             Approve Request
                                         </Button>
@@ -537,12 +581,12 @@ export default function PlansPage() {
                 <TabsContent value="standard" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.filter(p => p.type === 'standard').map(plan => (
-                            <PlanCard 
-                                key={plan.id} 
-                                plan={plan} 
-                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                            <PlanCard
+                                key={plan.id}
+                                plan={plan}
+                                onEdit={(p) => requirePin(() => handleOpenTerminal('edit', p))}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(p) => confirmDeleteRequest(p)}
+                                onDelete={(p) => requirePin(() => confirmDeleteRequest(p))}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -552,12 +596,12 @@ export default function PlansPage() {
                 <TabsContent value="custom" className="m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPlans.filter(p => p.type === 'custom').map(plan => (
-                            <PlanCard 
-                                key={plan.id} 
-                                plan={plan} 
-                                onEdit={(p) => handleOpenTerminal('edit', p)}
+                            <PlanCard
+                                key={plan.id}
+                                plan={plan}
+                                onEdit={(p) => requirePin(() => handleOpenTerminal('edit', p))}
                                 onView={(p) => handleOpenTerminal('view', p)}
-                                onDelete={(p) => confirmDeleteRequest(p)}
+                                onDelete={(p) => requirePin(() => confirmDeleteRequest(p))}
                                 canEdit={userIsSuperAdmin}
                             />
                         ))}
@@ -790,6 +834,39 @@ export default function PlansPage() {
                         >
                             Authorize Delete
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* PIN GATE DIALOG */}
+            <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+                <DialogContent className="sm:max-w-[360px] bg-bg-elevated border-border-default">
+                    <DialogHeader className="text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Lock className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Plans PIN Required</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
+                            Enter your edit PIN to make changes to plans.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3">
+                        <Input
+                            type="password"
+                            placeholder="Enter PIN"
+                            value={pinInput}
+                            onChange={e => { setPinInput(e.target.value); setPinError(''); }}
+                            onKeyDown={e => { if (e.key === 'Enter') handlePinSubmit(); }}
+                            className="h-11 text-center text-xl font-mono bg-bg-primary border-border-main tracking-[0.5em]"
+                            autoFocus
+                        />
+                        {pinError && (
+                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest text-center">{pinError}</p>
+                        )}
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsPinDialogOpen(false)} className="flex-1 text-[10px] font-black uppercase">Cancel</Button>
+                        <Button size="sm" onClick={handlePinSubmit} className="flex-1 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">Unlock</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

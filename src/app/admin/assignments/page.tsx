@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Calendar as CalendarIcon,
   MapPin,
+
   Clock,
   CheckCircle2,
   Search,
@@ -37,7 +38,7 @@ import {
 } from "lucide-react";
 import AdminMapView from '@/app/admin/map/components/admin-map-view';
 import type { WorkOrder, Technician } from "@/lib/types";
-import { format, isSameDay, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay, isValid } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
   Dialog,
@@ -98,6 +99,8 @@ export default function AssignmentsHubPage() {
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [mapDate, setMapDate] = useState<Date | undefined>(new Date());
+  const [isMapDateOpen, setIsMapDateOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -451,12 +454,54 @@ export default function AssignmentsHubPage() {
       </header>
 
       {viewMode === 'map' && (
-        <div className="h-[70vh] rounded-lg overflow-hidden border border-border-main">
-          <AdminMapView
-            jobs={filteredWorkOrders}
-            selectedJob={selectedJob}
-            onSelectJob={(job) => { setSelectedJob(job); setIsDetailOpen(true); }}
-          />
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-xl border border-border-sub">
+            <CalendarIcon size={13} className="text-text-muted shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Map Date</span>
+            <Popover open={isMapDateOpen} onOpenChange={setIsMapDateOpen}>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center h-8 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors",
+                  mapDate ? "text-text-primary" : "text-text-muted"
+                )}>
+                  {mapDate && isValid(mapDate) ? format(mapDate, 'MM-dd-yyyy') : 'All Dates'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
+                <Calendar
+                  mode="single"
+                  selected={mapDate}
+                  onSelect={(d) => { setMapDate(d); setIsMapDateOpen(false); }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {mapDate && (
+              <button
+                onClick={() => setMapDate(undefined)}
+                className="text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
+              >
+                Clear
+              </button>
+            )}
+            <span className="ml-auto text-[10px] text-text-muted uppercase tracking-widest">
+              {mapDate
+                ? `${filteredWorkOrders.filter(wo => { try { const p = parseTacticalDate(wo.scheduleDate); return p && isSameDay(p, mapDate); } catch { return false; } }).length} jobs`
+                : `${filteredWorkOrders.length} jobs`}
+            </span>
+          </div>
+          <div className="h-[65vh] rounded-lg overflow-hidden border border-border-main">
+            <AdminMapView
+              jobs={mapDate
+                ? filteredWorkOrders.filter(wo => {
+                    try { const p = parseTacticalDate(wo.scheduleDate); return p ? isSameDay(p, mapDate) : false; }
+                    catch { return false; }
+                  })
+                : filteredWorkOrders}
+              selectedJob={selectedJob}
+              onSelectJob={(job) => { setSelectedJob(job); setIsDetailOpen(true); }}
+            />
+          </div>
         </div>
       )}
 

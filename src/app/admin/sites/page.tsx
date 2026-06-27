@@ -20,6 +20,7 @@ export default function AdminSitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'client' | 'status'>('name');
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', clientName: '', location: '', managerName: '', managerPhone: '' });
@@ -33,15 +34,20 @@ export default function AdminSitesPage() {
     return () => unsub();
   }, []);
 
-  const filtered = useMemo(() =>
-    sites.filter(s =>
+  const filtered = useMemo(() => {
+    const list = sites.filter(s =>
       !search ||
       s.name?.toLowerCase().includes(search.toLowerCase()) ||
       s.clientName?.toLowerCase().includes(search.toLowerCase()) ||
       s.location?.toLowerCase().includes(search.toLowerCase())
-    ),
-    [sites, search]
-  );
+    );
+    return [...list].sort((a, b) => {
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
+      if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
+      return 0;
+    });
+  }, [sites, search, sortBy]);
 
   const handleCreate = async () => {
     if (!form.name || !form.location) {
@@ -78,23 +84,33 @@ export default function AdminSitesPage() {
           <h1 className="page-title">Sites</h1>
           <p className="page-subtitle">Manage customer sites and their service history.</p>
         </div>
-        <div className="page-header-right">
-          <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsNewOpen(true)}>
-            <Plus size={12} className="mr-1.5" />
-            New Site
-          </Button>
-        </div>
       </header>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-        <Input
-          placeholder="Search sites..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9 h-9 text-[11px] bg-bg-secondary border-border-main"
-        />
+      {/* Universal search bar */}
+      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <Input
+            placeholder="Search sites..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-9 text-[11px] bg-bg-primary border-border-main"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+          <SelectTrigger className="h-9 w-36 text-[10px] font-bold uppercase tracking-widest bg-bg-primary border-border-main">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-bg-elevated border-border-main">
+            <SelectItem value="name" className="text-[10px] font-bold uppercase tracking-widest">Name</SelectItem>
+            <SelectItem value="client" className="text-[10px] font-bold uppercase tracking-widest">Client</SelectItem>
+            <SelectItem value="status" className="text-[10px] font-bold uppercase tracking-widest">Status</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest ml-auto" onClick={() => setIsNewOpen(true)}>
+          <Plus size={12} className="mr-1.5" />
+          New Site
+        </Button>
       </div>
 
       {/* Grid */}

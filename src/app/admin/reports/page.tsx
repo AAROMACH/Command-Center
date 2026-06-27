@@ -1052,22 +1052,11 @@ export default function ActivityAuditPage() {
                                 >
                                     Site Activity
                                 </TabsTrigger>
-                                <TabsTrigger
-                                    value="tech"
-                                    className="tab-trigger-activity"
-                                    onClick={() => setSelectedTechId(null)}
-                                >
-                                    Personnel
-                                </TabsTrigger>
-                                <TabsTrigger value="analytics" className="tab-trigger-activity">Field Intelligence</TabsTrigger>
-                                <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
-                                    Flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
-                                </TabsTrigger>
                             </TabsList>
                         </div>
 
                         <div className="min-h-[500px] text-left">
-                            <TabsContent value="tech" className="m-0 text-left">
+                            <TabsContent value="__tech_removed__" className="m-0 text-left">
                                 {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300 text-left">
                                         <div className="flex items-center justify-between text-left">
@@ -1282,10 +1271,6 @@ export default function ActivityAuditPage() {
                                 {renderSiteActivity()}
                             </TabsContent>
 
-                            <TabsContent value="analytics" className="m-0 text-left">
-                                <IntelligenceTerminal />
-                            </TabsContent>
-
                             <TabsContent value="assignments_history" className="m-0 text-left">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
@@ -1441,42 +1426,6 @@ export default function ActivityAuditPage() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="flags" className="m-0 text-left">
-                                <div className="space-y-4 text-left">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Anomaly Registry</h3>
-                                    {anomalyCounts === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                                            <ShieldCheck size={28} className="text-text-green" />
-                                            <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 text-left">
-                                            {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                                                <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
-                                                    <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
-                                                    <div className="space-y-0.5 text-left min-w-0">
-                                                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
-                                                        <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {weeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
-                                                const tech = technicians.find(t => t.id === wl.techId);
-                                                return (
-                                                    <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
-                                                        <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
-                                                        <div className="space-y-0.5 text-left min-w-0">
-                                                            <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
-                                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </TabsContent>
                         </div>
                     </Tabs>
                 ) : (

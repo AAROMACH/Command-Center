@@ -31,10 +31,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'Twilio not configured' });
       }
 
-      // webpackIgnore keeps this out of the bundle; package must be installed at runtime
-      const twilio = (await import(/* webpackIgnore: true */ 'twilio' as any)).default;
-      const client = twilio(sid, token);
-      await client.messages.create({ body: `${title}\n\n${body}`, from, to });
+      // Call Twilio REST API directly — no SDK package required
+      const credentials = Buffer.from(`${sid}:${token}`).toString('base64');
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ To: to, From: from, Body: `${title}\n\n${body}` }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || `Twilio ${res.status}`);
+      }
       return NextResponse.json({ status: 'sent', channel: 'sms' });
     }
 
@@ -47,9 +60,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'SendGrid not configured' });
       }
 
-      const sgMail = (await import(/* webpackIgnore: true */ '@sendgrid/mail' as any)).default;
-      sgMail.setApiKey(apiKey);
-      await sgMail.send({ to, from: fromEmail, subject: title, text: body, html: `<p>${body.replace(/\n/g, '<br/>')}</p>` });
+      // Call SendGrid REST API directly — no SDK package required
+      const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: fromEmail },
+          subject: title,
+          content: [
+            { type: 'text/plain', value: body },
+            { type: 'text/html', value: `<p>${body.replace(/\n/g, '<br/>')}</p>` },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(JSON.stringify((err as any).errors || res.status));
+      }
       return NextResponse.json({ status: 'sent', channel: 'email' });
     }
 

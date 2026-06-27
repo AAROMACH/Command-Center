@@ -3,8 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeMessageId } from '@/lib/doc-ids';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -80,8 +79,6 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { penaltyEvents } from '@/lib/data';
-import { generateId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
@@ -202,7 +199,7 @@ export default function ActivityAuditPage() {
             return;
         }
 
-        const msgId = await createDocId(ID_PREFIXES.MESSAGE);
+        const msgId = await makeMessageId();
         const msg: AdminMessage = {
             id: msgId,
             senderId: currentUser?.id || 'admin',

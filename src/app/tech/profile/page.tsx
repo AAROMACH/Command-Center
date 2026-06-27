@@ -5,7 +5,7 @@ import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, collection, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar } from '@/lib/upload';
 import Image from 'next/image';
@@ -138,7 +138,7 @@ export default function TechProfilePage() {
             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in all required fields.' });
             return;
         }
-        const id = await generateId(ID_PREFIXES.TIME_OFF_REQUEST);
+        const id = await createDocId(ID_PREFIXES.TIME_OFF_REQUEST);
         const newRequest: TimeOffRequest = {
             id,
             techId: currentTechId!,

@@ -41,6 +41,7 @@ import {
   BookOpen,
   MapPin,
   BarChart2,
+  Target,
 } from "lucide-react";
 
 type NavItem = {
@@ -59,6 +60,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
   { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
   { href: "/admin/map", label: "Map", icon: MapPin, permission: "manage_assignments" },
+  { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_reports" },
   { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2, permission: "view_reports" },
   { href: "/admin/settings", label: "Settings", icon: Settings, permission: "view_reports" },

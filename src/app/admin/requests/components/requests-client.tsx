@@ -67,7 +67,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, collection } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 import { format, parseISO } from 'date-fns';
@@ -213,7 +213,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setIsReviewOpen(false);
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Registry Error", description: e.message });
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
         }
     };
 
@@ -268,7 +268,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     if (blendedHourly) newWO.blendedHourlyRate = blendedHourly;
                 }
 
-                newId = await generateId(ID_PREFIXES.WORK_ORDER);
+                newId = await createDocId(ID_PREFIXES.WORK_ORDER);
                 await setDoc(doc(db, 'workOrders', newId), { ...newWO, id: newId });
             } else {
                 const newProject: any = {
@@ -288,7 +288,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     actualBudget: 0,
                     actualHours: 0
                 };
-                newId = await generateId(ID_PREFIXES.PROJECT);
+                newId = await createDocId(ID_PREFIXES.PROJECT);
                 await setDoc(doc(db, 'projects', newId), { ...newProject, id: newId });
             }
 
@@ -300,7 +300,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 title: conversionTitle.trim()
             });
 
-            toast({ title: "Registry Synced", description: "Mission data has been transferred from intake." });
+            toast({ title: "Record Created", description: "Job data has been transferred from intake." });
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
         } catch (e: any) {
@@ -734,7 +734,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 </div>
                                 <div className="flex gap-3 w-full">
                                     <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
-                                        Exit Terminal
+                                        Close
                                     </Button>
                                     {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
                                         <Button 

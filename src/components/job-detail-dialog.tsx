@@ -283,7 +283,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       entries.push({
         type: 'note',
         date: mission.scheduleDate || 'TBD',
-        details: 'Assignment Created — Mission initialized in operational registry.',
+        details: 'Assignment Created — Job initialized in system.',
         user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center',
       } as any);
     }
@@ -308,7 +308,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <div className="flex items-center gap-4">
                {isLocked && (
                 <div className="flex items-center gap-2 text-text-muted">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Registry Locked</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Record Locked</span>
                     <div className="w-6 h-6 border border-border-sub rounded flex items-center justify-center bg-bg-secondary">
                         <Lock size={12}/>
                     </div>
@@ -431,7 +431,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </TabsContent>
 
             <TabsContent value="Activity Ledger" className="m-0 space-y-6 animate-in fade-in duration-300 text-left">
-                <SectionLabel>Operational Timeline</SectionLabel>
+                <SectionLabel>Assignment Timeline</SectionLabel>
                 <div className="space-y-0 text-left">
                     {timeline.length > 0 ? (
                       timeline.map((entry, idx) => {

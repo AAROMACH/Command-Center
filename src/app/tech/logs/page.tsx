@@ -64,7 +64,7 @@ import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 const DISPUTE_REASONS = [
@@ -197,7 +197,7 @@ export default function TechWeeklyLogPage() {
         };
 
         try {
-            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
             await setDoc(doc(db, 'weeklyLogs', logId), { ...newLog, id: logId });
             toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
             setIsCreateLogOpen(false);
@@ -790,11 +790,11 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
 }
 
 function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (report: MissingAssignmentReport) => void }) {
-    const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         onSave({
-            id: `mar-${Date.now()}`,
+            id: await createDocId(ID_PREFIXES.MISSING_REPORT),
             assignmentId: formData.get('assignmentId') as string,
             clientName: formData.get('clientName') as string,
             date: formData.get('date') as string,

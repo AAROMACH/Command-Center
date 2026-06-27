@@ -1,24 +1,9 @@
-import { Navbar } from '@/components/navbar';
-import { AlertBand } from '@/components/alert-band';
+import { SidebarLayout } from '@/components/sidebar-layout';
 
-/**
- * @fileOverview Field Technician Portal Core Layout.
- * Enforces a high-priority fixed header registry to prevent navigation disappearing.
- */
 export default function TechPortalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f0f] border-b border-border-main shadow-xl">
-        <Navbar />
-        <AlertBand />
-      </div>
-      <div className="page-wrapper pt-[92px] pb-16 md:pb-0">
-        <div className="page-content">{children}</div>
-      </div>
-    </>
-  );
+  return <SidebarLayout>{children}</SidebarLayout>;
 }

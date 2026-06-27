@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { RequestsTabs } from "./components/requests-tabs";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function RequestsPage() {
   
   const { toast } = useToast();
 
-  // 1. Initialize Registry Listeners
+  // 1. Initialize Data Listeners
   useEffect(() => {
     const q = query(collection(db, 'clientRequests'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -179,7 +179,7 @@ export default function RequestsPage() {
                 <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                     <div className="p-4 border-b border-border-sub bg-bg-tertiary">
                         <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
                             {hasActiveFilters && (
                                 <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                                     <X size={10} /> Reset

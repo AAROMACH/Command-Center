@@ -27,8 +27,7 @@ import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog } from "./import-jobs-dialog";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
-import { generateId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -113,7 +112,7 @@ export function DispatchPageClient() {
     return result;
   };
 
-  // 1. Initialize Registry Listeners
+  // 1. Initialize Data Listeners
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
@@ -407,7 +406,7 @@ export function DispatchPageClient() {
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                       <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                           <div className="flex items-center justify-between text-left">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
                               {hasActiveFilters && (
                                   <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                                       <X size={10} /> Reset
@@ -484,7 +483,7 @@ export function DispatchPageClient() {
                 const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
                 
                 for (const wo of newlyAssigned) {
-                    const asmtId = await generateId(ID_PREFIXES.ASSIGNMENT);
+                    const asmtId = await makeAssignmentId();
                     const asmtRef = doc(db, 'assignments', asmtId);
                     const woRef = doc(db, 'workOrders', wo.id);
                     

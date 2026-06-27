@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ID_PREFIXES } from '@/lib/constants';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 
 declare global {
   interface Window {
@@ -192,7 +192,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     if (!formData.name || !formData.client || !formData.location) return;
 
     try {
-    const id = await generateId(ID_PREFIXES.PROJECT);
+    const id = await createDocId(ID_PREFIXES.PROJECT);
     const newProject: Project = {
       ...formData as Project,
       id,
@@ -238,9 +238,9 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
             <DialogHeader className="p-6 pb-2 text-left">
               <div className="flex items-center gap-2 mb-1 text-left">
                 <Building2 className="text-brand-red h-5 w-5" />
-                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Initialize Project Folder</DialogTitle>
+                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Create Record</DialogTitle>
               </div>
-              <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Create a new high-fidelity project entry in the operational registry.</DialogDescription>
+              <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Create a new high-fidelity project entry in the system.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 px-6 py-4 text-left">
@@ -401,7 +401,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
               <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
               <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
                 <Check size={16} className="mr-2" />
-                Initialize Registry
+                Create Record
               </Button>
             </DialogFooter>
           </DialogContent>

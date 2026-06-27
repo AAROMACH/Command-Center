@@ -187,7 +187,7 @@ export function MilestonesTab({ project }: MilestonesTabProps) {
         if (i === -1) return;
 
         const newTask: Task = {
-            id: `task-${Date.now()}`,
+            id: crypto.randomUUID(),
             name,
             isCompleted: false,
             requiresPhoto: false
@@ -236,7 +236,7 @@ export function MilestonesTab({ project }: MilestonesTabProps) {
         if (isReadOnly) return;
         const nextNum = editablePhases.length + 1;
         const newPhase: Phase = {
-            id: `phase-${Date.now()}`,
+            id: crypto.randomUUID(),
             phaseNumber: nextNum,
             name: `Phase ${nextNum}: Untitled`,
             tasks: []

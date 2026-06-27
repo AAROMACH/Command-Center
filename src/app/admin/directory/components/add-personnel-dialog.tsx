@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import { 
@@ -182,7 +182,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     // If an existing Firebase UID is provided, skip auth creation entirely
     if (existingUid.trim()) {
         try {
-            const userId = await generateId(ID_PREFIXES.USER);
+            const userId = await createDocId(ID_PREFIXES.USER);
             const newPerson: Technician = {
                 ...formData as Technician,
                 id: existingUid.trim(),
@@ -219,7 +219,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             return;
         }
 
-        const userId = await generateId(ID_PREFIXES.USER).catch(() => `usr-${Date.now()}`);
+        const userId = await createDocId(ID_PREFIXES.USER).catch(() => `usr-${Date.now()}`);
 
         const newPerson: Technician = {
             ...formData as Technician,

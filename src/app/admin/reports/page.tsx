@@ -3,8 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeMessageId } from '@/lib/doc-ids';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     Search, 
@@ -115,7 +114,7 @@ export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "tech");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "assignments_history");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -152,7 +151,7 @@ export default function ActivityAuditPage() {
 
     const { toast } = useToast();
 
-    // 1. Initialize Registry Listeners
+    // 1. Initialize Data Listeners
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
@@ -200,7 +199,7 @@ export default function ActivityAuditPage() {
             return;
         }
 
-        const msgId = await generateId(ID_PREFIXES.MESSAGE);
+        const msgId = await makeMessageId();
         const msg: AdminMessage = {
             id: msgId,
             senderId: currentUser?.id || 'admin',
@@ -248,7 +247,7 @@ export default function ActivityAuditPage() {
         updateDoc(doc(db, 'broadcasts', id), { revoked: true }).catch(() => {});
 
         window.dispatchEvent(new Event('storage'));
-        toast({ variant: "destructive", title: "Broadcast Revoked", description: "Directive purged from all target terminals." });
+        toast({ variant: "destructive", title: "Broadcast Revoked", description: "Message removed from all portals." });
     }, [messages, toast]);
 
     const handleVerifyAssignment = async (woId: string) => {
@@ -263,7 +262,7 @@ export default function ActivityAuditPage() {
                 auditedAt: new Date().toISOString(), 
                 auditedBy: currentUser?.name || 'Admin' 
             });
-            toast({ title: "Registry Verified", description: `Mission record ${woId.toUpperCase()} has been confirmed.` });
+            toast({ title: "Verified", description: `Job ${woId.toUpperCase()} has been confirmed.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Audit Failure', description: e.message });
         }
@@ -277,9 +276,9 @@ export default function ActivityAuditPage() {
         const docRef = doc(db, 'assignments', woId);
         try {
             await deleteDoc(docRef);
-            toast({ variant: 'destructive', title: 'Record Purged', description: `Assignment ${woId.toUpperCase()} removed from registry.` });
+            toast({ variant: 'destructive', title: 'Record Deleted', description: `Assignment ${woId.toUpperCase()} removed from system.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Purge Failure', description: e.message });
+            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
         }
     };
 
@@ -462,7 +461,7 @@ export default function ActivityAuditPage() {
         updateDoc(docRef, updates).catch((e: any) => {
             const woRef = doc(db, 'workOrders', woId);
             updateDoc(woRef, updates).catch(err => {
-                toast({ variant: 'destructive', title: 'Registry Error', description: err.message });
+                toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
             });
         });
     };
@@ -536,9 +535,9 @@ export default function ActivityAuditPage() {
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !t.roles?.includes('client')).length} Field Operatives</p>
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !t.roles?.includes('client')).length} Technicians</p>
                 <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
-                    <RefreshCw size={12} className="mr-1.5"/> Refresh Registry
+                    <RefreshCw size={12} className="mr-1.5"/> Refresh
                 </Button>
             </div>
             {technicians.filter(t => !t.roles?.includes('client')).map(t => {
@@ -1023,9 +1022,9 @@ export default function ActivityAuditPage() {
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
             <header className="space-y-1 text-center text-left">
-                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Operational Intelligence Terminal</p>
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Master Registry Audit</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">Unified oversight for personnel, sites, and strategic analytics</p>
+                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Activity Hub</p>
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Activity</h1>
+                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">History, logs, and search across all field service records</p>
             </header>
 
             <div className="space-y-6 text-left">
@@ -1042,36 +1041,27 @@ export default function ActivityAuditPage() {
                 {!searchQuery ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
-                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
-                                <TabsTrigger 
-                                    value="tech" 
-                                    className="tab-trigger-activity"
-                                    onClick={() => setSelectedTechId(null)}
-                                >
-                                    Personnel Registry
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="sites" 
+                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
+                                <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
+                                <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
+                                <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
+                                <TabsTrigger
+                                    value="sites"
                                     className="tab-trigger-activity"
                                     onClick={() => setSelectedSiteId(null)}
                                 >
-                                    Site Index
-                                </TabsTrigger>
-                                <TabsTrigger value="analytics" className="tab-trigger-activity">Strategic Intelligence</TabsTrigger>
-                                <TabsTrigger value="messaging" className="tab-trigger-activity">Broadcast Comms</TabsTrigger>
-                                <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
-                                    Anomaly flags <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
+                                    Site Activity
                                 </TabsTrigger>
                             </TabsList>
                         </div>
 
                         <div className="min-h-[500px] text-left">
-                            <TabsContent value="tech" className="m-0 text-left">
+                            <TabsContent value="__tech_removed__" className="m-0 text-left">
                                 {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300 text-left">
                                         <div className="flex items-center justify-between text-left">
                                             <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted text-left">
-                                                <ArrowLeft size={14} className="mr-2"/> Back to Registry
+                                                <ArrowLeft size={14} className="mr-2"/> Back to List
                                             </Button>
                                         </div>
                                         
@@ -1092,7 +1082,7 @@ export default function ActivityAuditPage() {
 
                                                         <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
-                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Operational Trust</p>
+                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Reliability</p>
                                                                 <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
                                                                 <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
                                                                     {getReliabilityTier(techStats.reliability)}
@@ -1281,50 +1271,161 @@ export default function ActivityAuditPage() {
                                 {renderSiteActivity()}
                             </TabsContent>
 
-                            <TabsContent value="analytics" className="m-0 text-left">
-                                <IntelligenceTerminal />
-                            </TabsContent>
-
-                            <TabsContent value="messaging" className="m-0 text-left">
-                                {renderMessaging()}
-                            </TabsContent>
-
-                            <TabsContent value="flags" className="m-0 text-left">
-                                <div className="space-y-4 text-left">
-                                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Anomaly Registry</h3>
-                                    {anomalyCounts === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                                            <ShieldCheck size={28} className="text-text-green" />
-                                            <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 text-left">
-                                            {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                                                <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
-                                                    <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
-                                                    <div className="space-y-0.5 text-left min-w-0">
-                                                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
-                                                        <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {weeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
-                                                const tech = technicians.find(t => t.id === wl.techId);
-                                                return (
-                                                    <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
-                                                        <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
-                                                        <div className="space-y-0.5 text-left min-w-0">
-                                                            <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
-                                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                            <TabsContent value="assignments_history" className="m-0 text-left">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{[...workOrders, ...assignments].length} Records</p>
+                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                            const all = [...workOrders, ...assignments];
+                                            const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS','PAY']];
+                                            all.forEach(wo => {
+                                                const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                rows.push([wo.scheduleDate, wo.id.toUpperCase(), wo.title || wo.description || '', wo.clientName || '', tech?.name || 'Unassigned', wo.status, String(wo.pay || 0)]);
+                                            });
+                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                            const blob = new Blob([csv], { type: 'text/csv' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a'); a.href = url; a.download = 'assignment_history.csv'; a.click();
+                                        }}>
+                                            <Download size={13} className="mr-1.5" /> Export CSV
+                                        </Button>
+                                    </div>
+                                    <div className="table-wrap text-left">
+                                        <Table>
+                                            <TableHeader className="bg-bg-tertiary">
+                                                <TableRow className="hover:bg-transparent border-border-sub">
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Date</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Pay</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {[...workOrders, ...assignments]
+                                                    .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
+                                                    .map(wo => {
+                                                        const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                        return (
+                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
+                                                                <TableCell className="py-3">
+                                                                    <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{wo.id.toUpperCase()}</p>
+                                                                    <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
+                                                                </TableCell>
+                                                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
+                                                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
+                                                                <TableCell className="py-3"><Badge variant={wo.status === 'completed' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{wo.status}</Badge></TableCell>
+                                                                <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </div>
                             </TabsContent>
+
+                            <TabsContent value="project_history" className="m-0 text-left">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{projects.length} Projects</p>
+                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                            const rows = [['NAME','CLIENT','STATUS','BUDGET','START DATE','END DATE']];
+                                            projects.forEach(p => rows.push([p.name || p.title || '', p.client || p.clientName || '', p.status || '', String(p.budget || 0), p.startDate || '', p.endDate || '']));
+                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                            const blob = new Blob([csv], { type: 'text/csv' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a'); a.href = url; a.download = 'project_history.csv'; a.click();
+                                        }}>
+                                            <Download size={13} className="mr-1.5" /> Export CSV
+                                        </Button>
+                                    </div>
+                                    <div className="table-wrap text-left">
+                                        <Table>
+                                            <TableHeader className="bg-bg-tertiary">
+                                                <TableRow className="hover:bg-transparent border-border-sub">
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Project</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Budget</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {projects.map(p => (
+                                                    <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
+                                                        <TableCell className="py-3 pl-6">
+                                                            <p className="text-xs font-bold text-text-primary uppercase">{p.name || p.title}</p>
+                                                            <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{p.id?.toUpperCase()}</p>
+                                                        </TableCell>
+                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{(p as any).client || (p as any).clientName || '—'}</TableCell>
+                                                        <TableCell className="py-3"><Badge variant={p.status === 'completed' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{p.status || 'active'}</Badge></TableCell>
+                                                        <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${((p as any).budget || 0).toLocaleString()}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {projects.length === 0 && (
+                                                    <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No project records</TableCell></TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="weekly_logs" className="m-0 text-left">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{weeklyLogs.length} Logs</p>
+                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                            const rows = [['WEEK OF','TECHNICIAN','ITEMS','TOTAL PAYOUT','STATUS']];
+                                            weeklyLogs.forEach(l => {
+                                                const tech = technicians.find(t => t.id === l.techId);
+                                                rows.push([l.weekOf, tech?.name || l.techId, String((l.items || []).length), String(l.totalPayout || 0), l.status]);
+                                            });
+                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                            const blob = new Blob([csv], { type: 'text/csv' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a'); a.href = url; a.download = 'weekly_log_history.csv'; a.click();
+                                        }}>
+                                            <Download size={13} className="mr-1.5" /> Export CSV
+                                        </Button>
+                                    </div>
+                                    <div className="table-wrap text-left">
+                                        <Table>
+                                            <TableHeader className="bg-bg-tertiary">
+                                                <TableRow className="hover:bg-transparent border-border-sub">
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Of</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Items</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Total Payout</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {weeklyLogs
+                                                    .sort((a, b) => b.weekOf.localeCompare(a.weekOf))
+                                                    .map(l => {
+                                                        const tech = technicians.find(t => t.id === l.techId);
+                                                        return (
+                                                            <TableRow key={l.id} className="border-border-sub hover:bg-bg-tertiary">
+                                                                <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary uppercase">{l.weekOf}</TableCell>
+                                                                <TableCell className="py-3 text-[10px] font-bold text-text-primary uppercase">{tech?.name || l.techId}</TableCell>
+                                                                <TableCell className="py-3 text-center text-[10px] font-bold text-text-secondary">{(l.items || []).length}</TableCell>
+                                                                <TableCell className="py-3"><Badge variant={l.status === 'Approved' ? 'active' : l.status === 'Submitted' ? 'scheduled' : 'default'} className="text-[8px] uppercase">{l.status}</Badge></TableCell>
+                                                                <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${(l.totalPayout || 0).toFixed(2)}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                {weeklyLogs.length === 0 && (
+                                                    <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No weekly logs</TableCell></TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
                         </div>
                     </Tabs>
                 ) : (

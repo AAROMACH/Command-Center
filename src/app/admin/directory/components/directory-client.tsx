@@ -62,7 +62,8 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/rel
 import { useSearchParams } from 'next/navigation';
 import { assignmentTimeLogs } from '@/lib/data';
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { makeSiteId } from '@/lib/doc-ids';
 
 declare global {
   interface Window {
@@ -760,7 +761,21 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'denied' })}>Reject</Button>
-                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'approved' })}>Authorize</Button>
+                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={async () => {
+                                                            await updateDoc(doc(db, 'siteRequests', req.id), { status: 'approved' });
+                                                            const siteId = await makeSiteId();
+                                                            await setDoc(doc(db, 'sites', siteId), {
+                                                                id: siteId,
+                                                                name: req.siteName,
+                                                                clientId: req.clientId,
+                                                                clientName: req.clientName,
+                                                                location: req.location,
+                                                                managerName: req.managerName || '',
+                                                                managerPhone: req.managerPhone || '',
+                                                                status: 'active',
+                                                                createdAt: new Date().toISOString(),
+                                                            });
+                                                        }}>Approve</Button>
                                                     </div>
                                                 </CardContent>
                                             </Card>

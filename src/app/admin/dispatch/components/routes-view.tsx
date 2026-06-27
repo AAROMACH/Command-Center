@@ -33,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { makeRouteId } from '@/lib/doc-ids';
 import { Badge } from '@/components/ui/badge';
 import { 
     Select, 
@@ -188,13 +189,22 @@ function DroppableRoute({
                 <div className="flex justify-between items-center">
                     <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Assignments ({routeJobs.length})</p>
                 </div>
-                <div className="space-y-1 min-h-[80px] max-h-[180px] overflow-y-auto pr-1">
+                <div className="space-y-1 min-h-[100px] max-h-[180px] overflow-y-auto pr-1">
                     {routeJobs.map(job => (
                         <DraggableJob key={job.id} job={job} routeId={route.id} onRemove={(id) => onRemoveJob(id, route.id)} />
                     ))}
                     {routeJobs.length === 0 && (
-                        <div className="p-6 text-center border border-dashed border-border-main rounded-md">
-                            <p className="text-[8px] text-text-muted uppercase font-bold italic tracking-widest">No jobs allocated</p>
+                        <div className={cn(
+                            "min-h-[90px] flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed transition-colors",
+                            isOver ? "border-brand-red bg-brand-red/5" : "border-border-sub bg-bg-primary/30"
+                        )}>
+                            <ClipboardList size={16} className="text-text-muted opacity-40" />
+                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest text-center">
+                                Drop jobs here
+                            </p>
+                            <p className="text-[7px] text-text-muted uppercase font-bold tracking-widest opacity-60">
+                                or use + Assign Jobs below
+                            </p>
                         </div>
                     )}
                 </div>
@@ -243,10 +253,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         useSensor(KeyboardSensor)
     );
 
-    const handleCreateRoute = () => {
+    const handleCreateRoute = async () => {
         if (!newRouteName.trim()) return;
         const newRoute: Route = {
-            id: `route-${Date.now()}`,
+            id: await makeRouteId(),
             name: newRouteName,
             workOrderIds: [],
             technicianName: ""
@@ -328,12 +338,12 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             }
 
             if (result.routes && result.routes.length > 0) {
-                const newRoutes: Route[] = result.routes.map((p, idx) => ({
-                    id: p.routeId || `route-area-${Date.now()}-${idx}`,
+                const newRoutes: Route[] = await Promise.all(result.routes.map(async (p) => ({
+                    id: await makeRouteId(),
                     name: p.estimatedRouteLabel || `Area: ${p.technicianName || 'Unassigned'}`,
                     technicianName: p.technicianName || "",
                     workOrderIds: p.jobIds
-                }));
+                })));
 
                 const updatedWorkOrders = allWorkOrders.map(wo => {
                     const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));

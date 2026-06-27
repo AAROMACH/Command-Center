@@ -24,6 +24,7 @@ type ProjectsClientProps = {
     projects: Project[];
     technicians: Technician[];
     sortBy?: SortOption;
+    statusLabel?: string;
 };
 
 /**
@@ -51,7 +52,7 @@ function getTotalTasksCount(project: Project): number {
     return phases.reduce((acc, phase) => acc + (phase.tasks || []).length, 0);
 }
 
-export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'Active' }: ProjectsClientProps) {
     const router = useRouter();
     
     const [currentPage, setCurrentPage] = useState(1);
@@ -135,9 +136,14 @@ export function ProjectsClient({ projects, technicians, sortBy }: ProjectsClient
                                 </div>
                             </div>
                             <div className="text-left">
-                                <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">{group.client.name}</h3>
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
-                                    {group.client.businessType || 'Strategic Partner'} • {group.projects.length} Active Projects
+                                <h3 className="text-base font-black text-text-primary uppercase tracking-wide leading-tight">
+                                    {group.client.clientCompany || group.client.name}
+                                </h3>
+                                {group.client.clientCompany && group.client.clientCompany !== group.client.name && (
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-tight mt-0.5">{group.client.name}</p>
+                                )}
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                    {group.client.businessType || 'Strategic Partner'} • {group.projects.length} {statusLabel} {group.projects.length === 1 ? 'Project' : 'Projects'}
                                 </p>
                             </div>
                         </div>

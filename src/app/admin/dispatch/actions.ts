@@ -92,7 +92,7 @@ export async function getOptimizedRoutes(input: {
             });
 
             routes.push({
-                routeId: `route-${Date.now()}-${i}`,
+                routeId: "",
                 techId: nearbyTech?.id || null,
                 technicianName: nearbyTech?.name || "",
                 jobIds: routeJobIds,

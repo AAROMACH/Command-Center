@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Install these when keys are ready: npm install twilio @sendgrid/mail
-// For now the route logs and returns success so the client path is wired correctly.
-
 type NotifyPayload = {
   type: 'email' | 'sms' | 'push';
-  to: string;        // phone number (E.164) for SMS, email address for email
+  to: string;
   title: string;
   body: string;
 };
@@ -34,11 +31,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'Twilio not configured' });
       }
 
-      // Dynamic import — install `twilio` package to enable
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const twilio = require('twilio');
-      const client = twilio(sid, token);
-      await client.messages.create({ body: `${title}\n\n${body}`, from, to });
+      // Call Twilio REST API directly — no SDK package required
+      const credentials = Buffer.from(`${sid}:${token}`).toString('base64');
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ To: to, From: from, Body: `${title}\n\n${body}` }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || `Twilio ${res.status}`);
+      }
       return NextResponse.json({ status: 'sent', channel: 'sms' });
     }
 
@@ -51,14 +60,30 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'skipped', reason: 'SendGrid not configured' });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(apiKey);
-      await sgMail.send({ to, from: fromEmail, subject: title, text: body, html: `<p>${body.replace(/\n/g, '<br/>')}</p>` });
+      // Call SendGrid REST API directly — no SDK package required
+      const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: fromEmail },
+          subject: title,
+          content: [
+            { type: 'text/plain', value: body },
+            { type: 'text/html', value: `<p>${body.replace(/\n/g, '<br/>')}</p>` },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(JSON.stringify((err as any).errors || res.status));
+      }
       return NextResponse.json({ status: 'sent', channel: 'email' });
     }
 
-    // push — not yet wired to FCM; fall through
     return NextResponse.json({ status: 'skipped', reason: 'Push not yet configured' });
   } catch (err: any) {
     console.error('[notify] Delivery error:', err);

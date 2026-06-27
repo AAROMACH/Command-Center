@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { uploadFile } from '@/lib/upload';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { format } from 'date-fns';
 import {
@@ -127,7 +127,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
             if (phaseId) docData.phaseId = phaseId;
             if (taskId) docData.taskId = taskId;
 
-            const docId = await generateId(ID_PREFIXES.PROJECT_DOCUMENT);
+            const docId = await createDocId(ID_PREFIXES.PROJECT_DOCUMENT);
             await setDoc(doc(db, 'projectDocuments', docId), { ...docData, id: docId });
             toast({
                 title: "Registry Handshake Successful",

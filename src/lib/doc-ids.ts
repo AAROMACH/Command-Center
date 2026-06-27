@@ -1,0 +1,28 @@
+import { createDocId } from './generateId';
+import { ID_PREFIXES } from './constants';
+
+export const makeAssignmentId = () => createDocId(ID_PREFIXES.ASSIGNMENT);
+export const makeClientId = () => createDocId(ID_PREFIXES.CLIENT);
+export const makeClientRequestId = () => createDocId(ID_PREFIXES.CLIENT_REQUEST);
+export const makeFinancialRecordId = () => createDocId(ID_PREFIXES.FINANCIAL_RECORD);
+export const makeImportBatchId = () => createDocId(ID_PREFIXES.IMPORT_BATCH);
+export const makeInvoiceId = () => createDocId(ID_PREFIXES.INVOICE);
+export const makeLeadId = () => createDocId(ID_PREFIXES.LEAD);
+export const makeLeadActivityId = () => createDocId(ID_PREFIXES.LEAD_ACTIVITY);
+export const makeMessageId = () => createDocId(ID_PREFIXES.MESSAGE);
+export const makeNotificationId = () => createDocId(ID_PREFIXES.NOTIFICATION);
+export const makePenaltyEventId = () => createDocId(ID_PREFIXES.PENALTY_EVENT);
+export const makeProjectId = () => createDocId(ID_PREFIXES.PROJECT);
+export const makeProjectDailyLogId = () => createDocId(ID_PREFIXES.PROJECT_DAILY_LOG);
+export const makeProjectDocumentId = () => createDocId(ID_PREFIXES.PROJECT_DOCUMENT);
+export const makeProjectPayoutId = () => createDocId(ID_PREFIXES.PROJECT_PAYOUT);
+export const makeReimbursementId = () => createDocId(ID_PREFIXES.REIMBURSEMENT);
+export const makeRouteId = () => createDocId(ID_PREFIXES.ROUTE);
+export const makeSiteId = () => createDocId(ID_PREFIXES.SITE);
+export const makeSiteRequestId = () => createDocId(ID_PREFIXES.SITE_REQUEST);
+export const makeTimeOffRequestId = () => createDocId(ID_PREFIXES.TIME_OFF_REQUEST);
+export const makeTripLogId = () => createDocId(ID_PREFIXES.TRIP_LOG);
+export const makeUserId = () => createDocId(ID_PREFIXES.USER);
+export const makeWeeklyLogId = () => createDocId(ID_PREFIXES.WEEKLY_LOG);
+export const makeWeeklyLogItemId = () => createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
+export const makeWorkOrderId = () => createDocId(ID_PREFIXES.WORK_ORDER);

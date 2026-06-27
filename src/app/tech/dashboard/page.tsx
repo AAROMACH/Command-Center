@@ -4,8 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { makeWeeklyLogItemId, makeWeeklyLogId } from '@/lib/doc-ids';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,10 @@ import {
   Calendar as CalendarIcon,
   Map as MapIcon,
   AlertCircle,
+  TrendingUp,
+  DollarSign,
+  ShieldCheck,
+  Briefcase,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
@@ -155,6 +158,23 @@ export default function TechDashboardPage() {
 
     const mappableJobs = useMemo(() => mapJobs.filter(j => j.lat && j.lng), [mapJobs]);
 
+    const expectedEarnings = useMemo(() => {
+        return unsubmittedLogs.reduce((sum, log) => {
+            return sum + (log.items || []).reduce((s, item) => s + (item.jobPay || 0), 0);
+        }, 0);
+    }, [unsubmittedLogs]);
+
+    const weeklyJobCount = useMemo(() => {
+        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+        return allWorkOrders.filter(wo => {
+            if (!wo.scheduleDate) return false;
+            try {
+                const d = new Date(wo.scheduleDate + 'T12:00:00');
+                return d >= weekStart;
+            } catch { return false; }
+        }).length;
+    }, [allWorkOrders]);
+
     function formatMapDate(dateStr: string) {
         if (!dateStr) return 'TBD';
         try {
@@ -204,7 +224,7 @@ export default function TechDashboardPage() {
         );
 
         const snap = await getDocs(logQuery);
-        const itemId = await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM);
+        const itemId = await makeWeeklyLogItemId();
         const newItem: WeeklyLogItem = {
             id: itemId,
             workOrderId: woId,
@@ -220,7 +240,7 @@ export default function TechDashboardPage() {
                 items: arrayUnion(newItem)
             });
         } else {
-            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            const logId = await makeWeeklyLogId();
             await setDoc(doc(db, 'weeklyLogs', logId), {
                 id: logId,
                 techId: currentTechId,
@@ -302,6 +322,50 @@ export default function TechDashboardPage() {
                 </div>
                 <NotificationBell />
             </header>
+
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Card className="bg-bg-secondary border-border-sub">
+                    <CardContent className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Jobs This Week</p>
+                            <Briefcase size={12} className="text-text-muted" />
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-text-primary">{weeklyJobCount}</p>
+                        <p className="text-[8px] text-text-muted uppercase tracking-widest">{allWorkOrders.length} total assigned</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-bg-secondary border-border-sub">
+                    <CardContent className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Expected Pay</p>
+                            <DollarSign size={12} className="text-text-green" />
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-text-green">${expectedEarnings.toFixed(0)}</p>
+                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Pending logs</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-bg-secondary border-border-sub">
+                    <CardContent className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
+                            <ShieldCheck size={12} className="text-brand-red" />
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}</p>
+                        <p className="text-[8px] text-text-muted uppercase tracking-widest">/ 100 score</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-bg-secondary border-border-sub">
+                    <CardContent className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Logs Pending</p>
+                            <TrendingUp size={12} className="text-accent-gold" />
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-text-primary">{unsubmittedLogs.length}</p>
+                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Primary Action Buttons — 2×2 grid, large tap targets for field use */}
             <div className="grid grid-cols-2 gap-3">

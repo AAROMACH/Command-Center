@@ -4,7 +4,9 @@ import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, setDoc } from 'firebase/firestore';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar } from '@/lib/upload';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -131,13 +133,14 @@ export default function TechProfilePage() {
         }
     };
 
-    const handleTimeOffSubmit = () => {
+    const handleTimeOffSubmit = async () => {
         if (!timeOffForm.startDate || !timeOffForm.endDate || !timeOffForm.reason) {
             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in all required fields.' });
             return;
         }
+        const id = await createDocId(ID_PREFIXES.TIME_OFF_REQUEST);
         const newRequest: TimeOffRequest = {
-            id: `tor-${Date.now()}`,
+            id,
             techId: currentTechId!,
             type: timeOffForm.type,
             startDate: timeOffForm.startDate,
@@ -145,6 +148,7 @@ export default function TechProfilePage() {
             reason: timeOffForm.reason,
             status: 'pending',
         };
+        await setDoc(doc(db, 'timeOffRequests', id), { ...newRequest });
         setMyTimeOff(prev => [newRequest, ...prev]);
         toast({ title: 'Request Submitted', description: 'Your time-off request is pending review.' });
         setIsTimeOffDialogOpen(false);
@@ -263,6 +267,7 @@ export default function TechProfilePage() {
                             <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
                             <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
                             <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
+                            <TabsTrigger value="integrations" className="tab-trigger-plans">Integrations</TabsTrigger>
                         </TabsList>
 
                         {/* IDENTITY TAB */}
@@ -445,6 +450,37 @@ export default function TechProfilePage() {
                                     ))}
                                 </div>
                             )}
+                        </TabsContent>
+
+                        <TabsContent value="integrations" className="m-0 space-y-6">
+                            <div className="rounded-xl border border-border-sub bg-bg-secondary p-6 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-blue-500/10 rounded-lg">
+                                        <svg viewBox="0 0 24 24" className="h-5 w-5 text-blue-400" fill="currentColor">
+                                            <path d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 110-12.064 5.963 5.963 0 014.123 1.632l2.883-2.88C17.545 2.901 15.035 2 12.545 2 7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black uppercase tracking-widest text-text-primary">Google Calendar Sync</p>
+                                        <p className="text-[10px] text-text-muted mt-0.5">Sync your schedule, PTO, and job assignments with Google Calendar.</p>
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-dashed border-blue-400/30 bg-blue-400/5 p-4 text-center">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Coming Soon</p>
+                                    <p className="text-[10px] text-text-muted leading-relaxed">
+                                        Google Calendar integration is in development. Once enabled, your assigned jobs, scheduled PTO, and calendar events will sync automatically.
+                                    </p>
+                                </div>
+                                <div className="space-y-2 text-[10px] text-text-muted">
+                                    <p className="font-bold uppercase tracking-wider text-text-secondary">What will sync:</p>
+                                    <ul className="space-y-1 pl-3">
+                                        <li>· Assigned work orders (title, date, time, location)</li>
+                                        <li>· Approved PTO / time-off blocks</li>
+                                        <li>· Project milestones and deadlines</li>
+                                        <li>· Follow-up reminders</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </TabsContent>
                     </Tabs>
                 </div>

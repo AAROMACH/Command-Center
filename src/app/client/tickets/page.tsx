@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { uploadFile } from '@/lib/upload';
 import type { ServiceRequest, Technician } from '@/lib/types';
@@ -194,7 +194,7 @@ export default function ClientTicketsPage() {
         };
 
         try {
-            const ticketId = await generateId(ID_PREFIXES.CLIENT_REQUEST);
+            const ticketId = await createDocId(ID_PREFIXES.CLIENT_REQUEST);
             await setDoc(doc(db, 'clientRequests', ticketId), { ...newTicket, id: ticketId });
             toast({
                 title: "Request Transmitted",

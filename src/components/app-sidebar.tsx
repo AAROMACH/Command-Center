@@ -43,6 +43,8 @@ import {
   BarChart2,
   Target,
   CalendarDays,
+  MessageSquare,
+  Building2,
 } from "lucide-react";
 
 type NavItem = {
@@ -58,13 +60,14 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
   { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
   { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
+  { href: "/admin/sites", label: "Sites", icon: Building2, permission: "manage_assignments" },
   { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
   { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
   { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, permission: "view_assignments" },
-  { href: "/admin/map", label: "Map", icon: MapPin, permission: "manage_assignments" },
+  { href: "/admin/messaging", label: "Messaging", icon: MessageSquare, permission: "manage_assignments" },
   { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
   { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart2, permission: "view_reports" },
+  { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
   { href: "/admin/settings", label: "Settings", icon: Settings, permission: "view_reports" },
 ];
 

@@ -152,12 +152,6 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {plansPath && (
-            <DropdownMenuItem onSelect={() => router.push(plansPath)}>
-              <Zap className="mr-2 h-4 w-4 text-brand-red" />
-              <span>Plans & Pricing</span>
-            </DropdownMenuItem>
-          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => {

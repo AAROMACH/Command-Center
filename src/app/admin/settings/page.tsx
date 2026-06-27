@@ -49,7 +49,7 @@ export default function AdminSettingsPage() {
                 description: `${type.toUpperCase()} notifications transitioned to ${updatedPrefs[type] ? 'ACTIVE' : 'DISABLED'} status.`,
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
         }
     };
 

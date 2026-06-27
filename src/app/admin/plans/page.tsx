@@ -58,6 +58,33 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { PlanTier, Technician } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { differenceInMinutes, addHours } from 'date-fns';
+
+const SLA_HOURS: Record<string, number> = {
+    'std-1': 48,
+    'std-2': 24,
+    'std-3': 8,
+};
+const DEFAULT_SLA_HOURS = 48;
+
+function getSlaStatus(submittedAt: string | undefined, slaHours: number) {
+    const submitted = submittedAt ? new Date(submittedAt) : new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const deadline = addHours(submitted, slaHours);
+    const now = new Date();
+    const totalMinutes = slaHours * 60;
+    const remainingMinutes = differenceInMinutes(deadline, now);
+    const pct = remainingMinutes / totalMinutes;
+
+    if (remainingMinutes <= 0) {
+        return { label: 'SLA Breached', color: 'text-brand-red', bg: 'bg-brand-red/10 border-brand-red/30' };
+    }
+    const h = Math.floor(remainingMinutes / 60);
+    const m = remainingMinutes % 60;
+    const display = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    if (pct > 0.5) return { label: `${display} left`, color: 'text-text-green', bg: 'bg-green-500/10 border-green-500/30' };
+    if (pct > 0.1) return { label: `${display} left`, color: 'text-accent-gold', bg: 'bg-accent-gold/10 border-accent-gold/30' };
+    return { label: `${display} left`, color: 'text-brand-red', bg: 'bg-brand-red/10 border-brand-red/30' };
+}
 
 const PLAN_CAPABILITIES = [
     "48-hr priority scheduling",
@@ -209,7 +236,7 @@ export default function PlansPage() {
 
     const handleSavePlan = async () => {
         if (!selectedPlan.name || !selectedPlan.price) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: 'Please populate all critical plan parameters.' });
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Please populate all critical plan parameters.' });
             return;
         }
 
@@ -239,7 +266,7 @@ export default function PlansPage() {
 
     const confirmDeleteRequest = (plan: PlanTier) => {
         if (plan.type === 'standard') {
-            toast({ variant: 'destructive', title: 'Action Restricted', description: 'Standard Tiers are mission-critical and cannot be purged from the registry.' });
+            toast({ variant: 'destructive', title: 'Action Restricted', description: 'Standard Tiers are core and cannot be deleted from the system.' });
             return;
         }
         setPlanToDelete(plan);
@@ -265,7 +292,7 @@ export default function PlansPage() {
         }
 
         setPlans(prev => prev.filter(p => p.id !== planToDelete.id));
-        toast({ title: "Plan Purged", description: "Agreement has been removed from the operational registry." });
+        toast({ title: "Deleted", description: "Agreement has been removed from the system." });
         setIsDeleteOpen(false);
         setPlanToDelete(null);
     };
@@ -295,7 +322,7 @@ export default function PlansPage() {
                         <Zap size={12} />
                         Financial Architecture
                     </p>
-                    <h1 className="page-title">Plan Registry</h1>
+                    <h1 className="page-title">Plans</h1>
                     <p className="page-subtitle text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Manage standard service tiers and architect custom client agreements.</p>
                 </div>
                 <div className="page-header-right">
@@ -446,15 +473,18 @@ export default function PlansPage() {
                             </div>
                         </div>
                         <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] uppercase font-bold tracking-widest border-border-sub" asChild>
-                            <a href="https://forms.gle/t2oLLtwqtuuL5KJ78" target="_blank" rel="noopener noreferrer">
+                            <a href="https://forms.gle/WQ55ipWZvn4vMmvb9" target="_blank" rel="noopener noreferrer">
                                 <ExternalLink size={14} className="mr-2" />
-                                View Source Form
+                                New Request
                             </a>
                         </Button>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 max-w-5xl">
-                        {pendingSubscriptions.map(client => (
+                        {pendingSubscriptions.map(client => {
+                            const slaHours = SLA_HOURS[client.planId || ''] ?? DEFAULT_SLA_HOURS;
+                            const sla = getSlaStatus((client as any).createdAt || (client as any).pendingAt, slaHours);
+                            return (
                             <Card key={client.id} className="bg-bg-secondary border-border-main border-dashed border-accent-gold/40">
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-6">
@@ -466,30 +496,35 @@ export default function PlansPage() {
                                             <div className="flex items-center gap-3 mt-1">
                                                 <Badge variant="onhold" className="text-[8px] h-4 uppercase tracking-widest">Awaiting Authorization</Badge>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">New Partner Registry</p>
+                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">New Partner</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
+                                    <div className="flex items-center gap-6">
+                                        <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-widest", sla.bg, sla.color)}>
+                                            <Clock size={11} />
+                                            {sla.label}
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
                                             className="h-8 text-[9px] uppercase font-bold border-border-sub"
                                             onClick={() => handleDiscardRequest(client.id)}
                                         >
                                             Discard Request
                                         </Button>
-                                        <Button 
-                                            size="sm" 
+                                        <Button
+                                            size="sm"
                                             className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90"
                                             onClick={() => handleInitializeQuote(client.id)}
                                         >
-                                            Initialize Quote
+                                            Approve Request
                                         </Button>
                                     </div>
                                 </CardContent>
                             </Card>
-                        ))}
+                            );
+                        })}
                         {pendingSubscriptions.length === 0 && (
                             <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
                                 <Zap size={48} className="mx-auto text-text-muted mb-2" />
@@ -723,7 +758,7 @@ export default function PlansPage() {
                             <ShieldAlert className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Authorize Deletion</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs">This will permanently purge the plan from the operational registry.</DialogDescription>
+                        <DialogDescription className="text-xs">This will permanently delete the plan from the system.</DialogDescription>
                     </DialogHeader>
 
                     <div className="py-6 space-y-4 text-left">
@@ -747,13 +782,13 @@ export default function PlansPage() {
 
                     <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
                         <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
-                        <Button 
+                        <Button
                             variant="destructive"
-                            onClick={executeDelete} 
+                            onClick={executeDelete}
                             disabled={deleteConfirmText !== planToDelete?.name}
                             className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white"
                         >
-                            Authorize Purge
+                            Authorize Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -208,9 +208,9 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                 actualHours: (project.actualHours || 0) + logHours
             });
 
-            toast({ title: 'Session Transmitted', description: 'Timesheet log committed to project registry.' });
+            toast({ title: 'Timesheet Saved', description: 'Timesheet log committed to project.' });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
         }
     };
 

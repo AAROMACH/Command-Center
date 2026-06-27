@@ -60,8 +60,8 @@ export default function ProjectsPage() {
     try {
         await setDoc(doc(db, 'projects', newProject.id), { ...newProject });
         toast({
-          title: "Project Registry Initialized",
-          description: `${newProject.name} has been staged in the operational registry.`,
+          title: "Create Record",
+          description: `${newProject.name} has been staged in the system.`,
         });
     } catch (e: any) {
         toast({ variant: "destructive", title: "Creation Failed", description: e.message });
@@ -194,7 +194,7 @@ export default function ProjectsPage() {
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                       <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
                           {hasActiveFilters && (
                             <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                               <X size={10} /> Reset

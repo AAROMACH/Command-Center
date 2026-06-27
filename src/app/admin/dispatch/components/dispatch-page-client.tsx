@@ -112,7 +112,7 @@ export function DispatchPageClient() {
     return result;
   };
 
-  // 1. Initialize Registry Listeners
+  // 1. Initialize Data Listeners
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
@@ -406,7 +406,7 @@ export function DispatchPageClient() {
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                       <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                           <div className="flex items-center justify-between text-left">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Registry Constraints</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
                               {hasActiveFilters && (
                                   <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
                                       <X size={10} /> Reset

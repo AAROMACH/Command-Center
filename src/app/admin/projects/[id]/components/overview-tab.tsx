@@ -143,9 +143,9 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                 });
                 setNewNoteText("");
                 setIsAddingNote(false);
-                toast({ title: "Field Note Added", description: "Intelligence has been appended to the site briefing." });
+                toast({ title: "Note Added" });
             } catch (e: any) {
-                toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+                toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
             }
         }
     };
@@ -159,7 +159,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
             });
             toast({ title: "Note Removed", description: "Site intelligence has been updated." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
         }
     };
 
@@ -171,11 +171,11 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                 ...localProjectData
             });
             toast({
-                title: "Registry Updated",
-                description: "Operational briefing changes have been committed.",
+                title: "Project Updated",
+                description: "Changes saved.",
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
         }
     };
 

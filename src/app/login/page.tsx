@@ -96,9 +96,19 @@ export default function LoginPage() {
       toast({ title: "Google Sign-In Successful", description: "Terminal access granted." });
       await handleRedirect(firebaseUser);
     } catch (err: any) {
-      if (err.code !== "auth/popup-closed-by-user") {
+      const code: string = err.code || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User dismissed — no toast needed
+      } else if (code === "auth/operation-not-allowed") {
+        toast({ variant: "destructive", title: "Google Sign-In Not Enabled", description: "Enable Google as a sign-in provider in Firebase Console → Authentication → Sign-in methods." });
+      } else if (code === "auth/popup-blocked") {
+        toast({ variant: "destructive", title: "Popup Blocked", description: "Allow popups for this site in your browser, then try again." });
+      } else if (code.includes("requests-from-referer") || code === "auth/unauthorized-domain") {
+        toast({ variant: "destructive", title: "Domain Not Authorized", description: `Add "${window.location.hostname}" to Firebase Console → Authentication → Settings → Authorized Domains.` });
+      } else {
         toast({ variant: "destructive", title: "Google Sign-In Failed", description: err.message || "Could not complete Google authentication." });
       }
+      console.error("[google-auth]", code, err.message);
     } finally {
       setIsGoogleLoading(false);
     }

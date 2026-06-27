@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -200,7 +200,7 @@ export default function ActivityAuditPage() {
             return;
         }
 
-        const msgId = await generateId(ID_PREFIXES.MESSAGE);
+        const msgId = await createDocId(ID_PREFIXES.MESSAGE);
         const msg: AdminMessage = {
             id: msgId,
             senderId: currentUser?.id || 'admin',

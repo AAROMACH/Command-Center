@@ -68,7 +68,7 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/rel
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
 import { auditFieldChange } from '@/lib/audit';
 
@@ -182,7 +182,7 @@ export const WorkOrdersTable = React.memo(({
       const count = snapshot.size + 1;
       const shortId = `ASM-${String(count).padStart(3, '0')}`;
 
-      const assignmentId = await generateId(ID_PREFIXES.ASSIGNMENT);
+      const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);
       const assignmentRef = doc(db, 'assignments', assignmentId);
       const woRef = doc(db, 'workOrders', selectedOrder.id);
       const today = format(new Date(), 'MM-dd-yyyy');

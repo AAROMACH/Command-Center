@@ -21,7 +21,7 @@ import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval, parseISO, startOfDay } from 'date-fns';
 
@@ -217,7 +217,7 @@ export default function FinancialsPage() {
                 await setDoc(doc(db, 'invoices', id), cleanedData);
                 toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
             } else {
-                const newId = await generateId(ID_PREFIXES.INVOICE);
+                const newId = await createDocId(ID_PREFIXES.INVOICE);
                 await setDoc(doc(db, 'invoices', newId), { ...data, id: newId });
                 toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
             }

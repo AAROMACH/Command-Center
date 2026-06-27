@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -204,7 +204,7 @@ export default function TechDashboardPage() {
         );
 
         const snap = await getDocs(logQuery);
-        const itemId = await generateId(ID_PREFIXES.WEEKLY_LOG_ITEM);
+        const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
         const newItem: WeeklyLogItem = {
             id: itemId,
             workOrderId: woId,
@@ -220,7 +220,7 @@ export default function TechDashboardPage() {
                 items: arrayUnion(newItem)
             });
         } else {
-            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
             await setDoc(doc(db, 'weeklyLogs', logId), {
                 id: logId,
                 techId: currentTechId,

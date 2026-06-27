@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { Technician, WorkOrder, SiteRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -124,7 +124,7 @@ export default function ClientSitesPage() {
         };
 
         try {
-            const siteReqId = await generateId(ID_PREFIXES.SITE_REQUEST);
+            const siteReqId = await createDocId(ID_PREFIXES.SITE_REQUEST);
             await setDoc(doc(db, 'siteRequests', siteReqId), { ...newRequest, id: siteReqId });
             toast({
                 title: "Registration Transmitted",

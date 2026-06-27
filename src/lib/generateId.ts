@@ -12,7 +12,7 @@ type Prefix = typeof ID_PREFIXES[keyof typeof ID_PREFIXES];
  *   wlog-001, wlog-002 ... wlog-999, wlog-1000
  *   asmt-001, wli-001, inv-001
  */
-export async function generateId(prefix: Prefix): Promise<string> {
+export async function createDocId(prefix: Prefix): Promise<string> {
   const counterRef = doc(db, 'systemConfig', 'idCounters');
 
   try {

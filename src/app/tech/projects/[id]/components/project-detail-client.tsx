@@ -68,7 +68,7 @@ import { cn, getTacticalLocation, reverseGeocode, calculateDistance } from '@/li
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, setDoc } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 // --- UTILITIES ---
@@ -761,7 +761,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         };
 
         try {
-            const logId = await generateId(ID_PREFIXES.PROJECT_DAILY_LOG);
+            const logId = await createDocId(ID_PREFIXES.PROJECT_DAILY_LOG);
             await setDoc(doc(db, 'projectDailyLogs', logId), { ...newLog, id: logId });
             toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
         } catch (e: any) {

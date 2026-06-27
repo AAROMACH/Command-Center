@@ -26,9 +26,8 @@ import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { generateId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
-import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
+import { createDocId } from '@/lib/generateId';
 
 declare global {
   interface Window {
@@ -187,7 +186,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     }
 
     try {
-      const id = await generateId(ID_PREFIXES.WORK_ORDER);
+      const id = await createDocId(ID_PREFIXES.WORK_ORDER);
       const newOrder: WorkOrder = {
         ...formData as WorkOrder,
         id,

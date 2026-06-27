@@ -64,7 +64,7 @@ import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
-import { generateId } from '@/lib/generateId';
+import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 const DISPUTE_REASONS = [
@@ -197,7 +197,7 @@ export default function TechWeeklyLogPage() {
         };
 
         try {
-            const logId = await generateId(ID_PREFIXES.WEEKLY_LOG);
+            const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
             await setDoc(doc(db, 'weeklyLogs', logId), { ...newLog, id: logId });
             toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
             setIsCreateLogOpen(false);

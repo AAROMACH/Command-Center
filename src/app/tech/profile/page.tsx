@@ -4,7 +4,9 @@ import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, setDoc } from 'firebase/firestore';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar } from '@/lib/upload';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -131,13 +133,14 @@ export default function TechProfilePage() {
         }
     };
 
-    const handleTimeOffSubmit = () => {
+    const handleTimeOffSubmit = async () => {
         if (!timeOffForm.startDate || !timeOffForm.endDate || !timeOffForm.reason) {
             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in all required fields.' });
             return;
         }
+        const id = await generateId(ID_PREFIXES.TIME_OFF_REQUEST);
         const newRequest: TimeOffRequest = {
-            id: `tor-${Date.now()}`,
+            id,
             techId: currentTechId!,
             type: timeOffForm.type,
             startDate: timeOffForm.startDate,
@@ -145,6 +148,7 @@ export default function TechProfilePage() {
             reason: timeOffForm.reason,
             status: 'pending',
         };
+        await setDoc(doc(db, 'timeOffRequests', id), { ...newRequest });
         setMyTimeOff(prev => [newRequest, ...prev]);
         toast({ title: 'Request Submitted', description: 'Your time-off request is pending review.' });
         setIsTimeOffDialogOpen(false);

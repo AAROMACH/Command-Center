@@ -54,6 +54,8 @@ import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { isSuperAdmin, isClient } from '@/lib/permissions';
+import { generateId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import type { PlanTier, Technician } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -205,7 +207,7 @@ export default function PlansPage() {
         setIsTerminalOpen(true);
     };
 
-    const handleSavePlan = () => {
+    const handleSavePlan = async () => {
         if (!selectedPlan.name || !selectedPlan.price) {
             toast({ variant: 'destructive', title: 'Registry Error', description: 'Please populate all critical plan parameters.' });
             return;
@@ -214,7 +216,7 @@ export default function PlansPage() {
         if (terminalMode === 'create') {
             const plan: PlanTier = {
                 ...selectedPlan as PlanTier,
-                id: `cust-${Date.now()}`,
+                id: await generateId(ID_PREFIXES.PLAN_TIER),
             };
             setPlans(prev => [...prev, plan]);
             toast({ title: "Custom Agreement Authorized", description: `${plan.name} has been committed to the registry.` });

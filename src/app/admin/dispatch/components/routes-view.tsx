@@ -254,10 +254,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     );
 
     const handleCreateRoute = async () => {
-        if (!newRouteName.trim()) return;
+        const name = newRouteName.trim() || `Route ${routes.length + 1}`;
         const newRoute: Route = {
             id: await makeRouteId(),
-            name: newRouteName,
+            name,
             workOrderIds: [],
             technicianName: ""
         };
@@ -309,7 +309,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     };
 
     const handleTacticalOptimization = async () => {
-        const unassigned = allWorkOrders.filter(wo => !wo.routeId && wo.status === 'unassigned');
+        const unassigned = allWorkOrders.filter(wo => !wo.routeId && (!wo.assignedTechnicianId || wo.status === 'unassigned'));
         if (unassigned.length === 0) {
             toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
             return;
@@ -422,8 +422,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         toast({ title: "Registry Relocated", description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.` });
     };
 
-    const unassignedJobs = useMemo(() => 
-        allWorkOrders.filter(wo => !wo.routeId && wo.status === 'unassigned'),
+    const unassignedJobs = useMemo(() =>
+        allWorkOrders.filter(wo => !wo.routeId && (!wo.assignedTechnicianId || wo.status === 'unassigned')),
     [allWorkOrders]);
 
     const filteredUnassigned = useMemo(() => 

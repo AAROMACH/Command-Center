@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +104,7 @@ export default function AssignmentsHubPage() {
   const [isMapDateOpen, setIsMapDateOpen] = useState(false);
 
   const { toast } = useToast();
+  const router = useRouter();
 
   /**
    * Recursive Sanitize Protocol.
@@ -248,8 +250,7 @@ export default function AssignmentsHubPage() {
   };
 
   const handleCardClick = (wo: WorkOrder) => {
-    setSelectedJob(wo);
-    setIsDetailOpen(true);
+    router.push('/admin/assignments/' + wo.id);
   };
 
   const handleOpenEditDialog = (order: WorkOrder) => {

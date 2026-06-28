@@ -114,7 +114,7 @@ export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "assignments_history");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "timeline");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -128,6 +128,11 @@ export default function ActivityAuditPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+
+    // Timeline filter state
+    const [timelineTechFilter, setTimelineTechFilter] = useState<string>('all');
+    const [timelineTypeFilter, setTimelineTypeFilter] = useState<string>('all');
+    const [timelineClientFilter, setTimelineClientFilter] = useState('');
 
     // App Activity filter
     const [activityFilter, setActivityFilter] = useState<'all' | 'admin' | 'tech' | 'client'>('all');
@@ -472,6 +477,162 @@ export default function ActivityAuditPage() {
             });
         });
     };
+
+    type TimelineEvent = {
+        id: string;
+        timestamp: string;
+        type: 'assignment' | 'log' | 'invoice' | 'site_request' | 'work_order';
+        eventLabel: string;
+        entity: string;
+        techName?: string;
+        techId?: string;
+        clientName?: string;
+        color: string;
+        icon: string;
+    };
+
+    const timelineEvents = useMemo((): TimelineEvent[] => {
+        const events: TimelineEvent[] = [];
+
+        assignments.forEach(wo => {
+            const techId = wo.assignedTechnicianId || wo.techId;
+            const tech = technicians.find(t => t.id === techId);
+            const techName = tech?.name;
+
+            if (wo.assignedAt) {
+                events.push({
+                    id: `asmt-created-${wo.id}`,
+                    timestamp: wo.assignedAt,
+                    type: 'assignment',
+                    eventLabel: 'Assignment Created',
+                    entity: wo.title || wo.description || wo.id.toUpperCase(),
+                    techName,
+                    techId,
+                    clientName: wo.clientName,
+                    color: 'text-accent-gold',
+                    icon: 'Wrench',
+                });
+            }
+
+            const completedStatus = ['completed', 'checked-out'];
+            if (completedStatus.includes(wo.status) && wo.updatedAt) {
+                events.push({
+                    id: `asmt-completed-${wo.id}`,
+                    timestamp: wo.updatedAt,
+                    type: 'assignment',
+                    eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out',
+                    entity: wo.title || wo.description || wo.id.toUpperCase(),
+                    techName,
+                    techId,
+                    clientName: wo.clientName,
+                    color: 'text-text-green',
+                    icon: 'CheckCircle2',
+                });
+            }
+        });
+
+        workOrders.forEach(wo => {
+            const ts = (wo as any).createdAt;
+            if (ts) {
+                events.push({
+                    id: `wo-created-${wo.id}`,
+                    timestamp: ts,
+                    type: 'work_order',
+                    eventLabel: 'Work Order Created',
+                    entity: wo.title || wo.description || wo.id.toUpperCase(),
+                    clientName: wo.clientName,
+                    color: 'text-text-muted',
+                    icon: 'FileText',
+                });
+            }
+        });
+
+        weeklyLogs.forEach(log => {
+            const tech = technicians.find(t => t.id === log.techId);
+            if (log.submittedAt) {
+                events.push({
+                    id: `log-submitted-${log.id}`,
+                    timestamp: log.submittedAt,
+                    type: 'log',
+                    eventLabel: 'Weekly Log Submitted',
+                    entity: `Week of ${log.weekOf}`,
+                    techName: tech?.name,
+                    techId: log.techId,
+                    color: 'text-accent-gold',
+                    icon: 'ClipboardList',
+                });
+            }
+            if (log.status === 'Approved') {
+                events.push({
+                    id: `log-approved-${log.id}`,
+                    timestamp: log.submittedAt || log.weekOf,
+                    type: 'log',
+                    eventLabel: 'Weekly Log Approved',
+                    entity: `Week of ${log.weekOf}`,
+                    techName: tech?.name,
+                    techId: log.techId,
+                    color: 'text-text-green',
+                    icon: 'CheckCircle2',
+                });
+            }
+        });
+
+        invoices.forEach(inv => {
+            if (inv.issueDate) {
+                events.push({
+                    id: `inv-issued-${inv.id}`,
+                    timestamp: inv.issueDate,
+                    type: 'invoice',
+                    eventLabel: 'Invoice Issued',
+                    entity: `#${inv.invoiceNumber} — $${inv.total?.toFixed(2)}`,
+                    clientName: inv.clientName,
+                    color: 'text-text-muted',
+                    icon: 'DollarSign',
+                });
+            }
+            if (inv.status === 'paid') {
+                events.push({
+                    id: `inv-paid-${inv.id}`,
+                    timestamp: inv.dueDate || inv.issueDate,
+                    type: 'invoice',
+                    eventLabel: 'Invoice Paid',
+                    entity: `#${inv.invoiceNumber} — $${inv.total?.toFixed(2)}`,
+                    clientName: inv.clientName,
+                    color: 'text-text-green',
+                    icon: 'Coins',
+                });
+            }
+        });
+
+        siteRequests.forEach(req => {
+            const ts = req.submittedDate || (req as any).createdAt;
+            if (ts) {
+                events.push({
+                    id: `site-req-${req.id}`,
+                    timestamp: ts,
+                    type: 'site_request',
+                    eventLabel: 'Site Request Submitted',
+                    entity: `${req.siteName} — ${req.clientName}`,
+                    clientName: req.clientName,
+                    color: 'text-text-muted',
+                    icon: 'MapPin',
+                });
+            }
+        });
+
+        return events
+            .filter(e => !!e.timestamp)
+            .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    }, [assignments, workOrders, weeklyLogs, invoices, siteRequests, technicians]);
+
+    const filteredTimelineEvents = useMemo(() => {
+        return timelineEvents.filter(e => {
+            if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
+            if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
+            if (timelineClientFilter && !(e.clientName || '').toLowerCase().includes(timelineClientFilter.toLowerCase())) return false;
+            return true;
+        });
+    }, [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
 
     const searchResults = useMemo(() => {
         if (!searchQuery) return [];
@@ -1049,6 +1210,7 @@ export default function ActivityAuditPage() {
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
+                                <TabsTrigger value="timeline" className="tab-trigger-activity">Timeline</TabsTrigger>
                                 <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
                                 <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
                                 <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
@@ -1066,6 +1228,110 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="min-h-[500px] text-left">
+                            {/* TIMELINE TAB */}
+                            <TabsContent value="timeline" className="m-0 text-left">
+                                <div className="space-y-5">
+                                    {/* Filter bar */}
+                                    <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">
+                                        <Select value={timelineTechFilter} onValueChange={setTimelineTechFilter}>
+                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                                <SelectValue placeholder="All Techs" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-bg-elevated border-border-main">
+                                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Techs</SelectItem>
+                                                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
+                                                    <SelectItem key={t.id} value={t.id} className="text-[10px] uppercase font-bold">{t.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={timelineTypeFilter} onValueChange={setTimelineTypeFilter}>
+                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                                <SelectValue placeholder="All Events" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-bg-elevated border-border-main">
+                                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Events</SelectItem>
+                                                <SelectItem value="assignment" className="text-[10px] uppercase font-bold">Assignments</SelectItem>
+                                                <SelectItem value="work_order" className="text-[10px] uppercase font-bold">Work Orders</SelectItem>
+                                                <SelectItem value="log" className="text-[10px] uppercase font-bold">Weekly Logs</SelectItem>
+                                                <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
+                                                <SelectItem value="site_request" className="text-[10px] uppercase font-bold">Site Requests</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input
+                                            placeholder="Filter by client..."
+                                            value={timelineClientFilter}
+                                            onChange={e => setTimelineClientFilter(e.target.value)}
+                                            className="h-8 w-[180px] text-[10px] bg-bg-primary border-border-main"
+                                        />
+                                        {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineClientFilter) && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 text-[9px] uppercase font-bold text-text-muted"
+                                                onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineClientFilter(''); }}
+                                            >
+                                                <X size={11} className="mr-1" /> Clear
+                                            </Button>
+                                        )}
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                            {filteredTimelineEvents.length} events
+                                        </span>
+                                    </div>
+
+                                    {/* Timeline feed */}
+                                    {filteredTimelineEvents.length === 0 ? (
+                                        <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
+                                            <ActivityIcon size={32} className="mx-auto text-text-muted mb-2" />
+                                            <p className="text-[10px] font-bold uppercase text-text-muted">No events match the current filter</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            {filteredTimelineEvents.slice(0, 100).map(event => {
+                                                let tsDisplay = '';
+                                                try {
+                                                    const d = new Date(event.timestamp);
+                                                    tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a');
+                                                } catch { tsDisplay = event.timestamp; }
+
+                                                const typeColors: Record<string, string> = {
+                                                    assignment: 'border-l-accent-gold',
+                                                    work_order: 'border-l-border-main',
+                                                    log: 'border-l-brand-red',
+                                                    invoice: 'border-l-text-green',
+                                                    site_request: 'border-l-text-muted',
+                                                };
+
+                                                return (
+                                                    <div key={event.id} className={cn(
+                                                        'flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors',
+                                                        typeColors[event.type] || 'border-l-border-sub'
+                                                    )}>
+                                                        <div className="w-[120px] shrink-0 text-right">
+                                                            <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 text-left">
+                                                            <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                            <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
+                                                                {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
+                                                                {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <Badge variant="outline" className="text-[7px] uppercase shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                                    </div>
+                                                );
+                                            })}
+                                            {filteredTimelineEvents.length > 100 && (
+                                                <p className="text-center text-[9px] text-text-muted font-bold uppercase py-4">
+                                                    Showing 100 of {filteredTimelineEvents.length} events. Use filters to narrow results.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+
                             <TabsContent value="__tech_removed__" className="m-0 text-left">
                                 {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300 text-left">

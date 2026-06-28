@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { isSuperAdmin } from '@/lib/permissions';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
@@ -60,6 +60,7 @@ export default function FinancialsPage() {
     });
 
     const { toast } = useToast();
+    const router = useRouter();
 
     // 1. Initialize Data Listeners
     useEffect(() => {
@@ -360,19 +361,14 @@ export default function FinancialsPage() {
                     <TabsList className="tabs !p-0 !bg-bg-tertiary">
                         <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
                         <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
-                        <TabsTrigger value="expenses" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">EXPENSES</TabsTrigger>
-                        <TabsTrigger value="mileage" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">MILEAGE</TabsTrigger>
+                        <TabsTrigger value="logs" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">LOGS</TabsTrigger>
+                        <TabsTrigger value="reimbursements" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">REIMBURSEMENTS</TabsTrigger>
                     </TabsList>
                     <button
-                        onClick={() => setActiveTab('payroll')}
-                        className={cn(
-                            "tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-black uppercase tracking-widest transition-colors",
-                            activeTab === 'payroll'
-                                ? "bg-brand-red text-white border-brand-red"
-                                : "bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
-                        )}
+                        onClick={() => router.push('/admin/payroll/audit')}
+                        className="tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-black uppercase tracking-widest transition-colors bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
                     >
-                        PAYROLL AUDIT
+                        PAYROLL AUDIT ↗
                     </button>
                 </div>
                 
@@ -425,24 +421,23 @@ export default function FinancialsPage() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="payroll" className="m-0">
+                    <TabsContent value="logs" className="m-0">
                         <Card>
                             <CardHeader className="text-left">
-                                <CardTitle>Payroll Audit</CardTitle>
-                                <CardDescription>Review submitted weekly logs from technicians for approval.</CardDescription>
+                                <CardTitle>Weekly Logs</CardTitle>
+                                <CardDescription>Submitted logs from field operatives. Filter by status to review and audit.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <Tabs defaultValue="unpaid" className="w-full">
+                                <Tabs defaultValue="Submitted" className="w-full">
                                     <TabsList className="tabs !rounded-none border-b border-border-sub !bg-transparent !p-0 w-full justify-start">
-                                        <TabsTrigger value="unpaid" className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                                            Unpaid <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status !== 'Approved').length})</span>
-                                        </TabsTrigger>
-                                        <TabsTrigger value="paid" className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                                            Paid <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status === 'Approved').length})</span>
-                                        </TabsTrigger>
+                                        {(['Submitted', 'Approved', 'Rejected'] as const).map(status => (
+                                            <TabsTrigger key={status} value={status} className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                                                {status} <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status === status).length})</span>
+                                            </TabsTrigger>
+                                        ))}
                                     </TabsList>
-                                    {(['unpaid', 'paid'] as const).map(subTab => (
-                                        <TabsContent key={subTab} value={subTab} className="m-0">
+                                    {(['Submitted', 'Approved', 'Rejected'] as const).map(status => (
+                                        <TabsContent key={status} value={status} className="m-0">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow className="hover:bg-transparent border-border-sub">
@@ -455,9 +450,7 @@ export default function FinancialsPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {filteredWeeklyLogs
-                                                        .filter(l => subTab === 'unpaid' ? l.status !== 'Approved' : l.status === 'Approved')
-                                                        .map(log => (
+                                                    {filteredWeeklyLogs.filter(l => l.status === status).map(log => (
                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                                             <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
                                                             <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.techId)}</TableCell>
@@ -475,7 +468,7 @@ export default function FinancialsPage() {
                                                             </TableCell>
                                                             <TableCell className="font-mono text-text-green font-bold tabular-nums">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
                                                             <TableCell className="text-right pr-6">
-                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit log</Button>
+                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit Log</Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
@@ -526,11 +519,11 @@ export default function FinancialsPage() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="expenses" className="m-0">
+                    <TabsContent value="reimbursements" className="m-0 space-y-6">
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Expense Submissions</CardTitle>
-                                <CardDescription>Review and approve submitted technician expenses.</CardDescription>
+                                <CardDescription>Review and approve submitted technician reimbursement requests.</CardDescription>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
@@ -569,9 +562,7 @@ export default function FinancialsPage() {
                                 </Table>
                             </CardContent>
                         </Card>
-                    </TabsContent>
 
-                    <TabsContent value="mileage" className="m-0">
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle className="flex items-center gap-2">

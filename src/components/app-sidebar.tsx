@@ -88,6 +88,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
       { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
+      { href: "/admin/payroll/audit", label: "Payroll Audit", icon: Receipt, permission: "view_financials" },
       { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },
     ],
   },

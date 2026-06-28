@@ -133,6 +133,14 @@ export default function TechDashboardPage() {
         }, 0);
     }, [unsubmittedLogs]);
 
+    const reliabilityTier = useMemo(() => {
+        const score = tech?.reliabilityScore ?? 100;
+        if (score >= 90) return { label: 'Elite', variant: 'active' as const };
+        if (score >= 75) return { label: 'Reliable', variant: 'onhold' as const };
+        if (score >= 60) return { label: 'Standard', variant: 'scheduled' as const };
+        return { label: 'At Risk', variant: 'missed' as const };
+    }, [tech?.reliabilityScore]);
+
     const weeklyJobCount = useMemo(() => {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         return allWorkOrders.filter(wo => {
@@ -322,142 +330,169 @@ export default function TechDashboardPage() {
                 </Card>
             </div>
 
-            {/* Primary Action Buttons — 2×2 grid, large tap targets for field use */}
-            <div className="grid grid-cols-2 gap-3">
-                <Button
-                    variant="outline"
-                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all"
-                    onClick={() => setIsCheckInDialogOpen(true)}
-                    aria-label="Check in to a job"
-                >
-                    <Play size={18} className="text-brand-red" aria-hidden="true" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
-                </Button>
-                <Button
-                    variant="outline"
-                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-blue-500 hover:bg-blue-500/5 transition-all"
-                    onClick={() => router.push('/tech/assignments')}
-                    aria-label="View job map"
-                >
-                    <MapIcon size={18} className="text-blue-400" aria-hidden="true" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Job Map</span>
-                </Button>
-                <Button
-                    variant="outline"
-                    className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all"
-                    onClick={() => setIsReceiptDialogOpen(true)}
-                    aria-label="Upload a receipt"
-                >
-                    <Receipt size={18} className="text-accent-gold" aria-hidden="true" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
-                </Button>
-                <Button
-                    variant="outline"
-                    className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all"
-                    onClick={() => setIsLogSelectionOpen(true)}
-                    aria-label={`Submit weekly log${unsubmittedLogs.length > 0 ? ` — ${unsubmittedLogs.length} pending` : ''}`}
-                >
-                    <ClipboardList size={18} className="text-text-green" aria-hidden="true" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
-                    {unsubmittedLogs.length > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">
-                            {unsubmittedLogs.length}
-                        </Badge>
-                    )}
-                </Button>
-            </div>
+            {/* Two-column layout */}
+            <div className="flex flex-col lg:flex-row gap-5 items-start">
 
-            {activeJob && (
-                <Card className={cn(
-                    "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",
-                    activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_rgba(31,138,85,0.1)]" : "border-brand-red bg-brand-red-dim/5"
-                )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
-                    <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="text-left space-y-2 flex-1 min-w-0">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">{(activeJob.id || '').toUpperCase()}</span>
-                                <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
-                                    {activeJob.status.replace(/-/g, ' ').toUpperCase()}
-                                </Badge>
-                            </div>
-                            <h3 className="text-lg font-black uppercase tracking-tight text-text-primary leading-tight truncate">
-                                {activeJob.title || activeJob.description}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
-                                    <Building2 size={12}/> {activeJob.clientName}
-                                </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px] text-left">
-                                    <MapPin size={12} className="text-brand-red"/> {activeJob.location}
-                                </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
-                                    <CalendarIcon size={12} className="text-accent-gold"/> {activeJob.scheduleDate}
-                                </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
-                                    <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-2 shrink-0 self-start md:self-center">
-                            {activeJob.status === 'assigned' && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-6 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
-                                    <Check size={14} className="mr-2"/> Confirm
-                                </Button>
-                            )}
-                            {activeJob.status === 'confirmed' && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-6 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
-                                    <Navigation size={14} className="mr-2"/> Start Trip
-                                </Button>
-                            )}
-                            {activeJob.status === 'on-my-way' && (
-                                <Button 
-                                    disabled={hasActiveSession}
-                                    className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" 
-                                    onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}
-                                >
-                                    <Play size={14} className="mr-2 fill-current"/> Check In
-                                </Button>
-                            )}
-                            {activeJob.status === 'in-progress' && (
-                                <Button variant="outline" className="h-9 px-6 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
-                                    <LogOut size={14} className="mr-2"/> Check Out
-                                </Button>
-                            )}
-                            {activeJob.status === 'checked-out' && (
-                                <div className="flex gap-2">
-                                    <Button 
-                                        disabled={hasActiveSession}
-                                        variant="outline" 
-                                        className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" 
-                                        onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}
-                                    >
-                                        <RotateCcw size={14} className="mr-2"/> Resume
-                                    </Button>
-                                    <Button 
-                                        className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest"
-                                        onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}
-                                    >
-                                        <CheckCircle2 size={14} className="mr-2"/> Finalize
-                                    </Button>
+                {/* Left column — active job + schedule */}
+                <div className="flex-1 min-w-0 space-y-4">
+                    {activeJob ? (
+                        <Card className={cn(
+                            "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",
+                            activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_rgba(31,138,85,0.1)]" : "border-brand-red bg-brand-red-dim/5"
+                        )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
+                            <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="text-left space-y-2 flex-1 min-w-0">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">{(activeJob.id || '').toUpperCase()}</span>
+                                        <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
+                                            {activeJob.status.replace(/-/g, ' ').toUpperCase()}
+                                        </Badge>
+                                    </div>
+                                    <h3 className="text-lg font-black uppercase tracking-tight text-text-primary leading-tight truncate">
+                                        {activeJob.title || activeJob.description}
+                                    </h3>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                            <Building2 size={12}/> {activeJob.clientName}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px] text-left">
+                                            <MapPin size={12} className="text-brand-red"/> {activeJob.location}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                            <CalendarIcon size={12} className="text-accent-gold"/> {activeJob.scheduleDate}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                            <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
+                                        </p>
+                                    </div>
                                 </div>
+                                <div className="flex gap-2 shrink-0 self-start md:self-center">
+                                    {activeJob.status === 'assigned' && (
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-5 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
+                                            <Check size={14} className="mr-2"/> Confirm
+                                        </Button>
+                                    )}
+                                    {activeJob.status === 'confirmed' && (
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-5 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                            <Navigation size={14} className="mr-2"/> Start Trip
+                                        </Button>
+                                    )}
+                                    {activeJob.status === 'on-my-way' && (
+                                        <Button disabled={hasActiveSession} className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                            <Play size={14} className="mr-2 fill-current"/> Check In
+                                        </Button>
+                                    )}
+                                    {activeJob.status === 'in-progress' && (
+                                        <Button variant="outline" className="h-9 px-5 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                                            <LogOut size={14} className="mr-2"/> Check Out
+                                        </Button>
+                                    )}
+                                    {activeJob.status === 'checked-out' && (
+                                        <div className="flex gap-2">
+                                            <Button disabled={hasActiveSession} variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                                <RotateCcw size={14} className="mr-2"/> Resume
+                                            </Button>
+                                            <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                                <CheckCircle2 size={14} className="mr-2"/> Finalize
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </Card>
+                    ) : (
+                        <Card className="border border-border-sub bg-bg-secondary">
+                            <CardContent className="py-8 text-center space-y-2">
+                                <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
+                                <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
+                </div>
+
+                {/* Right column — quick actions, reliability, earnings, pending logs */}
+                <div className="w-full lg:w-[300px] shrink-0 space-y-4">
+
+                    {/* Quick actions */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all" onClick={() => setIsCheckInDialogOpen(true)}>
+                            <Play size={18} className="text-brand-red" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
+                        </Button>
+                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-blue-500 hover:bg-blue-500/5 transition-all" onClick={() => router.push('/tech/assignments')}>
+                            <MapIcon size={18} className="text-blue-400" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Job Map</span>
+                        </Button>
+                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all" onClick={() => setIsReceiptDialogOpen(true)}>
+                            <Receipt size={18} className="text-accent-gold" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
+                        </Button>
+                        <Button variant="outline" className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all" onClick={() => setIsLogSelectionOpen(true)}>
+                            <ClipboardList size={18} className="text-text-green" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                            {unsubmittedLogs.length > 0 && (
+                                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">{unsubmittedLogs.length}</Badge>
                             )}
-                        </div>
+                        </Button>
                     </div>
-                </Card>
-            )}
 
-            {!activeJob && (
-                <Card className="border border-border-sub bg-bg-secondary">
-                    <CardContent className="py-8 text-center space-y-2">
-                        <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
-                        <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
-                    </CardContent>
-                </Card>
-            )}
+                    {/* Reliability */}
+                    <Card className="bg-bg-secondary border-border-sub overflow-hidden">
+                        <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
+                                <Badge variant={reliabilityTier.variant} className="text-[8px] h-4 px-1.5">{reliabilityTier.label}</Badge>
+                            </div>
+                            <p className="text-4xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}<span className="text-text-muted text-lg">/100</span></p>
+                            <div className="h-1.5 rounded-full bg-border-main overflow-hidden">
+                                <div className="h-full rounded-full bg-brand-red transition-all" style={{ width: `${tech.reliabilityScore ?? 100}%` }} />
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
+                    {/* Earnings summary */}
+                    <Card className="bg-bg-secondary border-border-sub">
+                        <CardContent className="p-4 space-y-3">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Earnings — Pending</p>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Expected</span>
+                                    <span className="text-sm font-mono font-bold text-text-green">${expectedEarnings.toFixed(0)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Draft Logs</span>
+                                    <span className="text-sm font-mono font-bold text-accent-gold">{unsubmittedLogs.length}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Jobs This Week</span>
+                                    <span className="text-sm font-mono font-bold text-text-primary">{weeklyJobCount}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Pending logs */}
+                    {unsubmittedLogs.length > 0 && (
+                        <div className="space-y-2">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Logs Pending Submission</p>
+                            {unsubmittedLogs.map(log => (
+                                <Card key={log.id} className="bg-bg-secondary border-accent-gold/30 cursor-pointer hover:border-accent-gold transition-all" onClick={() => { setSelectedLog(log); }}>
+                                    <CardContent className="p-3 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Week of {log.weekOf}</p>
+                                            <p className="text-[9px] text-text-muted">{(log.items || []).length} assignments</p>
+                                        </div>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-accent-gold">Submit →</span>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
 
             <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
             <ReceiptUploadDialog isOpen={isReceiptDialogOpen} setIsOpen={setIsReceiptDialogOpen} workOrders={allWorkOrders} projects={[]} />

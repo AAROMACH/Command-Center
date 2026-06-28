@@ -7,18 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Bell, 
-  Shield, 
-  Settings as SettingsIcon, 
-  Monitor, 
-  ShieldCheck,
-  Download,
+import {
+  Bell,
+  Settings as SettingsIcon,
+  Monitor,
   Moon,
   Sun,
-  Search,
-  Activity
+  Calendar,
+  Route,
+  Gauge,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TERMINOLOGY } from '@/lib/constants';
@@ -28,6 +27,9 @@ export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+    const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('optimized');
+    const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
+    const [calendarSync, setCalendarSync] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -39,11 +41,27 @@ export default function TechSettingsPage() {
         const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
             const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
-                if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setCurrentUser({ ...data, id: snap.id } as Technician);
+                    if (data.routePreference) setRoutePreference(data.routePreference);
+                    if (data.mileageUnit) setMileageUnit(data.mileageUnit);
+                    if (typeof data.googleCalendarSyncEnabled === 'boolean') setCalendarSync(data.googleCalendarSyncEnabled);
+                }
             });
             return () => unsub();
         }
     }, []);
+
+    const saveField = async (field: string, value: any) => {
+        if (!currentUser) return;
+        try {
+            await updateDoc(doc(db, 'users', currentUser.id), { [field]: value });
+            toast({ title: 'Settings saved' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+        }
+    };
 
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
@@ -140,7 +158,7 @@ export default function TechSettingsPage() {
                         </CardHeader>
                         <CardContent className="text-left">
                             <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub w-fit">
-                                <button 
+                                <button
                                     onClick={() => toggleTheme('dark')}
                                     className={cn(
                                         "px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest",
@@ -149,7 +167,7 @@ export default function TechSettingsPage() {
                                 >
                                     <Moon size={14} className="inline mr-2"/> Dark
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => toggleTheme('light')}
                                     className={cn(
                                         "px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest",
@@ -158,6 +176,93 @@ export default function TechSettingsPage() {
                                 >
                                     <Sun size={14} className="inline mr-2"/> Light
                                 </button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+
+                {/* WORK PREFERENCES */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Route size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Work Preferences</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Route &amp; Mileage</CardTitle>
+                            <CardDescription>Set your default route optimization and distance units.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4 text-left">
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                                <div className="space-y-0.5 text-left">
+                                    <p className="text-xs font-bold uppercase tracking-wider">Route Preference</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-medium">Default ordering for your daily job route.</p>
+                                </div>
+                                <Select
+                                    value={routePreference}
+                                    onValueChange={(v: 'optimized' | 'by-time' | 'by-mileage') => {
+                                        setRoutePreference(v);
+                                        saveField('routePreference', v);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-9 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        <SelectItem value="optimized" className="text-[10px] font-bold uppercase">Optimized</SelectItem>
+                                        <SelectItem value="by-time" className="text-[10px] font-bold uppercase">By Time</SelectItem>
+                                        <SelectItem value="by-mileage" className="text-[10px] font-bold uppercase">By Mileage</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                                <div className="space-y-0.5 text-left">
+                                    <p className="text-xs font-bold uppercase tracking-wider">Distance Units</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-medium">Miles or kilometers for mileage tracking.</p>
+                                </div>
+                                <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
+                                    {(['mi', 'km'] as const).map(unit => (
+                                        <button
+                                            key={unit}
+                                            onClick={() => { setMileageUnit(unit); saveField('mileageUnit', unit); }}
+                                            className={cn(
+                                                'h-9 px-4 text-[10px] font-bold uppercase tracking-widest transition-colors border-l border-border-main first:border-l-0',
+                                                mileageUnit === unit ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary'
+                                            )}
+                                        >
+                                            {unit}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+
+                {/* CALENDAR INTEGRATION */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Calendar size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Calendar Integration</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Google Calendar Sync</CardTitle>
+                            <CardDescription>Sync your job assignments with Google Calendar.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
+                                <div className="space-y-0.5 text-left">
+                                    <p className="text-xs font-bold uppercase tracking-wider">Enable Sync</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-medium">Automatically add assignments to your Google Calendar.</p>
+                                </div>
+                                <Switch
+                                    checked={calendarSync}
+                                    onCheckedChange={(v) => {
+                                        setCalendarSync(v);
+                                        saveField('googleCalendarSyncEnabled', v);
+                                    }}
+                                />
                             </div>
                         </CardContent>
                     </Card>

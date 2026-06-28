@@ -214,28 +214,22 @@ export default function AdminMapPage() {
                 <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading work orders...</p>
               </div>
             </div>
-          ) : mappableJobs.length === 0 ? (
+          ) : dateJobs.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-bg-secondary">
               <div className="text-center space-y-4 px-8">
                 <div className="p-4 bg-bg-tertiary rounded-full w-fit mx-auto">
                   <MapPin size={32} className="text-text-muted" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No mapped jobs</p>
-                  <p className="text-xs text-text-muted">
-                    {dateJobs.length > 0
-                      ? `${dateJobs.length} work order${dateJobs.length > 1 ? 's' : ''} scheduled — location coordinates not set.`
-                      : `No work orders scheduled for ${dateLabel}.`}
-                  </p>
+                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No work orders</p>
+                  <p className="text-xs text-text-muted">No work orders scheduled for {dateLabel}.</p>
                 </div>
-                {dateJobs.length === 0 && (
-                  <p className="text-[10px] text-text-muted font-bold uppercase">Try a different date above.</p>
-                )}
+                <p className="text-[10px] text-text-muted font-bold uppercase">Try a different date above.</p>
               </div>
             </div>
           ) : (
             <AdminMapView
-              jobs={mappableJobs}
+              jobs={dateJobs}
               selectedJob={selectedJob}
               onSelectJob={setSelectedJob}
             />

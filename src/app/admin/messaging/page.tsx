@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, query, where, orderBy, addDoc } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
-import type { Technician, AdminMessage } from '@/lib/types';
+import type { Technician, AdminMessage, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, Lock, Activity, Radio, Users, Plus } from 'lucide-react';
+import { MessageSquare, Send, Lock, Activity, Radio, Users, Plus, Briefcase } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ export default function AdminMessagingPage() {
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [dmBody, setDmBody] = useState('');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [sending, setSending] = useState(false);
@@ -69,7 +70,15 @@ export default function AdminMessagingPage() {
       setDirectMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectMessage)));
     });
 
-    return () => { unsubTechs(); unsubDMs(); };
+    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+      setActiveProjects(
+        snap.docs
+          .map(d => ({ ...d.data(), id: d.id } as Project))
+          .filter(p => p.status !== 'completed')
+      );
+    });
+
+    return () => { unsubTechs(); unsubDMs(); unsubProjects(); };
   }, []);
 
   const handleBroadcast = useCallback(async () => {
@@ -343,6 +352,25 @@ export default function AdminMessagingPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Active Projects */}
+      {activeProjects.length > 0 && (
+        <div className="space-y-3 pt-2 border-t border-border-sub">
+          <p className="text-[9px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <Briefcase size={10} className="text-brand-red" />
+            Active Projects ({activeProjects.length})
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {activeProjects.map(p => (
+              <div key={p.id} className="px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-0.5">{p.status}</p>
+                <p className="text-[11px] font-bold text-text-primary leading-tight">{p.name}</p>
+                <p className="text-[9px] text-text-muted mt-0.5 truncate">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

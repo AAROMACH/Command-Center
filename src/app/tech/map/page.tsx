@@ -173,30 +173,21 @@ export default function TechMapPage() {
                 <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading assignments...</p>
               </div>
             </div>
-          ) : mappableJobs.length === 0 ? (
+          ) : todayJobs.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-bg-secondary">
               <div className="text-center space-y-4 px-8">
                 <div className="p-4 bg-bg-tertiary rounded-full w-fit mx-auto">
                   <MapPin size={32} className="text-text-muted" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No mapped jobs</p>
-                  <p className="text-xs text-text-muted">
-                    {todayJobs.length > 0
-                      ? `${todayJobs.length} job${todayJobs.length > 1 ? 's' : ''} found but location coordinates are not yet set.`
-                      : 'No upcoming assignments found in the registry.'}
-                  </p>
+                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No upcoming jobs</p>
+                  <p className="text-xs text-text-muted">No upcoming assignments found in the registry.</p>
                 </div>
-                {todayJobs.length > 0 && (
-                  <p className="text-[10px] text-text-muted uppercase font-bold">
-                    Use the list below to get directions to each site.
-                  </p>
-                )}
               </div>
             </div>
           ) : (
             <MapView
-              jobs={mappableJobs}
+              jobs={todayJobs}
               selectedJob={selectedJob}
               onSelectJob={setSelectedJob}
             />

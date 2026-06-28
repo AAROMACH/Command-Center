@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, MapPin, Search, Phone, User } from 'lucide-react';
+import { Building2, Plus, MapPin, Search, Phone, User, ChevronRight, Activity, Clock, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -86,31 +86,42 @@ export default function AdminSitesPage() {
         </div>
       </header>
 
-      {/* Universal search bar */}
-      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <Input
-            placeholder="Search sites..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9 text-[11px] bg-bg-primary border-border-main"
-          />
+      {/* Dispatch-style search bar */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
+        <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+          <div className="search-wrap flex-1 !mb-0 text-left">
+            <Search className="h-4 w-4 text-text-muted" />
+            <input
+              className="search-input"
+              placeholder="Search sites, clients, locations..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub shrink-0">
+            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Sort by:</p>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-20 h-7 bg-transparent text-[10px] font-bold uppercase border-none shadow-none focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-elevated border-border-main">
+                <SelectItem value="name" className="text-[10px] font-bold uppercase">Name</SelectItem>
+                <SelectItem value="client" className="text-[10px] font-bold uppercase">Client</SelectItem>
+                <SelectItem value="status" className="text-[10px] font-bold uppercase">Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-          <SelectTrigger className="h-9 w-36 text-[10px] font-bold uppercase tracking-widest bg-bg-primary border-border-main">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-bg-elevated border-border-main">
-            <SelectItem value="name" className="text-[10px] font-bold uppercase tracking-widest">Name</SelectItem>
-            <SelectItem value="client" className="text-[10px] font-bold uppercase tracking-widest">Client</SelectItem>
-            <SelectItem value="status" className="text-[10px] font-bold uppercase tracking-widest">Status</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest ml-auto" onClick={() => setIsNewOpen(true)}>
-          <Plus size={12} className="mr-1.5" />
-          New Site
-        </Button>
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
+            <Building2 size={12} className="text-text-muted" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{filtered.length} site{filtered.length !== 1 ? 's' : ''}</span>
+          </div>
+          <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsNewOpen(true)}>
+            <Plus size={12} className="mr-1.5" />
+            New Site
+          </Button>
+        </div>
       </div>
 
       {/* Grid */}
@@ -134,40 +145,50 @@ export default function AdminSitesPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(site => (
             <Link key={site.id} href={`/admin/sites/${site.id}`}>
-              <div className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-all cursor-pointer p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
+              <div className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main hover:shadow-lg transition-all cursor-pointer group flex flex-col overflow-hidden">
+                {/* Card header band */}
+                <div className="bg-bg-tertiary/50 border-b border-border-sub px-4 py-2.5 flex items-center justify-between gap-2">
+                  <Building2 size={12} className="text-brand-red shrink-0" />
+                  <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[7px] h-4 uppercase shrink-0 ml-auto">
+                    {site.status || 'active'}
+                  </Badge>
+                </div>
+                {/* Main content */}
+                <div className="p-4 space-y-3 flex-1">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">{site.name}</p>
+                    <p className="text-[14px] font-black uppercase tracking-tight text-text-primary truncate group-hover:text-brand-red transition-colors">{site.name}</p>
                     {site.clientName && (
                       <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate">{site.clientName}</p>
                     )}
                   </div>
-                  <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[7px] h-3.5 uppercase shrink-0">
-                    {site.status}
-                  </Badge>
+                  <div className="space-y-1.5">
+                    {site.location && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <MapPin size={10} className="text-brand-red shrink-0" />
+                        <span className="truncate">{site.location}</span>
+                      </div>
+                    )}
+                    {site.managerName && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <User size={10} className="shrink-0" />
+                        <span className="truncate">{site.managerName}</span>
+                      </div>
+                    )}
+                    {site.managerPhone && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <Phone size={10} className="shrink-0" />
+                        <span>{site.managerPhone}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  {site.location && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                      <MapPin size={10} className="text-brand-red shrink-0" />
-                      <span className="truncate">{site.location}</span>
-                    </div>
-                  )}
-                  {site.managerName && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                      <User size={10} className="shrink-0" />
-                      <span className="truncate">{site.managerName}</span>
-                    </div>
-                  )}
-                  {site.managerPhone && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                      <Phone size={10} className="shrink-0" />
-                      <span>{site.managerPhone}</span>
-                    </div>
-                  )}
+                {/* Footer */}
+                <div className="bg-bg-tertiary/20 border-t border-border-sub px-4 py-2 flex items-center justify-between">
+                  <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">View Details</p>
+                  <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
                 </div>
               </div>
             </Link>

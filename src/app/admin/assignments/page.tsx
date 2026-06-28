@@ -291,6 +291,10 @@ export default function AssignmentsHubPage() {
 
   const handleDeleteOrder = () => {
     if (!selectedJob) return;
+    if (selectedJob.status === 'completed') {
+      toast({ variant: "destructive", title: "Cannot Delete", description: "Completed assignments are archived and cannot be removed." });
+      return;
+    }
     const docRef = doc(db, 'assignments', selectedJob.id);
     deleteDoc(docRef).catch((e: any) => {
       console.error("Purge Error:", e);

@@ -25,7 +25,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           </div>
           {/* Page content */}
           <main className="flex-1 overflow-y-auto bg-bg-primary">
-            {children}
+            <div className="page-content">
+              {children}
+            </div>
           </main>
           {/* Tech mobile bottom nav */}
           {isTechPortal && <TechBottomNav />}

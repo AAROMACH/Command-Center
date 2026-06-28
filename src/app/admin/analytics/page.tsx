@@ -111,6 +111,9 @@ export default function FieldIntelligencePage() {
                         <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
+                        <TabsTrigger value="activity" className="tab-trigger-activity">
+                            Activity
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -290,6 +293,14 @@ export default function FieldIntelligencePage() {
                         </div>
                     )}
                 </TabsContent>
+
+                <TabsContent value="activity" className="m-0">
+                    <ActivityFeed
+                        assignments={assignments}
+                        weeklyLogs={weeklyLogs}
+                        technicians={technicians}
+                    />
+                </TabsContent>
             </Tabs>
 
             <style jsx global>{`
@@ -297,6 +308,160 @@ export default function FieldIntelligencePage() {
                     @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
                 }
             `}</style>
+        </div>
+    );
+}
+
+type ActivityItem = {
+    id: string;
+    time: string;
+    actor: string;
+    role: 'admin' | 'tech' | 'client';
+    action: string;
+    detail: string;
+};
+
+function ActivityFeed({ assignments, weeklyLogs, technicians }: {
+    assignments: WorkOrder[];
+    weeklyLogs: WeeklyLog[];
+    technicians: Technician[];
+}) {
+    const [filter, setFilter] = useState<'all' | 'admin' | 'tech' | 'client'>('all');
+
+    const items: ActivityItem[] = useMemo(() => {
+        const list: ActivityItem[] = [];
+
+        // Tech check-ins from completed assignments
+        assignments
+            .filter(wo => wo.status === 'completed' && wo.scheduleDate)
+            .slice(0, 20)
+            .forEach(wo => {
+                const tech = technicians.find(t => t.id === wo.assignedTechnicianId || t.id === wo.techId);
+                if (tech && !tech.roles?.includes('client')) {
+                    list.push({
+                        id: `wo-${wo.id}`,
+                        time: wo.scheduleDate || '',
+                        actor: tech.name || 'Field Tech',
+                        role: 'tech',
+                        action: 'Completed assignment',
+                        detail: wo.title || wo.description || wo.id,
+                    });
+                }
+            });
+
+        // In-progress assignments
+        assignments
+            .filter(wo => wo.status === 'in-progress' && wo.scheduleDate)
+            .slice(0, 10)
+            .forEach(wo => {
+                const tech = technicians.find(t => t.id === wo.assignedTechnicianId || t.id === wo.techId);
+                if (tech) {
+                    list.push({
+                        id: `ip-${wo.id}`,
+                        time: wo.scheduleDate || '',
+                        actor: tech.name || 'Field Tech',
+                        role: 'tech',
+                        action: 'Checked in — job in progress',
+                        detail: wo.title || wo.description || wo.id,
+                    });
+                }
+            });
+
+        // Weekly log submissions
+        weeklyLogs
+            .filter(wl => wl.status === 'Submitted' || wl.status === 'Approved')
+            .slice(0, 20)
+            .forEach(wl => {
+                const tech = technicians.find(t => t.id === wl.techId);
+                list.push({
+                    id: `wl-${wl.id}`,
+                    time: wl.submittedAt || wl.weekOf || '',
+                    actor: tech?.name || 'Field Tech',
+                    role: 'tech',
+                    action: wl.status === 'Approved' ? 'Log approved' : 'Submitted weekly log',
+                    detail: `Week of ${wl.weekOf}`,
+                });
+            });
+
+        // Client users — show portal activity as "active"
+        technicians
+            .filter(t => t.roles?.includes('client'))
+            .slice(0, 10)
+            .forEach(t => {
+                if ((t as any).lastSeen) {
+                    list.push({
+                        id: `cl-${t.id}`,
+                        time: (t as any).lastSeen,
+                        actor: t.clientCompany || t.name || 'Client',
+                        role: 'client',
+                        action: 'Accessed client portal',
+                        detail: t.name || '',
+                    });
+                }
+            });
+
+        return list
+            .filter(i => i.time)
+            .sort((a, b) => b.time.localeCompare(a.time))
+            .slice(0, 50);
+    }, [assignments, weeklyLogs, technicians]);
+
+    const filtered = useMemo(
+        () => filter === 'all' ? items : items.filter(i => i.role === filter),
+        [items, filter]
+    );
+
+    const roleColors: Record<string, string> = {
+        admin: 'text-brand-red bg-brand-red/10 border-brand-red/20',
+        tech: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+        client: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+    };
+
+    return (
+        <div className="space-y-4 text-left">
+            <div className="flex items-center gap-2">
+                {(['all', 'admin', 'tech', 'client'] as const).map(f => (
+                    <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={cn(
+                            'h-7 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border transition-colors',
+                            filter === f
+                                ? 'bg-brand-red text-white border-brand-red'
+                                : 'border-border-sub text-text-muted hover:text-text-primary bg-bg-secondary'
+                        )}
+                    >
+                        {f}
+                    </button>
+                ))}
+                <span className="ml-auto text-[9px] text-text-muted uppercase tracking-widest font-bold">{filtered.length} events</span>
+            </div>
+
+            {filtered.length === 0 ? (
+                <div className="py-16 text-center">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No activity recorded yet</p>
+                </div>
+            ) : (
+                <div className="space-y-1.5">
+                    {filtered.map(item => (
+                        <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-sub hover:bg-bg-tertiary transition-colors">
+                            <span className={cn('shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border mt-0.5', roleColors[item.role])}>
+                                {item.role}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-baseline gap-2 flex-wrap">
+                                    <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{item.actor}</span>
+                                    <span className="text-[10px] text-text-muted">{item.action}</span>
+                                </div>
+                                {item.detail && (
+                                    <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5 truncate">{item.detail}</p>
+                                )}
+                            </div>
+                            <span className="text-[8px] text-text-muted font-mono shrink-0 mt-0.5">{item.time.slice(0, 10)}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

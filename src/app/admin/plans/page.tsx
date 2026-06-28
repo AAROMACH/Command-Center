@@ -906,9 +906,9 @@ function PlanCard({
                     <Badge variant={isCustom ? "high" : "outline"} className={cn("text-[9px] uppercase tracking-widest h-5", !isCustom && "bg-bg-primary text-text-muted")}>
                         {plan.type} Agreement
                     </Badge>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => onEdit(plan)}><PenTool size={14}/></Button>}
-                        {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => onDelete(plan)}><Trash2 size={14}/></Button>}
+                    <div className="flex gap-1">
+                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-primary" title="Edit Plan" onClick={() => onEdit(plan)}><PenTool size={14}/></Button>}
+                        {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-brand-red hover:bg-brand-red/10" title="Delete Plan" onClick={() => onDelete(plan)}><Trash2 size={14}/></Button>}
                         {canEdit && isStandard && <div className="h-7 w-7 flex items-center justify-center text-text-muted/30" title="Standard Tier Locked"><Lock size={12}/></div>}
                     </div>
                 </div>

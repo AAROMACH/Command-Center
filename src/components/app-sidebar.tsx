@@ -63,6 +63,7 @@ const adminNavGroups: NavGroup[] = [
   {
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
+      { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
     ],
   },
   {
@@ -72,6 +73,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
       { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
       { href: "/admin/sites", label: "Sites", icon: Building2, permission: "manage_assignments" },
+      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
     ],
   },
   {
@@ -92,11 +94,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Insights",
     items: [
       { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
-    ],
-  },
-  {
-    items: [
-      { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
+      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
     ],
   },
 ];

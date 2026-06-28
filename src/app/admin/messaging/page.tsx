@@ -18,7 +18,7 @@ import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const TABS = ['Broadcast', 'Direct Messages'] as const;
+const TABS = ['Broadcast', 'Direct Messages', 'Project Comms'] as const;
 type Tab = typeof TABS[number];
 
 type DirectMessage = {
@@ -39,6 +39,8 @@ export default function AdminMessagingPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [dmBody, setDmBody] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectMessageBody, setProjectMessageBody] = useState('');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [sending, setSending] = useState(false);
   const [durationHours, setDurationHours] = useState('24');
@@ -165,6 +167,30 @@ export default function AdminMessagingPage() {
     (m.senderId === currentUser?.id && m.receiverId === selectedUserId) ||
     (m.senderId === selectedUserId && m.receiverId === currentUser?.id)
   ).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  const projectMessages = directMessages
+    .filter(m => (m as any).projectId === selectedProjectId)
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  const handleSendProjectMessage = async () => {
+    if (!projectMessageBody.trim() || !selectedProjectId || !currentUser) return;
+    setSending(true);
+    try {
+      await addDoc(collection(db, 'messages'), {
+        senderId: currentUser.id,
+        senderName: currentUser.name,
+        projectId: selectedProjectId,
+        body: projectMessageBody.trim(),
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      setProjectMessageBody('');
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed to send', description: e.message });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const adminTechs = technicians.filter(t => !t.roles?.includes('client') && t.id !== currentUser?.id);
 
@@ -356,8 +382,114 @@ export default function AdminMessagingPage() {
         </div>
       )}
 
+      {/* Project Comms Tab */}
+      {activeTab === 'Project Comms' && (
+        <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
+          {/* Project List */}
+          <div className="w-64 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+            <div className="px-3 py-2.5 border-b border-border-sub">
+              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Projects</p>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-1.5 space-y-0.5">
+                {activeProjects.length === 0 ? (
+                  <p className="text-[9px] text-text-muted text-center py-6 uppercase tracking-widest">No active projects</p>
+                ) : (
+                  activeProjects.map(p => {
+                    const unreadCount = directMessages.filter(m => (m as any).projectId === p.id && !(m as any).read && m.senderId !== currentUser?.id).length;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedProjectId(p.id)}
+                        className={cn(
+                          'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
+                          selectedProjectId === p.id
+                            ? 'bg-brand-red/10 text-brand-red'
+                            : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary'
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
+                          {unreadCount > 0 && (
+                            <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unreadCount}</span>
+                          )}
+                        </div>
+                        <p className="text-[8px] text-text-muted mt-0.5 uppercase">{p.status}</p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Message Thread */}
+          <div className="flex-1 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+            {!selectedProjectId ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <Briefcase size={32} className="text-text-muted mx-auto mb-3" />
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a project to view its thread</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="px-4 py-3 border-b border-border-sub shrink-0">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">
+                    {activeProjects.find(p => p.id === selectedProjectId)?.name || 'Unknown Project'}
+                  </p>
+                  <p className="text-[9px] text-text-muted uppercase mt-0.5">
+                    {activeProjects.find(p => p.id === selectedProjectId)?.client}
+                  </p>
+                </div>
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-3">
+                    {projectMessages.length === 0 ? (
+                      <p className="text-[10px] text-text-muted text-center py-8 uppercase tracking-widest">No messages yet — start the conversation!</p>
+                    ) : (
+                      projectMessages.map(m => {
+                        const isMine = m.senderId === currentUser?.id;
+                        const senderName = (m as any).senderName || technicians.find(t => t.id === m.senderId)?.name || 'Unknown';
+                        return (
+                          <div key={m.id} className={cn('flex flex-col', isMine ? 'items-end' : 'items-start')}>
+                            {!isMine && <p className="text-[8px] font-bold text-text-muted uppercase mb-0.5 ml-1">{senderName}</p>}
+                            <div className={cn(
+                              'max-w-[70%] rounded-xl px-3 py-2.5 text-[11px] leading-relaxed',
+                              isMine
+                                ? 'bg-brand-red/10 border border-brand-red/20 text-text-primary'
+                                : 'bg-bg-tertiary border border-border-sub text-text-secondary'
+                            )}>
+                              <p>{m.body}</p>
+                              <p className="text-[8px] text-text-muted mt-1 font-bold uppercase tracking-wider">
+                                {format(parseISO(m.timestamp), 'h:mm a')}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+                <div className="px-4 py-3 border-t border-border-sub shrink-0 flex gap-2">
+                  <input
+                    className="h-9 flex-1 rounded-md border border-border-main bg-bg-secondary px-3 text-[11px] outline-none focus:border-brand-red placeholder:text-text-muted"
+                    placeholder="Type a project message..."
+                    value={projectMessageBody}
+                    onChange={e => setProjectMessageBody(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendProjectMessage()}
+                  />
+                  <Button size="sm" onClick={handleSendProjectMessage} disabled={!projectMessageBody.trim() || sending} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
+                    <Send size={13} />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Active Projects */}
-      {activeProjects.length > 0 && (
+      {activeTab !== 'Project Comms' && activeProjects.length > 0 && (
         <div className="space-y-3 pt-2 border-t border-border-sub">
           <p className="text-[9px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
             <Briefcase size={10} className="text-brand-red" />

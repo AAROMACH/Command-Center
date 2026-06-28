@@ -73,7 +73,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/admin/dispatch", label: "Dispatch", icon: Wrench, permission: "manage_assignments" },
       { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
       { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
-      { href: "/admin/sites", label: "Sites", icon: Building2, permission: "manage_assignments" },
+      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "manage_assignments" },
       { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
     ],
   },
@@ -88,6 +88,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
       { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
+      { href: "/admin/payroll/audit", label: "Payroll Audit", icon: Receipt, permission: "view_financials" },
       { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },
     ],
   },

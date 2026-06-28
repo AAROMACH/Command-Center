@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
-import type { Technician, SiteRequest } from '@/lib/types';
+import type { Technician, SiteRequest, Project } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Target, Search, Phone, Mail, MapPin, UserCheck, UserPlus,
+  Target, Search, Phone, Mail, MapPin, UserCheck, UserPlus, Building2, Briefcase, ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -20,10 +20,12 @@ export default function ClientsPage() {
   const { toast } = useToast();
   const [clients, setClients] = useState<Technician[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({ name: '', company: '', email: '', phone: '' });
   const [saving, setSaving] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Technician | null>(null);
 
   useEffect(() => {
     const unsubClients = onSnapshot(collection(db, 'users'), (snap) => {
@@ -36,8 +38,11 @@ export default function ClientsPage() {
     const unsubSiteReqs = onSnapshot(collection(db, 'siteRequests'), (snap) => {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
+    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+      setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
+    });
 
-    return () => { unsubClients(); unsubSiteReqs(); };
+    return () => { unsubClients(); unsubSiteReqs(); unsubProjects(); };
   }, []);
 
   const filteredClients = useMemo(() =>
@@ -153,7 +158,7 @@ export default function ClientsPage() {
           {filteredClients.map(client => {
             const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
             return (
-              <div key={client.id} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-all p-4 space-y-3">
+              <div key={client.id} onClick={() => setSelectedClient(client)} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-brand-red transition-all p-4 space-y-3 cursor-pointer">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">
@@ -190,6 +195,91 @@ export default function ClientsPage() {
           })}
         </div>
       )}
+
+      {/* Client Detail Popup */}
+      <Dialog open={!!selectedClient} onOpenChange={open => !open && setSelectedClient(null)}>
+        <DialogContent className="bg-bg-elevated border-border-main max-w-lg">
+          {selectedClient && (() => {
+            const clientProjects = projects.filter(p =>
+              p.client === (selectedClient.clientCompany || selectedClient.name) ||
+              p.client?.toLowerCase().includes((selectedClient.name || '').toLowerCase())
+            );
+            const clientReqs = siteRequests.filter(r =>
+              r.clientId === selectedClient.id || r.clientName === (selectedClient.clientCompany || selectedClient.name)
+            );
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-brand-red/10 border border-brand-red/20 flex items-center justify-center shrink-0">
+                      <Building2 size={16} className="text-brand-red" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-[14px] font-black uppercase tracking-wide">{selectedClient.clientCompany || selectedClient.name}</DialogTitle>
+                      {selectedClient.clientCompany && selectedClient.name !== selectedClient.clientCompany && (
+                        <p className="text-[10px] text-text-muted mt-0.5">{selectedClient.name}</p>
+                      )}
+                    </div>
+                  </div>
+                </DialogHeader>
+                <div className="space-y-4 py-1">
+                  {/* Contact info */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedClient.email && (
+                      <a href={`mailto:${selectedClient.email}`} className="flex items-center gap-2 p-2 rounded-lg bg-bg-secondary border border-border-sub hover:border-brand-red/30 transition-colors">
+                        <Mail size={11} className="text-brand-red shrink-0" />
+                        <span className="text-[10px] font-bold text-text-secondary truncate">{selectedClient.email}</span>
+                      </a>
+                    )}
+                    {selectedClient.phone && (
+                      <a href={`tel:${selectedClient.phone}`} className="flex items-center gap-2 p-2 rounded-lg bg-bg-secondary border border-border-sub hover:border-brand-red/30 transition-colors">
+                        <Phone size={11} className="text-text-muted shrink-0" />
+                        <span className="text-[10px] font-bold text-text-secondary">{selectedClient.phone}</span>
+                      </a>
+                    )}
+                  </div>
+                  {/* Active projects */}
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                      <Briefcase size={10} /> Active Projects ({clientProjects.filter(p => p.status === 'active').length})
+                    </p>
+                    {clientProjects.filter(p => p.status === 'active').length === 0 ? (
+                      <p className="text-[9px] text-text-muted uppercase py-1">No active projects</p>
+                    ) : clientProjects.filter(p => p.status === 'active').map(p => (
+                      <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-border-sub last:border-0">
+                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{p.name}</p>
+                        <Badge variant="active" className="text-[7px] uppercase h-4 shrink-0">Active</Badge>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Site requests */}
+                  {clientReqs.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                        <MapPin size={10} /> Site Requests ({clientReqs.length})
+                      </p>
+                      {clientReqs.slice(0, 5).map(r => (
+                        <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-border-sub last:border-0">
+                          <p className="text-[10px] font-bold text-text-primary uppercase truncate">{r.siteName}</p>
+                          <Badge variant={r.status === 'approved' ? 'active' : r.status === 'pending' ? 'onhold' : 'completed'} className="text-[7px] uppercase h-4 shrink-0">{r.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedClient(null)} className="text-[10px] font-black uppercase">Close</Button>
+                  <Link href={`/admin/crm/clients/${selectedClient.id}`}>
+                    <Button size="sm" className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                      <ExternalLink size={11} className="mr-1.5" /> View Full Profile
+                    </Button>
+                  </Link>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Client Dialog */}
       <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>

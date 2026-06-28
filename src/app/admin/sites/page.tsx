@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, MapPin, Search, Phone, User, ChevronRight, Activity, Clock, DollarSign } from 'lucide-react';
+import { Building2, Plus, MapPin, Search, Phone, User, ChevronRight, Activity, Clock, DollarSign, LayoutGrid, Rows3, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,8 @@ export default function AdminSitesPage() {
   const [sortBy, setSortBy] = useState<'name' | 'client' | 'status'>('name');
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grid');
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ name: '', clientName: '', location: '', managerName: '', managerPhone: '' });
   const { toast } = useToast();
 
@@ -48,6 +50,25 @@ export default function AdminSitesPage() {
       return 0;
     });
   }, [sites, search, sortBy]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Site[]>();
+    filtered.forEach(s => {
+      const key = s.clientName || 'No Client';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  const toggleClient = (name: string) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const handleCreate = async () => {
     if (!form.name || !form.location) {
@@ -117,6 +138,14 @@ export default function AdminSitesPage() {
             <Building2 size={12} className="text-text-muted" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{filtered.length} site{filtered.length !== 1 ? 's' : ''}</span>
           </div>
+          <div className="flex items-center gap-1 bg-bg-primary rounded-md border border-border-sub p-0.5">
+            <button onClick={() => setViewMode('grid')} className={cn("h-7 w-8 flex items-center justify-center rounded transition-colors", viewMode === 'grid' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
+              <LayoutGrid size={12} />
+            </button>
+            <button onClick={() => setViewMode('grouped')} className={cn("h-7 w-8 flex items-center justify-center rounded transition-colors", viewMode === 'grouped' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
+              <Rows3 size={12} />
+            </button>
+          </div>
           <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsNewOpen(true)}>
             <Plus size={12} className="mr-1.5" />
             New Site
@@ -143,6 +172,45 @@ export default function AdminSitesPage() {
               Add First Site
             </Button>
           )}
+        </div>
+      ) : viewMode === 'grouped' ? (
+        <div className="space-y-3">
+          {grouped.map(([clientName, clientSites]) => (
+            <div key={clientName} className="rounded-xl border border-border-sub overflow-hidden">
+              <button
+                onClick={() => toggleClient(clientName)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-bg-secondary hover:bg-bg-tertiary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 size={14} className="text-brand-red" />
+                  <span className="text-[12px] font-black uppercase tracking-wide text-text-primary">{clientName}</span>
+                  <span className="text-[9px] font-bold text-text-muted bg-bg-primary border border-border-sub rounded-full px-2 py-0.5">{clientSites.length} site{clientSites.length !== 1 ? 's' : ''}</span>
+                </div>
+                <ChevronDown size={14} className={cn("text-text-muted transition-transform", expandedClients.has(clientName) ? 'rotate-180' : '')} />
+              </button>
+              {expandedClients.has(clientName) && (
+                <div className="border-t border-border-sub divide-y divide-border-sub">
+                  {clientSites.map(site => (
+                    <Link key={site.id} href={`/admin/sites/${site.id}`} className="flex items-center justify-between px-6 py-3 bg-bg-primary hover:bg-bg-secondary transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors">{site.name}</p>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {site.location && <span className="flex items-center gap-1 text-[9px] text-text-muted"><MapPin size={9} />{site.location}</span>}
+                            {site.managerName && <span className="flex items-center gap-1 text-[9px] text-text-muted"><User size={9} />{site.managerName}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[7px] h-4 uppercase">{site.status || 'active'}</Badge>
+                        <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

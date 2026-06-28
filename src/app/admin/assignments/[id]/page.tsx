@@ -3,28 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
-    ArrowLeft,
-    MapPin,
-    Calendar,
-    Clock,
-    DollarSign,
-    User,
-    Briefcase,
-    FileText,
-    Activity,
-    CheckCircle2,
-    ExternalLink,
-    Navigation,
-    ShieldCheck,
-    AlertTriangle,
+    ArrowLeft, MapPin, Calendar, Clock, DollarSign, User, Briefcase, FileText,
+    Activity, CheckCircle2, ExternalLink, Navigation, ShieldCheck, AlertTriangle,
+    Users, UserPlus, UserMinus, Crown, ArrowLeftRight,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -73,6 +65,11 @@ export default function AssignmentDetailPage() {
     const [tech, setTech] = useState<Technician | null>(null);
     const [relatedLogs, setRelatedLogs] = useState<WeeklyLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [allTechs, setAllTechs] = useState<Technician[]>([]);
+    const [swapOpen, setSwapOpen] = useState(false);
+    const [swapTechId, setSwapTechId] = useState('');
+    const [helperOpen, setHelperOpen] = useState(false);
+    const [helperTechId, setHelperTechId] = useState('');
 
     useEffect(() => {
         if (!assignmentId) return;
@@ -121,6 +118,99 @@ export default function AssignmentDetailPage() {
         );
         return () => unsubLogs();
     }, [assignment, assignmentId]);
+
+    useEffect(() => {
+        const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+            setAllTechs(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+        });
+        return () => unsub();
+    }, []);
+
+    const handleSwapTech = async () => {
+        if (!swapTechId || !assignment) return;
+        const newTech = allTechs.find(t => t.id === swapTechId);
+        try {
+            await updateDoc(doc(db, 'assignments', assignment.id), {
+                assignedTechnicianId: swapTechId,
+                techId: swapTechId,
+                technicianName: newTech?.name || '',
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    type: 'tech_swapped',
+                    details: `Technician changed to ${newTech?.name || swapTechId}`,
+                    user: 'Admin',
+                }),
+            });
+            setAssignment(prev => prev ? { ...prev, assignedTechnicianId: swapTechId, techId: swapTechId } : prev);
+            setSwapOpen(false);
+            setSwapTechId('');
+            toast({ title: 'Technician Swapped', description: `Now assigned to ${newTech?.name || swapTechId}` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Swap Failed', description: e.message });
+        }
+    };
+
+    const handleAddHelper = async () => {
+        if (!helperTechId || !assignment) return;
+        const helperTech = allTechs.find(t => t.id === helperTechId);
+        try {
+            await updateDoc(doc(db, 'assignments', assignment.id), {
+                additionalTechnicianIds: arrayUnion(helperTechId),
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    type: 'helper_added',
+                    details: `${helperTech?.name || helperTechId} added as helper`,
+                    user: 'Admin',
+                }),
+            });
+            setAssignment(prev => prev ? { ...prev, additionalTechnicianIds: [...(prev.additionalTechnicianIds || []), helperTechId] } : prev);
+            setHelperOpen(false);
+            setHelperTechId('');
+            toast({ title: 'Helper Added', description: `${helperTech?.name || helperTechId} added to team.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        }
+    };
+
+    const handleRemoveHelper = async (helperId: string) => {
+        if (!assignment) return;
+        const helperTech = allTechs.find(t => t.id === helperId);
+        try {
+            await updateDoc(doc(db, 'assignments', assignment.id), {
+                additionalTechnicianIds: arrayRemove(helperId),
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    type: 'helper_removed',
+                    details: `${helperTech?.name || helperId} removed from team`,
+                    user: 'Admin',
+                }),
+            });
+            setAssignment(prev => prev ? { ...prev, additionalTechnicianIds: (prev.additionalTechnicianIds || []).filter(id => id !== helperId) } : prev);
+            toast({ title: 'Helper Removed' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        }
+    };
+
+    const handleSetLead = async (leadId: string) => {
+        if (!assignment) return;
+        const leadTech = allTechs.find(t => t.id === leadId);
+        try {
+            await updateDoc(doc(db, 'assignments', assignment.id), {
+                leadTechId: leadId,
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    type: 'lead_set',
+                    details: `${leadTech?.name || leadId} designated as lead technician`,
+                    user: 'Admin',
+                }),
+            });
+            setAssignment(prev => prev ? { ...prev, leadTechId: leadId } : prev);
+            toast({ title: 'Lead Set', description: `${leadTech?.name || leadId} is now lead tech.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        }
+    };
 
     const handleVerify = async () => {
         if (!assignment) return;
@@ -207,6 +297,86 @@ export default function AssignmentDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Team Panel */}
+            <Card>
+                <CardHeader className="pb-2 text-left">
+                    <CardTitle className="text-[11px] font-black uppercase tracking-widest text-text-muted flex items-center justify-between">
+                        <span className="flex items-center gap-2"><Users size={12} className="text-brand-red" /> Team</span>
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" className="h-7 text-[9px] uppercase font-bold gap-1" onClick={() => { setHelperTechId(''); setHelperOpen(true); }}>
+                                <UserPlus size={10} /> Add Helper
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-[9px] uppercase font-bold gap-1" onClick={() => { setSwapTechId(''); setSwapOpen(true); }}>
+                                <ArrowLeftRight size={10} /> Swap Tech
+                            </Button>
+                        </div>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {tech ? (
+                        <div className="flex items-center gap-3 p-2 rounded-md bg-bg-secondary border border-border-sub">
+                            <Avatar className="h-8 w-8 border border-border-sub">
+                                <AvatarImage src={tech.avatarUrl} />
+                                <AvatarFallback className="text-xs">{tech.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-black uppercase text-text-primary">{tech.name}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <Badge variant="outline" className="text-[7px] h-4 uppercase">Primary</Badge>
+                                    {assignment.leadTechId === tech.id && (
+                                        <Badge variant="active" className="text-[7px] h-4 uppercase flex items-center gap-0.5">
+                                            <Crown size={7} />Lead
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                            {!assignment.leadTechId && (assignment.additionalTechnicianIds || []).length > 0 && (
+                                <Button size="sm" variant="ghost" className="h-6 text-[8px] uppercase font-bold text-text-muted hover:text-text-primary gap-0.5" onClick={() => handleSetLead(tech.id)}>
+                                    <Crown size={9} />Set Lead
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-[10px] font-bold uppercase text-text-muted opacity-40 p-2">No primary technician assigned</p>
+                    )}
+                    {(assignment.additionalTechnicianIds || []).map(helperId => {
+                        const helperTech = allTechs.find(t => t.id === helperId);
+                        return (
+                            <div key={helperId} className="flex items-center gap-3 p-2 rounded-md bg-bg-secondary border border-border-sub">
+                                <Avatar className="h-8 w-8 border border-border-sub">
+                                    <AvatarImage src={helperTech?.avatarUrl} />
+                                    <AvatarFallback className="text-xs">{helperTech?.name?.charAt(0) || '?'}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-black uppercase text-text-primary">{helperTech?.name || helperId}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <Badge variant="outline" className="text-[7px] h-4 uppercase">Helper</Badge>
+                                        {assignment.leadTechId === helperId && (
+                                            <Badge variant="active" className="text-[7px] h-4 uppercase flex items-center gap-0.5">
+                                                <Crown size={7} />Lead
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {!assignment.leadTechId && (
+                                        <Button size="sm" variant="ghost" className="h-6 text-[8px] uppercase font-bold text-text-muted hover:text-text-primary gap-0.5" onClick={() => handleSetLead(helperId)}>
+                                            <Crown size={9} />Lead
+                                        </Button>
+                                    )}
+                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-text-muted hover:text-red-400" onClick={() => handleRemoveHelper(helperId)}>
+                                        <UserMinus size={12} />
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {!tech && (!assignment.additionalTechnicianIds || assignment.additionalTechnicianIds.length === 0) && (
+                        <p className="text-[10px] font-bold uppercase text-text-muted opacity-40 text-center py-2">No team assigned</p>
+                    )}
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Main details — 2/3 */}
@@ -396,6 +566,62 @@ export default function AssignmentDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Swap Technician Dialog */}
+        <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
+            <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Swap Technician</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Replacement</Label>
+                    <Select value={swapTechId} onValueChange={setSwapTechId}>
+                        <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+                            <SelectValue placeholder="Choose technician..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-bg-elevated border-border-main">
+                            {allTechs.filter(t => !t.roles?.includes('client')).map(t => (
+                                <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                                    {t.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
+                    <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>Confirm Swap</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Add Helper Dialog */}
+        <Dialog open={helperOpen} onOpenChange={setHelperOpen}>
+            <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Add Helper</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Helper Technician</Label>
+                    <Select value={helperTechId} onValueChange={setHelperTechId}>
+                        <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+                            <SelectValue placeholder="Choose technician..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-bg-elevated border-border-main">
+                            {allTechs.filter(t => !t.roles?.includes('client') && t.id !== (assignment?.assignedTechnicianId || assignment?.techId)).map(t => (
+                                <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                                    {t.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
+                    <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to Team</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         </div>
     );
 }

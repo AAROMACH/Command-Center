@@ -14,6 +14,11 @@ import {
   ChevronRight,
   Undo2,
   AlertCircle,
+  Plus,
+  MessageSquare,
+  Banknote,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,6 +46,7 @@ import { cn } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
+import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -178,6 +184,31 @@ export default function DashboardPage() {
             .slice(0, 5);
     }, [workOrders, assignments]);
 
+    const todayJobs = useMemo(() => {
+        const today = new Date();
+        return [...workOrders, ...assignments].filter(wo => {
+            if (!wo.scheduleDate) return false;
+            try { return isSameDay(parseISO(wo.scheduleDate), today); } catch { return false; }
+        }).sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+    }, [workOrders, assignments]);
+
+    const financialKpis = useMemo(() => {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const mtdRevenue = invoices
+            .filter(inv => {
+                try { return new Date(inv.issueDate) >= monthStart && inv.status === 'paid'; } catch { return false; }
+            })
+            .reduce((s, inv) => s + inv.total, 0);
+        const outstanding = invoices
+            .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
+            .reduce((s, inv) => s + inv.total, 0);
+        const upcomingPayroll = weeklyLogs
+            .filter(l => l.status === 'Submitted')
+            .reduce((s, l) => s + (l.totalPayout || 0), 0);
+        return { mtdRevenue, outstanding, upcomingPayroll };
+    }, [invoices, weeklyLogs]);
+
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
 
@@ -215,6 +246,30 @@ export default function DashboardPage() {
                     )}
                 </div>
             </header>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <Link href="/admin/dispatch">
+                    <Button size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white gap-1.5">
+                        <Plus size={11} /> New Work Order
+                    </Button>
+                </Link>
+                <Link href="/admin/directory?tab=add">
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
+                        <Users size={11} /> Add Technician
+                    </Button>
+                </Link>
+                <Link href="/admin/projects?action=new">
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
+                        <FolderKanban size={11} /> New Project
+                    </Button>
+                </Link>
+                <Link href="/admin/messaging">
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
+                        <MessageSquare size={11} /> Send Broadcast
+                    </Button>
+                </Link>
+            </div>
 
             {/* Quick status chips */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -284,6 +339,66 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Financial KPIs */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
+                    <Banknote size={12} className="text-text-green shrink-0" />
+                    <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">MTD Revenue</p>
+                        <p className="text-[13px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
+                    <TrendingUp size={12} className="text-accent-gold shrink-0" />
+                    <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Outstanding</p>
+                        <p className="text-[13px] font-bold font-mono text-accent-gold">${financialKpis.outstanding.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
+                    <Zap size={12} className="text-brand-red shrink-0" />
+                    <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Upcoming Payroll</p>
+                        <p className="text-[13px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Today's Schedule Strip */}
+            {todayJobs.length > 0 && (
+                <div className="mb-6">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-2 flex items-center gap-1.5">
+                        <Calendar size={10} className="text-brand-red" />
+                        Today's Schedule — {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                        {todayJobs.map(wo => {
+                            const techId = wo.assignedTechnicianId || (wo as any).techId;
+                            const tech = technicians.find(t => t.id === techId);
+                            const statusDot = wo.status === 'in-progress' ? 'bg-text-green' : wo.status === 'on-my-way' ? 'bg-blue-400' : wo.status === 'completed' ? 'bg-border-main' : 'bg-accent-gold';
+                            return (
+                                <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="shrink-0">
+                                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border-sub bg-bg-secondary hover:border-border-main transition-colors min-w-[200px] max-w-[220px]">
+                                        {tech && (
+                                            <Avatar className="h-7 w-7 border border-border-sub shrink-0">
+                                                <AvatarImage src={tech.avatarUrl} />
+                                                <AvatarFallback className="text-[9px] font-black">{tech.name?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            {wo.scheduleTime && <p className="text-[8px] font-mono text-text-muted">{wo.scheduleTime}</p>}
+                                            <p className="text-[9px] font-black uppercase text-text-primary leading-tight truncate">{wo.title || wo.description || wo.id.slice(0, 8)}</p>
+                                            <p className="text-[8px] text-text-muted truncate">{wo.clientName}</p>
+                                        </div>
+                                        <div className={`h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Main grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

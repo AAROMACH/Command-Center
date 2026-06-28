@@ -10,14 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Calendar, ChevronLeft, ChevronRight, Users, Filter,
   Clock, MapPin, User, AlertCircle, Umbrella, LayoutGrid, List, CalendarCheck, Download,
+  PanelRight, Route,
 } from 'lucide-react';
 import {
-  format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, addMonths, subMonths,
+  format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, addMonths, subMonths,
   startOfMonth, endOfMonth, eachDayOfInterval, getDay,
   isSameDay, isToday, parseISO, isSameMonth,
 } from 'date-fns';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const STATUS_COLORS: Record<string, string> = {
   'in-progress': 'border-l-text-green',
@@ -58,6 +59,9 @@ export default function AdminCalendarPage() {
   const [filterTech, setFilterTech] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterEvent, setFilterEvent] = useState<'all' | 'jobs' | 'pto'>('all');
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
+  const [routes, setRoutes] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -70,7 +74,10 @@ export default function AdminCalendarPage() {
     const unsubPTO = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
       setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
     });
-    return () => { unsubWO(); unsubTechs(); unsubPTO(); };
+    const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
+      setRoutes(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+    return () => { unsubWO(); unsubTechs(); unsubPTO(); unsubRoutes(); };
   }, []);
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -97,6 +104,16 @@ export default function AdminCalendarPage() {
   const unscheduled = useMemo(() =>
     workOrders.filter(wo => !wo.scheduleDate && wo.status !== 'completed'),
     [workOrders]
+  );
+
+  const jobsForSelectedDate = useMemo(() =>
+    workOrders
+      .filter(wo => {
+        if (!wo.scheduleDate) return false;
+        try { return isSameDay(parseISO(wo.scheduleDate), selectedDate); } catch { return false; }
+      })
+      .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || '')),
+    [workOrders, selectedDate]
   );
 
   const adminTechs = useMemo(() =>
@@ -210,13 +227,24 @@ export default function AdminCalendarPage() {
         <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2">
             <Calendar size={12} />
-            Schedule View
+            Dispatch Workspace
           </p>
-          <h1 className="page-title">Operations Calendar</h1>
+          <h1 className="page-title">Schedule</h1>
           <p className="page-subtitle">Weekly view of all work orders by date and technician.</p>
         </div>
 
         <div className="page-header-right items-center gap-2 flex-wrap">
+          {/* Route Panel Toggle */}
+          <Button
+            variant={showRoutePanel ? 'secondary' : 'outline'}
+            size="sm"
+            className="h-8 text-[10px] font-bold uppercase tracking-wider border-border-main shrink-0"
+            onClick={() => setShowRoutePanel(v => !v)}
+          >
+            <Route size={12} className="mr-1.5" />
+            Routes
+          </Button>
+
           {/* Calendar Sync */}
           <Button
             variant="outline"
@@ -312,6 +340,53 @@ export default function AdminCalendarPage() {
           )}
         </div>
       </header>
+
+      <div className="flex gap-4 items-start">
+      {/* Left: Job List Panel */}
+      <div className="w-56 shrink-0 border border-border-sub rounded-lg bg-bg-secondary overflow-hidden">
+        <div className="flex items-center justify-between p-2.5 border-b border-border-sub bg-bg-tertiary">
+          <button onClick={() => setSelectedDate(d => subDays(d, 1))} className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary rounded transition-colors">
+            <ChevronLeft size={13} />
+          </button>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">
+            {isToday(selectedDate) ? 'Today' : format(selectedDate, 'MMM d')}
+          </p>
+          <button onClick={() => setSelectedDate(d => addDays(d, 1))} className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary rounded transition-colors">
+            <ChevronRight size={13} />
+          </button>
+        </div>
+        <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+          {jobsForSelectedDate.length === 0 ? (
+            <div className="p-4 text-center">
+              <p className="text-[9px] font-bold uppercase text-text-muted tracking-widest">No jobs scheduled</p>
+            </div>
+          ) : (
+            jobsForSelectedDate.map(wo => {
+              const woTechId = (wo as any).assignedTechnicianId || (wo as any).techId;
+              const techColor = techColorMap[woTechId] || '#555';
+              return (
+                <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="block p-2.5 border-b border-border-sub hover:bg-bg-tertiary transition-colors">
+                  <div className="flex items-start gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" style={{ background: techColor }} />
+                    <div className="flex-1 min-w-0">
+                      {wo.scheduleTime && (
+                        <p className="text-[8px] font-mono text-text-muted">{wo.scheduleTime}</p>
+                      )}
+                      <p className="text-[9px] font-black uppercase text-text-primary leading-tight truncate">
+                        {wo.title || wo.description || `#${wo.id.slice(0, 6)}`}
+                      </p>
+                      <p className="text-[8px] text-text-muted truncate">{wo.clientName}</p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Center: Main Calendar */}
+      <div className="flex-1 min-w-0 space-y-5">
 
       {/* Period label */}
       <div className="flex items-center gap-2 px-0">
@@ -515,6 +590,49 @@ export default function AdminCalendarPage() {
           </div>
         </div>
       )}
+
+      </div>{/* end center calendar */}
+
+      {/* Right: Route Panel */}
+      {showRoutePanel && (
+        <div className="w-60 shrink-0 border border-border-sub rounded-lg bg-bg-secondary overflow-hidden">
+          <div className="p-2.5 border-b border-border-sub bg-bg-tertiary">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-primary flex items-center gap-1.5">
+              <Route size={11} className="text-brand-red" /> Active Routes
+            </p>
+          </div>
+          <div className="overflow-y-auto max-h-[calc(100vh-280px)] p-2 space-y-2">
+            {routes.length === 0 ? (
+              <p className="text-[9px] font-bold uppercase text-text-muted text-center py-6">No active routes</p>
+            ) : (
+              routes.map(route => {
+                const routeTech = adminTechs.find(t => t.id === route.techId);
+                return (
+                  <div key={route.id} className="rounded-md border border-border-sub p-2.5 space-y-2 bg-bg-primary">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[9px] font-black uppercase text-text-primary flex-1 truncate">
+                        {routeTech?.name || route.techId || 'Unknown'}
+                      </p>
+                      <Badge variant="outline" className="h-4 text-[7px] shrink-0">{route.stops?.length || 0} stops</Badge>
+                    </div>
+                    {(route.stops || []).sort((a: any, b: any) => a.order - b.order).map((stop: any, i: number) => {
+                      const wo = workOrders.find(w => w.id === stop.workOrderId);
+                      return (
+                        <div key={i} className="flex items-start gap-1.5 text-[9px] text-text-muted">
+                          <span className="font-mono font-bold shrink-0 text-brand-red w-3">{i + 1}.</span>
+                          <span className="truncate">{wo?.title || wo?.location || stop.workOrderId?.slice(0, 8)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      </div>{/* end 3-panel flex */}
     </div>
   );
 }

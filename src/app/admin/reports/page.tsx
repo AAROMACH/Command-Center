@@ -1190,17 +1190,17 @@ export default function ActivityAuditPage() {
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
             <header className="space-y-1 text-center text-left">
-                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Activity Hub</p>
+                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Business Timeline</p>
                 <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Activity</h1>
                 <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">History, logs, and search across all field service records</p>
             </header>
 
             <div className="space-y-6 text-left">
                 <div className="relative group text-left">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted group-focus-within:text-brand-red transition-colors" />
-                    <Input 
-                        placeholder="Search technicians, assignments, site coordinates, projects…" 
-                        className="h-14 pl-12 bg-bg-secondary border-border-main text-sm uppercase font-bold tracking-wide focus:border-brand-red rounded-2xl shadow-xl"
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted group-focus-within:text-brand-red transition-colors" />
+                    <Input
+                        placeholder="Search technicians, assignments, projects…"
+                        className="h-9 pl-9 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wide focus:border-brand-red rounded-lg"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />

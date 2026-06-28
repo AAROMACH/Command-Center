@@ -2,21 +2,27 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, Expense, Technician, ProjectPayout } from '@/lib/types';
+import type { WeeklyLog, Expense, Technician, ProjectPayout, MileageEntry } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-    Coins, 
-    Receipt, 
-    Calendar as CalendarIcon, 
-    Search, 
-    ArrowUpDown, 
+import {
+    Coins,
+    Receipt,
+    Calendar as CalendarIcon,
+    Search,
+    ArrowUpDown,
     ChevronRight,
     ArrowUpRight,
-    CheckCircle2
+    CheckCircle2,
+    Car,
+    Plus,
+    Clock,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ReceiptUploadDialog } from '../dashboard/components/receipt-upload-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +39,7 @@ import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, addDoc } from 'firebase/firestore';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
 
@@ -44,9 +50,12 @@ export default function TechEarningsPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [workOrders, setWorkOrders] = useState<any[]>([]);
     const [projectPayouts, setProjectPayouts] = useState<ProjectPayout[]>([]);
-    
+    const [mileageEntries, setMileageEntries] = useState<MileageEntry[]>([]);
+
     const [mounted, setMounted] = useState(false);
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    const [isMileageDialogOpen, setIsMileageDialogOpen] = useState(false);
+    const [mileageForm, setMileageForm] = useState({ date: '', startLocation: '', endLocation: '', miles: '', note: '', assignmentId: '' });
     const [logSearchQuery, setLogSearchQuery] = useState("");
     const [logSortBy, setLogSortBy] = useState<LogSortOption>('date-desc');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -72,9 +81,12 @@ export default function TechEarningsPage() {
             const unsubPayouts = onSnapshot(query(collection(db, 'projectPayouts'), where('technicianId', '==', userId)), (snap) => {
                 setProjectPayouts(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectPayout)));
             });
+            const unsubMileage = onSnapshot(query(collection(db, 'mileage'), where('techId', '==', userId)), (snap) => {
+                setMileageEntries(snap.docs.map(d => ({ ...d.data(), id: d.id } as MileageEntry)));
+            });
 
             return () => {
-                unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubPayouts();
+                unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubPayouts(); unsubMileage();
             };
         }
     }, []);
@@ -114,6 +126,29 @@ export default function TechEarningsPage() {
         return { settled, pending, reimb };
     }, [filteredLogs, expenses]);
 
+    const handleLogMileage = async () => {
+        if (!currentTechId || !mileageForm.date || !mileageForm.startLocation || !mileageForm.endLocation || !mileageForm.miles) {
+            return;
+        }
+        try {
+            await addDoc(collection(db, 'mileage'), {
+                techId: currentTechId,
+                date: mileageForm.date,
+                startLocation: mileageForm.startLocation,
+                endLocation: mileageForm.endLocation,
+                miles: parseFloat(mileageForm.miles),
+                note: mileageForm.note || '',
+                assignmentId: mileageForm.assignmentId || '',
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+            });
+            setIsMileageDialogOpen(false);
+            setMileageForm({ date: '', startLocation: '', endLocation: '', miles: '', note: '', assignmentId: '' });
+        } catch (e: any) {
+            console.error('Mileage log error:', e);
+        }
+    };
+
     const getStatusVariant = (status: string) => {
         const s = (status || '').toLowerCase();
         if (s === 'approved' || s === 'paid') return 'active';
@@ -134,6 +169,9 @@ export default function TechEarningsPage() {
                     <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
                 </div>
                 <div className="page-header-right">
+                    <Button variant="outline" onClick={() => setIsMileageDialogOpen(true)} className="h-10 px-4 font-bold uppercase tracking-widest text-[10px]">
+                        <Car size={14} className="mr-2"/> Log Mileage
+                    </Button>
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
                         <Receipt size={14} className="mr-2"/> Submit Receipt
                     </Button>
@@ -270,12 +308,110 @@ export default function TechEarningsPage() {
                 </Card>
             )}
 
+            <Card>
+                <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30">
+                    <div className="flex items-center justify-between">
+                        <div className="text-left">
+                            <CardTitle>Mileage Log</CardTitle>
+                            <CardDescription>Trip records for reimbursement and tax tracking.</CardDescription>
+                        </div>
+                        <Button size="sm" onClick={() => setIsMileageDialogOpen(true)} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                            <Plus size={12} className="mr-1.5" /> Log Trip
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="border-b border-border-sub bg-bg-tertiary/30">
+                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Date</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Route</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-right">Miles</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mileageEntries.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="py-12 text-center text-[10px] font-bold text-text-muted uppercase tracking-widest italic">
+                                        No mileage entries logged.
+                                    </td>
+                                </tr>
+                            ) : mileageEntries.sort((a, b) => b.date.localeCompare(a.date)).map(entry => (
+                                <tr key={entry.id} className="border-b border-border-sub hover:bg-bg-tertiary transition-colors">
+                                    <td className="px-4 py-3 text-xs font-bold uppercase">{entry.date}</td>
+                                    <td className="px-4 py-3">
+                                        <p className="text-xs text-text-primary">{entry.startLocation} → {entry.endLocation}</p>
+                                        {entry.note && <p className="text-[10px] text-text-muted">{entry.note}</p>}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono text-sm font-bold">{entry.miles}</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${entry.status === 'approved' ? 'bg-green-dim text-text-green' : entry.status === 'auto' ? 'bg-bg-tertiary text-text-muted' : 'bg-accent-gold-dim text-accent-gold'}`}>
+                                            {entry.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
+
             <ReceiptUploadDialog
                 isOpen={isReceiptDialogOpen}
                 setIsOpen={setIsReceiptDialogOpen}
                 workOrders={workOrders}
                 projects={[]}
             />
+
+            <Dialog open={isMileageDialogOpen} onOpenChange={setIsMileageDialogOpen}>
+                <DialogContent className="sm:max-w-[480px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <DialogTitle className="uppercase tracking-widest font-bold text-sm flex items-center gap-2">
+                            <Car size={16} className="text-brand-red" /> Log Mileage
+                        </DialogTitle>
+                        <DialogDescription>Record a trip for reimbursement or tax purposes.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Date *</Label>
+                                <Input type="date" value={mileageForm.date} onChange={e => setMileageForm(p => ({ ...p, date: e.target.value }))} className="h-10 text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Miles *</Label>
+                                <Input type="number" step="0.1" value={mileageForm.miles} onChange={e => setMileageForm(p => ({ ...p, miles: e.target.value }))} className="h-10 text-xs" placeholder="0.0" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Start Location *</Label>
+                            <Input value={mileageForm.startLocation} onChange={e => setMileageForm(p => ({ ...p, startLocation: e.target.value }))} className="h-10 text-xs" placeholder="Departure address" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">End Location *</Label>
+                            <Input value={mileageForm.endLocation} onChange={e => setMileageForm(p => ({ ...p, endLocation: e.target.value }))} className="h-10 text-xs" placeholder="Destination address" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Note</Label>
+                            <Input value={mileageForm.note} onChange={e => setMileageForm(p => ({ ...p, note: e.target.value }))} className="h-10 text-xs" placeholder="Purpose of trip" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID (optional)</Label>
+                            <Input value={mileageForm.assignmentId} onChange={e => setMileageForm(p => ({ ...p, assignmentId: e.target.value }))} className="h-10 text-xs" placeholder="Link to assignment" />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-3 flex-row">
+                        <Button variant="outline" onClick={() => setIsMileageDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                        <Button
+                            onClick={handleLogMileage}
+                            disabled={!mileageForm.date || !mileageForm.startLocation || !mileageForm.endLocation || !mileageForm.miles}
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
+                        >
+                            Submit Trip
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -546,3 +546,32 @@ export type ProjectPayout = {
   createdAt: string;
   paidAt?: string;
 };
+
+export type Quote = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  title: string;
+  scopeOfWork: string;
+  lineItems: { description: string; qty: number; unitPrice: number }[];
+  total: number;
+  expiresAt: string;
+  status: 'pending' | 'accepted' | 'declined';
+  declineReason?: string;
+  createdAt: string;
+  sentAt: string;
+};
+
+export type MileageEntry = {
+  id: string;
+  techId: string;
+  date: string;
+  startLocation: string;
+  endLocation: string;
+  miles: number;
+  assignmentId?: string;
+  projectId?: string;
+  note?: string;
+  status: 'auto' | 'pending' | 'approved';
+  createdAt: string;
+};

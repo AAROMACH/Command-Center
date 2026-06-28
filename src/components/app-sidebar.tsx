@@ -45,6 +45,7 @@ import {
   CalendarDays,
   MessageSquare,
   Building2,
+  Receipt,
 } from "lucide-react";
 
 type NavItem = {
@@ -102,20 +103,19 @@ const adminNavGroups: NavGroup[] = [
 const techNavItems: NavItem[] = [
   { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
   { href: "/tech/assignments", label: "Assignments", icon: Calendar, permission: "view_assigned_work_only" },
-  { href: "/tech/calendar", label: "Schedule", icon: Calendar, permission: "view_assigned_work_only" },
+  { href: "/tech/calendar", label: "Schedule", icon: CalendarDays, permission: "view_assigned_work_only" },
   { href: "/tech/projects", label: "Projects", icon: FolderKanban, permission: "view_projects" },
   { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "field_logs" },
   { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "field_logs" },
-  { href: "/tech/map", label: "Map", icon: MapPin, permission: "field_logs" },
   { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "view_assigned_work_only" },
-  { href: "/tech/profile", label: "Profile", icon: Users, permission: "view_assigned_work_only" },
 ];
 
 const clientNavItems: NavItem[] = [
   { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "client_portal" },
-  { href: "/client/tickets", label: "Tickets", icon: ClipboardList, permission: "client_portal" },
+  { href: "/client/tickets", label: "Support", icon: ClipboardList, permission: "client_portal" },
   { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client_portal" },
   { href: "/client/sites", label: "Sites", icon: MapPin, permission: "client_portal" },
+  { href: "/client/quotes", label: "Quotes", icon: Receipt, permission: "client_portal" },
   { href: "/client/financials", label: "Financials", icon: FileText, permission: "client_portal" },
   { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client_portal" },
   { href: "/client/profile", label: "Profile", icon: Users, permission: "client_portal" },

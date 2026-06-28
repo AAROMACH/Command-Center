@@ -4,7 +4,7 @@ import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, setDoc, getDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar } from '@/lib/upload';
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, User, Activity, Search, CheckCircle2, Key, Loader2, Camera } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,6 +53,8 @@ export default function TechProfilePage() {
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [predefinedSkills, setPredefinedSkills] = useState<string[]>([]);
+    const [selectedSkill, setSelectedSkill] = useState('');
 
     const [timeOffForm, setTimeOffForm] = useState({
         type: 'Vacation' as TimeOffRequest['type'],
@@ -61,8 +63,24 @@ export default function TechProfilePage() {
         reason: '',
     });
 
+    const DEFAULT_SKILLS = [
+        'Low Voltage Cabling', 'Fiber Optic', 'Coax Installation', 'Network Rack Assembly',
+        'IP Camera Installation', 'Access Control', 'Audio/Visual', 'Structured Cabling',
+        'Data Center', 'Wireless Networks', 'CCTV', 'VoIP Systems', 'Fire Alarm', 'Security Systems',
+        'Cat5e/Cat6 Termination', 'Conduit Installation', 'Cable Tray', 'Splicing',
+    ];
+
     useEffect(() => {
         setMounted(true);
+        // Load predefined skills from adminConfig
+        getDoc(doc(db, 'adminConfig', 'skills')).then(snap => {
+            if (snap.exists() && snap.data().predefinedSkills) {
+                setPredefinedSkills(snap.data().predefinedSkills as string[]);
+            } else {
+                setPredefinedSkills(DEFAULT_SKILLS);
+            }
+        }).catch(() => setPredefinedSkills(DEFAULT_SKILLS));
+
         const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
             if (!fbUser) return;
             setCurrentTechId(fbUser.uid);
@@ -114,6 +132,19 @@ export default function TechProfilePage() {
             setIsUploading(false);
             e.target.value = '';
         }
+    };
+
+    const handleAddSkill = async (skill: string) => {
+        if (!currentTechId || !skill || (tech?.skills || []).includes(skill)) return;
+        const updated = [...(tech?.skills || []), skill];
+        await updateDoc(doc(db, 'users', currentTechId), { skills: updated });
+        setSelectedSkill('');
+    };
+
+    const handleRemoveSkill = async (skill: string) => {
+        if (!currentTechId) return;
+        const updated = (tech?.skills || []).filter(s => s !== skill);
+        await updateDoc(doc(db, 'users', currentTechId), { skills: updated });
     };
 
     const handleSave = async () => {
@@ -292,15 +323,15 @@ export default function TechProfilePage() {
                                             <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Location</Label>
-                                            <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-11 text-xs" />
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Working Location</Label>
+                                            <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-11 text-xs" placeholder="e.g. Detroit, MI" />
+                                            <p className="text-[9px] text-text-muted">Your city/region for job dispatching</p>
                                         </div>
-                                        {(tech?.address !== undefined || address) && (
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Address</Label>
-                                                <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-11 text-xs" />
-                                            </div>
-                                        )}
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Mailing Address</Label>
+                                            <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-11 text-xs" placeholder="Full street address" />
+                                            <p className="text-[9px] text-text-muted">Where documents and mail are sent</p>
+                                        </div>
                                     </div>
                                     <div className="flex justify-end pt-2">
                                         <Button onClick={handleSave} disabled={isSaving}>
@@ -338,16 +369,48 @@ export default function TechProfilePage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Skills</CardTitle>
-                                    <CardDescription>Certified capabilities on record.</CardDescription>
+                                    <CardDescription>Certified capabilities on record. Add or remove skills below.</CardDescription>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-wrap gap-2">
+                                <CardContent className="space-y-4">
+                                    <div className="flex flex-wrap gap-2 min-h-[2rem]">
                                         {(tech?.skills || []).map(skill => (
-                                            <Badge key={skill} variant="outline" className="text-[10px] uppercase tracking-widest">{skill}</Badge>
+                                            <Badge key={skill} variant="outline" className="text-[10px] uppercase tracking-widest flex items-center gap-1.5 pr-1.5">
+                                                {skill}
+                                                <button
+                                                    onClick={() => handleRemoveSkill(skill)}
+                                                    className="rounded-full hover:bg-brand-red/20 hover:text-brand-red transition-colors p-0.5"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </Badge>
                                         ))}
                                         {(!tech?.skills || tech.skills.length === 0) && (
                                             <p className="text-xs text-text-muted">No skills on record.</p>
                                         )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Select value={selectedSkill} onValueChange={setSelectedSkill}>
+                                            <SelectTrigger className="h-9 text-[10px] uppercase font-bold tracking-widest flex-1">
+                                                <SelectValue placeholder="Add a skill..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {predefinedSkills
+                                                    .filter(s => !(tech?.skills || []).includes(s))
+                                                    .map(s => (
+                                                        <SelectItem key={s} value={s} className="text-[10px] uppercase font-bold">{s}</SelectItem>
+                                                    ))
+                                                }
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                                            onClick={() => handleAddSkill(selectedSkill)}
+                                            disabled={!selectedSkill}
+                                        >
+                                            <Plus size={14} className="mr-1" /> Add
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>

@@ -20,10 +20,18 @@ import {
     Coins,
     Activity,
     Clock,
+    Timer,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
+import { cn } from '@/lib/utils';
+
+const SLA_HOURS: Record<string, number> = {
+    'on-call': 48,
+    'site-partner': 24,
+    'dedicated': 8,
+};
 
 export default function ClientDashboardPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -89,6 +97,26 @@ export default function ClientDashboardPage() {
         };
     }, [currentUser?.id, currentUser?.clientCompany, currentUser?.name]);
 
+    const slaData = useMemo(() => {
+        if (!currentUser) return [];
+        const slaLimit = SLA_HOURS[currentUser.planId || ''] ?? 48;
+        return myRequests
+            .filter(r => r.status === 'new' || r.status === 'reviewed')
+            .map(r => {
+                try {
+                    const submitted = new Date(r.submittedDate);
+                    const now = new Date();
+                    const hoursElapsed = (now.getTime() - submitted.getTime()) / (1000 * 60 * 60);
+                    const hoursRemaining = Math.max(0, slaLimit - hoursElapsed);
+                    const pct = Math.min(100, (hoursElapsed / slaLimit) * 100);
+                    const color = pct < 50 ? 'text-text-green' : pct < 80 ? 'text-accent-gold' : 'text-brand-red';
+                    const bgColor = pct < 50 ? 'bg-text-green' : pct < 80 ? 'bg-accent-gold' : 'bg-brand-red';
+                    return { request: r, hoursRemaining, pct, color, bgColor };
+                } catch { return null; }
+            })
+            .filter(Boolean) as { request: typeof myRequests[0]; hoursRemaining: number; pct: number; color: string; bgColor: string }[];
+    }, [currentUser, myRequests]);
+
     const outstandingBalance = useMemo(() => {
         return myInvoices
             .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
@@ -137,6 +165,26 @@ export default function ClientDashboardPage() {
                     <NotificationBell />
                 </div>
             </header>
+
+            {/* SLA Countdown Strip */}
+            {slaData.length > 0 && (
+                <div className="space-y-2">
+                    {slaData.map(item => (
+                        <div key={item.request.id} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                            <Timer size={14} className={item.color} />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest truncate">{item.request.requestType} · {item.request.description}</p>
+                                    <span className={cn("text-[10px] font-black uppercase shrink-0 ml-2", item.color)}>{Math.round(item.hoursRemaining)}h remaining</span>
+                                </div>
+                                <div className="w-full bg-bg-tertiary rounded-full h-1">
+                                    <div className={cn("h-1 rounded-full transition-all", item.bgColor)} style={{ width: `${item.pct}%` }} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

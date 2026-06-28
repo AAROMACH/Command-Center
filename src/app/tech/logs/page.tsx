@@ -379,45 +379,70 @@ export default function TechWeeklyLogPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
-                    {filteredAndSortedLogs.map((log, logIdx) => (
-                        <Card 
-                            key={log.id || `log-list-${logIdx}`} 
-                            className="bg-bg-secondary border-border-sub hover:border-brand-red transition-all cursor-pointer group"
-                            onClick={() => setSelectedLogId(log.id)}
-                        >
-                            <CardContent className="p-5 flex items-center justify-between">
-                                <div className="flex items-center gap-6 text-left">
-                                    <div className={cn(
-                                        "p-3 rounded-xl border",
-                                        log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : 
-                                        log.status === 'Approved' ? "bg-green-dim border-green-border/30 text-text-green" : 
-                                        "bg-bg-tertiary border-border-sub text-text-muted"
-                                    )}>
-                                        <CalendarIcon size={20} />
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-sm font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
-                                            {log.unsubmitRequested && (
-                                                <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Pending</Badge>
-                                            )}
+                    {(() => {
+                        const draftLogs = filteredAndSortedLogs.filter(l => l.status === 'Draft');
+                        const pastLogs = filteredAndSortedLogs.filter(l => l.status !== 'Draft');
+                        const showDivider = statusFilter === 'all' && draftLogs.length > 0 && pastLogs.length > 0;
+                        const renderCard = (log: WeeklyLog, logIdx: number) => (
+                            <Card
+                                key={log.id || `log-list-${logIdx}`}
+                                className={cn(
+                                    "bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group",
+                                    log.status === 'Draft' ? "border-accent-gold/30" :
+                                    log.status === 'Approved' ? "border-green-border/30" :
+                                    "border-border-sub"
+                                )}
+                                onClick={() => setSelectedLogId(log.id)}
+                            >
+                                <CardContent className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className={cn(
+                                            "p-2.5 rounded-xl border",
+                                            log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" :
+                                            log.status === 'Approved' ? "bg-green-dim border-green-border/30 text-text-green" :
+                                            "bg-bg-tertiary border-border-sub text-text-muted"
+                                        )}>
+                                            <CalendarIcon size={16} />
                                         </div>
-                                        <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                            <span>{(log.items || []).length} Assignments</span>
-                                            <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                            <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
+                                        <div className="text-left">
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                                {log.unsubmitRequested && (
+                                                    <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Pending</Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                                <span>{(log.items || []).length} Assignments</span>
+                                                <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
+                                                <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <Badge variant={log.status === 'Draft' ? 'onhold' : log.status === 'Approved' ? 'active' : 'pending'}>
-                                        {(log.status || '').toUpperCase()}
-                                    </Badge>
-                                    <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    <div className="flex items-center gap-4">
+                                        <Badge variant={log.status === 'Draft' ? 'onhold' : log.status === 'Approved' ? 'active' : 'pending'}>
+                                            {(log.status || '').toUpperCase()}
+                                        </Badge>
+                                        <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                        return (
+                            <>
+                                {draftLogs.map((log, i) => renderCard(log, i))}
+                                {showDivider && (
+                                    <div className="flex items-center gap-3 py-2">
+                                        <div className="flex-1 h-px bg-border-sub" />
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-green flex items-center gap-1.5">
+                                            <History size={10} /> Past Logs
+                                        </p>
+                                        <div className="flex-1 h-px bg-border-sub" />
+                                    </div>
+                                )}
+                                {pastLogs.map((log, i) => renderCard(log, draftLogs.length + i))}
+                            </>
+                        );
+                    })()}
                     {filteredAndSortedLogs.length === 0 && (
                         <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30 text-left">
                             <LayoutList size={48} className="mx-auto text-text-muted mb-2" />

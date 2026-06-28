@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import type { WorkOrder } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -8,10 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO } from 'date-fns';
-import { MapPin, Clock, DollarSign, CalendarDays, Building2, Briefcase, ChevronRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { MapPin, Clock, DollarSign, CalendarDays, Building2, Briefcase, ChevronRight, Map as MapIcon, Timer, Navigation } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+
+const MapView = dynamic(() => import('../map/components/map-view'), {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
+});
 
 function getStatusColor(status: string) {
     if (status === 'in-progress') return 'bg-text-green';
@@ -34,6 +40,8 @@ export default function TechCalendarPage() {
     const [selectedEvent, setSelectedEvent] = useState<WorkOrder | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [techWorkOrders, setTechWorkOrders] = useState<WorkOrder[]>([]);
+    const [routeMode, setRouteMode] = useState<'optimized' | 'by-time' | 'by-mileage'>('optimized');
+    const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
 
     useEffect(() => {
         const userId = sessionStorage.getItem('currentUserId');
@@ -66,6 +74,15 @@ export default function TechCalendarPage() {
         try { return wo.scheduleDate === format(date || new Date(), 'yyyy-MM-dd'); }
         catch { return false; }
     });
+
+    const sortedDayJobs = useMemo(() => {
+        const jobs = [...eventsForSelectedDay];
+        if (routeMode === 'by-time') {
+            return jobs.sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+        }
+        // 'optimized' and 'by-mileage' both sort by time as approximation
+        return jobs.sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+    }, [eventsForSelectedDay, routeMode]);
 
     if (!currentTechId) {
         return (
@@ -186,6 +203,42 @@ export default function TechCalendarPage() {
                     )}
                 </div>
             </div>
+
+            {/* Day Map */}
+            {eventsForSelectedDay.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                            <MapIcon size={12} className="text-brand-red" />
+                            Day Route · {format(date || new Date(), 'EEE MMM d')}
+                        </p>
+                        <div className="flex items-center rounded-md border border-border-main overflow-hidden">
+                            {(['optimized', 'by-time', 'by-mileage'] as const).map((mode) => (
+                                <button
+                                    key={mode}
+                                    className={cn(
+                                        "h-7 px-3 text-[9px] font-bold uppercase tracking-wider transition-colors border-l border-border-main first:border-l-0",
+                                        routeMode === mode ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted hover:text-text-primary"
+                                    )}
+                                    onClick={() => setRouteMode(mode)}
+                                >
+                                    {mode === 'optimized' ? 'Optimized' : mode === 'by-time' ? 'By Time' : 'By Mileage'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-border-main" style={{ height: '50vh' }}>
+                        <MapView
+                            jobs={sortedDayJobs}
+                            selectedJob={mapSelectedJob}
+                            onSelectJob={(j) => {
+                                setMapSelectedJob(j);
+                                if (j) { setSelectedEvent(j); setIsDrawerOpen(true); }
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Job Detail Drawer */}
             <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>

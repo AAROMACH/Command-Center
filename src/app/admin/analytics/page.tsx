@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Building2, MapPin, Filter } from 'lucide-react';
+import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { WorkOrder, Technician, WeeklyLog, Site } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
 import { penaltyEvents } from '@/lib/data';
 import { getReliabilityTier } from '@/lib/reliability';
@@ -25,7 +25,6 @@ export default function FieldIntelligencePage() {
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-    const [sites, setSites] = useState<Site[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
     // Intelligence filter state
@@ -46,10 +45,7 @@ export default function FieldIntelligencePage() {
         const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubSites = onSnapshot(collection(db, 'sites'), (snap) => {
-            setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
-        });
-        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubSites(); };
+        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); };
     }, []);
 
     const staffTechs = useMemo(
@@ -120,7 +116,6 @@ export default function FieldIntelligencePage() {
                         <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
-                        <TabsTrigger value="sites" className="tab-trigger-activity">Sites</TabsTrigger>
                         <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                             Flags
                             {anomalyCounts > 0 && (
@@ -361,9 +356,6 @@ export default function FieldIntelligencePage() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="sites" className="m-0">
-                    <SitesPerformance sites={sites} workOrders={[...workOrders, ...assignments]} />
-                </TabsContent>
             </Tabs>
 
             <style jsx global>{`
@@ -375,66 +367,3 @@ export default function FieldIntelligencePage() {
     );
 }
 
-function SitesPerformance({ sites, workOrders }: { sites: Site[]; workOrders: WorkOrder[] }) {
-    const siteData = useMemo(() =>
-        sites.map(site => {
-            const siteJobs = workOrders.filter(wo => wo.siteId === site.id || wo.location === site.location);
-            const completed = siteJobs.filter(wo => wo.status === 'completed').length;
-            const active = siteJobs.filter(wo => wo.status === 'in-progress' || wo.status === 'assigned' || wo.status === 'scheduled').length;
-            return { ...site, totalJobs: siteJobs.length, completed, active };
-        }),
-        [sites, workOrders]
-    );
-
-    if (siteData.length === 0) {
-        return (
-            <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-                <Building2 size={32} className="text-text-muted mx-auto mb-3" />
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No sites found</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{siteData.length} Sites</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {siteData.map(site => (
-                    <div key={site.id} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-all p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                                <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">{site.name}</p>
-                                {site.clientName && (
-                                    <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate">{site.clientName}</p>
-                                )}
-                            </div>
-                            <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[7px] h-4 uppercase shrink-0">{site.status || 'active'}</Badge>
-                        </div>
-                        {site.location && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                <MapPin size={10} className="text-brand-red shrink-0" />
-                                <span className="truncate">{site.location}</span>
-                            </div>
-                        )}
-                        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border-sub/50">
-                            <div className="text-center">
-                                <p className="text-[18px] font-black text-text-primary">{site.totalJobs}</p>
-                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Total</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-[18px] font-black text-text-green">{site.completed}</p>
-                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Done</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-[18px] font-black text-accent-gold">{site.active}</p>
-                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Active</p>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}

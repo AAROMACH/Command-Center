@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
 import type { Lead, LeadActivity, Technician, SiteRequest } from '@/lib/types';
@@ -16,7 +17,7 @@ import { cn } from '@/lib/utils';
 import {
   Target, Plus, Search, DollarSign, Phone, Mail, User, TrendingUp,
   CheckCircle2, XCircle, ChevronRight, LayoutGrid, List, ArrowUpDown,
-  UserCheck, UserPlus, Building2, MapPin,
+  UserCheck, Building2, MapPin,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -130,6 +131,7 @@ function LeadCard({
 
 export default function CRMPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [clients, setClients] = useState<Technician[]>([]);
@@ -144,8 +146,6 @@ export default function CRMPage() {
   const [listSort, setListSort] = useState<{ col: 'company' | 'stage' | 'value' | 'updated'; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
   const [convertLead, setConvertLead] = useState<Lead | null>(null);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
-  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
-  const [newClientForm, setNewClientForm] = useState({ name: '', company: '', email: '', phone: '' });
   const [savingClient, setSavingClient] = useState(false);
 
   useEffect(() => {
@@ -275,36 +275,9 @@ export default function CRMPage() {
       toast({ title: 'Client created', description: `${convertLead.companyName} is now an active client.` });
       setIsConvertOpen(false);
       setConvertLead(null);
-      setCrmTab('clients');
+      router.push('/admin/crm/clients');
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed to convert', description: e.message });
-    } finally {
-      setSavingClient(false);
-    }
-  };
-
-  const handleAddClient = async () => {
-    if (!newClientForm.company && !newClientForm.name) {
-      toast({ variant: 'destructive', title: 'Required', description: 'Name or company is required.' });
-      return;
-    }
-    setSavingClient(true);
-    try {
-      await addDoc(collection(db, 'users'), {
-        name: newClientForm.name,
-        clientCompany: newClientForm.company,
-        email: newClientForm.email,
-        phone: newClientForm.phone,
-        roles: ['client'],
-        role: 'Client',
-        subscriptionStatus: 'active',
-        createdAt: new Date().toISOString(),
-      });
-      toast({ title: 'Client added', description: `${newClientForm.company || newClientForm.name} added.` });
-      setNewClientForm({ name: '', company: '', email: '', phone: '' });
-      setIsAddClientOpen(false);
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed', description: e.message });
     } finally {
       setSavingClient(false);
     }
@@ -381,15 +354,6 @@ export default function CRMPage() {
         <div className="flex items-center gap-2 ml-auto shrink-0">
           <Button
             size="sm"
-            variant="outline"
-            className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main"
-            onClick={() => setIsAddClientOpen(true)}
-          >
-            <UserPlus size={12} className="mr-1.5" />
-            Add Client
-          </Button>
-          <Button
-            size="sm"
             className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
             onClick={() => setIsNewLeadOpen(true)}
           >
@@ -403,7 +367,7 @@ export default function CRMPage() {
       <Tabs value={crmTab} onValueChange={setCrmTab} className="w-full">
         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1">
           <TabsTrigger value="pipeline" className="crm-tab-trigger">Pipeline</TabsTrigger>
-          <TabsTrigger value="clients" className="crm-tab-trigger flex items-center gap-2">
+          <TabsTrigger value="clients" className="crm-tab-trigger flex items-center gap-2" onClick={() => router.push('/admin/crm/clients')}>
             Clients
             {clients.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{clients.length}</span>}
             {pendingSiteReqs > 0 && (
@@ -545,73 +509,6 @@ export default function CRMPage() {
 
         </TabsContent>
 
-        {/* CLIENTS TAB */}
-        <TabsContent value="clients" className="m-0 pt-3">
-          <div className="space-y-4">
-            {/* Pending Site Requests Banner */}
-            {siteRequests.filter(r => r.status === 'pending').length > 0 && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-accent-gold/5 border border-accent-gold/20">
-                <MapPin size={14} className="text-accent-gold shrink-0" />
-                <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">
-                  {siteRequests.filter(r => r.status === 'pending').length} pending site request{siteRequests.filter(r => r.status === 'pending').length > 1 ? 's' : ''} awaiting review
-                </p>
-              </div>
-            )}
-
-            {filteredClients.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-                <UserCheck size={32} className="text-text-muted mx-auto mb-3" />
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
-                  {searchQuery ? 'No clients match your search' : 'No clients yet'}
-                </p>
-                {!searchQuery && (
-                  <p className="text-[10px] text-text-muted mt-1">Convert a Won lead or add a client directly.</p>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredClients.map(client => {
-                  const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
-                  return (
-                    <div key={client.id} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-all p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">
-                            {client.clientCompany || client.name}
-                          </p>
-                          {client.clientCompany && client.name !== client.clientCompany && (
-                            <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate">{client.name}</p>
-                          )}
-                        </div>
-                        <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {client.email && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                            <Mail size={10} className="text-brand-red shrink-0" />
-                            <span className="truncate">{client.email}</span>
-                          </div>
-                        )}
-                        {client.phone && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                            <Phone size={10} className="shrink-0" />
-                            <span>{client.phone}</span>
-                          </div>
-                        )}
-                        {clientSiteReqs.length > 0 && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-accent-gold">
-                            <MapPin size={10} className="shrink-0" />
-                            <span>{clientSiteReqs.length} site request{clientSiteReqs.length > 1 ? 's' : ''}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </TabsContent>
       </Tabs>
 
       <NewLeadDialog
@@ -651,39 +548,6 @@ export default function CRMPage() {
             <Button variant="outline" size="sm" onClick={() => setIsConvertOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
             <Button size="sm" onClick={handleConvertToClient} disabled={savingClient} className="bg-text-green hover:bg-text-green/90 text-white text-[10px] font-black uppercase">
               {savingClient ? 'Converting...' : 'Convert to Client'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ADD CLIENT DIALOG */}
-      <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
-        <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Add Client</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Acme Corp" value={newClientForm.company} onChange={e => setNewClientForm(f => ({ ...f, company: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Name</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Jane Smith" value={newClientForm.name} onChange={e => setNewClientForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
-              <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="jane@acme.com" value={newClientForm.email} onChange={e => setNewClientForm(f => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={newClientForm.phone} onChange={e => setNewClientForm(f => ({ ...f, phone: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsAddClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleAddClient} disabled={savingClient} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
-              {savingClient ? 'Adding...' : 'Add Client'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
-import type { Technician } from '@/lib/types';
+import type { Technician, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Send, ShieldCheck, Briefcase } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ const ADMIN_ID = 'admin';
 export default function ClientMessagingPage() {
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,7 +43,11 @@ export default function ClientMessagingPage() {
       setMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectMessage)));
     });
 
-    return () => { unsubUsers(); unsubMsgs(); };
+    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+      setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
+    });
+
+    return () => { unsubUsers(); unsubMsgs(); unsubProjects(); };
   }, []);
 
   useEffect(() => {
@@ -50,6 +55,12 @@ export default function ClientMessagingPage() {
   }, [messages]);
 
   const myId = currentUser?.id || '';
+
+  const activeProjects = allProjects.filter(p =>
+    p.status !== 'completed' &&
+    currentUser?.clientCompany &&
+    p.client === currentUser.clientCompany
+  );
 
   const thread = messages
     .filter(m =>
@@ -87,6 +98,25 @@ export default function ClientMessagingPage() {
           <p className="page-subtitle">Direct messages with your account manager.</p>
         </div>
       </header>
+
+      {/* Active Projects */}
+      {activeProjects.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <Briefcase size={10} className="text-brand-red" />
+            Your Active Projects ({activeProjects.length})
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {activeProjects.map(p => (
+              <div key={p.id} className="px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-0.5">{p.status}</p>
+                <p className="text-[11px] font-bold text-text-primary leading-tight">{p.name}</p>
+                <p className="text-[9px] text-text-muted mt-0.5 truncate">{p.location}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col h-[calc(100vh-220px)] min-h-[500px] border border-border-sub rounded-xl overflow-hidden bg-bg-secondary">
         {/* Header */}

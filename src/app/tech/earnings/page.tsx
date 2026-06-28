@@ -168,11 +168,6 @@ export default function TechEarningsPage() {
                     <h1 className="page-title">Billing Terminal</h1>
                     <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
                 </div>
-                <div className="page-header-right">
-                    <Button onClick={() => setIsReceiptDialogOpen(true)}>
-                        <Receipt size={14} className="mr-2"/> Submit Receipt
-                    </Button>
-                </div>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
@@ -246,6 +241,7 @@ export default function TechEarningsPage() {
                 <TabsList className="tabs mb-6">
                     <TabsTrigger value="logs" className="tab">Logs</TabsTrigger>
                     <TabsTrigger value="mileage" className="tab flex items-center gap-1.5"><Car size={12}/> Mileage</TabsTrigger>
+                    <TabsTrigger value="reimbursements" className="tab flex items-center gap-1.5"><Receipt size={12}/> Reimbursements</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="logs" className="mt-0">
@@ -360,6 +356,54 @@ export default function TechEarningsPage() {
                                     ))}
                                 </tbody>
                             </table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="reimbursements" className="mt-0">
+                    <Card>
+                        <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30">
+                            <div className="flex items-center justify-between">
+                                <div className="text-left">
+                                    <CardTitle>Reimbursements</CardTitle>
+                                    <CardDescription>Submit receipts for expense reimbursement. Approved entries are processed in payroll.</CardDescription>
+                                </div>
+                                <Button size="sm" onClick={() => setIsReceiptDialogOpen(true)} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                                    <Receipt size={12} className="mr-1.5" /> Submit Receipt
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent border-border-sub">
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Date</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Category</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Description</TableHead>
+                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
+                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {expenses.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement requests on file.</TableCell>
+                                        </TableRow>
+                                    ) : expenses.sort((a, b) => b.date.localeCompare(a.date)).map(exp => (
+                                        <TableRow key={exp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
+                                            <TableCell className="text-xs font-bold uppercase pl-4">{exp.date}</TableCell>
+                                            <TableCell className="text-xs text-text-muted">{exp.category}</TableCell>
+                                            <TableCell className="text-xs text-text-primary max-w-[200px] truncate">{exp.description}</TableCell>
+                                            <TableCell className="text-right font-mono text-sm font-bold">${exp.amount.toFixed(2)}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge variant={exp.status === 'Approved' ? 'active' : exp.status === 'Rejected' ? 'missed' : 'onhold'} className="text-[8px] h-4 uppercase">
+                                                    {exp.status}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </TabsContent>

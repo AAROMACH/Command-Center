@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Calendar, ChevronLeft, ChevronRight, Users, Filter,
-  Clock, MapPin, User, AlertCircle, Umbrella, LayoutGrid, List,
+  Clock, MapPin, User, AlertCircle, Umbrella, LayoutGrid, List, CalendarCheck, Download,
 } from 'lucide-react';
 import {
   format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, addMonths, subMonths,
@@ -154,6 +154,56 @@ export default function AdminCalendarPage() {
     [workOrders]
   );
 
+  const handleExportIcs = () => {
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const toIcsDate = (dateStr: string) => {
+      try {
+        const d = parseISO(dateStr);
+        return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`;
+      } catch { return ''; }
+    };
+
+    const exportOrders = workOrders.filter(wo => wo.scheduleDate);
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Aaromach Command Center//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
+    exportOrders.forEach(wo => {
+      const dateStr = toIcsDate(wo.scheduleDate);
+      if (!dateStr) return;
+      const techId = (wo as any).assignedTechnicianId || (wo as any).techId;
+      const tech = technicians.find(t => t.id === techId);
+      const summary = (wo.title || wo.description || wo.id).replace(/,/g, '\\,');
+      const description = [tech?.name ? `Tech: ${tech.name}` : '', wo.clientName ? `Client: ${wo.clientName}` : ''].filter(Boolean).join('\\n');
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${wo.id}@aaromach.com`,
+        `DTSTART;VALUE=DATE:${dateStr}`,
+        `DTEND;VALUE=DATE:${dateStr}`,
+        `SUMMARY:${summary}`,
+        wo.location ? `LOCATION:${wo.location.replace(/,/g, '\\,')}` : '',
+        description ? `DESCRIPTION:${description}` : '',
+        'END:VEVENT',
+      ).filter(l => l !== '');
+    });
+
+    lines.push('END:VCALENDAR');
+    const icsContent = lines.join('\r\n');
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aaromach-calendar-${format(new Date(), 'yyyy-MM-dd')}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-5">
       <header className="page-header">
@@ -167,6 +217,17 @@ export default function AdminCalendarPage() {
         </div>
 
         <div className="page-header-right items-center gap-2 flex-wrap">
+          {/* Calendar Sync */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[10px] font-bold uppercase tracking-wider border-border-main shrink-0"
+            onClick={handleExportIcs}
+          >
+            <CalendarCheck size={12} className="mr-1.5" />
+            Export .ics
+          </Button>
+
           {/* View toggle */}
           <div className="flex items-center rounded-md border border-border-main overflow-hidden h-8 bg-bg-secondary shrink-0">
             <button

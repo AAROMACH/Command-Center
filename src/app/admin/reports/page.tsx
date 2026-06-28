@@ -127,6 +127,10 @@ export default function ActivityAuditPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+    const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+
+    // App Activity filter
+    const [activityFilter, setActivityFilter] = useState<'all' | 'admin' | 'tech' | 'client'>('all');
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -180,9 +184,12 @@ export default function ActivityAuditPage() {
         const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
+        const unsubSiteReqs = onSnapshot(collection(db, 'siteRequests'), (snap) => {
+            setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
+        });
 
         return () => {
-            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
+            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR(); unsubSiteReqs();
         };
     }, []);
 
@@ -1052,6 +1059,9 @@ export default function ActivityAuditPage() {
                                 >
                                     Site Activity
                                 </TabsTrigger>
+                                <TabsTrigger value="app_activity" className="tab-trigger-activity">
+                                    App Activity
+                                </TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -1273,156 +1283,242 @@ export default function ActivityAuditPage() {
 
                             <TabsContent value="assignments_history" className="m-0 text-left">
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{[...workOrders, ...assignments].length} Records</p>
-                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                            const all = [...workOrders, ...assignments];
-                                            const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS','PAY']];
-                                            all.forEach(wo => {
-                                                const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                                rows.push([wo.scheduleDate, wo.id.toUpperCase(), wo.title || wo.description || '', wo.clientName || '', tech?.name || 'Unassigned', wo.status, String(wo.pay || 0)]);
-                                            });
-                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                            const blob = new Blob([csv], { type: 'text/csv' });
-                                            const url = URL.createObjectURL(blob);
-                                            const a = document.createElement('a'); a.href = url; a.download = 'assignment_history.csv'; a.click();
-                                        }}>
-                                            <Download size={13} className="mr-1.5" /> Export CSV
-                                        </Button>
-                                    </div>
-                                    <div className="table-wrap text-left">
-                                        <Table>
-                                            <TableHeader className="bg-bg-tertiary">
-                                                <TableRow className="hover:bg-transparent border-border-sub">
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Date</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Pay</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {[...workOrders, ...assignments]
-                                                    .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
-                                                    .map(wo => {
-                                                        const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                                        return (
-                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
-                                                                <TableCell className="py-3">
-                                                                    <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{wo.id.toUpperCase()}</p>
-                                                                    <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
-                                                                </TableCell>
-                                                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
-                                                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                <TableCell className="py-3"><Badge variant={wo.status === 'completed' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{wo.status}</Badge></TableCell>
-                                                                <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${(wo.pay || 0).toFixed(2)}</TableCell>
+                                    {(() => {
+                                        const completedJobs = [...workOrders, ...assignments].filter(wo => wo.status === 'completed').sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''));
+                                        return (
+                                            <>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Completed Records</p>
+                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                                        const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS']];
+                                                        completedJobs.forEach(wo => {
+                                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                            rows.push([wo.scheduleDate, wo.id.toUpperCase(), wo.title || wo.description || '', wo.clientName || '', tech?.name || 'Unassigned', wo.status]);
+                                                        });
+                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                                        const blob = new Blob([csv], { type: 'text/csv' });
+                                                        const url = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a'); a.href = url; a.download = 'assignment_history.csv'; a.click();
+                                                    }}>
+                                                        <Download size={13} className="mr-1.5" /> Export CSV
+                                                    </Button>
+                                                </div>
+                                                <div className="table-wrap text-left">
+                                                    <Table>
+                                                        <TableHeader className="bg-bg-tertiary">
+                                                            <TableRow className="hover:bg-transparent border-border-sub">
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Date</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
                                                             </TableRow>
-                                                        );
-                                                    })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {completedJobs.map(wo => {
+                                                                const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                                return (
+                                                                    <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                        <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
+                                                                        <TableCell className="py-3">
+                                                                            <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{wo.id.toUpperCase()}</p>
+                                                                            <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
+                                                                        </TableCell>
+                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
+                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
+                                                                        <TableCell className="py-3"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                            {completedJobs.length === 0 && (
+                                                                <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed assignments</TableCell></TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="project_history" className="m-0 text-left">
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{projects.length} Projects</p>
-                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                            const rows = [['NAME','CLIENT','STATUS','BUDGET','START DATE','END DATE']];
-                                            projects.forEach(p => rows.push([p.name || p.title || '', p.client || p.clientName || '', p.status || '', String(p.budget || 0), p.startDate || '', p.endDate || '']));
-                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                            const blob = new Blob([csv], { type: 'text/csv' });
-                                            const url = URL.createObjectURL(blob);
-                                            const a = document.createElement('a'); a.href = url; a.download = 'project_history.csv'; a.click();
-                                        }}>
-                                            <Download size={13} className="mr-1.5" /> Export CSV
-                                        </Button>
-                                    </div>
-                                    <div className="table-wrap text-left">
-                                        <Table>
-                                            <TableHeader className="bg-bg-tertiary">
-                                                <TableRow className="hover:bg-transparent border-border-sub">
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Project</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Budget</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {projects.map(p => (
-                                                    <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
-                                                        <TableCell className="py-3 pl-6">
-                                                            <p className="text-xs font-bold text-text-primary uppercase">{p.name || p.title}</p>
-                                                            <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{p.id?.toUpperCase()}</p>
-                                                        </TableCell>
-                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{(p as any).client || (p as any).clientName || '—'}</TableCell>
-                                                        <TableCell className="py-3"><Badge variant={p.status === 'completed' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{p.status || 'active'}</Badge></TableCell>
-                                                        <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${((p as any).budget || 0).toLocaleString()}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                                {projects.length === 0 && (
-                                                    <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No project records</TableCell></TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                    {(() => {
+                                        const completedProjects = projects.filter(p => p.status === 'completed');
+                                        return (
+                                            <>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedProjects.length} Completed Projects</p>
+                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                                        const rows = [['NAME','CLIENT','STATUS','START DATE','END DATE']];
+                                                        completedProjects.forEach(p => rows.push([p.name || p.title || '', (p as any).client || (p as any).clientName || '', p.status || '', p.startDate || '', p.endDate || '']));
+                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                                        const blob = new Blob([csv], { type: 'text/csv' });
+                                                        const url = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a'); a.href = url; a.download = 'project_history.csv'; a.click();
+                                                    }}>
+                                                        <Download size={13} className="mr-1.5" /> Export CSV
+                                                    </Button>
+                                                </div>
+                                                <div className="table-wrap text-left">
+                                                    <Table>
+                                                        <TableHeader className="bg-bg-tertiary">
+                                                            <TableRow className="hover:bg-transparent border-border-sub">
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Project</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Completed</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {completedProjects.map(p => (
+                                                                <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
+                                                                    <TableCell className="py-3 pl-6">
+                                                                        <p className="text-xs font-bold text-text-primary uppercase">{p.name || p.title}</p>
+                                                                        <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{p.id?.toUpperCase()}</p>
+                                                                    </TableCell>
+                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{(p as any).client || (p as any).clientName || '—'}</TableCell>
+                                                                    <TableCell className="py-3"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                                                    <TableCell className="py-3 text-[10px] font-mono text-text-muted">{p.endDate || '—'}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                            {completedProjects.length === 0 && (
+                                                                <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed projects</TableCell></TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="weekly_logs" className="m-0 text-left">
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{weeklyLogs.length} Logs</p>
-                                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                            const rows = [['WEEK OF','TECHNICIAN','ITEMS','TOTAL PAYOUT','STATUS']];
-                                            weeklyLogs.forEach(l => {
-                                                const tech = technicians.find(t => t.id === l.techId);
-                                                rows.push([l.weekOf, tech?.name || l.techId, String((l.items || []).length), String(l.totalPayout || 0), l.status]);
-                                            });
-                                            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                            const blob = new Blob([csv], { type: 'text/csv' });
-                                            const url = URL.createObjectURL(blob);
-                                            const a = document.createElement('a'); a.href = url; a.download = 'weekly_log_history.csv'; a.click();
-                                        }}>
-                                            <Download size={13} className="mr-1.5" /> Export CSV
-                                        </Button>
-                                    </div>
-                                    <div className="table-wrap text-left">
-                                        <Table>
-                                            <TableHeader className="bg-bg-tertiary">
-                                                <TableRow className="hover:bg-transparent border-border-sub">
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Of</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Items</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                    <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Total Payout</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {weeklyLogs
-                                                    .sort((a, b) => b.weekOf.localeCompare(a.weekOf))
-                                                    .map(l => {
-                                                        const tech = technicians.find(t => t.id === l.techId);
-                                                        return (
-                                                            <TableRow key={l.id} className="border-border-sub hover:bg-bg-tertiary">
-                                                                <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary uppercase">{l.weekOf}</TableCell>
-                                                                <TableCell className="py-3 text-[10px] font-bold text-text-primary uppercase">{tech?.name || l.techId}</TableCell>
-                                                                <TableCell className="py-3 text-center text-[10px] font-bold text-text-secondary">{(l.items || []).length}</TableCell>
-                                                                <TableCell className="py-3"><Badge variant={l.status === 'Approved' ? 'active' : l.status === 'Submitted' ? 'scheduled' : 'default'} className="text-[8px] uppercase">{l.status}</Badge></TableCell>
-                                                                <TableCell className="py-3 pr-6 text-right text-[10px] font-mono font-bold text-text-green">${(l.totalPayout || 0).toFixed(2)}</TableCell>
+                                    {(() => {
+                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+                                        return (
+                                            <>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{submittedLogs.length} Submitted / Approved Logs</p>
+                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
+                                                        const rows = [['WEEK OF','TECHNICIAN','ITEMS','STATUS']];
+                                                        submittedLogs.forEach(l => {
+                                                            const tech = technicians.find(t => t.id === l.techId);
+                                                            rows.push([l.weekOf, tech?.name || l.techId, String((l.items || []).length), l.status]);
+                                                        });
+                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+                                                        const blob = new Blob([csv], { type: 'text/csv' });
+                                                        const url = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a'); a.href = url; a.download = 'weekly_log_history.csv'; a.click();
+                                                    }}>
+                                                        <Download size={13} className="mr-1.5" /> Export CSV
+                                                    </Button>
+                                                </div>
+                                                <div className="table-wrap text-left">
+                                                    <Table>
+                                                        <TableHeader className="bg-bg-tertiary">
+                                                            <TableRow className="hover:bg-transparent border-border-sub">
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Of</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Items</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
                                                             </TableRow>
-                                                        );
-                                                    })}
-                                                {weeklyLogs.length === 0 && (
-                                                    <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No weekly logs</TableCell></TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {submittedLogs.map(l => {
+                                                                const tech = technicians.find(t => t.id === l.techId);
+                                                                return (
+                                                                    <TableRow key={l.id} className="border-border-sub hover:bg-bg-tertiary">
+                                                                        <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary uppercase">{l.weekOf}</TableCell>
+                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-primary uppercase">{tech?.name || l.techId}</TableCell>
+                                                                        <TableCell className="py-3 text-center text-[10px] font-bold text-text-secondary">{(l.items || []).length}</TableCell>
+                                                                        <TableCell className="py-3"><Badge variant={l.status === 'Approved' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{l.status}</Badge></TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                            {submittedLogs.length === 0 && (
+                                                                <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No submitted or approved logs</TableCell></TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="app_activity" className="m-0 text-left">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        {(['all', 'admin', 'tech', 'client'] as const).map(f => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setActivityFilter(f)}
+                                                className={cn(
+                                                    'h-7 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border transition-colors',
+                                                    activityFilter === f
+                                                        ? 'bg-brand-red text-white border-brand-red'
+                                                        : 'border-border-sub text-text-muted hover:text-text-primary bg-bg-secondary'
                                                 )}
-                                            </TableBody>
-                                        </Table>
+                                            >{f}</button>
+                                        ))}
                                     </div>
+                                    {(() => {
+                                        const events: { id: string; time: string; actor: string; role: 'admin' | 'tech' | 'client'; action: string; detail: string }[] = [];
+                                        // Completed assignments
+                                        [...workOrders, ...assignments].filter(wo => wo.status === 'completed' && wo.scheduleDate).slice(0, 30).forEach(wo => {
+                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                            if (tech && !tech.roles?.includes('client')) {
+                                                events.push({ id: `wo-${wo.id}`, time: wo.scheduleDate || '', actor: tech.name || 'Field Tech', role: 'tech', action: 'Completed assignment', detail: wo.title || wo.description || wo.id });
+                                            }
+                                        });
+                                        // Submitted/Approved weekly logs
+                                        weeklyLogs.filter(wl => wl.status === 'Submitted' || wl.status === 'Approved').slice(0, 20).forEach(wl => {
+                                            const tech = technicians.find(t => t.id === wl.techId);
+                                            events.push({ id: `wl-${wl.id}`, time: wl.submittedAt || wl.weekOf || '', actor: tech?.name || 'Field Tech', role: 'tech', action: wl.status === 'Approved' ? 'Log approved' : 'Submitted weekly log', detail: `Week of ${wl.weekOf}` });
+                                        });
+                                        // Site requests
+                                        siteRequests.filter(r => r.status === 'pending' || r.status === 'approved').slice(0, 15).forEach(r => {
+                                            events.push({ id: `sr-${r.id}`, time: r.createdAt || '', actor: (r as any).requestorName || 'Client', role: 'client', action: `Site request — ${r.status}`, detail: (r as any).siteName || '' });
+                                        });
+                                        // Completed projects
+                                        projects.filter(p => p.status === 'completed').slice(0, 10).forEach(p => {
+                                            events.push({ id: `pr-${p.id}`, time: p.endDate || p.updatedAt || '', actor: 'Admin', role: 'admin', action: 'Project completed', detail: p.name || p.title || '' });
+                                        });
+
+                                        const allEvents = events.filter(e => e.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 60);
+                                        const filtered = activityFilter === 'all' ? allEvents : allEvents.filter(e => e.role === activityFilter);
+                                        const roleColors: Record<string, string> = {
+                                            admin: 'text-brand-red bg-brand-red/10 border-brand-red/20',
+                                            tech: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+                                            client: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+                                        };
+                                        return filtered.length === 0 ? (
+                                            <div className="py-16 text-center">
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No activity recorded yet</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                {filtered.map(item => (
+                                                    <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-sub hover:bg-bg-tertiary transition-colors">
+                                                        <span className={cn('shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border mt-0.5', roleColors[item.role])}>{item.role}</span>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-baseline gap-2 flex-wrap">
+                                                                <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{item.actor}</span>
+                                                                <span className="text-[10px] text-text-muted">{item.action}</span>
+                                                            </div>
+                                                            {item.detail && <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5 truncate">{item.detail}</p>}
+                                                        </div>
+                                                        <span className="text-[8px] text-text-muted font-mono shrink-0 mt-0.5">{item.time.slice(0, 10)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </TabsContent>
 

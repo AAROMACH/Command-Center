@@ -169,9 +169,6 @@ export default function TechEarningsPage() {
                     <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="outline" onClick={() => setIsMileageDialogOpen(true)} className="h-10 px-4 font-bold uppercase tracking-widest text-[10px]">
-                        <Car size={14} className="mr-2"/> Log Mileage
-                    </Button>
                     <Button onClick={() => setIsReceiptDialogOpen(true)}>
                         <Receipt size={14} className="mr-2"/> Submit Receipt
                     </Button>
@@ -202,7 +199,57 @@ export default function TechEarningsPage() {
                 </div>
             </div>
 
-            <Card>
+            {/* Project Payouts Section */}
+            {projectPayouts.length > 0 && (
+                <Card>
+                    <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30 text-left">
+                        <CardTitle>Project Earnings</CardTitle>
+                        <CardDescription>Payouts tied to project work — separate from weekly assignment logs.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent border-border-sub">
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Project</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Role</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {projectPayouts.map(pp => (
+                                    <TableRow key={pp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
+                                        <TableCell className="text-xs font-bold uppercase pl-4">{pp.projectId.slice(0, 8)}</TableCell>
+                                        <TableCell className="text-xs text-text-muted capitalize">{pp.role}</TableCell>
+                                        <TableCell className="text-xs text-text-muted capitalize">{pp.payType.replace('_', ' ')}</TableCell>
+                                        <TableCell className="font-mono text-sm font-bold tabular-nums">${pp.amount.toFixed(2)}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'}
+                                                className="text-[8px] h-4 uppercase"
+                                            >
+                                                {pp.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{pp.notes || '—'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
+
+            <Tabs defaultValue="logs" className="w-full">
+                <TabsList className="tabs mb-6">
+                    <TabsTrigger value="logs" className="tab">Logs</TabsTrigger>
+                    <TabsTrigger value="mileage" className="tab flex items-center gap-1.5"><Car size={12}/> Mileage</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="logs" className="mt-0">
+                <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border-sub bg-bg-tertiary/30">
                     <div className="text-left">
                         <CardTitle>Billing Registry</CardTitle>
@@ -264,98 +311,59 @@ export default function TechEarningsPage() {
                     </Table>
                 </CardContent>
             </Card>
+                </TabsContent>
 
-            {/* Project Payouts Section */}
-            {projectPayouts.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <CardTitle>Project Earnings</CardTitle>
-                        <CardDescription>Payouts tied to project work — separate from weekly assignment logs.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-border-sub">
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Project</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Role</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {projectPayouts.map(pp => (
-                                    <TableRow key={pp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                        <TableCell className="text-xs font-bold uppercase pl-4">{pp.projectId.slice(0, 8)}</TableCell>
-                                        <TableCell className="text-xs text-text-muted capitalize">{pp.role}</TableCell>
-                                        <TableCell className="text-xs text-text-muted capitalize">{pp.payType.replace('_', ' ')}</TableCell>
-                                        <TableCell className="font-mono text-sm font-bold tabular-nums">${pp.amount.toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'}
-                                                className="text-[8px] h-4 uppercase"
-                                            >
-                                                {pp.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{pp.notes || '—'}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30">
-                    <div className="flex items-center justify-between">
-                        <div className="text-left">
-                            <CardTitle>Mileage Log</CardTitle>
-                            <CardDescription>Trip records for reimbursement and tax tracking.</CardDescription>
-                        </div>
-                        <Button size="sm" onClick={() => setIsMileageDialogOpen(true)} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
-                            <Plus size={12} className="mr-1.5" /> Log Trip
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="border-b border-border-sub bg-bg-tertiary/30">
-                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Date</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Route</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-right">Miles</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mileageEntries.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="py-12 text-center text-[10px] font-bold text-text-muted uppercase tracking-widest italic">
-                                        No mileage entries logged.
-                                    </td>
-                                </tr>
-                            ) : mileageEntries.sort((a, b) => b.date.localeCompare(a.date)).map(entry => (
-                                <tr key={entry.id} className="border-b border-border-sub hover:bg-bg-tertiary transition-colors">
-                                    <td className="px-4 py-3 text-xs font-bold uppercase">{entry.date}</td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-xs text-text-primary">{entry.startLocation} → {entry.endLocation}</p>
-                                        {entry.note && <p className="text-[10px] text-text-muted">{entry.note}</p>}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-sm font-bold">{entry.miles}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${entry.status === 'approved' ? 'bg-green-dim text-text-green' : entry.status === 'auto' ? 'bg-bg-tertiary text-text-muted' : 'bg-accent-gold-dim text-accent-gold'}`}>
-                                            {entry.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </CardContent>
-            </Card>
+                <TabsContent value="mileage" className="mt-0">
+                    <Card>
+                        <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30">
+                            <div className="flex items-center justify-between">
+                                <div className="text-left">
+                                    <CardTitle>Mileage Log</CardTitle>
+                                    <CardDescription>Trip records for reimbursement and tax tracking.</CardDescription>
+                                </div>
+                                <Button size="sm" onClick={() => setIsMileageDialogOpen(true)} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                                    <Plus size={12} className="mr-1.5" /> Log Trip
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-border-sub bg-bg-tertiary/30">
+                                        <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Date</th>
+                                        <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted">Route</th>
+                                        <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-right">Miles</th>
+                                        <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-widest text-text-muted text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mileageEntries.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="py-12 text-center text-[10px] font-bold text-text-muted uppercase tracking-widest italic">
+                                                No mileage entries logged.
+                                            </td>
+                                        </tr>
+                                    ) : mileageEntries.sort((a, b) => b.date.localeCompare(a.date)).map(entry => (
+                                        <tr key={entry.id} className="border-b border-border-sub hover:bg-bg-tertiary transition-colors">
+                                            <td className="px-4 py-3 text-xs font-bold uppercase">{entry.date}</td>
+                                            <td className="px-4 py-3">
+                                                <p className="text-xs text-text-primary">{entry.startLocation} → {entry.endLocation}</p>
+                                                {entry.note && <p className="text-[10px] text-text-muted">{entry.note}</p>}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-mono text-sm font-bold">{entry.miles}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${entry.status === 'approved' ? 'bg-green-dim text-text-green' : entry.status === 'auto' ? 'bg-bg-tertiary text-text-muted' : 'bg-accent-gold-dim text-accent-gold'}`}>
+                                                    {entry.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <ReceiptUploadDialog
                 isOpen={isReceiptDialogOpen}

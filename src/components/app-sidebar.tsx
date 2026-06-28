@@ -73,7 +73,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/admin/dispatch", label: "Dispatch", icon: Wrench, permission: "manage_assignments" },
       { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
       { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
-      { href: "/admin/sites", label: "Sites", icon: Building2, permission: "manage_assignments" },
+      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "manage_assignments" },
       { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
     ],
   },

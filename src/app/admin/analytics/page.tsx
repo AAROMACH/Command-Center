@@ -86,6 +86,81 @@ export default function FieldIntelligencePage() {
         return { total: myJobs.length, completed, points, penalties, totalEarnings, myJobs, myLogs };
     }, [selectedTechId, assignments, weeklyLogs]);
 
+    // Insights tab computed values
+    const techReliability = useMemo(() => {
+        return staffTechs.map(tech => {
+            const techJobs = assignments.filter(wo =>
+                wo.assignedTechnicianId === tech.id || wo.techId === tech.id
+            );
+            const completed = techJobs.filter(wo => wo.status === 'completed').length;
+            const total = techJobs.length;
+            const revisits = techJobs.filter(wo =>
+                (wo.revisitCount && wo.revisitCount > 0) ||
+                wo.jobType?.toLowerCase().includes('revisit') ||
+                wo.jobType?.toLowerCase().includes('follow-up')
+            ).length;
+            const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const revisitRate = total > 0 ? Math.round((revisits / total) * 100) : 0;
+            return { ...tech, completionRate, revisitRate, total, completed, revisits };
+        }).filter(t => t.total > 0).sort((a, b) => b.completionRate - a.completionRate);
+    }, [staffTechs, assignments]);
+
+    const revisitFlags = useMemo(
+        () => techReliability.filter(t => t.revisitRate > 20),
+        [techReliability]
+    );
+
+    const underpaidWarnings = useMemo(
+        () => workOrders.filter(wo => wo.status !== 'completed' && (!wo.pay || wo.pay < 30)).slice(0, 20),
+        [workOrders]
+    );
+
+    const missingDocAlerts = useMemo(() => {
+        return assignments
+            .filter(wo => wo.status === 'completed')
+            .filter(wo => !weeklyLogs.some(log =>
+                log.techId === (wo.assignedTechnicianId || wo.techId) &&
+                log.items?.some(item => item.workOrderId === wo.id)
+            ))
+            .slice(0, 20);
+    }, [assignments, weeklyLogs]);
+
+    const profitabilityByClient = useMemo(() => {
+        const map = new Map<string, { revenue: number; pending: number; jobCount: number }>();
+        workOrders.forEach(wo => {
+            const client = wo.clientName || 'Unknown';
+            const prev = map.get(client) || { revenue: 0, pending: 0, jobCount: 0 };
+            if (wo.status === 'completed') {
+                prev.revenue += wo.pay || 0;
+                prev.jobCount += 1;
+            } else {
+                prev.pending += wo.pay || 0;
+            }
+            map.set(client, prev);
+        });
+        return Array.from(map.entries())
+            .map(([client, data]) => ({ client, ...data }))
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 10);
+    }, [workOrders]);
+
+    const failurePatterns = useMemo(() => {
+        const revisitWOs = workOrders.filter(wo =>
+            (wo.revisitCount && wo.revisitCount > 0) ||
+            wo.jobType?.toLowerCase().includes('revisit') ||
+            wo.title?.toLowerCase().includes('revisit') ||
+            wo.title?.toLowerCase().includes('follow-up')
+        );
+        const byType = new Map<string, number>();
+        revisitWOs.forEach(wo => {
+            const key = wo.jobType || 'General';
+            byType.set(key, (byType.get(key) || 0) + 1);
+        });
+        return Array.from(byType.entries())
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [workOrders]);
+
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
@@ -122,6 +197,7 @@ export default function FieldIntelligencePage() {
                                 <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -354,6 +430,168 @@ export default function FieldIntelligencePage() {
                             })}
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="insights" className="m-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                        {/* Tech Reliability Trends */}
+                        <div className="lg:col-span-2 space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Tech Reliability Trends</h3>
+                            {techReliability.length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No assignment data</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {techReliability.map(t => (
+                                        <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-main">
+                                            <Avatar className="h-8 w-8 border border-border-sub shrink-0">
+                                                <AvatarImage src={t.avatarUrl} />
+                                                <AvatarFallback className="text-[9px]">{(t.name || 'U')[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-bold text-text-primary uppercase truncate">{t.name}</p>
+                                                <div className="flex gap-3 mt-1">
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between mb-0.5">
+                                                            <span className="text-[8px] text-text-muted uppercase">Completion</span>
+                                                            <span className="text-[8px] font-bold text-text-green">{t.completionRate}%</span>
+                                                        </div>
+                                                        <div className="h-1 bg-bg-tertiary rounded-full">
+                                                            <div className="h-1 bg-text-green rounded-full" style={{ width: `${t.completionRate}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-[8px] text-text-muted uppercase">Revisit</p>
+                                                        <p className={cn("text-[8px] font-bold", t.revisitRate > 20 ? 'text-text-red' : 'text-text-muted')}>{t.revisitRate}%</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[11px] font-bold text-text-primary">{t.completed}/{t.total}</p>
+                                                <p className="text-[8px] text-text-muted uppercase">Jobs</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Revisit Rate Flags */}
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                                Revisit Rate Flags
+                                {revisitFlags.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[7px]">{revisitFlags.length}</Badge>}
+                            </h3>
+                            {revisitFlags.length === 0 ? (
+                                <div className="flex items-center gap-2 py-3 text-text-green">
+                                    <ShieldAlert size={14} />
+                                    <p className="text-[10px] font-bold uppercase">No techs above 20% revisit threshold</p>
+                                </div>
+                            ) : revisitFlags.map(t => (
+                                <div key={t.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-7 w-7 border border-brand-red/30">
+                                            <AvatarImage src={t.avatarUrl} />
+                                            <AvatarFallback className="text-[9px]">{(t.name || 'U')[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <p className="text-[11px] font-bold text-text-primary uppercase">{t.name}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[11px] font-bold text-text-red">{t.revisitRate}% revisit</p>
+                                        <p className="text-[8px] text-text-muted uppercase">{t.revisits} of {t.total} jobs</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Underpaid Work Warnings */}
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                                Underpaid Work
+                                {underpaidWarnings.length > 0 && <Badge variant="onhold" className="h-4 px-1.5 text-[7px]">{underpaidWarnings.length}</Badge>}
+                            </h3>
+                            {underpaidWarnings.length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-3">No underpaid jobs detected</p>
+                            ) : underpaidWarnings.map(wo => (
+                                <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-warn bg-brand-amber-dim/5">
+                                    <div>
+                                        <p className="text-[11px] font-bold text-text-amber uppercase">{wo.title || wo.id}</p>
+                                        <p className="text-[9px] text-text-muted uppercase">{wo.clientName || 'No client'} — {wo.jobType || 'Unknown type'}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-[11px] font-bold text-text-amber">${wo.pay || 0}</p>
+                                        <p className="text-[8px] text-text-muted uppercase">Pay</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Missing Documentation Alerts */}
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                                Missing Docs (48h+)
+                                {missingDocAlerts.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[7px]">{missingDocAlerts.length}</Badge>}
+                            </h3>
+                            {missingDocAlerts.length === 0 ? (
+                                <div className="flex items-center gap-2 py-3 text-text-green">
+                                    <ShieldAlert size={14} />
+                                    <p className="text-[10px] font-bold uppercase">All completed jobs have logs</p>
+                                </div>
+                            ) : missingDocAlerts.map(wo => {
+                                const tech = staffTechs.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                return (
+                                    <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-alert bg-brand-red-dim/5">
+                                        <div>
+                                            <p className="text-[11px] font-bold text-text-red uppercase">{wo.title || wo.id}</p>
+                                            <p className="text-[9px] text-text-muted uppercase">{tech?.name || 'Unknown tech'} — completed, no log</p>
+                                        </div>
+                                        <Badge variant="destructive" className="h-4 text-[7px] uppercase shrink-0">No Log</Badge>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Profitability by Client */}
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Profitability by Client</h3>
+                            {profitabilityByClient.length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-3">No revenue data</p>
+                            ) : profitabilityByClient.map(({ client, revenue, pending, jobCount }) => (
+                                <div key={client} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
+                                    <div>
+                                        <p className="text-[11px] font-bold text-text-primary uppercase">{client}</p>
+                                        <p className="text-[9px] text-text-muted uppercase">{jobCount} completed job{jobCount !== 1 ? 's' : ''}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-[11px] font-bold text-text-green">${revenue.toFixed(0)} earned</p>
+                                        {pending > 0 && <p className="text-[9px] text-text-amber">${pending.toFixed(0)} pending</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Common Failure Patterns */}
+                        <div className="lg:col-span-2 space-y-2">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Common Failure Patterns (Revisits by Job Type)</h3>
+                            {failurePatterns.length === 0 ? (
+                                <div className="flex items-center gap-2 py-3 text-text-green">
+                                    <ShieldAlert size={14} />
+                                    <p className="text-[10px] font-bold uppercase">No revisit patterns detected</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    {failurePatterns.map(({ type, count }) => (
+                                        <div key={type} className="p-3 rounded-lg border border-border-warn bg-brand-amber-dim/5 text-center">
+                                            <p className="text-2xl font-bold font-mono text-text-amber">{count}</p>
+                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1">{type}</p>
+                                            <p className="text-[8px] text-text-muted uppercase">revisit{count !== 1 ? 's' : ''}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
                 </TabsContent>
 
             </Tabs>

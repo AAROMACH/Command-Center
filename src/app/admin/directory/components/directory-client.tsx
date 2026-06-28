@@ -43,6 +43,7 @@ import {
     Gauge
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
 import { EditPersonnelDialog } from './edit-personnel-dialog';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
@@ -105,6 +106,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [isCompanyDetailOpen, setIsCompanyDetailOpen] = useState(false);
     
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -127,8 +129,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     }, [searchQuery, activeTab, itemsPerPage]);
 
     const handleRowClick = (person: Technician) => {
-        setSelectedPerson(person);
-        setIsDetailOpen(true);
+        router.push('/admin/directory/' + person.id);
     };
 
     const handleCompanyClick = (companyName: string) => {

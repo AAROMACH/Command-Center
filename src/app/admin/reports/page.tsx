@@ -499,10 +499,10 @@ export default function ActivityAuditPage() {
             const tech = technicians.find(t => t.id === techId);
             const techName = tech?.name;
 
-            if (wo.assignedAt) {
+            if ((wo as any).assignedAt) {
                 events.push({
                     id: `asmt-created-${wo.id}`,
-                    timestamp: wo.assignedAt,
+                    timestamp: (wo as any).assignedAt,
                     type: 'assignment',
                     eventLabel: 'Assignment Created',
                     entity: wo.title || wo.description || wo.id.toUpperCase(),
@@ -515,10 +515,10 @@ export default function ActivityAuditPage() {
             }
 
             const completedStatus = ['completed', 'checked-out'];
-            if (completedStatus.includes(wo.status) && wo.updatedAt) {
+            if (completedStatus.includes(wo.status) && (wo as any).updatedAt) {
                 events.push({
                     id: `asmt-completed-${wo.id}`,
-                    timestamp: wo.updatedAt,
+                    timestamp: (wo as any).updatedAt,
                     type: 'assignment',
                     eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out',
                     entity: wo.title || wo.description || wo.id.toUpperCase(),
@@ -1618,7 +1618,7 @@ export default function ActivityAuditPage() {
                                                     <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedProjects.length} Completed Projects</p>
                                                     <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
                                                         const rows = [['NAME','CLIENT','STATUS','START DATE','END DATE']];
-                                                        completedProjects.forEach(p => rows.push([p.name || p.title || '', (p as any).client || (p as any).clientName || '', p.status || '', p.startDate || '', p.endDate || '']));
+                                                        completedProjects.forEach(p => rows.push([p.name, (p as any).client || (p as any).clientName || '', p.status || '', p.startDate || '', (p as any).endDate || '']));
                                                         const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
                                                         const blob = new Blob([csv], { type: 'text/csv' });
                                                         const url = URL.createObjectURL(blob);
@@ -1641,12 +1641,12 @@ export default function ActivityAuditPage() {
                                                             {completedProjects.map(p => (
                                                                 <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
                                                                     <TableCell className="py-3 pl-6">
-                                                                        <p className="text-xs font-bold text-text-primary uppercase">{p.name || p.title}</p>
+                                                                        <p className="text-xs font-bold text-text-primary uppercase">{p.name}</p>
                                                                         <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{p.id?.toUpperCase()}</p>
                                                                     </TableCell>
                                                                     <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{(p as any).client || (p as any).clientName || '—'}</TableCell>
                                                                     <TableCell className="py-3"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-mono text-text-muted">{p.endDate || '—'}</TableCell>
+                                                                    <TableCell className="py-3 text-[10px] font-mono text-text-muted">{(p as any).endDate || '—'}</TableCell>
                                                                 </TableRow>
                                                             ))}
                                                             {completedProjects.length === 0 && (
@@ -1749,11 +1749,11 @@ export default function ActivityAuditPage() {
                                         });
                                         // Site requests
                                         siteRequests.filter(r => r.status === 'pending' || r.status === 'approved').slice(0, 15).forEach(r => {
-                                            events.push({ id: `sr-${r.id}`, time: r.createdAt || '', actor: (r as any).requestorName || 'Client', role: 'client', action: `Site request — ${r.status}`, detail: (r as any).siteName || '' });
+                                            events.push({ id: `sr-${r.id}`, time: r.submittedDate || '', actor: (r as any).requestorName || 'Client', role: 'client', action: `Site request — ${r.status}`, detail: r.siteName || '' });
                                         });
                                         // Completed projects
                                         projects.filter(p => p.status === 'completed').slice(0, 10).forEach(p => {
-                                            events.push({ id: `pr-${p.id}`, time: p.endDate || p.updatedAt || '', actor: 'Admin', role: 'admin', action: 'Project completed', detail: p.name || p.title || '' });
+                                            events.push({ id: `pr-${p.id}`, time: (p as any).endDate || (p as any).updatedAt || '', actor: 'Admin', role: 'admin', action: 'Project completed', detail: p.name });
                                         });
 
                                         const allEvents = events.filter(e => e.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 60);

@@ -136,7 +136,6 @@ export default function CRMPage() {
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [clientSearch, setClientSearch] = useState('');
   const [crmTab, setCrmTab] = useState('pipeline');
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -313,12 +312,17 @@ export default function CRMPage() {
 
   const filteredClients = useMemo(() =>
     clients.filter(c =>
-      !clientSearch ||
-      (c.clientCompany || '').toLowerCase().includes(clientSearch.toLowerCase()) ||
-      (c.name || '').toLowerCase().includes(clientSearch.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(clientSearch.toLowerCase())
+      !searchQuery ||
+      (c.clientCompany || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     ),
-    [clients, clientSearch]
+    [clients, searchQuery]
+  );
+
+  const pendingSiteReqs = useMemo(() =>
+    siteRequests.filter(r => r.status === 'pending').length,
+    [siteRequests]
   );
 
   return (
@@ -402,6 +406,11 @@ export default function CRMPage() {
           <TabsTrigger value="clients" className="crm-tab-trigger flex items-center gap-2">
             Clients
             {clients.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{clients.length}</span>}
+            {pendingSiteReqs > 0 && (
+              <span className="text-[8px] font-black bg-brand-red text-white px-1.5 py-0.5 rounded animate-pulse">
+                {pendingSiteReqs}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -539,21 +548,6 @@ export default function CRMPage() {
         {/* CLIENTS TAB */}
         <TabsContent value="clients" className="m-0 pt-3">
           <div className="space-y-4">
-            <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[180px]">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-                  placeholder="Search clients..."
-                  value={clientSearch}
-                  onChange={e => setClientSearch(e.target.value)}
-                />
-              </div>
-              <Button size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white ml-auto" onClick={() => setIsAddClientOpen(true)}>
-                <UserPlus size={12} className="mr-1.5" /> Add Client
-              </Button>
-            </div>
-
             {/* Pending Site Requests Banner */}
             {siteRequests.filter(r => r.status === 'pending').length > 0 && (
               <div className="flex items-center gap-3 p-3 rounded-lg bg-accent-gold/5 border border-accent-gold/20">
@@ -568,9 +562,9 @@ export default function CRMPage() {
               <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                 <UserCheck size={32} className="text-text-muted mx-auto mb-3" />
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
-                  {clientSearch ? 'No clients match your search' : 'No clients yet'}
+                  {searchQuery ? 'No clients match your search' : 'No clients yet'}
                 </p>
-                {!clientSearch && (
+                {!searchQuery && (
                   <p className="text-[10px] text-text-muted mt-1">Convert a Won lead or add a client directly.</p>
                 )}
               </div>

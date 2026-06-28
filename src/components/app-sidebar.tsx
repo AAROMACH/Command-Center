@@ -107,6 +107,7 @@ const techNavItems: NavItem[] = [
   { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "field_logs" },
   { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "field_logs" },
   { href: "/tech/map", label: "Map", icon: MapPin, permission: "field_logs" },
+  { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "view_assigned_work_only" },
   { href: "/tech/profile", label: "Profile", icon: Users, permission: "view_assigned_work_only" },
 ];
 
@@ -116,6 +117,7 @@ const clientNavItems: NavItem[] = [
   { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client_portal" },
   { href: "/client/sites", label: "Sites", icon: MapPin, permission: "client_portal" },
   { href: "/client/financials", label: "Financials", icon: FileText, permission: "client_portal" },
+  { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client_portal" },
   { href: "/client/profile", label: "Profile", icon: Users, permission: "client_portal" },
 ];
 

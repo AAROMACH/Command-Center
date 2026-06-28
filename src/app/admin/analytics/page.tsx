@@ -3,14 +3,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw } from 'lucide-react';
+import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Building2, MapPin, Filter } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog, Site } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
 import { penaltyEvents } from '@/lib/data';
 import { getReliabilityTier } from '@/lib/reliability';
@@ -24,7 +25,13 @@ export default function FieldIntelligencePage() {
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [sites, setSites] = useState<Site[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+
+    // Intelligence filter state
+    const [intelEventType, setIntelEventType] = useState('all');
+    const [intelPersonnel, setIntelPersonnel] = useState('all');
+    const [intelClient, setIntelClient] = useState('all');
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -39,11 +46,19 @@ export default function FieldIntelligencePage() {
         const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); };
+        const unsubSites = onSnapshot(collection(db, 'sites'), (snap) => {
+            setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
+        });
+        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubSites(); };
     }, []);
 
     const staffTechs = useMemo(
         () => technicians.filter(t => !t.roles?.includes('client')),
+        [technicians]
+    );
+
+    const clientList = useMemo(
+        () => technicians.filter(t => t.roles?.includes('client') || t.role?.toLowerCase().includes('client')),
         [technicians]
     );
 
@@ -102,22 +117,74 @@ export default function FieldIntelligencePage() {
                 <div className="flex justify-center">
                     <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
                         <TabsTrigger value="intelligence" className="tab-trigger-activity">Field Intelligence</TabsTrigger>
+                        <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
+                            Techs
+                        </TabsTrigger>
+                        <TabsTrigger value="sites" className="tab-trigger-activity">Sites</TabsTrigger>
                         <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                             Flags
                             {anomalyCounts > 0 && (
                                 <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
-                            Techs
-                        </TabsTrigger>
-                        <TabsTrigger value="activity" className="tab-trigger-activity">
-                            Activity
-                        </TabsTrigger>
                     </TabsList>
                 </div>
 
                 <TabsContent value="intelligence" className="m-0">
+                    {/* Filter bar */}
+                    <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Filter size={12} className="text-text-muted" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Filters</span>
+                        </div>
+                        <Select value={intelEventType} onValueChange={setIntelEventType}>
+                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                <SelectValue placeholder="Event Type" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Events</SelectItem>
+                                <SelectItem value="assignments" className="text-[10px] font-bold uppercase">Assignments</SelectItem>
+                                <SelectItem value="projects" className="text-[10px] font-bold uppercase">Projects</SelectItem>
+                                <SelectItem value="logs" className="text-[10px] font-bold uppercase">Weekly Logs</SelectItem>
+                                <SelectItem value="requests" className="text-[10px] font-bold uppercase">Site Requests</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={intelPersonnel} onValueChange={setIntelPersonnel}>
+                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                <SelectValue placeholder="Personnel" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Personnel</SelectItem>
+                                {staffTechs.map(t => (
+                                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name || t.id}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={intelClient} onValueChange={setIntelClient}>
+                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                <SelectValue placeholder="Client" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Clients</SelectItem>
+                                {clientList.map(c => (
+                                    <SelectItem key={c.id} value={c.id} className="text-[10px] font-bold uppercase">{c.clientCompany || c.name || c.id}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {(intelEventType !== 'all' || intelPersonnel !== 'all' || intelClient !== 'all') && (
+                            <button
+                                onClick={() => { setIntelEventType('all'); setIntelPersonnel('all'); setIntelClient('all'); }}
+                                className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline"
+                            >
+                                Clear
+                            </button>
+                        )}
+                        <div className="ml-auto flex gap-2 flex-wrap">
+                            {intelEventType !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-brand-red/30 bg-brand-red/10 text-brand-red">{intelEventType}</span>}
+                            {intelPersonnel !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-blue-400/30 bg-blue-400/10 text-blue-400">{staffTechs.find(t => t.id === intelPersonnel)?.name || intelPersonnel}</span>}
+                            {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{clientList.find(c => c.id === intelClient)?.clientCompany || intelClient}</span>}
+                        </div>
+                    </div>
                     <IntelligenceTerminal />
                 </TabsContent>
 
@@ -294,12 +361,8 @@ export default function FieldIntelligencePage() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="activity" className="m-0">
-                    <ActivityFeed
-                        assignments={assignments}
-                        weeklyLogs={weeklyLogs}
-                        technicians={technicians}
-                    />
+                <TabsContent value="sites" className="m-0">
+                    <SitesPerformance sites={sites} workOrders={[...workOrders, ...assignments]} />
                 </TabsContent>
             </Tabs>
 
@@ -312,156 +375,66 @@ export default function FieldIntelligencePage() {
     );
 }
 
-type ActivityItem = {
-    id: string;
-    time: string;
-    actor: string;
-    role: 'admin' | 'tech' | 'client';
-    action: string;
-    detail: string;
-};
-
-function ActivityFeed({ assignments, weeklyLogs, technicians }: {
-    assignments: WorkOrder[];
-    weeklyLogs: WeeklyLog[];
-    technicians: Technician[];
-}) {
-    const [filter, setFilter] = useState<'all' | 'admin' | 'tech' | 'client'>('all');
-
-    const items: ActivityItem[] = useMemo(() => {
-        const list: ActivityItem[] = [];
-
-        // Tech check-ins from completed assignments
-        assignments
-            .filter(wo => wo.status === 'completed' && wo.scheduleDate)
-            .slice(0, 20)
-            .forEach(wo => {
-                const tech = technicians.find(t => t.id === wo.assignedTechnicianId || t.id === wo.techId);
-                if (tech && !tech.roles?.includes('client')) {
-                    list.push({
-                        id: `wo-${wo.id}`,
-                        time: wo.scheduleDate || '',
-                        actor: tech.name || 'Field Tech',
-                        role: 'tech',
-                        action: 'Completed assignment',
-                        detail: wo.title || wo.description || wo.id,
-                    });
-                }
-            });
-
-        // In-progress assignments
-        assignments
-            .filter(wo => wo.status === 'in-progress' && wo.scheduleDate)
-            .slice(0, 10)
-            .forEach(wo => {
-                const tech = technicians.find(t => t.id === wo.assignedTechnicianId || t.id === wo.techId);
-                if (tech) {
-                    list.push({
-                        id: `ip-${wo.id}`,
-                        time: wo.scheduleDate || '',
-                        actor: tech.name || 'Field Tech',
-                        role: 'tech',
-                        action: 'Checked in — job in progress',
-                        detail: wo.title || wo.description || wo.id,
-                    });
-                }
-            });
-
-        // Weekly log submissions
-        weeklyLogs
-            .filter(wl => wl.status === 'Submitted' || wl.status === 'Approved')
-            .slice(0, 20)
-            .forEach(wl => {
-                const tech = technicians.find(t => t.id === wl.techId);
-                list.push({
-                    id: `wl-${wl.id}`,
-                    time: wl.submittedAt || wl.weekOf || '',
-                    actor: tech?.name || 'Field Tech',
-                    role: 'tech',
-                    action: wl.status === 'Approved' ? 'Log approved' : 'Submitted weekly log',
-                    detail: `Week of ${wl.weekOf}`,
-                });
-            });
-
-        // Client users — show portal activity as "active"
-        technicians
-            .filter(t => t.roles?.includes('client'))
-            .slice(0, 10)
-            .forEach(t => {
-                if ((t as any).lastSeen) {
-                    list.push({
-                        id: `cl-${t.id}`,
-                        time: (t as any).lastSeen,
-                        actor: t.clientCompany || t.name || 'Client',
-                        role: 'client',
-                        action: 'Accessed client portal',
-                        detail: t.name || '',
-                    });
-                }
-            });
-
-        return list
-            .filter(i => i.time)
-            .sort((a, b) => b.time.localeCompare(a.time))
-            .slice(0, 50);
-    }, [assignments, weeklyLogs, technicians]);
-
-    const filtered = useMemo(
-        () => filter === 'all' ? items : items.filter(i => i.role === filter),
-        [items, filter]
+function SitesPerformance({ sites, workOrders }: { sites: Site[]; workOrders: WorkOrder[] }) {
+    const siteData = useMemo(() =>
+        sites.map(site => {
+            const siteJobs = workOrders.filter(wo => wo.siteId === site.id || wo.location === site.location);
+            const completed = siteJobs.filter(wo => wo.status === 'completed').length;
+            const active = siteJobs.filter(wo => wo.status === 'in-progress' || wo.status === 'assigned' || wo.status === 'scheduled').length;
+            return { ...site, totalJobs: siteJobs.length, completed, active };
+        }),
+        [sites, workOrders]
     );
 
-    const roleColors: Record<string, string> = {
-        admin: 'text-brand-red bg-brand-red/10 border-brand-red/20',
-        tech: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-        client: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-    };
+    if (siteData.length === 0) {
+        return (
+            <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
+                <Building2 size={32} className="text-text-muted mx-auto mb-3" />
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No sites found</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-4 text-left">
-            <div className="flex items-center gap-2">
-                {(['all', 'admin', 'tech', 'client'] as const).map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={cn(
-                            'h-7 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border transition-colors',
-                            filter === f
-                                ? 'bg-brand-red text-white border-brand-red'
-                                : 'border-border-sub text-text-muted hover:text-text-primary bg-bg-secondary'
-                        )}
-                    >
-                        {f}
-                    </button>
-                ))}
-                <span className="ml-auto text-[9px] text-text-muted uppercase tracking-widest font-bold">{filtered.length} events</span>
+        <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{siteData.length} Sites</p>
             </div>
-
-            {filtered.length === 0 ? (
-                <div className="py-16 text-center">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No activity recorded yet</p>
-                </div>
-            ) : (
-                <div className="space-y-1.5">
-                    {filtered.map(item => (
-                        <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-sub hover:bg-bg-tertiary transition-colors">
-                            <span className={cn('shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border mt-0.5', roleColors[item.role])}>
-                                {item.role}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-baseline gap-2 flex-wrap">
-                                    <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{item.actor}</span>
-                                    <span className="text-[10px] text-text-muted">{item.action}</span>
-                                </div>
-                                {item.detail && (
-                                    <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5 truncate">{item.detail}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {siteData.map(site => (
+                    <div key={site.id} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-all p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">{site.name}</p>
+                                {site.clientName && (
+                                    <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate">{site.clientName}</p>
                                 )}
                             </div>
-                            <span className="text-[8px] text-text-muted font-mono shrink-0 mt-0.5">{item.time.slice(0, 10)}</span>
+                            <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[7px] h-4 uppercase shrink-0">{site.status || 'active'}</Badge>
                         </div>
-                    ))}
-                </div>
-            )}
+                        {site.location && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                <MapPin size={10} className="text-brand-red shrink-0" />
+                                <span className="truncate">{site.location}</span>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border-sub/50">
+                            <div className="text-center">
+                                <p className="text-[18px] font-black text-text-primary">{site.totalJobs}</p>
+                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Total</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-[18px] font-black text-text-green">{site.completed}</p>
+                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Done</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-[18px] font-black text-accent-gold">{site.active}</p>
+                                <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Active</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

@@ -109,6 +109,7 @@ export type WorkOrder = {
   auditedBy?: string | null;
   gpsRequired?: boolean;
   revisitCount?: number;
+  leadTechId?: string;
   externalWorkOrderId?: string;
   lat?: number;
   lng?: number;
@@ -560,6 +561,45 @@ export type Quote = {
   declineReason?: string;
   createdAt: string;
   sentAt: string;
+};
+
+export type AssetCategory = 'vehicle' | 'tool' | 'electronic' | 'inventory' | 'safety';
+
+export type Asset = {
+  id: string;
+  name: string;
+  category: AssetCategory;
+  subCategory?: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor' | 'out-of-service';
+  status: 'available' | 'assigned' | 'maintenance' | 'retired';
+  assignedUserId?: string;
+  assignedUserName?: string;
+  location?: string;
+  serialNumber?: string;
+  vin?: string;
+  licensePlate?: string;
+  mileage?: number;
+  purchaseDate?: string;
+  purchasePrice?: number;
+  vendor?: string;
+  warrantyExpiry?: string;
+  lastMaintenanceDate?: string;
+  nextMaintenanceDate?: string;
+  notes?: string;
+  photoUrls?: string[];
+  documents?: string[];
+  createdAt: string;
+};
+
+export type PersonnelDocument = {
+  id: string;
+  type: 'w9' | 'insurance' | 'license' | 'certification' | 'agreement' | 'id' | 'training' | 'other';
+  name: string;
+  url: string;
+  uploadedAt: string;
+  expiryDate?: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
 };
 
 export type MileageEntry = {

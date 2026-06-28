@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
 import { makeSiteId } from '@/lib/doc-ids';
-import type { Site } from '@/lib/types';
+import type { Site, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminSitesPage() {
+  const router = useRouter();
   const [sites, setSites] = useState<Site[]>([]);
+  const [clients, setClients] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'client' | 'status'>('name');
@@ -33,7 +36,11 @@ export default function AdminSitesPage() {
       setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
       setLoading(false);
     }, () => setLoading(false));
-    return () => unsub();
+    const unsubC = onSnapshot(collection(db, 'users'), snap => {
+      setClients(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))
+        .filter(u => u.roles?.includes('client') || u.role?.toLowerCase().includes('client')));
+    });
+    return () => { unsub(); unsubC(); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -177,17 +184,23 @@ export default function AdminSitesPage() {
         <div className="space-y-3">
           {grouped.map(([clientName, clientSites]) => (
             <div key={clientName} className="rounded-xl border border-border-sub overflow-hidden">
-              <button
-                onClick={() => toggleClient(clientName)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-bg-secondary hover:bg-bg-tertiary transition-colors"
-              >
-                <div className="flex items-center gap-3">
+              <div className="flex items-stretch bg-bg-secondary hover:bg-bg-tertiary transition-colors">
+                <button
+                  onClick={() => {
+                    const match = clients.find(c => (c.clientCompany || c.name) === clientName);
+                    if (match) router.push('/admin/clients/' + match.id);
+                    else toggleClient(clientName);
+                  }}
+                  className="flex-1 flex items-center gap-3 px-4 py-3 text-left"
+                >
                   <Building2 size={14} className="text-brand-red" />
                   <span className="text-[12px] font-black uppercase tracking-wide text-text-primary">{clientName}</span>
                   <span className="text-[9px] font-bold text-text-muted bg-bg-primary border border-border-sub rounded-full px-2 py-0.5">{clientSites.length} site{clientSites.length !== 1 ? 's' : ''}</span>
-                </div>
-                <ChevronDown size={14} className={cn("text-text-muted transition-transform", expandedClients.has(clientName) ? 'rotate-180' : '')} />
-              </button>
+                </button>
+                <button onClick={() => toggleClient(clientName)} className="px-4 border-l border-border-sub hover:bg-bg-primary transition-colors">
+                  <ChevronDown size={14} className={cn("text-text-muted transition-transform", expandedClients.has(clientName) ? 'rotate-180' : '')} />
+                </button>
+              </div>
               {expandedClients.has(clientName) && (
                 <div className="border-t border-border-sub divide-y divide-border-sub">
                   {clientSites.map(site => (

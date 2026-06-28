@@ -6,7 +6,13 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Aaromach Command Center',
   description: 'Aaromach Command Center for operations management.',
-  icons: { icon: '/favicon.ico', apple: '/favicon.ico' },
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 'use client';
 import { cn } from "@/lib/utils";
-import { Clock, Users, TrendingUp, FolderKanban, Wrench, TriangleAlert, CopyX, ClipboardList } from 'lucide-react';
+import { Clock, Users, TrendingUp, FolderKanban, Wrench, TriangleAlert, CopyX, ClipboardList, Coins, FileText, Activity } from 'lucide-react';
 
 const icons = {
     Clock,
@@ -10,7 +10,10 @@ const icons = {
     Wrench,
     TriangleAlert,
     CopyX,
-    ClipboardList
+    ClipboardList,
+    Coins,
+    FileText,
+    Activity,
 };
 
 export type IconName = keyof typeof icons;

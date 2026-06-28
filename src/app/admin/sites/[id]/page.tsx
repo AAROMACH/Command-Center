@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, User, Phone, Plus, Trash2, Clock, DollarSign, FileText, ChevronLeft } from 'lucide-react';
+import { Building2, MapPin, User, Phone, Plus, Trash2, Clock, DollarSign, FileText, ChevronLeft, Activity, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -107,6 +107,9 @@ export default function SiteDetailPage() {
     );
   }
 
+  const completedJobs = workOrders.filter(wo => wo.status === 'completed');
+  const activeJobs = workOrders.filter(wo => wo.status !== 'completed');
+
   return (
     <div className="space-y-5">
       <header className="page-header">
@@ -122,12 +125,35 @@ export default function SiteDetailPage() {
           <h1 className="page-title">{site.name}</h1>
           {site.clientName && <p className="page-subtitle">{site.clientName}</p>}
         </div>
-        <div className="page-header-right">
-          <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[9px] uppercase">
-            {site.status}
+        <div className="page-header-right gap-3">
+          <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[9px] uppercase h-6 px-3">
+            {site.status || 'active'}
           </Badge>
+          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 text-[10px] font-black uppercase tracking-widest">
+            Edit Site
+          </Button>
         </div>
       </header>
+
+      {/* Stats strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
+          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><Activity size={9} />Total Jobs</p>
+          <p className="text-2xl font-black font-mono text-text-primary">{workOrders.length}</p>
+        </div>
+        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
+          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><CheckCircle2 size={9} className="text-text-green" />Completed</p>
+          <p className="text-2xl font-black font-mono text-text-green">{completedJobs.length}</p>
+        </div>
+        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
+          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><Clock size={9} className="text-accent-gold" />Active</p>
+          <p className="text-2xl font-black font-mono text-accent-gold">{activeJobs.length}</p>
+        </div>
+        <div className="bg-bg-secondary rounded-xl border border-green-500/20 p-3 space-y-1 text-left">
+          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><DollarSign size={9} className="text-text-green" />Total Paid</p>
+          <p className="text-2xl font-black font-mono text-text-green">${totalPay.toFixed(0)}</p>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-border-sub -mt-2">
@@ -198,18 +224,13 @@ export default function SiteDetailPage() {
               </div>
             </>
           ) : (
-            <>
-              <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-3">
-                <InfoRow icon={Building2} label="Site Name" value={site.name} />
-                {site.clientName && <InfoRow icon={User} label="Client" value={site.clientName} />}
-                <InfoRow icon={MapPin} label="Location" value={site.location} />
-                {site.managerName && <InfoRow icon={User} label="Site Manager" value={site.managerName} />}
-                {site.managerPhone && <InfoRow icon={Phone} label="Manager Phone" value={site.managerPhone} />}
-              </div>
-              <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="text-[10px] font-black uppercase tracking-widest">
-                Edit Site Info
-              </Button>
-            </>
+            <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-3">
+              <InfoRow icon={Building2} label="Site Name" value={site.name} />
+              {site.clientName && <InfoRow icon={User} label="Client" value={site.clientName} />}
+              <InfoRow icon={MapPin} label="Location" value={site.location} />
+              {site.managerName && <InfoRow icon={User} label="Site Manager" value={site.managerName} />}
+              {site.managerPhone && <InfoRow icon={Phone} label="Manager Phone" value={site.managerPhone} />}
+            </div>
           )}
         </div>
       )}

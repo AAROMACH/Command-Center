@@ -7,9 +7,9 @@ import type { Invoice, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-    FileText, 
-    Download, 
+import {
+    FileText,
+    Download,
     Search,
     Coins,
     ArrowUpRight,
@@ -18,17 +18,26 @@ import {
     Banknote,
     Activity,
     Briefcase,
-    Wrench
+    Wrench,
+    ChevronRight,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+const PLAN_DETAILS: Record<string, { name: string; discount: string; priority: string; response: string; billing: string }> = {
+    'on-call': { name: 'On-Call', discount: '0%', priority: 'Standard', response: '48h', billing: 'Monthly' },
+    'site-partner': { name: 'Site Partner', discount: '10%', priority: 'Priority', response: '24h', billing: 'Monthly' },
+    'dedicated': { name: 'Dedicated', discount: '20%', priority: 'Dedicated', response: 'Same-Day', billing: 'Annually' },
+};
 
 export default function ClientFinancialsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -106,6 +115,8 @@ export default function ClientFinancialsPage() {
         toast({ title: "Download Executed", description: "Audit CSV generated for settlement verification."});
     };
 
+    const planInfo = currentUser?.planId ? PLAN_DETAILS[currentUser.planId] : null;
+
     if (!mounted) return null;
 
     return (
@@ -138,13 +149,20 @@ export default function ClientFinancialsPage() {
                     <p className="text-3xl font-mono font-bold text-text-green">${metrics.paid.toLocaleString()}</p>
                     <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Successfully Cleared</p>
                 </div>
-                <div className="bg-bg-secondary p-6 text-left">
+                <div className="bg-bg-secondary p-6 text-left cursor-pointer hover:bg-bg-tertiary transition-colors group" onClick={() => setIsPlanDialogOpen(true)}>
                     <div className="flex justify-between items-start mb-2">
                         <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Current Plan</p>
-                        <Coins className="h-4 w-4 text-accent-gold" />
+                        <div className="flex items-center gap-1">
+                            <Coins className="h-4 w-4 text-accent-gold" />
+                            <ChevronRight className="h-3 w-3 text-text-muted group-hover:text-text-primary transition-colors" />
+                        </div>
                     </div>
-                    <p className="text-3xl font-bold text-text-primary">Enterprise</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Standard Net-30 Terms</p>
+                    <p className="text-3xl font-bold text-text-primary capitalize">
+                        {currentUser?.planId ? (PLAN_DETAILS[currentUser.planId]?.name || currentUser.planId) : 'Enterprise'}
+                    </p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">
+                        {currentUser?.planId ? `${PLAN_DETAILS[currentUser.planId]?.response || '48h'} Response Guarantee` : 'Standard Net-30 Terms'}
+                    </p>
                 </div>
             </div>
 
@@ -231,6 +249,52 @@ export default function ClientFinancialsPage() {
                     </Table>
                 </CardContent>
             </Card>
+            {/* Plan Details Dialog */}
+            <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+                <DialogContent className="sm:max-w-[480px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <DialogTitle className="uppercase tracking-widest font-bold text-sm">
+                            {planInfo?.name || 'Current Plan'} Details
+                        </DialogTitle>
+                        <DialogDescription>Your current service plan and entitlements.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3">
+                        {planInfo ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Response Guarantee</p>
+                                        <p className="text-sm font-bold text-text-primary">{planInfo.response}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Priority Level</p>
+                                        <p className="text-sm font-bold text-text-primary">{planInfo.priority}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Labor Discount</p>
+                                        <p className="text-sm font-bold text-text-green">{planInfo.discount}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Billing Cycle</p>
+                                        <p className="text-sm font-bold text-text-primary">{planInfo.billing}</p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-xs text-text-muted">No plan details available. Contact Aaromach for more information.</p>
+                        )}
+                    </div>
+                    <DialogFooter className="gap-3 flex-row">
+                        <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Close</Button>
+                        <Button
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
+                            onClick={() => { window.location.href = 'mailto:sales@aaromach.com?subject=Plan Upgrade Inquiry'; }}
+                        >
+                            Contact Sales
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

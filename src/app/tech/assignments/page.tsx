@@ -1,17 +1,23 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+
+const MapView = dynamic(() => import('../map/components/map-view'), {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
+});
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { 
-  Calendar as CalendarIcon, 
-  MapPin, 
-  Clock, 
-  CheckCircle2, 
-  Wrench, 
+import {
+  Calendar as CalendarIcon,
+  MapPin,
+  Clock,
+  CheckCircle2,
+  Wrench,
   ArrowUpDown,
   Search,
   ExternalLink,
@@ -24,7 +30,9 @@ import {
   X,
   History,
   AlertCircle,
-  Lock
+  Lock,
+  LayoutList,
+  Map as MapIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -83,6 +91,8 @@ export default function TechAssignmentsPage() {
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
 
     const { toast } = useToast();
 
@@ -173,6 +183,10 @@ export default function TechAssignmentsPage() {
     const hasActiveSession = useMemo(() => {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
+
+    const mapJobs = useMemo(() =>
+        allWorkOrders.filter(wo => wo.status !== 'completed'),
+    [allWorkOrders]);
 
     const getFieldNationLink = (id: string) => {
       const cleanId = id.replace(/^wo-/, '');
@@ -359,6 +373,20 @@ export default function TechAssignmentsPage() {
                     <p className="page-subtitle text-left">Manage tactical assignments and historical performance audit.</p>
                 </div>
                 <div className="page-header-right items-center gap-2">
+                    <div className="flex items-center rounded-md border border-border-main overflow-hidden shrink-0">
+                        <button
+                            className={cn("h-8 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5", viewMode === 'list' ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted hover:text-text-primary")}
+                            onClick={() => setViewMode('list')}
+                        >
+                            <LayoutList size={12} /> List
+                        </button>
+                        <button
+                            className={cn("h-8 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 border-l border-border-main", viewMode === 'map' ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted hover:text-text-primary")}
+                            onClick={() => setViewMode('map')}
+                        >
+                            <MapIcon size={12} /> Map
+                        </button>
+                    </div>
                     <Button
                         size="sm"
                         variant="outline"
@@ -398,7 +426,20 @@ export default function TechAssignmentsPage() {
                 </div>
             )}
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            {viewMode === 'map' && (
+                <div className="rounded-xl overflow-hidden border border-border-main" style={{ height: '60vh' }}>
+                    <MapView
+                        jobs={mapJobs}
+                        selectedJob={mapSelectedJob}
+                        onSelectJob={(j) => {
+                            setMapSelectedJob(j);
+                            if (j) { setSelectedJob(j); setIsDetailOpen(true); }
+                        }}
+                    />
+                </div>
+            )}
+
+            {viewMode === 'list' && <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
                     <TabsList className="tabs !mb-0">
                         <TabsTrigger value="active" className="tab">
@@ -662,7 +703,7 @@ export default function TechAssignmentsPage() {
                         </table>
                     </div>
                 </TabsContent>
-            </Tabs>
+            </Tabs>}
 
             <JobDetailDialog 
                 isOpen={isDetailOpen} 

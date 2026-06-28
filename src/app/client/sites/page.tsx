@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
-import type { Technician, WorkOrder, SiteRequest } from '@/lib/types';
+import type { Technician, WorkOrder, SiteRequest, Site } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,9 +37,12 @@ export default function ClientSitesPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+    const [firestoreSites, setFirestoreSites] = useState<Site[]>([]);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [duplicateError, setDuplicateError] = useState<string | null>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -49,42 +52,54 @@ export default function ClientSitesPage() {
         setCurrentUserId(userId);
 
         if (userId) {
+            // Listen to approved sites by clientId
+            const unsubSites = onSnapshot(query(collection(db, 'sites'), where('clientId', '==', userId)), (snap) => {
+                setFirestoreSites(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as Site)));
+            });
+
             const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
                 if (d.exists()) {
                     const techData = { ...d.data(), id: d.id } as Technician;
                     setCurrentUser(techData);
-                    
+
                     if (techData.clientCompany) {
                         const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('clientName', '==', techData.clientCompany)), (snap) => {
                             setWorkOrders(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as WorkOrder)));
                         });
-                        const unsubReq = onSnapshot(query(collection(db, 'siteRequests'), where('clientName', '==', techData.clientCompany)), (snap) => {
+                        const unsubReq = onSnapshot(query(collection(db, 'siteRequests'), where('clientId', '==', userId)), (snap) => {
                             setSiteRequests(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as SiteRequest)));
                         });
                         return () => { unsubWO(); unsubReq(); };
                     }
                 }
             });
-            return () => unsubUser();
+            return () => { unsubUser(); unsubSites(); };
         }
     }, []);
 
     const sitesData = useMemo(() => {
         if (!currentUser?.clientCompany) return [];
-        
-        const clientSites = currentUser.managedSites || [];
-        const authorizedLocations = Array.from(new Set([
-            ...clientSites.map(s => s.location),
-            ...workOrders.map(wo => wo.location)
-        ]));
 
-        const authorized = authorizedLocations.map(location => {
-            const siteInfo = clientSites.find(s => s.location === location);
-            const activeAssignments = workOrders.filter(wo => wo.location === location && wo.status !== 'completed');
+        // Merge Firestore sites with managedSites, dedup by id
+        const managedSites = currentUser.managedSites || [];
+        const fsIds = new Set(firestoreSites.map(s => s.id));
+        const managedNotInFS = managedSites
+            .filter(s => !fsIds.has(s.id))
+            .map(s => ({ id: s.id, name: s.name, location: s.location }));
+        const allSiteSources = [...firestoreSites, ...managedNotInFS];
+
+        // Also infer sites from work order locations
+        const knownLocations = new Set(allSiteSources.map(s => s.location));
+        const woSources = workOrders
+            .filter(wo => !knownLocations.has(wo.location))
+            .map(wo => ({ id: `wo-${wo.id}`, name: wo.location.split(',')[0], location: wo.location }));
+
+        const authorized = [...allSiteSources, ...woSources].map(site => {
+            const activeAssignments = workOrders.filter(wo => wo.location === site.location && wo.status !== 'completed');
             return {
-                id: siteInfo?.id || `site-${location.replace(/\s+/g, '-').toLowerCase()}`,
-                name: siteInfo?.name || location.split(',')[0],
-                location,
+                id: site.id,
+                name: site.name,
+                location: site.location,
                 activeAssignments,
                 contact: 'Site Manager',
                 status: 'authorized' as const
@@ -97,22 +112,36 @@ export default function ClientSitesPage() {
                 id: req.id,
                 name: req.siteName,
                 location: req.location,
-                activeAssignments: [],
+                activeAssignments: [] as WorkOrder[],
                 contact: req.managerName || 'TBD',
                 status: 'pending' as const,
                 submittedDate: req.submittedDate
             }));
 
-        return [...authorized, ...pending].filter(s => 
-            s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        return [...authorized, ...pending].filter(s =>
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.location.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [currentUser, searchQuery, workOrders, siteRequests]);
+    }, [currentUser, searchQuery, workOrders, siteRequests, firestoreSites]);
 
     const handleAddSite = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        
+        const newLocation = ((formData.get('location') as string) || '').trim().toLowerCase();
+
+        // Duplicate guard
+        const isDuplicate =
+            sitesData.some(s => s.location.toLowerCase() === newLocation) ||
+            siteRequests.some(r => r.location.toLowerCase() === newLocation);
+
+        if (isDuplicate) {
+            setDuplicateError('A site at this address is already registered or pending.');
+            return;
+        }
+
+        setDuplicateError(null);
+        setSubmitting(true);
+
         const newRequest = {
             clientId: currentUserId,
             clientName: currentUser?.clientCompany || 'Unknown Client',
@@ -131,8 +160,10 @@ export default function ClientSitesPage() {
                 description: "New site coordinate has been submitted for administrative audit.",
             });
             setIsAddSiteOpen(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Submission Failed", description: e.message });
+        } catch (err: any) {
+            toast({ variant: "destructive", title: "Submission Failed", description: err.message });
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -192,7 +223,7 @@ export default function ClientSitesPage() {
                         <DialogTitle className="uppercase tracking-widest font-bold">Site Registration</DialogTitle>
                         <DialogDescription>Submit coordinates for a new operational facility to the command registry.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddSite} className="space-y-6 py-4 text-left">
+                    <form onSubmit={handleAddSite} className="space-y-6 py-4 text-left" onChange={() => setDuplicateError(null)}>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase text-text-muted">Site Identifier / Name</Label>
                             <Input name="siteName" placeholder="e.g., Gotham Data Center" className="bg-bg-primary" required />
@@ -200,12 +231,21 @@ export default function ClientSitesPage() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase text-text-muted">Address / Coordinates</Label>
                             <Input name="location" placeholder="Full address..." className="bg-bg-primary" required />
+                            {duplicateError && (
+                                <p className="text-[10px] text-brand-red font-bold flex items-center gap-1.5">
+                                    <AlertCircle size={12} /> {duplicateError}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Manager</Label>
                             <Input name="managerName" placeholder="Name" className="bg-bg-primary" />
                         </div>
-                        <DialogFooter><Button type="submit" className="bg-brand-red hover:bg-brand-red-hover w-full">Request Registry</Button></DialogFooter>
+                        <DialogFooter>
+                            <Button type="submit" disabled={submitting} className="bg-brand-red hover:bg-brand-red-hover w-full">
+                                {submitting ? 'Submitting...' : 'Request Registry'}
+                            </Button>
+                        </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>

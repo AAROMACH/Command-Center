@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, query, where, orderBy, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
+import { uploadFile } from '@/lib/upload';
 import type { Technician, AdminMessage, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, Lock, Activity, Radio, Users, Plus, Briefcase } from 'lucide-react';
+import { MessageSquare, Send, Lock, Activity, Radio, Users, Briefcase, Image as ImageIcon, X } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -24,9 +25,14 @@ type Tab = typeof TABS[number];
 type DirectMessage = {
   id: string;
   senderId: string;
-  receiverId: string;
+  receiverId?: string;
+  projectId?: string;
+  projectName?: string;
+  senderName?: string;
   body: string;
+  imageUrls?: string[];
   timestamp: string;
+  createdAt?: string;
   read: boolean;
 };
 
@@ -37,7 +43,7 @@ export default function AdminMessagingPage() {
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [activeProjects, setActiveProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [dmBody, setDmBody] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectMessageBody, setProjectMessageBody] = useState('');
@@ -51,6 +57,11 @@ export default function AdminMessagingPage() {
     body: '',
     isLocked: false,
   });
+  const [dmImageUrl, setDmImageUrl] = useState<string | null>(null);
+  const [projectImageUrl, setProjectImageUrl] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const dmFileRef = useRef<HTMLInputElement>(null);
+  const projFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -73,15 +84,41 @@ export default function AdminMessagingPage() {
     });
 
     const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
-      setActiveProjects(
-        snap.docs
-          .map(d => ({ ...d.data(), id: d.id } as Project))
-          .filter(p => p.status !== 'completed')
-      );
+      setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
 
     return () => { unsubTechs(); unsubDMs(); unsubProjects(); };
   }, []);
+
+  const activeProjects = allProjects.filter(p => p.status === 'active');
+  const onHoldProjects = allProjects.filter(p => p.status === 'on-hold');
+  const completedProjects = allProjects.filter(p => p.status === 'completed');
+  const selectedProject = allProjects.find(p => p.id === selectedProjectId);
+
+  const getLastProjectMessage = (projectId: string) =>
+    directMessages
+      .filter(m => m.projectId === projectId)
+      .sort((a, b) => (b.timestamp || b.createdAt || '').localeCompare(a.timestamp || a.createdAt || ''))[0];
+
+  const getProjectUnread = (projectId: string) =>
+    directMessages.filter(m => m.projectId === projectId && !m.read && m.senderId !== currentUser?.id).length;
+
+  const handleImageUpload = async (
+    file: File,
+    setUrl: (u: string | null) => void,
+    inputRef: React.RefObject<HTMLInputElement | null>
+  ) => {
+    setImageUploading(true);
+    try {
+      const { url } = await uploadFile(`messageImages/${Date.now()}-${file.name}`, file);
+      setUrl(url);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: err.message });
+    } finally {
+      setImageUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
 
   const handleBroadcast = useCallback(async () => {
     if (!newMessage.subject || !newMessage.body) {
@@ -145,7 +182,7 @@ export default function AdminMessagingPage() {
   }, [messages, toast]);
 
   const handleSendDM = async () => {
-    if (!dmBody.trim() || !selectedUserId || !currentUser) return;
+    if ((!dmBody.trim() && !dmImageUrl) || !selectedUserId || !currentUser) return;
     setSending(true);
     try {
       await addDoc(collection(db, 'messages'), {
@@ -154,8 +191,10 @@ export default function AdminMessagingPage() {
         body: dmBody.trim(),
         timestamp: new Date().toISOString(),
         read: false,
+        ...(dmImageUrl && { imageUrls: [dmImageUrl] }),
       });
       setDmBody('');
+      setDmImageUrl(null);
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed to send', description: e.message });
     } finally {
@@ -163,28 +202,34 @@ export default function AdminMessagingPage() {
     }
   };
 
-  const threadMessages = directMessages.filter(m =>
-    (m.senderId === currentUser?.id && m.receiverId === selectedUserId) ||
-    (m.senderId === selectedUserId && m.receiverId === currentUser?.id)
-  ).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const threadMessages = directMessages
+    .filter(m => !m.projectId &&
+      ((m.senderId === currentUser?.id && m.receiverId === selectedUserId) ||
+       (m.senderId === selectedUserId && m.receiverId === currentUser?.id)))
+    .sort((a, b) => (a.timestamp || a.createdAt || '').localeCompare(b.timestamp || b.createdAt || ''));
 
   const projectMessages = directMessages
-    .filter(m => (m as any).projectId === selectedProjectId)
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    .filter(m => m.projectId === selectedProjectId)
+    .sort((a, b) => (a.timestamp || a.createdAt || '').localeCompare(b.timestamp || b.createdAt || ''));
 
   const handleSendProjectMessage = async () => {
-    if (!projectMessageBody.trim() || !selectedProjectId || !currentUser) return;
+    if ((!projectMessageBody.trim() && !projectImageUrl) || !selectedProjectId || !currentUser) return;
     setSending(true);
     try {
       await addDoc(collection(db, 'messages'), {
         senderId: currentUser.id,
         senderName: currentUser.name,
+        senderRole: 'admin',
         projectId: selectedProjectId,
+        projectName: selectedProject?.name || '',
         body: projectMessageBody.trim(),
         timestamp: new Date().toISOString(),
         read: false,
+        readBy: [currentUser.id],
+        ...(projectImageUrl && { imageUrls: [projectImageUrl] }),
       });
       setProjectMessageBody('');
+      setProjectImageUrl(null);
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed to send', description: e.message });
     } finally {
@@ -353,9 +398,12 @@ export default function AdminMessagingPage() {
                                 ? 'bg-brand-red/10 border border-brand-red/20 text-text-primary'
                                 : 'bg-bg-tertiary border border-border-sub text-text-secondary'
                             )}>
-                              <p>{m.body}</p>
+                              {m.body && <p>{m.body}</p>}
+                              {m.imageUrls?.map((url, i) => (
+                                <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                              ))}
                               <p className="text-[8px] text-text-muted mt-1 font-bold uppercase tracking-wider">
-                                {format(parseISO(m.timestamp), 'h:mm a')}
+                                {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}
                               </p>
                             </div>
                           </div>
@@ -364,17 +412,31 @@ export default function AdminMessagingPage() {
                     )}
                   </div>
                 </ScrollArea>
-                <div className="px-4 py-3 border-t border-border-sub shrink-0 flex gap-2">
-                  <Input
-                    placeholder="Type a message..."
-                    value={dmBody}
-                    onChange={e => setDmBody(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendDM()}
-                    className="h-9 text-[11px] bg-bg-secondary border-border-main flex-1"
-                  />
-                  <Button size="sm" onClick={handleSendDM} disabled={!dmBody.trim() || sending} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
-                    <Send size={13} />
-                  </Button>
+                <div className="px-4 py-3 border-t border-border-sub shrink-0 space-y-2 bg-bg-primary">
+                  {dmImageUrl && (
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border-sub">
+                      <img src={dmImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <button onClick={() => setDmImageUrl(null)} className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/60 flex items-center justify-center">
+                        <X size={8} className="text-white" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input type="file" ref={dmFileRef} accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, setDmImageUrl, dmFileRef); }} />
+                    <button onClick={() => dmFileRef.current?.click()} disabled={imageUploading} className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-secondary hover:border-brand-red/60 transition-colors">
+                      <ImageIcon size={14} className="text-text-muted" />
+                    </button>
+                    <Input
+                      placeholder="Type a message..."
+                      value={dmBody}
+                      onChange={e => setDmBody(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendDM()}
+                      className="h-9 text-[11px] bg-bg-secondary border-border-main flex-1"
+                    />
+                    <Button size="sm" onClick={handleSendDM} disabled={(!dmBody.trim() && !dmImageUrl) || sending || imageUploading} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
+                      <Send size={13} />
+                    </Button>
+                  </div>
                 </div>
               </>
             )}
@@ -388,36 +450,74 @@ export default function AdminMessagingPage() {
           {/* Project List */}
           <div className="w-64 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
             <div className="px-3 py-2.5 border-b border-border-sub">
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Active Projects</p>
+              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+                <Briefcase size={10} /> Projects
+              </p>
             </div>
             <ScrollArea className="flex-1">
-              <div className="p-1.5 space-y-0.5">
-                {activeProjects.length === 0 ? (
-                  <p className="text-[9px] text-text-muted text-center py-6 uppercase tracking-widest">No active projects</p>
+              <div className="p-1.5">
+                {allProjects.length === 0 ? (
+                  <p className="text-[9px] text-text-muted text-center py-6 uppercase tracking-widest">No projects yet</p>
                 ) : (
-                  activeProjects.map(p => {
-                    const unreadCount = directMessages.filter(m => (m as any).projectId === p.id && !(m as any).read && m.senderId !== currentUser?.id).length;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedProjectId(p.id)}
-                        className={cn(
-                          'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
-                          selectedProjectId === p.id
-                            ? 'bg-brand-red/10 text-brand-red'
-                            : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary'
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
-                          {unreadCount > 0 && (
-                            <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unreadCount}</span>
-                          )}
-                        </div>
-                        <p className="text-[8px] text-text-muted mt-0.5 uppercase">{p.status}</p>
-                      </button>
-                    );
-                  })
+                  <>
+                    {activeProjects.length > 0 && (
+                      <>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-brand-red px-2 pt-2 pb-0.5">Active</p>
+                        {activeProjects.map(p => {
+                          const lastMsg = getLastProjectMessage(p.id);
+                          const unread = getProjectUnread(p.id);
+                          return (
+                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                              </div>
+                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                    {onHoldProjects.length > 0 && (
+                      <>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-text-amber px-2 pt-3 pb-0.5">On Hold</p>
+                        {onHoldProjects.map(p => {
+                          const lastMsg = getLastProjectMessage(p.id);
+                          const unread = getProjectUnread(p.id);
+                          return (
+                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                              </div>
+                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                    {completedProjects.length > 0 && (
+                      <>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 pt-3 pb-0.5">Completed</p>
+                        {completedProjects.map(p => {
+                          const lastMsg = getLastProjectMessage(p.id);
+                          const unread = getProjectUnread(p.id);
+                          return (
+                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                              </div>
+                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </ScrollArea>
@@ -436,10 +536,10 @@ export default function AdminMessagingPage() {
               <>
                 <div className="px-4 py-3 border-b border-border-sub shrink-0">
                   <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">
-                    {activeProjects.find(p => p.id === selectedProjectId)?.name || 'Unknown Project'}
+                    {selectedProject?.name || 'Unknown Project'}
                   </p>
                   <p className="text-[9px] text-text-muted uppercase mt-0.5">
-                    {activeProjects.find(p => p.id === selectedProjectId)?.client}
+                    {selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}
                   </p>
                 </div>
                 <ScrollArea className="flex-1 p-4">
@@ -449,19 +549,19 @@ export default function AdminMessagingPage() {
                     ) : (
                       projectMessages.map(m => {
                         const isMine = m.senderId === currentUser?.id;
-                        const senderName = (m as any).senderName || technicians.find(t => t.id === m.senderId)?.name || 'Unknown';
+                        const senderName = m.senderName || technicians.find(t => t.id === m.senderId)?.name || 'Unknown';
                         return (
                           <div key={m.id} className={cn('flex flex-col', isMine ? 'items-end' : 'items-start')}>
                             {!isMine && <p className="text-[8px] font-bold text-text-muted uppercase mb-0.5 ml-1">{senderName}</p>}
-                            <div className={cn(
-                              'max-w-[70%] rounded-xl px-3 py-2.5 text-[11px] leading-relaxed',
-                              isMine
-                                ? 'bg-brand-red/10 border border-brand-red/20 text-text-primary'
-                                : 'bg-bg-tertiary border border-border-sub text-text-secondary'
+                            <div className={cn('max-w-[70%] rounded-xl px-3 py-2.5 text-[11px] leading-relaxed',
+                              isMine ? 'bg-brand-red/10 border border-brand-red/20 text-text-primary' : 'bg-bg-tertiary border border-border-sub text-text-secondary'
                             )}>
-                              <p>{m.body}</p>
+                              {m.body && <p>{m.body}</p>}
+                              {m.imageUrls?.map((url, i) => (
+                                <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                              ))}
                               <p className="text-[8px] text-text-muted mt-1 font-bold uppercase tracking-wider">
-                                {format(parseISO(m.timestamp), 'h:mm a')}
+                                {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}
                               </p>
                             </div>
                           </div>
@@ -470,39 +570,34 @@ export default function AdminMessagingPage() {
                     )}
                   </div>
                 </ScrollArea>
-                <div className="px-4 py-3 border-t border-border-sub shrink-0 flex gap-2">
-                  <input
-                    className="h-9 flex-1 rounded-md border border-border-main bg-bg-secondary px-3 text-[11px] outline-none focus:border-brand-red placeholder:text-text-muted"
-                    placeholder="Type a project message..."
-                    value={projectMessageBody}
-                    onChange={e => setProjectMessageBody(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendProjectMessage()}
-                  />
-                  <Button size="sm" onClick={handleSendProjectMessage} disabled={!projectMessageBody.trim() || sending} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
-                    <Send size={13} />
-                  </Button>
+                <div className="px-4 py-3 border-t border-border-sub shrink-0 space-y-2 bg-bg-primary">
+                  {projectImageUrl && (
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border-sub">
+                      <img src={projectImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <button onClick={() => setProjectImageUrl(null)} className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/60 flex items-center justify-center">
+                        <X size={8} className="text-white" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input type="file" ref={projFileRef} accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, setProjectImageUrl, projFileRef); }} />
+                    <button onClick={() => projFileRef.current?.click()} disabled={imageUploading} className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-secondary hover:border-brand-red/60 transition-colors">
+                      <ImageIcon size={14} className="text-text-muted" />
+                    </button>
+                    <input
+                      className="h-9 flex-1 rounded-md border border-border-main bg-bg-secondary px-3 text-[11px] outline-none focus:border-brand-red placeholder:text-text-muted"
+                      placeholder="Type a project message..."
+                      value={projectMessageBody}
+                      onChange={e => setProjectMessageBody(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendProjectMessage()}
+                    />
+                    <Button size="sm" onClick={handleSendProjectMessage} disabled={(!projectMessageBody.trim() && !projectImageUrl) || sending || imageUploading} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
+                      <Send size={13} />
+                    </Button>
+                  </div>
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Active Projects */}
-      {activeTab !== 'Project Comms' && activeProjects.length > 0 && (
-        <div className="space-y-3 pt-2 border-t border-border-sub">
-          <p className="text-[9px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
-            <Briefcase size={10} className="text-brand-red" />
-            Active Projects ({activeProjects.length})
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {activeProjects.map(p => (
-              <div key={p.id} className="px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors">
-                <p className="text-[8px] font-black uppercase tracking-widest text-text-muted mb-0.5">{p.status}</p>
-                <p className="text-[11px] font-bold text-text-primary leading-tight">{p.name}</p>
-                <p className="text-[9px] text-text-muted mt-0.5 truncate">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-              </div>
-            ))}
           </div>
         </div>
       )}

@@ -19,6 +19,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Banknote,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,8 @@ export default function AdminSettingsPage() {
     const [currentPin, setCurrentPin] = useState('••••');
     const [showPin, setShowPin] = useState(false);
     const [savingPin, setSavingPin] = useState(false);
+    const [mileageRate, setMileageRate] = useState('0.67');
+    const [savingMileageRate, setSavingMileageRate] = useState(false);
     const { toast } = useToast();
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
@@ -51,6 +54,11 @@ export default function AdminSettingsPage() {
         getDoc(doc(db, 'adminConfig', 'plans')).then(snap => {
             if (snap.exists() && snap.data()?.editPin) {
                 setCurrentPin(snap.data()!.editPin);
+            }
+        }).catch(() => {});
+        getDoc(doc(db, 'adminConfig', 'finance')).then(snap => {
+            if (snap.exists() && snap.data()?.mileageRate != null) {
+                setMileageRate(String(snap.data()!.mileageRate));
             }
         }).catch(() => {});
     }, []);
@@ -88,6 +96,23 @@ export default function AdminSettingsPage() {
             });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
+    };
+
+    const handleSaveMileageRate = async () => {
+        const rate = parseFloat(mileageRate);
+        if (isNaN(rate) || rate <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid rate', description: 'Enter a positive number (e.g. 0.67).' });
+            return;
+        }
+        setSavingMileageRate(true);
+        try {
+            await setDoc(doc(db, 'adminConfig', 'finance'), { mileageRate: rate }, { merge: true });
+            toast({ title: 'Mileage rate saved', description: `$${rate.toFixed(2)} per mile.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to save', description: e.message });
+        } finally {
+            setSavingMileageRate(false);
         }
     };
 
@@ -229,6 +254,45 @@ export default function AdminSettingsPage() {
                     </Card>
                 </section>
                 )}
+
+                {/* FINANCE */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Banknote size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Finance & Payroll</h3>
+                    </div>
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Mileage Reimbursement Rate</CardTitle>
+                            <CardDescription>The per-mile rate used to calculate mileage reimbursements. IRS standard rate is $0.67/mile (2024).</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-3 max-w-sm">
+                                <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-mono">$</span>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={mileageRate}
+                                        onChange={e => setMileageRate(e.target.value)}
+                                        className="h-9 pl-7 text-[11px] bg-bg-primary border-border-main font-mono"
+                                        placeholder="0.67"
+                                    />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase text-text-muted tracking-widest shrink-0">per mile</span>
+                                <Button
+                                    size="sm"
+                                    onClick={handleSaveMileageRate}
+                                    disabled={savingMileageRate}
+                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest shrink-0"
+                                >
+                                    {savingMileageRate ? 'Saving...' : 'Save Rate'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
 
                 {/* INTEGRATIONS */}
                 <section className="space-y-4">

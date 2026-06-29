@@ -4,13 +4,13 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity, Car, Navigation } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity, Navigation, Car } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, TripLog } from '@/lib/types';
+import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, Reimbursement } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { RevenueChart } from './components/revenue-chart';
@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { isSuperAdmin } from '@/lib/permissions';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { startOfMonth, endOfMonth, subMonths, format, isWithinInterval, parseISO, startOfDay } from 'date-fns';
@@ -40,8 +40,11 @@ export default function FinancialsPage() {
     const [projects, setProjects] = useState<any[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
-    const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
-    
+    const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
+    const [mileageRate, setMileageRate] = useState(0.67);
+
+    const [reimTypeFilter, setReimTypeFilter] = useState<'all' | 'receipt' | 'mileage'>('all');
+    const [reimStatusFilter, setReimStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'paid'>('all');
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
@@ -85,9 +88,13 @@ export default function FinancialsPage() {
         const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubTrips = onSnapshot(collection(db, 'tripLogs'), (snap) => {
-            setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
+        const unsubReim = onSnapshot(collection(db, 'reimbursements'), (snap) => {
+            setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
         });
+
+        getDoc(doc(db, 'adminConfig', 'finance')).then(snap => {
+            if (snap.exists() && snap.data()?.mileageRate) setMileageRate(snap.data()!.mileageRate);
+        }).catch(() => {});
 
         const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
@@ -95,12 +102,12 @@ export default function FinancialsPage() {
                 if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
             });
             return () => {
-                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubTrips(); unsubUser();
+                unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubReim(); unsubUser();
             };
         }
 
         return () => {
-            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubTrips();
+            unsubExp(); unsubInv(); unsubLog(); unsubTech(); unsubProj(); unsubWO(); unsubAsmt(); unsubReim();
         };
     }, []);
 
@@ -519,57 +526,42 @@ export default function FinancialsPage() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="reimbursements" className="m-0 space-y-6">
-                        <Card>
-                            <CardHeader className="text-left">
-                                <CardTitle>Expense Submissions</CardTitle>
-                                <CardDescription>Review and approve submitted technician reimbursement requests.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="table-wrap p-0">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Submitted By</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Description</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                            <TableHead className="text-right pr-6"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredExpenses.map((expense) => (
-                                            <TableRow key={expense.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                                <TableCell className="text-xs text-text-muted pl-6">{expense.date}</TableCell>
-                                                <TableCell className="text-sm font-semibold uppercase">{expense.submittedBy}</TableCell>
-                                                <TableCell>
-                                                    <div className="font-bold text-text-primary text-xs uppercase">{expense.description}</div>
-                                                    <div className="text-[10px] text-text-muted uppercase font-bold tracking-tight">{expense.category}</div>
-                                                </TableCell>
-                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${expense.amount.toFixed(2)}</TableCell>
-                                                <TableCell><Badge variant={expense.status === 'Approved' ? 'active' : expense.status === 'Pending' ? 'onhold' : 'missed'} className="text-[8px] h-4 uppercase">{expense.status}</Badge></TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                     {expense.status === 'Pending' && (
-                                                        <div className="flex gap-2 justify-end">
-                                                            <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Rejected')}>Deny</Button>
-                                                            <Button size="sm" className="h-7 text-[9px]" onClick={() => handleExpenseStatusChange(expense.id, 'Approved')}>Approve</Button>
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                    <TabsContent value="reimbursements" className="m-0 space-y-4">
+                        {/* Filter bar */}
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center rounded-md border border-border-main overflow-hidden h-8 bg-bg-secondary shrink-0">
+                                {(['all', 'receipt', 'mileage'] as const).map((v, i) => (
+                                    <>
+                                        {i > 0 && <div key={`d${v}`} className="w-px h-full bg-border-main" />}
+                                        <button
+                                            key={v}
+                                            onClick={() => setReimTypeFilter(v)}
+                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimTypeFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                        >{v === 'all' ? 'All Types' : v === 'receipt' ? 'Receipt' : 'Mileage'}</button>
+                                    </>
+                                ))}
+                            </div>
+                            <div className="flex items-center rounded-md border border-border-main overflow-hidden h-8 bg-bg-secondary shrink-0">
+                                {(['all', 'pending', 'approved', 'rejected', 'paid'] as const).map((v, i) => (
+                                    <>
+                                        {i > 0 && <div key={`ds${v}`} className="w-px h-full bg-border-main" />}
+                                        <button
+                                            key={v}
+                                            onClick={() => setReimStatusFilter(v)}
+                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimStatusFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                        >{v === 'all' ? 'All Status' : v}</button>
+                                    </>
+                                ))}
+                            </div>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-auto">
+                                Mileage rate: <span className="text-text-primary">${mileageRate.toFixed(2)}/mi</span>
+                            </p>
+                        </div>
 
                         <Card>
                             <CardHeader className="text-left">
-                                <CardTitle className="flex items-center gap-2">
-                                    <Car size={16} className="text-brand-red" />
-                                    Mileage Logs
-                                </CardTitle>
-                                <CardDescription>Review and approve technician trip mileage for reimbursement.</CardDescription>
+                                <CardTitle>Reimbursements</CardTitle>
+                                <CardDescription>Unified receipt and mileage reimbursement review. Approve, reject, or mark paid.</CardDescription>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
@@ -577,81 +569,141 @@ export default function FinancialsPage() {
                                         <TableRow className="hover:bg-transparent border-border-sub">
                                             <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
                                             <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Route</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Miles</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Purpose</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Reimb.</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
                                             <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
                                             <TableHead className="text-right pr-6"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {tripLogs.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={8} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
-                                                    No mileage logs recorded yet.
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            [...tripLogs]
-                                                .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-                                                .map((trip) => (
-                                                    <TableRow key={trip.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                                        <TableCell className="text-xs text-text-muted pl-6">{trip.date}</TableCell>
-                                                        <TableCell className="text-xs font-bold uppercase">{trip.technicianName || trip.technicianId.slice(0, 8)}</TableCell>
-                                                        <TableCell className="text-xs text-text-muted">
-                                                            <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                                                                <Navigation size={9} />
-                                                                <span className="truncate max-w-[120px]">{trip.startLocation}</span>
-                                                                <span>→</span>
-                                                                <span className="truncate max-w-[120px]">{trip.endLocation}</span>
+                                        {(() => {
+                                            // Normalize legacy expenses as receipt reimbursements
+                                            const legacyRows = filteredExpenses
+                                                .filter(e => reimTypeFilter !== 'mileage')
+                                                .filter(e => reimStatusFilter === 'all' || e.status.toLowerCase() === reimStatusFilter)
+                                                .map(e => ({
+                                                    id: e.id,
+                                                    source: 'expense' as const,
+                                                    date: e.date,
+                                                    techName: e.submittedBy,
+                                                    type: 'receipt' as const,
+                                                    status: e.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
+                                                    amount: e.amount,
+                                                    details: e.description,
+                                                    sub: e.category,
+                                                    distanceMiles: undefined as number | undefined,
+                                                    mileageRate: undefined as number | undefined,
+                                                    receiptPhotoUrls: undefined as string[] | undefined,
+                                                    notes: undefined as string | undefined,
+                                                }));
+
+                                            // New reimbursements
+                                            const newRows = reimbursements
+                                                .filter(r => reimTypeFilter === 'all' || r.type === reimTypeFilter)
+                                                .filter(r => reimStatusFilter === 'all' || r.status === reimStatusFilter)
+                                                .map(r => ({
+                                                    id: r.id,
+                                                    source: 'reimbursement' as const,
+                                                    date: r.type === 'mileage' ? (r.dateDriven || r.submittedAt?.slice(0, 10) || '') : (r.purchaseDate || r.submittedAt?.slice(0, 10) || ''),
+                                                    techName: r.techName,
+                                                    type: r.type,
+                                                    status: r.status,
+                                                    amount: r.type === 'mileage'
+                                                        ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate)
+                                                        : r.amount,
+                                                    details: r.type === 'mileage'
+                                                        ? `${r.fromLocation || ''} → ${r.toLocation || ''}`
+                                                        : (r.description || r.vendorName || ''),
+                                                    sub: r.type === 'mileage'
+                                                        ? `${r.distanceMiles?.toFixed(1) || '0'} mi × $${(r.mileageRate || mileageRate).toFixed(2)}`
+                                                        : (r.vendorName || ''),
+                                                    distanceMiles: r.distanceMiles,
+                                                    mileageRate: r.mileageRate,
+                                                    receiptPhotoUrls: r.receiptPhotoUrls,
+                                                    notes: r.notes,
+                                                }));
+
+                                            const allRows = [...legacyRows, ...newRows]
+                                                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+                                            if (allRows.length === 0) return (
+                                                <TableRow>
+                                                    <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
+                                                        No reimbursements match the current filters.
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+
+                                            return allRows.map(row => (
+                                                <TableRow key={`${row.source}-${row.id}`} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
+                                                    <TableCell className="text-xs text-text-muted pl-6">{row.date}</TableCell>
+                                                    <TableCell className="text-sm font-semibold uppercase">{row.techName}</TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={row.type === 'mileage' ? 'onhold' : 'default'}
+                                                            className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                        >
+                                                            {row.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : 'Receipt'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="font-bold text-text-primary text-xs uppercase truncate max-w-[200px]">{row.details}</div>
+                                                        {row.sub && <div className="text-[10px] text-text-muted uppercase font-bold tracking-tight">{row.sub}</div>}
+                                                        {row.notes && <div className="text-[9px] text-text-muted italic mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={row.status === 'approved' || row.status === 'paid' ? 'active' : row.status === 'pending' ? 'onhold' : 'missed'}
+                                                            className="text-[8px] h-4 uppercase"
+                                                        >
+                                                            {row.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        {row.status === 'pending' && (
+                                                            <div className="flex gap-2 justify-end">
+                                                                <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]"
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            if (row.source === 'expense') {
+                                                                                await updateDoc(doc(db, 'expenses', row.id), { status: 'Rejected' });
+                                                                            } else {
+                                                                                await updateDoc(doc(db, 'reimbursements', row.id), { status: 'rejected', reviewedAt: new Date().toISOString() });
+                                                                            }
+                                                                            toast({ title: 'Reimbursement rejected' });
+                                                                        } catch { toast({ variant: 'destructive', title: 'Error' }); }
+                                                                    }}
+                                                                >Deny</Button>
+                                                                <Button size="sm" className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white"
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            if (row.source === 'expense') {
+                                                                                await updateDoc(doc(db, 'expenses', row.id), { status: 'Approved' });
+                                                                            } else {
+                                                                                await updateDoc(doc(db, 'reimbursements', row.id), { status: 'approved', reviewedAt: new Date().toISOString() });
+                                                                            }
+                                                                            toast({ title: 'Reimbursement approved' });
+                                                                        } catch { toast({ variant: 'destructive', title: 'Error' }); }
+                                                                    }}
+                                                                >Approve</Button>
                                                             </div>
-                                                        </TableCell>
-                                                        <TableCell className="font-mono text-sm font-bold tabular-nums">{trip.miles.toFixed(1)}</TableCell>
-                                                        <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{trip.purpose || '—'}</TableCell>
-                                                        <TableCell>
-                                                            <Badge variant={trip.reimbursable ? 'active' : 'default'} className="text-[8px] h-4 uppercase">
-                                                                {trip.reimbursable ? 'Yes' : 'No'}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Badge
-                                                                variant={trip.status === 'approved' ? 'completed' : trip.status === 'rejected' ? 'missed' : 'scheduled'}
-                                                                className="text-[8px] h-4 uppercase"
-                                                            >
-                                                                {trip.status}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-right pr-6">
-                                                            {trip.status === 'pending' && trip.reimbursable && (
-                                                                <div className="flex gap-2 justify-end">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="destructive-outline"
-                                                                        className="h-7 text-[9px]"
-                                                                        onClick={async () => {
-                                                                            try {
-                                                                                await updateDoc(doc(db, 'tripLogs', trip.id), { status: 'rejected' });
-                                                                                toast({ title: 'Trip rejected' });
-                                                                            } catch { toast({ title: 'Error', variant: 'destructive' }); }
-                                                                        }}
-                                                                    >Deny</Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white"
-                                                                        onClick={async () => {
-                                                                            try {
-                                                                                await updateDoc(doc(db, 'tripLogs', trip.id), { status: 'approved' });
-                                                                                toast({ title: 'Trip approved' });
-                                                                            } catch { toast({ title: 'Error', variant: 'destructive' }); }
-                                                                        }}
-                                                                    >Approve</Button>
-                                                                </div>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
-                                        )}
+                                                        )}
+                                                        {row.status === 'approved' && row.source === 'reimbursement' && (
+                                                            <Button size="sm" className="h-7 text-[9px] bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await updateDoc(doc(db, 'reimbursements', row.id), { status: 'paid', paidAt: new Date().toISOString() });
+                                                                        toast({ title: 'Marked as paid' });
+                                                                    } catch { toast({ variant: 'destructive', title: 'Error' }); }
+                                                                }}
+                                                            >Mark Paid</Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ));
+                                        })()}
                                     </TableBody>
                                 </Table>
                             </CardContent>

@@ -445,6 +445,37 @@ export type Expense = {
   projectId?: string;
 };
 
+export type Reimbursement = {
+  id: string;
+  techId: string;
+  techName: string;
+  type: 'receipt' | 'mileage';
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  amount: number;
+  notes?: string;
+  relatedJobId?: string;
+  relatedJobTitle?: string;
+  relatedProjectId?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedByName?: string;
+  paidAt?: string;
+  paidByName?: string;
+  createdAt: string;
+  updatedAt?: string;
+  // Receipt fields
+  vendorName?: string;
+  purchaseDate?: string;
+  description?: string;
+  receiptPhotoUrls?: string[];
+  // Mileage fields
+  fromLocation?: string;
+  toLocation?: string;
+  distanceMiles?: number;
+  mileageRate?: number;
+  dateDriven?: string;
+};
+
 export type Report = {
   id: string;
   name: string;

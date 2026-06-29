@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
-import type { Lead, LeadActivity, Technician, SiteRequest, Quote } from '@/lib/types';
+import type { Lead, LeadActivity, Quote } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -134,8 +134,6 @@ export default function CRMPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
-  const [clients, setClients] = useState<Technician[]>([]);
-  const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,22 +160,11 @@ export default function CRMPage() {
       setActivities(snap.docs.map(d => ({ ...d.data(), id: d.id } as LeadActivity)));
     });
 
-    const unsubClients = onSnapshot(collection(db, 'users'), (snap) => {
-      setClients(snap.docs
-        .map(d => ({ ...d.data(), id: d.id } as Technician))
-        .filter(u => u.roles?.includes('client') || u.role?.toLowerCase().includes('client'))
-      );
-    });
-
-    const unsubSiteReqs = onSnapshot(collection(db, 'siteRequests'), (snap) => {
-      setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
-    });
-
     const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
       setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
     });
 
-    return () => { unsubLeads(); unsubActivities(); unsubClients(); unsubSiteReqs(); unsubQuotes(); };
+    return () => { unsubLeads(); unsubActivities(); unsubQuotes(); };
   }, []);
 
   // Keep selectedLead in sync with latest Firestore data
@@ -288,21 +275,6 @@ export default function CRMPage() {
     }
   };
 
-  const filteredClients = useMemo(() =>
-    clients.filter(c =>
-      !searchQuery ||
-      (c.clientCompany || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-    [clients, searchQuery]
-  );
-
-  const pendingSiteReqs = useMemo(() =>
-    siteRequests.filter(r => r.status === 'pending').length,
-    [siteRequests]
-  );
-
   return (
     <div className="space-y-5 min-h-full">
       <header className="page-header">
@@ -313,6 +285,17 @@ export default function CRMPage() {
           </p>
           <h1 className="page-title">CRM Pipeline</h1>
           <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
+        </div>
+        <div className="page-header-right">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main"
+            onClick={() => router.push('/admin/crm/clients')}
+          >
+            <Building2 size={12} className="mr-1.5" />
+            Go To Clients
+          </Button>
         </div>
       </header>
 
@@ -401,15 +384,6 @@ export default function CRMPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="lost" className="crm-tab-trigger">Lost</TabsTrigger>
-          <TabsTrigger value="clients" className="crm-tab-trigger flex items-center gap-2" onClick={() => router.push('/admin/crm/clients')}>
-            Clients
-            {clients.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{clients.length}</span>}
-            {pendingSiteReqs > 0 && (
-              <span className="text-[8px] font-black bg-brand-red text-white px-1.5 py-0.5 rounded animate-pulse">
-                {pendingSiteReqs}
-              </span>
-            )}
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipeline" className="m-0 pt-3">

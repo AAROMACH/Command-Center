@@ -30,6 +30,34 @@ export type Permission =
   | 'manage_safety_events'
   | 'manage_certifications';
 
+export const ALL_PERMISSIONS: Permission[] = [
+  'view_dashboard',
+  'view_requests',
+  'manage_requests',
+  'view_assignments',
+  'manage_assignments',
+  'view_projects',
+  'manage_projects',
+  'view_directory',
+  'manage_personnel',
+  'view_financials',
+  'manage_payroll',
+  'view_settings',
+  'manage_settings',
+  'field_checkin',
+  'field_logs',
+  'client_portal',
+  'view_assigned_projects_only',
+  'view_assigned_work_only',
+  'approve_pay_changes',
+  'view_reports',
+  'view_leads',
+  'manage_leads',
+  'view_crm',
+  'manage_safety_events',
+  'manage_certifications',
+];
+
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
   label: string;

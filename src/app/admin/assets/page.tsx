@@ -1114,12 +1114,12 @@ export default function AssetsAndMaterialsPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Assign To</Label>
-                                <Select value={assetForm.assignedUserId} onValueChange={v => setAssetForm(f => ({ ...f, assignedUserId: v }))}>
+                                <Select value={assetForm.assignedUserId || '__none__'} onValueChange={v => setAssetForm(f => ({ ...f, assignedUserId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
                                         <SelectValue placeholder="Unassigned" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="" className="text-[10px] font-bold uppercase">Unassigned</SelectItem>
+                                        <SelectItem value="__none__" className="text-[10px] font-bold uppercase">Unassigned</SelectItem>
                                         {technicians.map(t => (
                                             <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
                                         ))}

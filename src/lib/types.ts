@@ -574,12 +574,14 @@ export type Asset = {
   id: string;
   name: string;
   category: AssetCategory;
+  brand?: string;
+  model?: string;
   subCategory?: string;
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'out-of-service';
-  status: 'available' | 'assigned' | 'maintenance' | 'retired';
+  status: 'available' | 'assigned' | 'checked_out' | 'needs_repair' | 'lost' | 'retired';
   assignedUserId?: string;
   assignedUserName?: string;
-  location?: string;
+  currentLocation?: string;
   serialNumber?: string;
   vin?: string;
   licensePlate?: string;
@@ -590,9 +592,50 @@ export type Asset = {
   warrantyExpiry?: string;
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
+  checkedOutAt?: string;
+  expectedReturnAt?: string;
+  lastReturnedAt?: string;
   notes?: string;
   photoUrls?: string[];
   documents?: string[];
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type Material = {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  unitType: 'each' | 'box' | 'pack' | 'foot' | 'roll' | 'hour' | 'set' | 'bag' | 'bundle';
+  standardCost: number;
+  billablePrice: number;
+  markupPercentage?: number;
+  vendor?: string;
+  sku?: string;
+  taxable: boolean;
+  status: 'active' | 'inactive';
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type AssetAssignment = {
+  id: string;
+  assetId: string;
+  assetName: string;
+  assignedToUserId: string;
+  assignedToName: string;
+  assignedByName: string;
+  checkedOutAt: string;
+  expectedReturnAt?: string;
+  returnedAt?: string;
+  checkoutCondition: string;
+  returnCondition?: string;
+  status: 'active' | 'returned';
+  notes?: string;
+  relatedJobId?: string;
+  relatedProjectId?: string;
   createdAt: string;
 };
 

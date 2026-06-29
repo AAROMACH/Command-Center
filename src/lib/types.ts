@@ -519,6 +519,7 @@ export type Lead = {
   updatedAt: string;
   closedAt?: string;
   lostReason?: string;
+  followUpDate?: string;
 };
 
 export type LeadActivity = {

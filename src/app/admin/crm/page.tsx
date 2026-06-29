@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
-import type { Lead, LeadActivity, Technician, SiteRequest } from '@/lib/types';
+import type { Lead, LeadActivity, Technician, SiteRequest, Quote } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -136,6 +136,7 @@ export default function CRMPage() {
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [clients, setClients] = useState<Technician[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [crmTab, setCrmTab] = useState('pipeline');
@@ -172,7 +173,11 @@ export default function CRMPage() {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
 
-    return () => { unsubLeads(); unsubActivities(); unsubClients(); unsubSiteReqs(); };
+    const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
+      setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
+    });
+
+    return () => { unsubLeads(); unsubActivities(); unsubClients(); unsubSiteReqs(); unsubQuotes(); };
   }, []);
 
   // Keep selectedLead in sync with latest Firestore data
@@ -367,6 +372,35 @@ export default function CRMPage() {
       <Tabs value={crmTab} onValueChange={setCrmTab} className="w-full">
         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1">
           <TabsTrigger value="pipeline" className="crm-tab-trigger">Pipeline</TabsTrigger>
+          <TabsTrigger value="opportunities" className="crm-tab-trigger flex items-center gap-2">
+            Opportunities
+            {leads.filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage)).length > 0 && (
+              <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">
+                {leads.filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage)).length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="quotes" className="crm-tab-trigger flex items-center gap-2">
+            Quotes
+            {quotes.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{quotes.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="followups" className="crm-tab-trigger flex items-center gap-2">
+            Follow-ups
+            {leads.filter(l => !!(l as any).followUpDate).length > 0 && (
+              <span className="text-[8px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded">
+                {leads.filter(l => !!(l as any).followUpDate).length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="won" className="crm-tab-trigger flex items-center gap-2">
+            Won
+            {leads.filter(l => l.stage === 'won').length > 0 && (
+              <span className="text-[8px] font-black bg-text-green/20 text-text-green border border-text-green/30 px-1.5 py-0.5 rounded">
+                {leads.filter(l => l.stage === 'won').length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="lost" className="crm-tab-trigger">Lost</TabsTrigger>
           <TabsTrigger value="clients" className="crm-tab-trigger flex items-center gap-2" onClick={() => router.push('/admin/crm/clients')}>
             Clients
             {clients.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{clients.length}</span>}
@@ -507,6 +541,269 @@ export default function CRMPage() {
         </div>
       </div>}
 
+        </TabsContent>
+
+        {/* ── Opportunities ── */}
+        <TabsContent value="opportunities" className="m-0 pt-3">
+          <div className="flex items-center gap-4 px-1 mb-4">
+            <TrendingUp size={12} className="text-amber-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              {leads.filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage)).length} Active Opportunities
+            </span>
+            <span className="text-text-muted text-xs">·</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              ${leads.filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage)).reduce((s,l) => s + (l.estimatedValue||0), 0).toLocaleString()} Pipeline
+            </span>
+          </div>
+          <div className="rounded-xl border border-border-sub overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border-sub">
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Value</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Stage</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads
+                  .filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage))
+                  .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''))
+                  .map(lead => {
+                    const stageInfo = STAGES.find(s => s.key === lead.stage);
+                    return (
+                      <TableRow key={lead.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                        <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                        <TableCell className="text-[10px] text-text-muted">
+                          <div>{lead.contactName}</div>
+                          {lead.contactEmail && <div className="text-[9px] mt-0.5">{lead.contactEmail}</div>}
+                        </TableCell>
+                        <TableCell className="text-[11px] font-black font-mono text-text-green">
+                          {lead.estimatedValue > 0 ? `$${lead.estimatedValue.toLocaleString()}` : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[8px] h-5 uppercase border ${stageInfo?.bg} ${stageInfo?.color} border-current/20`}>
+                            {stageInfo?.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-[10px] text-text-muted">
+                          {lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '—'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                {leads.filter(l => ['qualified','proposal_sent','negotiating'].includes(l.stage)).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No active opportunities</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ── Quotes ── */}
+        <TabsContent value="quotes" className="m-0 pt-3">
+          <div className="rounded-xl border border-border-sub overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border-sub">
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Total</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Created</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotes.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')).map(q => (
+                  <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer">
+                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">{q.title}</TableCell>
+                    <TableCell className="text-[10px] text-text-muted">{q.clientName}</TableCell>
+                    <TableCell className="text-[11px] font-black font-mono text-text-green">${(q.total||0).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge className={`text-[8px] h-5 uppercase border ${
+                        q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                        q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                        'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                      }`}>
+                        {q.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-[10px] text-text-muted">
+                      {q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-[10px] text-text-muted">
+                      {q.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {quotes.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No quotes yet</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ── Follow-ups ── */}
+        <TabsContent value="followups" className="m-0 pt-3">
+          <div className="rounded-xl border border-border-sub overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border-sub">
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Follow-up Date</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Stage</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads
+                  .filter(l => !!(l as any).followUpDate)
+                  .sort((a,b) => ((a as any).followUpDate||'').localeCompare((b as any).followUpDate||''))
+                  .map(lead => {
+                    const stageInfo = STAGES.find(s => s.key === lead.stage);
+                    const followUpDate = (lead as any).followUpDate as string;
+                    const isPast = followUpDate && new Date(followUpDate) < new Date();
+                    return (
+                      <TableRow key={lead.id} className={`border-border-sub hover:bg-bg-secondary cursor-pointer ${isPast ? 'bg-brand-red/5' : ''}`} onClick={() => setSelectedLead(lead)}>
+                        <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                        <TableCell className="text-[10px] text-text-muted">{lead.contactName}</TableCell>
+                        <TableCell className={`text-[10px] font-bold ${isPast ? 'text-brand-red' : 'text-text-primary'}`}>
+                          {followUpDate ? new Date(followUpDate).toLocaleDateString() : '—'}
+                          {isPast && <span className="ml-2 text-[8px] bg-brand-red/10 text-brand-red border border-brand-red/20 px-1.5 py-0.5 rounded uppercase">Overdue</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[8px] h-5 uppercase border ${stageInfo?.bg} ${stageInfo?.color} border-current/20`}>
+                            {stageInfo?.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-[11px] font-black font-mono text-text-green">
+                          {lead.estimatedValue > 0 ? `$${lead.estimatedValue.toLocaleString()}` : '—'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                {leads.filter(l => !!(l as any).followUpDate).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No follow-ups scheduled</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ── Won ── */}
+        <TabsContent value="won" className="m-0 pt-3">
+          {leads.filter(l => l.stage === 'won').length > 0 && (
+            <div className="flex items-center gap-4 px-1 mb-4">
+              <CheckCircle2 size={12} className="text-text-green" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">
+                ${leads.filter(l => l.stage === 'won').reduce((s,l) => s + (l.estimatedValue||0), 0).toLocaleString()} Total Won
+              </span>
+              <span className="text-text-muted text-xs">·</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                {leads.filter(l => l.stage === 'won').length} Deals
+              </span>
+            </div>
+          )}
+          <div className="rounded-xl border border-border-sub overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border-sub">
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Deal Value</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Closed</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads
+                  .filter(l => l.stage === 'won')
+                  .sort((a,b) => (b.closedAt||b.updatedAt||'').localeCompare(a.closedAt||a.updatedAt||''))
+                  .map(lead => (
+                    <TableRow key={lead.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                      <TableCell className="font-bold text-[11px] uppercase text-text-primary flex items-center gap-2">
+                        <CheckCircle2 size={11} className="text-text-green shrink-0" />
+                        {lead.companyName}
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted">{lead.contactName}</TableCell>
+                      <TableCell className="text-[12px] font-black font-mono text-text-green">
+                        ${(lead.estimatedValue||0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted">
+                        {lead.closedAt ? new Date(lead.closedAt).toLocaleDateString() : (lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '—')}
+                      </TableCell>
+                      <TableCell>
+                        {lead.source && (
+                          <Badge variant="default" className="text-[8px] h-4 uppercase bg-bg-tertiary border-border-sub text-text-muted">
+                            {lead.source.replace('_',' ')}
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {leads.filter(l => l.stage === 'won').length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No won deals yet</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ── Lost ── */}
+        <TabsContent value="lost" className="m-0 pt-3">
+          <div className="rounded-xl border border-border-sub overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border-sub">
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Est. Value</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Lost Reason</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Last Updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads
+                  .filter(l => l.stage === 'lost')
+                  .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''))
+                  .map(lead => (
+                    <TableRow key={lead.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer opacity-70 hover:opacity-100" onClick={() => setSelectedLead(lead)}>
+                      <TableCell className="font-bold text-[11px] uppercase text-text-primary flex items-center gap-2">
+                        <XCircle size={11} className="text-text-red shrink-0" />
+                        {lead.companyName}
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted">{lead.contactName}</TableCell>
+                      <TableCell className="text-[11px] font-black font-mono text-text-muted">
+                        {lead.estimatedValue > 0 ? `$${lead.estimatedValue.toLocaleString()}` : '—'}
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted max-w-[200px] truncate">
+                        {lead.lostReason || '—'}
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted">
+                        {lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {leads.filter(l => l.stage === 'lost').length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No lost deals</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
 
       </Tabs>

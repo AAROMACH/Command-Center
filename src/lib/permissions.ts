@@ -4,6 +4,7 @@ import type { AppRole, Technician } from './types';
 import { TERMINOLOGY } from './constants';
 
 export type Permission =
+  // Core access
   | 'view_dashboard'
   | 'view_requests'
   | 'manage_requests'
@@ -28,7 +29,105 @@ export type Permission =
   | 'manage_leads'
   | 'view_crm'
   | 'manage_safety_events'
-  | 'manage_certifications';
+  | 'manage_certifications'
+  // Dispatch
+  | 'assign_technician'
+  | 'swap_technician'
+  | 'remove_technician'
+  | 'add_technician'
+  | 'assign_helper'
+  | 'create_route'
+  | 'edit_route'
+  | 'delete_route'
+  | 'optimize_routes'
+  | 'dispatch_route'
+  | 'reschedule_job'
+  | 'cancel_assignment'
+  | 'override_scheduling_conflicts'
+  // Projects
+  | 'create_project'
+  | 'edit_project'
+  | 'archive_project'
+  | 'create_phase'
+  | 'create_task'
+  | 'assign_task'
+  | 'complete_task'
+  | 'reopen_task'
+  | 'close_project'
+  // CRM
+  | 'create_lead'
+  | 'create_opportunity'
+  | 'create_quote'
+  | 'edit_quote'
+  | 'send_quote'
+  | 'approve_quote'
+  | 'convert_quote'
+  | 'mark_won'
+  | 'mark_lost'
+  // Financials
+  | 'view_profit'
+  | 'create_invoice'
+  | 'edit_invoice'
+  | 'void_invoice'
+  | 'approve_reimbursements'
+  | 'process_payroll'
+  | 'export_financial_data'
+  // Directory
+  | 'assign_roles'
+  | 'edit_permissions'
+  | 'upload_documents'
+  | 'approve_documents'
+  | 'reset_password'
+  | 'disable_user'
+  // Messages
+  | 'broadcast_messages'
+  | 'group_chat'
+  | 'delete_messages'
+  | 'pin_messages'
+  | 'upload_files'
+  // Reports
+  | 'generate_reports'
+  | 'export_reports'
+  | 'schedule_reports'
+  // Administration
+  | 'company_settings'
+  | 'integrations'
+  | 'api_keys'
+  | 'audit_logs'
+  | 'automation_rules'
+  // Override permissions
+  | 'edit_completed_assignments'
+  | 'edit_closed_projects'
+  | 'override_payroll_locks'
+  | 'override_scheduling_locks'
+  | 'delete_historical_records'
+  | 'force_complete_assignment'
+  | 'force_close_project'
+  | 'bypass_approval_workflow';
+
+export const ALL_PERMISSIONS: Permission[] = [
+  'view_dashboard', 'view_requests', 'manage_requests', 'view_assignments', 'manage_assignments',
+  'view_projects', 'manage_projects', 'view_directory', 'manage_personnel', 'view_financials',
+  'manage_payroll', 'view_settings', 'manage_settings', 'field_checkin', 'field_logs',
+  'client_portal', 'view_assigned_projects_only', 'view_assigned_work_only', 'approve_pay_changes',
+  'view_reports', 'view_leads', 'manage_leads', 'view_crm', 'manage_safety_events', 'manage_certifications',
+  'assign_technician', 'swap_technician', 'remove_technician', 'add_technician', 'assign_helper',
+  'create_route', 'edit_route', 'delete_route', 'optimize_routes', 'dispatch_route',
+  'reschedule_job', 'cancel_assignment', 'override_scheduling_conflicts',
+  'create_project', 'edit_project', 'archive_project', 'create_phase', 'create_task',
+  'assign_task', 'complete_task', 'reopen_task', 'close_project',
+  'create_lead', 'create_opportunity', 'create_quote', 'edit_quote', 'send_quote',
+  'approve_quote', 'convert_quote', 'mark_won', 'mark_lost',
+  'view_profit', 'create_invoice', 'edit_invoice', 'void_invoice', 'approve_reimbursements',
+  'process_payroll', 'export_financial_data',
+  'assign_roles', 'edit_permissions', 'upload_documents', 'approve_documents', 'reset_password', 'disable_user',
+  'broadcast_messages', 'group_chat', 'delete_messages', 'pin_messages', 'upload_files',
+  'generate_reports', 'export_reports', 'schedule_reports',
+  'company_settings', 'integrations', 'api_keys', 'audit_logs', 'automation_rules',
+  'edit_completed_assignments', 'edit_closed_projects', 'override_payroll_locks',
+  'override_scheduling_locks', 'delete_historical_records', 'force_complete_assignment',
+  'force_close_project', 'bypass_approval_workflow',
+];
 
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
@@ -37,96 +136,49 @@ export type Portal = {
 };
 
 const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
-  super_admin: [
-    'view_dashboard',
-    'view_requests',
-    'manage_requests',
-    'view_assignments',
-    'manage_assignments',
-    'view_projects',
-    'manage_projects',
-    'view_directory',
-    'manage_personnel',
-    'view_financials',
-    'manage_payroll',
-    'view_settings',
-    'manage_settings',
-    'field_checkin',
-    'field_logs',
-    'approve_pay_changes',
-    'view_reports',
-    'view_leads',
-    'manage_leads',
-    'view_crm',
-    'manage_safety_events',
-    'manage_certifications',
-  ],
+  super_admin: ALL_PERMISSIONS,
   dispatch_admin: [
-    'view_dashboard',
-    'view_requests',
-    'view_assignments',
-    'manage_assignments',
-    'view_projects',
-    'view_directory',
-    'view_reports',
+    'view_dashboard', 'view_requests', 'view_assignments', 'manage_assignments', 'view_projects',
+    'view_directory', 'view_reports', 'assign_technician', 'swap_technician', 'remove_technician',
+    'add_technician', 'assign_helper', 'create_route', 'edit_route', 'delete_route',
+    'optimize_routes', 'dispatch_route', 'reschedule_job', 'cancel_assignment',
+    'override_scheduling_conflicts', 'broadcast_messages', 'group_chat',
   ],
   payroll_admin: [
-    'view_dashboard',
-    'view_assignments',
-    'view_financials',
-    'manage_payroll',
-    'view_directory',
-    'approve_pay_changes',
-    'view_reports',
+    'view_dashboard', 'view_assignments', 'view_financials', 'manage_payroll', 'view_directory',
+    'approve_pay_changes', 'view_reports', 'view_profit', 'create_invoice', 'edit_invoice',
+    'void_invoice', 'approve_reimbursements', 'process_payroll', 'export_financial_data',
+    'generate_reports', 'export_reports',
   ],
   project_manager: [
-    'view_dashboard',
-    'view_requests',
-    'view_projects',
-    'manage_projects',
-    'view_assignments',
-    'view_reports',
+    'view_dashboard', 'view_requests', 'view_projects', 'manage_projects', 'view_assignments',
+    'view_reports', 'create_project', 'edit_project', 'archive_project', 'create_phase',
+    'create_task', 'assign_task', 'complete_task', 'reopen_task', 'close_project',
+    'view_directory', 'generate_reports',
   ],
   project_lead: [
-    'view_dashboard',
-    'view_assigned_projects_only',
-    'manage_projects',
-    'field_checkin',
-    'field_logs',
+    'view_dashboard', 'view_assigned_projects_only', 'manage_projects', 'field_checkin', 'field_logs',
+    'create_task', 'assign_task', 'complete_task',
   ],
   field_technician: [
-    'view_dashboard',
-    'view_assigned_work_only',
-    'view_assigned_projects_only',
-    'field_checkin',
-    'field_logs',
+    'view_dashboard', 'view_assigned_work_only', 'view_assigned_projects_only',
+    'field_checkin', 'field_logs',
   ],
   client: [
-    'view_dashboard',
-    'client_portal',
+    'view_dashboard', 'client_portal',
   ],
   sales: [
-    'view_dashboard',
-    'view_leads',
-    'manage_leads',
-    'view_crm',
-    'view_projects',
-    'view_directory',
-    'view_reports',
+    'view_dashboard', 'view_leads', 'manage_leads', 'view_crm', 'view_projects', 'view_directory',
+    'view_reports', 'create_lead', 'create_opportunity', 'create_quote', 'edit_quote', 'send_quote',
+    'mark_won', 'mark_lost', 'generate_reports',
   ],
   safety_officer: [
-    'view_dashboard',
-    'view_assignments',
-    'view_projects',
-    'view_directory',
-    'manage_safety_events',
-    'view_reports',
+    'view_dashboard', 'view_assignments', 'view_projects', 'view_directory',
+    'manage_safety_events', 'view_reports', 'upload_documents', 'generate_reports',
   ],
   training_coordinator: [
-    'view_dashboard',
-    'view_directory',
-    'manage_certifications',
-    'view_reports',
+    'view_dashboard', 'view_directory', 'manage_certifications', 'view_reports',
+    'upload_documents', 'approve_documents', 'generate_reports',
   ],
 };
 

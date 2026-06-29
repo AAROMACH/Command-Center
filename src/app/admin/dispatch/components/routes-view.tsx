@@ -264,7 +264,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         onRoutesChange([...routes, newRoute]);
         setNewRouteName("");
         setIsNewRouteOpen(false);
-        toast({ title: "Route Established", description: `${newRoute.name} initialized.` });
+        toast({ title: "Route Created", description: `${newRoute.name} is ready for job assignments.` });
     };
 
     const handleDeleteRoute = (id: string) => {
@@ -535,8 +535,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>
                 <DialogContent className="sm:max-w-md bg-bg-elevated border-border-default shadow-2xl">
                     <DialogHeader className="text-left">
-                        <DialogTitle className="uppercase tracking-widest font-bold text-left">Establish New Route</DialogTitle>
-                        <DialogDescription className="text-xs text-left">Define a named operational grouping for field assignments.</DialogDescription>
+                        <DialogTitle className="uppercase tracking-widest font-bold text-left">New Route</DialogTitle>
+                        <DialogDescription className="text-xs text-left">Create a named route to group and dispatch field assignments.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 text-left">
                         <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block text-left">Route Identifier / Name</Label>

@@ -177,10 +177,10 @@ export default function FieldIntelligencePage() {
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">
                         <BarChart2 size={12} />
-                        Analytics Terminal
+                        Real-time Field Operations
                     </p>
                     <h1 className="page-title">Field Intelligence</h1>
-                    <p className="page-subtitle">Operational analytics, anomaly detection, and technician performance.</p>
+                    <p className="page-subtitle">Live field awareness, technician status, and operational analytics.</p>
                 </div>
             </header>
 

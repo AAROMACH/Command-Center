@@ -3,20 +3,55 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, onSnapshot, addDoc, query, where } from 'firebase/firestore';
-import type { Technician, Site, Project, WorkOrder, Invoice, SiteRequest } from '@/lib/types';
+import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc } from 'firebase/firestore';
+import type { Technician, Site, Project, WorkOrder, Invoice, SiteRequest, Quote, ClientDocument } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     ArrowLeft, Building2, Mail, Phone, MapPin, Briefcase, ClipboardList,
     Receipt, Users, FileText, Clock, CheckCircle, AlertTriangle, Plus, DollarSign,
+    Ticket, Upload, Settings2, StickyNote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
+
+const ACCOUNT_STATUS_OPTIONS = [
+    { value: 'active', label: 'Active' },
+    { value: 'lead', label: 'Lead' },
+    { value: 'prospect', label: 'Prospect' },
+    { value: 'vip', label: 'VIP' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'on_hold', label: 'On Hold' },
+    { value: 'past_client', label: 'Past Client' },
+    { value: 'collections', label: 'Collections' },
+    { value: 'do_not_service', label: 'Do Not Service' },
+];
+
+const ACCOUNT_STATUS_COLORS: Record<string, string> = {
+    active: 'bg-text-green/10 text-text-green border-text-green/20',
+    lead: 'bg-blue-400/10 text-blue-400 border-blue-400/20',
+    prospect: 'bg-sky-400/10 text-sky-400 border-sky-400/20',
+    vip: 'bg-purple-400/10 text-purple-400 border-purple-400/20',
+    inactive: 'bg-bg-tertiary text-text-muted border-border-sub',
+    on_hold: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
+    past_client: 'bg-bg-tertiary text-text-muted border-border-sub',
+    collections: 'bg-text-red/10 text-text-red border-text-red/20',
+    do_not_service: 'bg-text-red/10 text-text-red border-text-red/20',
+};
+
+const CDOC_TYPE_LABELS: Record<string, string> = {
+    contract: 'Contract', blueprint: 'Blueprint', compliance: 'Compliance',
+    w9: 'W-9', insurance: 'Insurance', agreement: 'Agreement',
+    permit: 'Permit', other: 'Other',
+};
 
 export default function ClientWorkspacePage() {
     const { id } = useParams<{ id: string }>();
@@ -29,15 +64,30 @@ export default function ClientWorkspacePage() {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
+    const [quotes, setQuotes] = useState<Quote[]>([]);
+    const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>([]);
     const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
     const [noteInput, setNoteInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
 
+    // Client document upload
+    const [cdocOpen, setCdocOpen] = useState(false);
+    const [cdocForm, setCdocForm] = useState({ name: '', documentType: 'other', expirationDate: '', notes: '' });
+    const [cdocSaving, setCdocSaving] = useState(false);
+
+    // Account settings save state
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [accountStatus, setAccountStatus] = useState('active');
+
     useEffect(() => {
         if (!id) return;
         getDoc(doc(db, 'users', id)).then(snap => {
-            if (snap.exists()) setClient({ ...snap.data(), id: snap.id } as Technician);
+            if (snap.exists()) {
+                const data = { ...snap.data(), id: snap.id } as Technician;
+                setClient(data);
+                setAccountStatus((data as any).accountStatus || 'active');
+            }
             setLoading(false);
         });
 
@@ -45,11 +95,11 @@ export default function ClientWorkspacePage() {
             setNotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as { id: string; text: string; createdAt: string }))
                 .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
         });
-
+        const unsubCDocs = onSnapshot(collection(db, `users/${id}/clientDocuments`), snap => {
+            setClientDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientDocument)));
+        });
         const unsubSites = onSnapshot(collection(db, 'sites'), snap => {
-            const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as Site));
-            // Filter happens after client loads — re-filter when client changes
-            setSites(all);
+            setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
         });
         const unsubContacts = onSnapshot(collection(db, 'users'), snap => {
             setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
@@ -66,20 +116,22 @@ export default function ClientWorkspacePage() {
         const unsubSR = onSnapshot(collection(db, 'siteRequests'), snap => {
             setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
         });
+        const unsubQ = onSnapshot(collection(db, 'quotes'), snap => {
+            setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
+        });
 
-        return () => { unsubNotes(); unsubSites(); unsubContacts(); unsubProjects(); unsubWO(); unsubInv(); unsubSR(); };
+        return () => { unsubNotes(); unsubCDocs(); unsubSites(); unsubContacts(); unsubProjects(); unsubWO(); unsubInv(); unsubSR(); unsubQ(); };
     }, [id]);
 
     const clientName = client?.clientCompany || client?.name || '';
 
     const clientSites = useMemo(() => sites.filter(s => s.clientName === clientName), [sites, clientName]);
-    const clientContacts = useMemo(() => contacts.filter(c =>
-        c.clientCompany === clientName || c.id === id
-    ), [contacts, clientName, id]);
+    const clientContacts = useMemo(() => contacts.filter(c => c.clientCompany === clientName || c.id === id), [contacts, clientName, id]);
     const clientProjects = useMemo(() => projects.filter(p => p.client === clientName), [projects, clientName]);
     const clientWOs = useMemo(() => workOrders.filter(wo => wo.clientName === clientName), [workOrders, clientName]);
     const clientInvoices = useMemo(() => invoices.filter(inv => inv.clientName === clientName || inv.clientId === id), [invoices, clientName, id]);
     const clientSiteReqs = useMemo(() => siteRequests.filter(r => r.clientId === id || r.clientName === clientName), [siteRequests, id, clientName]);
+    const clientQuotes = useMemo(() => quotes.filter(q => q.clientName === clientName || q.clientId === id), [quotes, clientName, id]);
 
     const stats = useMemo(() => ({
         openWOs: clientWOs.filter(wo => wo.status !== 'completed').length,
@@ -98,7 +150,37 @@ export default function ClientWorkspacePage() {
         setNoteInput('');
     };
 
-    // Build history timeline
+    const handleUploadCDoc = async () => {
+        if (!cdocForm.name || !id) return;
+        setCdocSaving(true);
+        try {
+            await addDoc(collection(db, `users/${id}/clientDocuments`), {
+                name: cdocForm.name,
+                documentType: cdocForm.documentType,
+                fileUrl: '#',
+                uploadedBy: 'Admin',
+                uploadedAt: new Date().toISOString(),
+                expirationDate: cdocForm.expirationDate || null,
+                notes: cdocForm.notes || null,
+            });
+            setCdocOpen(false);
+            setCdocForm({ name: '', documentType: 'other', expirationDate: '', notes: '' });
+        } finally {
+            setCdocSaving(false);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        if (!id) return;
+        setSettingsSaving(true);
+        try {
+            await updateDoc(doc(db, 'users', id), { accountStatus });
+            setClient(prev => prev ? { ...prev, accountStatus } as any : prev);
+        } finally {
+            setSettingsSaving(false);
+        }
+    };
+
     const history = useMemo(() => {
         const events: { id: string; time: string; label: string; detail: string; color: string }[] = [];
         clientWOs.filter(wo => wo.status === 'completed').forEach(wo => {
@@ -136,6 +218,10 @@ export default function ClientWorkspacePage() {
         );
     }
 
+    const tabTriggerClass = "px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[10px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all";
+
+    const currentAccountStatus = (client as any).accountStatus || 'active';
+
     return (
         <div className="space-y-5">
             <div className="flex items-center gap-3">
@@ -151,7 +237,12 @@ export default function ClientWorkspacePage() {
                 </div>
                 <div className="flex-1 space-y-3">
                     <div>
-                        <h1 className="text-2xl font-black uppercase tracking-tight text-text-primary">{clientName || 'Unnamed Client'}</h1>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h1 className="text-2xl font-black uppercase tracking-tight text-text-primary">{clientName || 'Unnamed Client'}</h1>
+                            <Badge className={`text-[8px] uppercase border h-5 ${ACCOUNT_STATUS_COLORS[currentAccountStatus] || ACCOUNT_STATUS_COLORS.active}`}>
+                                {currentAccountStatus.replace(/_/g, ' ')}
+                            </Badge>
+                        </div>
                         {client.name && client.clientCompany && <p className="text-[11px] text-text-muted mt-0.5">{client.name}</p>}
                     </div>
                     <div className="flex flex-wrap gap-4">
@@ -167,7 +258,6 @@ export default function ClientWorkspacePage() {
                         )}
                     </div>
                 </div>
-                {/* KPI chips */}
                 <div className="flex flex-wrap md:flex-col gap-2 md:w-48 shrink-0">
                     {[
                         { label: 'Open Jobs', value: stats.openWOs, color: 'text-text-amber' },
@@ -185,20 +275,25 @@ export default function ClientWorkspacePage() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-6">
-                    {[
-                        { value: 'overview', label: 'Overview' },
-                        { value: 'sites', label: `Sites (${clientSites.length})` },
-                        { value: 'contacts', label: `Contacts (${clientContacts.length})` },
-                        { value: 'projects', label: `Projects (${clientProjects.length})` },
-                        { value: 'workorders', label: `Work Orders (${clientWOs.length})` },
-                        { value: 'invoices', label: `Invoices (${clientInvoices.length})` },
-                        { value: 'notes', label: 'Notes' },
-                        { value: 'history', label: 'History' },
-                    ].map(tab => (
-                        <TabsTrigger key={tab.value} value={tab.value} className="tab-trigger-activity">{tab.label}</TabsTrigger>
-                    ))}
-                </TabsList>
+                <div className="overflow-x-auto">
+                    <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 mb-6 min-w-max w-full">
+                        {[
+                            { value: 'overview', label: 'Overview' },
+                            { value: 'sites', label: `Sites (${clientSites.length})` },
+                            { value: 'contacts', label: `Contacts (${clientContacts.length})` },
+                            { value: 'projects', label: `Projects (${clientProjects.length})` },
+                            { value: 'workorders', label: `Work Orders (${clientWOs.length})` },
+                            { value: 'billing', label: `Billing (${clientInvoices.length + clientQuotes.length})` },
+                            { value: 'tickets', label: `Tickets (${clientSiteReqs.length})` },
+                            { value: 'documents', label: `Documents (${clientDocuments.length})` },
+                            { value: 'notes', label: 'Notes' },
+                            { value: 'history', label: 'History' },
+                            { value: 'settings', label: 'Settings' },
+                        ].map(tab => (
+                            <TabsTrigger key={tab.value} value={tab.value} className={tabTriggerClass}>{tab.label}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                </div>
 
                 {/* Overview */}
                 <TabsContent value="overview" className="m-0">
@@ -343,24 +438,157 @@ export default function ClientWorkspacePage() {
                         </div>}
                 </TabsContent>
 
-                {/* Invoices */}
-                <TabsContent value="invoices" className="m-0">
-                    {clientInvoices.length === 0
-                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No invoices for this client</p>
-                        : <div className="space-y-2">
-                            {clientInvoices.map(inv => (
-                                <div key={inv.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
-                                    <div className="min-w-0">
-                                        <p className="text-[12px] font-bold text-text-primary uppercase">{inv.invoiceNumber}</p>
-                                        <p className="text-[9px] text-text-muted uppercase">Issued {inv.issueDate} · Due {inv.dueDate}</p>
+                {/* Billing — Quotes & Invoices */}
+                <TabsContent value="billing" className="m-0">
+                    <div className="space-y-6">
+                        {/* Quotes section */}
+                        <div>
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                                <FileText size={11} /> Quotes ({clientQuotes.length})
+                            </h3>
+                            {clientQuotes.length === 0
+                                ? <p className="text-[10px] text-text-muted uppercase py-3 text-center">No quotes on file</p>
+                                : (
+                                    <div className="rounded-xl border border-border-sub overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="border-border-sub">
+                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title</TableHead>
+                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Total</TableHead>
+                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires</TableHead>
+                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {clientQuotes.map(q => (
+                                                    <TableRow key={q.id} className="border-border-sub">
+                                                        <TableCell className="font-bold text-[10px] text-text-primary">{q.title}</TableCell>
+                                                        <TableCell className="text-[10px] font-mono text-text-primary text-right">${q.total}</TableCell>
+                                                        <TableCell className="text-[10px] text-text-muted">{q.expiresAt || '—'}</TableCell>
+                                                        <TableCell>
+                                                            <Badge className={`text-[7px] uppercase h-4 border ${
+                                                                q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                                                q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                                                                'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                                                            }`}>{q.status}</Badge>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <p className={cn("text-[13px] font-bold font-mono", inv.status === 'paid' ? 'text-text-green' : inv.status === 'overdue' ? 'text-text-red' : 'text-text-primary')}>${inv.total}</p>
-                                        <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'overdue' ? 'destructive' : 'onhold'} className="text-[7px] uppercase h-4">{inv.status}</Badge>
+                                )}
+                        </div>
+                        {/* Invoices section */}
+                        <div>
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                                <Receipt size={11} /> Invoices ({clientInvoices.length})
+                            </h3>
+                            {clientInvoices.length === 0
+                                ? <p className="text-[10px] text-text-muted uppercase py-3 text-center">No invoices on file</p>
+                                : (
+                                    <div className="space-y-2">
+                                        {clientInvoices.map(inv => (
+                                            <div key={inv.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] font-bold text-text-primary uppercase">{inv.invoiceNumber}</p>
+                                                    <p className="text-[9px] text-text-muted uppercase">Issued {inv.issueDate} · Due {inv.dueDate}</p>
+                                                </div>
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <p className={cn("text-[13px] font-bold font-mono", inv.status === 'paid' ? 'text-text-green' : inv.status === 'overdue' ? 'text-text-red' : 'text-text-primary')}>${inv.total}</p>
+                                                    <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'overdue' ? 'destructive' : 'onhold'} className="text-[7px] uppercase h-4">{inv.status}</Badge>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            ))}
-                        </div>}
+                                )}
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* Tickets */}
+                <TabsContent value="tickets" className="m-0">
+                    {clientSiteReqs.length === 0
+                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No service tickets or site requests</p>
+                        : (
+                            <div className="space-y-2">
+                                {clientSiteReqs.map(r => (
+                                    <div key={r.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
+                                        <div className="min-w-0 flex items-start gap-3">
+                                            <div className="p-2 rounded-lg bg-bg-primary border border-border-sub shrink-0 mt-0.5">
+                                                <Ticket size={13} className="text-text-muted" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[12px] font-bold text-text-primary uppercase truncate">{r.siteName || 'Site Request'}</p>
+                                                <p className="text-[9px] text-text-muted uppercase">{r.submittedDate} · {r.location}</p>
+                                                {r.managerName && <p className="text-[9px] text-text-muted mt-0.5">Contact: {r.managerName}</p>}
+                                            </div>
+                                        </div>
+                                        <Badge
+                                            variant={r.status === 'approved' ? 'active' : r.status === 'pending' ? 'scheduled' : 'onhold'}
+                                            className="text-[7px] uppercase h-4 shrink-0 ml-3"
+                                        >{r.status}</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                </TabsContent>
+
+                {/* Documents */}
+                <TabsContent value="documents" className="m-0">
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+                            <FileText size={11} /> {clientDocuments.length} Document{clientDocuments.length !== 1 ? 's' : ''}
+                        </p>
+                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setCdocOpen(true)}>
+                            <Upload size={11} className="mr-1.5" /> Upload Document
+                        </Button>
+                    </div>
+                    {clientDocuments.length === 0
+                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No documents on file</p>
+                        : (
+                            <div className="rounded-xl border border-border-sub overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-border-sub">
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Type</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Uploaded</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-20">File</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {clientDocuments.map(d => {
+                                            const daysLeft = d.expirationDate ? differenceInDays(new Date(d.expirationDate), new Date()) : null;
+                                            const expiringSoon = daysLeft !== null && daysLeft <= 30 && daysLeft >= 0;
+                                            const expired = daysLeft !== null && daysLeft < 0;
+                                            return (
+                                                <TableRow key={d.id} className={cn('border-border-sub', expiringSoon && 'bg-amber-400/5', expired && 'bg-text-red/5')}>
+                                                    <TableCell className="font-bold text-[10px] text-text-primary">{d.name}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="scheduled" className="text-[7px] uppercase h-4">{CDOC_TYPE_LABELS[d.documentType] || d.documentType}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] text-text-muted">
+                                                        {d.uploadedAt ? format(new Date(d.uploadedAt), 'MM/dd/yyyy') : '—'}
+                                                    </TableCell>
+                                                    <TableCell className={cn('text-[10px]', expiringSoon ? 'text-amber-400 font-bold' : expired ? 'text-text-red font-bold' : 'text-text-muted')}>
+                                                        {d.expirationDate ? format(new Date(d.expirationDate), 'MM/dd/yyyy') : '—'}
+                                                        {expiringSoon && <span className="ml-1 text-[8px]">({daysLeft}d)</span>}
+                                                        {expired && <span className="ml-1 text-[8px]">Expired</span>}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {d.fileUrl && d.fileUrl !== '#' && (
+                                                            <a href={d.fileUrl} target="_blank" rel="noreferrer" className="text-[9px] text-brand-red hover:underline font-bold">View</a>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                 </TabsContent>
 
                 {/* Notes */}
@@ -406,13 +634,97 @@ export default function ClientWorkspacePage() {
                             ))}
                         </div>}
                 </TabsContent>
+
+                {/* Settings */}
+                <TabsContent value="settings" className="m-0">
+                    <div className="space-y-6 max-w-lg">
+                        <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                                <Settings2 size={11} /> Account Status
+                            </h3>
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                                <Select value={accountStatus} onValueChange={setAccountStatus}>
+                                    <SelectTrigger className="h-9 text-[11px] bg-bg-primary border-border-main">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        {ACCOUNT_STATUS_OPTIONS.map(opt => (
+                                            <SelectItem key={opt.value} value={opt.value} className="text-[11px]">{opt.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button
+                                size="sm"
+                                onClick={handleSaveSettings}
+                                disabled={settingsSaving || accountStatus === currentAccountStatus}
+                                className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40"
+                            >
+                                {settingsSaving ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </div>
+                        {client.billingDetails && (
+                            <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                                    <Receipt size={11} /> Billing Details
+                                </h3>
+                                <div className="space-y-2">
+                                    {[
+                                        { label: 'Contact', value: client.billingDetails.contactName },
+                                        { label: 'Email', value: client.billingDetails.email },
+                                        { label: 'Terms', value: client.billingDetails.terms },
+                                        { label: 'Delivery', value: client.billingDetails.deliveryMethod },
+                                    ].map(row => row.value && (
+                                        <div key={row.label} className="flex justify-between text-[10px]">
+                                            <span className="text-text-muted uppercase font-bold">{row.label}</span>
+                                            <span className="text-text-primary">{row.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
             </Tabs>
 
-            <style jsx global>{`
-                .tab-trigger-activity {
-                    @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
+            {/* Upload Client Document Dialog */}
+            <Dialog open={cdocOpen} onOpenChange={setCdocOpen}>
+                <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <Upload size={14} className="text-brand-red" /> Upload Document
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Name</Label>
+                            <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Master Service Agreement" value={cdocForm.name} onChange={e => setCdocForm(p => ({ ...p, name: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Type</Label>
+                            <Select value={cdocForm.documentType} onValueChange={v => setCdocForm(p => ({ ...p, documentType: v }))}>
+                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    {Object.entries(CDOC_TYPE_LABELS).map(([k, v]) => (
+                                        <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Expiration Date (optional)</Label>
+                            <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={cdocForm.expirationDate} onChange={e => setCdocForm(p => ({ ...p, expirationDate: e.target.value }))} />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setCdocOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
+                        <Button size="sm" onClick={handleUploadCDoc} disabled={!cdocForm.name || cdocSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                            {cdocSaving ? 'Saving...' : 'Upload'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -47,7 +47,6 @@ import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
 import { EditPersonnelDialog } from './edit-personnel-dialog';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
-import { CompanyDetailDialog } from './company-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { 
@@ -101,9 +100,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
-    const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [isCompanyDetailOpen, setIsCompanyDetailOpen] = useState(false);
     
     const { toast } = useToast();
     const router = useRouter();
@@ -133,8 +130,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     };
 
     const handleCompanyClick = (companyName: string) => {
-        setSelectedCompany(companyName);
-        setIsCompanyDetailOpen(true);
+        const company = companies.find(c => c.name === companyName);
+        const primaryContact = company?.contacts[0];
+        if (primaryContact?.id) {
+            router.push('/admin/clients/' + primaryContact.id);
+        }
     };
 
     const handleEditClick = (person: Technician) => {
@@ -1037,14 +1037,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 timeOffRequests={timeOffRequests}
             />
 
-            {selectedCompany && (
-                <CompanyDetailDialog
-                    isOpen={isCompanyDetailOpen}
-                    setIsOpen={setIsCompanyDetailOpen}
-                    companyName={selectedCompany}
-                    personnel={personnel}
-                />
-            )}
         </>
     );
 }

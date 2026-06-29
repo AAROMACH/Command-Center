@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -16,12 +17,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   DollarSign, Calendar, FileText, Upload, Shield, CheckSquare, Square,
+  Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench, ScrollText,
+  PhoneCall, UserCheck, BarChart2, ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import type { Technician, WorkOrder, WeeklyLog, PersonnelDocument } from '@/lib/types';
+import type { Technician, WorkOrder, WeeklyLog, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   w9: 'W-9', insurance: 'Insurance', license: 'License', certification: 'Certification',
@@ -46,21 +51,26 @@ function permissionLabel(perm: string): string {
 export default function DirectoryPersonPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+
   const [person, setPerson] = useState<Technician | null>(null);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
+  const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Documents upload
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', type: 'other', expiryDate: '', url: '' });
   const [uploadSaving, setUploadSaving] = useState(false);
 
-  // Permissions
   const [permOverrides, setPermOverrides] = useState<Record<string, boolean>>({});
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsDirty, setPermsDirty] = useState(false);
+
+  const [noteText, setNoteText] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -84,17 +94,44 @@ export default function DirectoryPersonPage() {
     const unsubDocs = onSnapshot(collection(db, 'users', id, 'documents'), snap => {
       setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
     });
-    return () => { unsubA(); unsubL(); unsubDocs(); };
+    const unsubProjects = onSnapshot(collection(db, 'projects'), snap => {
+      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as Project));
+      setProjects(all.filter(p => p.assignedTechnicianIds?.includes(id)));
+    });
+    const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), snap => {
+      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
+      setPenaltyEvents(all.filter(e => e.techId === id).sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
+    });
+    const unsubNotes = onSnapshot(collection(db, 'users', id, 'techNotes'), snap => {
+      setTechNotes(
+        snap.docs.map(d => ({ ...d.data(), id: d.id } as { id: string; text: string; createdAt: string }))
+          .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
+      );
+    });
+    return () => { unsubA(); unsubL(); unsubDocs(); unsubProjects(); unsubPenalty(); unsubNotes(); };
   }, [id]);
 
-  const activeJobs = assignments.filter(wo => wo.status !== 'completed');
-  const completedJobs = assignments.filter(wo => wo.status === 'completed');
-  const pendingPay = weeklyLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + (l.totalPayout || 0), 0);
-  const totalEarned = weeklyLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + (l.totalPayout || 0), 0);
-  const reliabilityScore = person?.reliabilityScore ?? (completedJobs.length > 0 ? Math.round((completedJobs.length / assignments.length) * 100) : 0);
+  const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed'), [assignments]);
+  const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
+  const pendingPay = useMemo(() => weeklyLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + (l.totalPayout || 0), 0), [weeklyLogs]);
+  const totalEarned = useMemo(() => weeklyLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + (l.totalPayout || 0), 0), [weeklyLogs]);
+  const reliabilityScore = person?.reliabilityScore ?? 0;
   const tier = getReliabilityTier(reliabilityScore);
 
-  const formatDate = (dateStr: string) => {
+  const isTech = useMemo(() => {
+    if (!person) return false;
+    return (
+      person.roles?.some(r => r === 'field_technician' || r === 'project_lead') ||
+      (person.role || '').toLowerCase().includes('tech') ||
+      (person.role || '').toLowerCase().includes('lead') ||
+      (person.role || '').toLowerCase().includes('operative')
+    ) ?? false;
+  }, [person]);
+
+  const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
+  const roles: string[] = Array.isArray(person?.roles) ? (person!.roles as string[]) : (person?.role ? [person.role] : ['Staff']);
+
+  const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     try { return format(parseISO(dateStr), 'MM/dd/yyyy'); } catch { return dateStr; }
   };
@@ -156,6 +193,20 @@ export default function DirectoryPersonPage() {
     }
   };
 
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !id) return;
+    setAddingNote(true);
+    try {
+      await addDoc(collection(db, 'users', id, 'techNotes'), {
+        text: noteText.trim(),
+        createdAt: new Date().toISOString(),
+      });
+      setNoteText('');
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -179,7 +230,35 @@ export default function DirectoryPersonPage() {
     );
   }
 
-  const roles: string[] = Array.isArray(person.roles) ? person.roles : (person.role ? [person.role] : ['Staff']);
+  const tabTriggerClass = "px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[10px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-1.5";
+
+  const techTabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'contact', label: 'Contact' },
+    { value: 'skills', label: 'Skills', badge: (person.skills?.length || 0) + certDocuments.length || undefined },
+    { value: 'availability', label: 'Availability' },
+    { value: 'assignments', label: 'Assignments', badge: assignments.length || undefined },
+    { value: 'projects', label: 'Projects', badge: projects.length || undefined },
+    { value: 'payroll', label: 'Payroll', badge: weeklyLogs.length || undefined },
+    { value: 'documents', label: 'Documents', badge: documents.length || undefined },
+    { value: 'permissions', label: 'Permissions' },
+    { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
+    { value: 'reliability', label: 'Reliability' },
+  ];
+
+  const staffTabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'contact', label: 'Contact' },
+    { value: 'role', label: 'Role & Duties' },
+    { value: 'permissions', label: 'Permissions' },
+    { value: 'work', label: 'Assigned Work', badge: assignments.length || undefined },
+    { value: 'projects', label: 'Projects', badge: projects.length || undefined },
+    { value: 'documents', label: 'Documents', badge: documents.length || undefined },
+    { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
+    { value: 'payroll', label: 'Payroll' },
+  ];
+
+  const activeTabs = isTech ? techTabs : staffTabs;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -196,7 +275,7 @@ export default function DirectoryPersonPage() {
             <AvatarImage src={person.avatarUrl} />
             <AvatarFallback className="text-lg font-bold">{(person.name || 'U')[0]}</AvatarFallback>
           </Avatar>
-          <Badge variant={getTierBadgeVariant(tier)} className="text-[8px] uppercase tracking-widest px-3">{tier}</Badge>
+          {isTech && <Badge variant={getTierBadgeVariant(tier)} className="text-[8px] uppercase tracking-widest px-3">{tier}</Badge>}
         </div>
         <div className="flex-1 space-y-4">
           <div>
@@ -244,90 +323,491 @@ export default function DirectoryPersonPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1">
-          {[
-            { value: 'info', label: 'Info' },
-            { value: 'documents', label: 'Documents', badge: documents.length || undefined },
-            { value: 'permissions', label: 'Permissions' },
-          ].map(t => (
-            <TabsTrigger
-              key={t.value}
-              value={t.value}
-              className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2"
-            >
-              {t.label}
-              {t.badge !== undefined && (
-                <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.badge}</span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Tabs defaultValue="overview" className="w-full">
+        <div className="overflow-x-auto">
+          <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 justify-start mb-1 min-w-max w-full">
+            {activeTabs.map(t => (
+              <TabsTrigger key={t.value} value={t.value} className={tabTriggerClass}>
+                {t.label}
+                {t.badge !== undefined && t.badge > 0 && (
+                  <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.badge}</span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        {/* ── Info Tab ── */}
-        <TabsContent value="info" className="m-0 pt-5">
+        {/* ── OVERVIEW ── */}
+        <TabsContent value="overview" className="m-0 pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <Briefcase size={11} /> Active Assignments ({activeJobs.length})
+            {isTech && (
+              <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Star size={11} className="text-brand-red" /> Reliability
+                </h3>
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl font-black font-mono text-text-primary">{reliabilityScore}</div>
+                  <div>
+                    <Badge variant={getTierBadgeVariant(tier)} className="text-[9px] uppercase">{tier}</Badge>
+                    <p className="text-[9px] text-text-muted uppercase mt-1">{penaltyEvents.length} events logged</p>
+                  </div>
+                </div>
+                {reliabilityScore > 0 && (
+                  <div className="h-1.5 rounded-full bg-bg-primary overflow-hidden">
+                    <div className="h-full bg-brand-red rounded-full transition-all" style={{ width: `${Math.min(reliabilityScore, 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <Activity size={11} /> Recent Assignments
               </h3>
               {activeJobs.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No active assignments</p>
-              ) : activeJobs.map(wo => (
-                <div key={wo.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
+                <p className="text-[10px] text-text-muted uppercase py-3 text-center">No active assignments</p>
+              ) : activeJobs.slice(0, 3).map(wo => (
+                <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-sub bg-bg-primary">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
-                    <p className="text-[9px] text-text-muted uppercase">{wo.clientName} — {wo.scheduleDate ? formatDate(wo.scheduleDate) : 'TBD'}</p>
+                    <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
+                    <p className="text-[9px] text-text-muted uppercase">{wo.clientName}</p>
                   </div>
                   <Badge variant={wo.status === 'in-progress' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4 shrink-0 ml-2">{wo.status}</Badge>
                 </div>
               ))}
             </div>
-
-            <div className="space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <Calendar size={11} /> Weekly Logs ({weeklyLogs.length})
+            <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <CheckCircle size={11} className="text-text-green" /> Completion Stats
               </h3>
-              {weeklyLogs.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No weekly logs</p>
-              ) : weeklyLogs.slice(0, 10).map(log => (
-                <div key={log.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
-                  <div>
-                    <p className="text-[11px] font-bold text-text-primary uppercase">Week of {log.weekOf}</p>
-                    <p className="text-[9px] text-text-muted uppercase">${(log.totalPayout || 0).toFixed(2)} payout</p>
-                  </div>
-                  <Badge
-                    variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'}
-                    className="text-[7px] uppercase h-4 shrink-0"
-                  >{log.status}</Badge>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
+                  <p className="text-2xl font-black font-mono text-text-green">{completedJobs.length}</p>
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Completed</p>
                 </div>
-              ))}
+                <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
+                  <p className="text-2xl font-black font-mono text-text-amber">{activeJobs.length}</p>
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Active</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
+                  <p className="text-2xl font-black font-mono text-text-primary">{projects.length}</p>
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Projects</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
+                  <p className="text-2xl font-black font-mono text-text-primary">{weeklyLogs.length}</p>
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Pay Logs</p>
+                </div>
+              </div>
             </div>
-
-            <div className="lg:col-span-2 space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <CheckCircle size={11} className="text-text-green" /> Completed Jobs ({completedJobs.length})
-              </h3>
-              {completedJobs.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No completed assignments</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {completedJobs.slice(0, 20).map(wo => (
-                    <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-sub bg-bg-secondary">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
-                        <p className="text-[9px] text-text-muted uppercase">{wo.clientName} · ${wo.pay || 0}</p>
-                      </div>
-                      <Badge variant="active" className="text-[7px] uppercase h-4 shrink-0 ml-2">Done</Badge>
+            {person.workPreferences && (
+              <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Wrench size={11} /> Work Preferences
+                </h3>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-text-muted uppercase font-bold">Preferred Radius</span>
+                    <span className="text-text-primary font-mono">{person.workPreferences.preferredRadius} mi</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-text-muted uppercase font-bold">Max Distance</span>
+                    <span className="text-text-primary font-mono">{person.workPreferences.maxTravelDistance} mi</span>
+                  </div>
+                  {person.workPreferences.preferredJobTypes?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {person.workPreferences.preferredJobTypes.map(jt => (
+                        <Badge key={jt} variant="scheduled" className="text-[8px] h-4 px-1.5">{jt}</Badge>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── CONTACT ── */}
+        <TabsContent value="contact" className="m-0 pt-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <Mail size={11} /> Contact Information
+              </h3>
+              <div className="space-y-3">
+                {person.email && (
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <Mail size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Email</p>
+                      <a href={`mailto:${person.email}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.email}</a>
+                    </div>
+                  </div>
+                )}
+                {person.phone && (
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <Phone size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Phone</p>
+                      <a href={`tel:${person.phone}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.phone}</a>
+                    </div>
+                  </div>
+                )}
+                {(person.address || person.currentLocation) && (
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <MapPin size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Address</p>
+                      <p className="text-[11px] text-text-primary">{person.address || person.currentLocation}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <PhoneCall size={11} className="text-brand-red" /> Emergency Contact
+              </h3>
+              {person.emergencyContact ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <UserCheck size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Name</p>
+                      <p className="text-[11px] text-text-primary">{person.emergencyContact.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <Users size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Relation</p>
+                      <p className="text-[11px] text-text-primary">{person.emergencyContact.relation}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-bg-primary border border-border-sub">
+                      <Phone size={13} className="text-text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Phone</p>
+                      <a href={`tel:${person.emergencyContact.phone}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.emergencyContact.phone}</a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No emergency contact on file</p>
               )}
             </div>
           </div>
         </TabsContent>
 
-        {/* ── Documents Tab ── */}
+        {/* ── SKILLS & CERTS (tech) ── */}
+        {isTech && (
+          <TabsContent value="skills" className="m-0 pt-5">
+            <div className="space-y-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                  <Wrench size={11} /> Skills ({person.skills?.length || 0})
+                </h3>
+                {person.skills && person.skills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {person.skills.map(skill => (
+                      <Badge key={skill} variant="scheduled" className="text-[9px] uppercase px-2.5 py-1 h-auto">{skill}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No skills listed</p>
+                )}
+              </div>
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                  <CheckCircle size={11} className="text-text-green" /> Certifications ({certDocuments.length})
+                </h3>
+                {certDocuments.length > 0 ? (
+                  <div className="space-y-2">
+                    {certDocuments.map(d => {
+                      const daysToExpiry = d.expiryDate ? differenceInDays(new Date(d.expiryDate), new Date()) : null;
+                      const expiringSoon = daysToExpiry !== null && daysToExpiry <= 30 && daysToExpiry >= 0;
+                      const expired = daysToExpiry !== null && daysToExpiry < 0;
+                      return (
+                        <div key={d.id} className={cn('flex items-center justify-between p-3 rounded-lg border', expiringSoon && 'border-amber-400/30 bg-amber-400/5', expired && 'border-text-red/30 bg-text-red/5', !expiringSoon && !expired && 'border-border-sub bg-bg-primary')}>
+                          <div>
+                            <p className="text-[11px] font-bold text-text-primary">{d.name}</p>
+                            <p className="text-[9px] text-text-muted uppercase">Expires: {d.expiryDate ? formatDate(d.expiryDate) : 'No expiry'}</p>
+                          </div>
+                          <Badge className={`text-[8px] h-5 uppercase border ${d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20'}`}>
+                            {d.approvalStatus}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No certifications on file</p>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ── AVAILABILITY (tech) ── */}
+        {isTech && (
+          <TabsContent value="availability" className="m-0 pt-5">
+            <div className="rounded-xl border border-border-sub overflow-hidden">
+              <div className="p-3 bg-bg-tertiary border-b border-border-sub">
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Calendar size={11} /> Weekly Availability Schedule
+                </p>
+              </div>
+              <div className="divide-y divide-border-sub">
+                {DAYS.map(day => {
+                  const slot = person.availability?.[day];
+                  const isOff = !slot;
+                  return (
+                    <div key={day} className={cn('flex items-center justify-between px-4 py-3', isOff && 'bg-bg-tertiary/30')}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn('w-2 h-2 rounded-full', isOff ? 'bg-text-muted/30' : 'bg-text-green')} />
+                        <p className="text-[11px] font-bold text-text-primary uppercase w-24">{day}</p>
+                      </div>
+                      {isOff ? (
+                        <Badge variant="onhold" className="text-[8px] uppercase">Day Off</Badge>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="scheduled" className="text-[9px] font-mono px-2">{slot.start}</Badge>
+                          <span className="text-text-muted text-[10px]">→</span>
+                          <Badge variant="scheduled" className="text-[9px] font-mono px-2">{slot.end}</Badge>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ── ROLE & DUTIES (staff) ── */}
+        {!isTech && (
+          <TabsContent value="role" className="m-0 pt-5">
+            <div className="space-y-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                  <UserCheck size={11} /> Assigned Roles
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {roles.map(r => (
+                    <div key={r} className="px-3 py-2 rounded-lg border border-border-sub bg-bg-primary">
+                      <p className="text-[10px] font-bold text-text-primary uppercase">{r.replace(/_/g, ' ')}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                  <Shield size={11} /> Permission Summary
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {ALL_PERMISSIONS.slice(0, 18).map(perm => {
+                    const granted = hasPermission(person, perm);
+                    return granted ? (
+                      <div key={perm} className="flex items-center gap-1.5 p-1.5 rounded bg-text-green/5 border border-text-green/20">
+                        <CheckSquare size={10} className="text-text-green shrink-0" />
+                        <p className="text-[8px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
+                      </div>
+                    ) : null;
+                  }).filter(Boolean)}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ── ASSIGNMENTS (tech) ── */}
+        {isTech && (
+          <TabsContent value="assignments" className="m-0 pt-5">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Clock size={11} className="text-text-amber" /> Active ({activeJobs.length})
+                </h3>
+                {activeJobs.length === 0 ? (
+                  <p className="text-[10px] text-text-muted uppercase py-4 text-center">No active assignments</p>
+                ) : activeJobs.map(wo => (
+                  <div key={wo.id} className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
+                      <p className="text-[9px] text-text-muted uppercase">{wo.clientName} — {wo.scheduleDate ? formatDate(wo.scheduleDate) : 'TBD'}</p>
+                    </div>
+                    <Badge variant={wo.status === 'in-progress' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4 shrink-0 ml-2">{wo.status}</Badge>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <CheckCircle size={11} className="text-text-green" /> Completed ({completedJobs.length})
+                </h3>
+                {completedJobs.length === 0 ? (
+                  <p className="text-[10px] text-text-muted uppercase py-4 text-center">No completed assignments</p>
+                ) : (
+                  <div className="rounded-xl border border-border-sub overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border-sub">
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Job</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Pay</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {completedJobs.slice(0, 30).map(wo => (
+                          <TableRow key={wo.id} className="border-border-sub">
+                            <TableCell className="font-bold text-[10px] text-text-primary">{wo.title || wo.description || wo.id}</TableCell>
+                            <TableCell className="text-[10px] text-text-muted">{wo.clientName}</TableCell>
+                            <TableCell className="text-[10px] text-text-primary font-mono text-right">${wo.pay || 0}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ── ASSIGNED WORK (staff) ── */}
+        {!isTech && (
+          <TabsContent value="work" className="m-0 pt-5">
+            <div className="space-y-2">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <ListChecks size={11} /> Assigned Work Orders ({assignments.length})
+              </h3>
+              {assignments.length === 0 ? (
+                <p className="text-[10px] text-text-muted uppercase py-6 text-center">No assigned work orders</p>
+              ) : (
+                <div className="rounded-xl border border-border-sub overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border-sub">
+                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Job</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Date</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignments.map(wo => (
+                        <TableRow key={wo.id} className="border-border-sub">
+                          <TableCell className="font-bold text-[10px] text-text-primary">{wo.title || wo.description || wo.id}</TableCell>
+                          <TableCell className="text-[10px] text-text-muted">{wo.clientName}</TableCell>
+                          <TableCell className="text-[10px] text-text-muted font-mono">{wo.scheduleDate || '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant={wo.status === 'completed' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4">{wo.status}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ── PROJECTS ── */}
+        <TabsContent value="projects" className="m-0 pt-5">
+          {projects.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-[10px] text-text-muted uppercase tracking-widest">No projects assigned</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border-sub overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border-sub">
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Project</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Location</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Start</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projects.map(p => (
+                    <TableRow key={p.id} className="border-border-sub">
+                      <TableCell className="font-bold text-[10px] text-text-primary">{p.name}</TableCell>
+                      <TableCell className="text-[10px] text-text-muted">{p.client}</TableCell>
+                      <TableCell className="text-[10px] text-text-muted truncate max-w-[140px]">{p.location}</TableCell>
+                      <TableCell>
+                        <Badge variant={p.status === 'active' ? 'active' : p.status === 'completed' ? 'active' : 'onhold'} className="text-[7px] uppercase h-4">{p.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-[10px] text-text-muted font-mono">{p.startDate}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── PAYROLL ── */}
+        <TabsContent value="payroll" className="m-0 pt-5">
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Total Earned', value: `$${totalEarned.toFixed(2)}`, color: 'text-text-green' },
+                { label: 'Pending', value: `$${pendingPay.toFixed(2)}`, color: 'text-text-amber' },
+                { label: 'Log Count', value: weeklyLogs.length, color: 'text-text-primary' },
+              ].map(s => (
+                <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{s.label}</p>
+                  <p className={cn('text-xl font-black font-mono mt-1', s.color)}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            {weeklyLogs.length === 0 ? (
+              <p className="text-[10px] text-text-muted uppercase py-6 text-center">No weekly logs on file</p>
+            ) : (
+              <div className="rounded-xl border border-border-sub overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border-sub">
+                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Week Of</TableHead>
+                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Jobs</TableHead>
+                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Payout</TableHead>
+                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {weeklyLogs.map(log => (
+                      <TableRow key={log.id} className="border-border-sub">
+                        <TableCell className="font-mono text-[10px] text-text-primary">{log.weekOf}</TableCell>
+                        <TableCell className="text-[10px] text-text-muted font-mono text-right">{log.items?.length || 0}</TableCell>
+                        <TableCell className="text-[10px] font-mono text-text-primary text-right">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'}
+                            className="text-[7px] uppercase h-4"
+                          >{log.status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── DOCUMENTS ── */}
         <TabsContent value="documents" className="m-0 pt-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
@@ -399,10 +879,9 @@ export default function DirectoryPersonPage() {
           </div>
         </TabsContent>
 
-        {/* ── Permissions Tab ── */}
+        {/* ── PERMISSIONS ── */}
         <TabsContent value="permissions" className="m-0 pt-5">
           <div className="space-y-6">
-            {/* Portal Access */}
             <div className="space-y-3">
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                 <Shield size={11} /> Portal Access
@@ -425,10 +904,7 @@ export default function DirectoryPersonPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-[10px] font-black uppercase tracking-wider">{portal.label}</p>
-                        {active
-                          ? <CheckSquare size={13} className="text-brand-red" />
-                          : <Square size={13} className="text-text-muted" />
-                        }
+                        {active ? <CheckSquare size={13} className="text-brand-red" /> : <Square size={13} className="text-text-muted" />}
                       </div>
                       <p className="text-[9px] text-text-muted">{portal.desc}</p>
                     </div>
@@ -436,57 +912,36 @@ export default function DirectoryPersonPage() {
                 })}
               </div>
             </div>
-
-            {/* Permission Overrides */}
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border-sub pb-2">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                   <CheckSquare size={11} /> Permission Overrides
                 </h3>
-                <Button
-                  size="sm"
-                  onClick={handleSavePerms}
-                  disabled={!permsDirty || savingPerms}
-                  className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40"
-                >
+                <Button size="sm" onClick={handleSavePerms} disabled={!permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
                   {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
-              <p className="text-[9px] text-text-muted uppercase tracking-wider">
-                Overrides take precedence over role defaults. Leave unchecked to use role defaults.
-              </p>
+              <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {ALL_PERMISSIONS.map(perm => {
                   const roleDefault = hasPermission(person, perm);
                   const override = permOverrides[perm];
                   const effective = override !== undefined ? override : roleDefault;
                   return (
-                    <div key={perm} className={cn(
-                      'flex items-center justify-between p-2 rounded-lg border transition-all',
-                      effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub'
-                    )}>
+                    <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
                       <div className="min-w-0">
                         <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                        {override !== undefined && (
-                          <p className="text-[8px] text-amber-400 uppercase">Override</p>
-                        )}
+                        {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-2">
                         <button
                           onClick={() => handleTogglePerm(perm, effective ? false : true)}
-                          className={cn(
-                            'h-5 w-5 rounded flex items-center justify-center transition-colors border',
-                            effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main'
-                          )}
+                          className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
                         >
                           {effective ? <CheckSquare size={11} /> : <Square size={11} />}
                         </button>
                         {override !== undefined && (
-                          <button
-                            onClick={() => handleTogglePerm(perm, null)}
-                            className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1"
-                            title="Reset to role default"
-                          >✕</button>
+                          <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
                         )}
                       </div>
                     </div>
@@ -496,6 +951,111 @@ export default function DirectoryPersonPage() {
             </div>
           </div>
         </TabsContent>
+
+        {/* ── NOTES ── */}
+        <TabsContent value="notes" className="m-0 pt-5">
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <Plus size={11} /> Add Note
+              </h3>
+              <Textarea
+                className="min-h-[80px] text-[11px] bg-bg-primary border-border-main resize-none"
+                placeholder="Enter note..."
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleAddNote}
+                  disabled={!noteText.trim() || addingNote}
+                  className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white"
+                >
+                  {addingNote ? 'Saving...' : 'Save Note'}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <StickyNote size={11} /> Notes ({techNotes.length})
+              </h3>
+              {techNotes.length === 0 ? (
+                <p className="text-[10px] text-text-muted uppercase py-6 text-center">No notes yet</p>
+              ) : techNotes.map(note => (
+                <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
+                  <p className="text-[11px] text-text-primary whitespace-pre-wrap">{note.text}</p>
+                  <p className="text-[9px] text-text-muted uppercase mt-2">
+                    {note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── RELIABILITY (tech) ── */}
+        {isTech && (
+          <TabsContent value="reliability" className="m-0 pt-5">
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Score', value: reliabilityScore, color: reliabilityScore >= 80 ? 'text-text-green' : reliabilityScore >= 60 ? 'text-text-amber' : 'text-text-red' },
+                  { label: 'Tier', value: tier, color: 'text-text-primary' },
+                  { label: 'Events', value: penaltyEvents.length, color: 'text-text-muted' },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
+                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{s.label}</p>
+                    <p className={cn('text-xl font-black font-mono mt-1', s.color)}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <BarChart2 size={11} /> Event History ({penaltyEvents.length})
+                </h3>
+                {penaltyEvents.length === 0 ? (
+                  <p className="text-[10px] text-text-muted uppercase py-6 text-center">No reliability events</p>
+                ) : (
+                  <div className="rounded-xl border border-border-sub overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border-sub">
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Event</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Category</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Score Δ</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {penaltyEvents.map(ev => (
+                          <TableRow key={ev.id} className="border-border-sub">
+                            <TableCell className="text-[10px] text-text-primary font-bold">{ev.eventType?.replace(/_/g, ' ')}</TableCell>
+                            <TableCell>
+                              <Badge className={`text-[7px] uppercase h-4 border ${
+                                ev.category === 'critical_failure' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                                ev.category === 'positive_recovery' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                              }`}>
+                                {ev.category?.replace(/_/g, ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={cn('text-[10px] font-bold font-mono text-right', ev.scoreChange > 0 ? 'text-text-green' : 'text-text-red')}>
+                              {ev.scoreChange > 0 ? '+' : ''}{ev.scoreChange}
+                            </TableCell>
+                            <TableCell className="text-[10px] text-text-muted">
+                              {ev.createdAt ? format(new Date(ev.createdAt), 'MM/dd/yy') : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Upload Document Dialog */}
@@ -509,19 +1069,12 @@ export default function DirectoryPersonPage() {
           <div className="space-y-3 py-2">
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Name</Label>
-              <Input
-                className="h-9 text-[11px] bg-bg-secondary border-border-main"
-                placeholder="e.g. Driver's License"
-                value={uploadForm.name}
-                onChange={e => setUploadForm(p => ({ ...p, name: e.target.value }))}
-              />
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Driver's License" value={uploadForm.name} onChange={e => setUploadForm(p => ({ ...p, name: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Type</Label>
               <Select value={uploadForm.type} onValueChange={v => setUploadForm(p => ({ ...p, type: v }))}>
-                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
                   {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
@@ -531,21 +1084,11 @@ export default function DirectoryPersonPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Expiry Date (optional)</Label>
-              <Input
-                type="date"
-                className="h-9 text-[11px] bg-bg-secondary border-border-main"
-                value={uploadForm.expiryDate}
-                onChange={e => setUploadForm(p => ({ ...p, expiryDate: e.target.value }))}
-              />
+              <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={uploadForm.expiryDate} onChange={e => setUploadForm(p => ({ ...p, expiryDate: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document URL (optional)</Label>
-              <Input
-                className="h-9 text-[11px] bg-bg-secondary border-border-main"
-                placeholder="https://..."
-                value={uploadForm.url}
-                onChange={e => setUploadForm(p => ({ ...p, url: e.target.value }))}
-              />
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="https://..." value={uploadForm.url} onChange={e => setUploadForm(p => ({ ...p, url: e.target.value }))} />
             </div>
           </div>
           <DialogFooter className="gap-2">

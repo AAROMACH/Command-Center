@@ -520,6 +520,17 @@ export type PlanTier = {
   siteLimit: number;
   responseTime: string;
   type: 'standard' | 'custom';
+  // Extended fields
+  planType?: 'standard-tier' | 'subscription-tier' | 'custom-client-tier' | 'one-time-rate' | 'emergency-rate' | 'project-rate';
+  description?: string;
+  standardHourlyRate?: number;
+  afterHoursHourlyRate?: number;
+  emergencyHourlyRate?: number;
+  travelFee?: number;
+  minimumServiceCharge?: number;
+  contractLength?: string;
+  status?: 'active' | 'inactive';
+  notes?: string;
 };
 
 export type TripLog = {

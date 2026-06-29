@@ -47,6 +47,7 @@ import {
   Building2,
   Receipt,
   Package,
+  Flag,
 } from "lucide-react";
 
 type NavItem = {
@@ -86,7 +87,8 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
       { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
-      { href: "/admin/plans", label: "Plans", icon: BookOpen, permission: "view_reports" },
+      { href: "/admin/plans", label: "Service Plans", icon: BookOpen, permission: "view_reports" },
+      { href: "/admin/company-planning", label: "Company Planning", icon: Flag, permission: "view_reports" },
     ],
   },
   {

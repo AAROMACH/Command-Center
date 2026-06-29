@@ -155,6 +155,7 @@ export type Technician = {
   name: string;
   role: string;
   roles?: AppRole[];
+  accountStatus?: 'lead' | 'active' | 'inactive' | 'past_client' | 'on_hold' | 'do_not_service' | 'collections' | 'prospect' | 'vip';
   email: string;
   phone: string;
   address?: string;
@@ -601,6 +602,17 @@ export type PersonnelDocument = {
   expiryDate?: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
+};
+
+export type ClientDocument = {
+  id: string;
+  name: string;
+  documentType: 'contract' | 'blueprint' | 'compliance' | 'w9' | 'insurance' | 'agreement' | 'permit' | 'other';
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  expirationDate?: string;
+  notes?: string;
 };
 
 export type MileageEntry = {

@@ -427,6 +427,9 @@ export type Site = {
   managerPhone?: string;
   status: 'active' | 'inactive';
   createdAt: string;
+  accessInstructions?: string;
+  gateCode?: string;
+  lockboxCode?: string;
 };
 
 export type PenaltyEvent = ReliabilityEvent;
@@ -613,6 +616,52 @@ export type ClientDocument = {
   uploadedAt: string;
   expirationDate?: string;
   notes?: string;
+  siteId?: string;
+  tags?: string[];
+};
+
+export type ClientContact = {
+  id: string;
+  clientId: string;
+  siteId?: string;
+  name: string;
+  title?: string;
+  phone?: string;
+  email?: string;
+  contactType: 'main' | 'billing' | 'site' | 'emergency' | 'decision_maker' | 'accounts_payable' | 'store_manager' | 'regional_manager';
+  isPrimary?: boolean;
+  preferredContactMethod?: 'phone' | 'email' | 'text';
+  notes?: string;
+  createdAt: string;
+};
+
+export type SiteAccessInfo = {
+  id: string;
+  clientId: string;
+  siteId?: string;
+  checkInProcess?: string;
+  securityDesk?: string;
+  gateCode?: string;
+  lockboxCode?: string;
+  alarmInstructions?: string;
+  parkingInstructions?: string;
+  badgeRequired?: boolean;
+  escortRequired?: boolean;
+  afterHoursAccess?: string;
+  emergencyContact?: string;
+  specialSafetyRequirements?: string;
+  updatedAt?: string;
+};
+
+export type ClientNote = {
+  id: string;
+  text: string;
+  createdBy: string;
+  createdAt: string;
+  noteType: 'client' | 'site';
+  relatedSiteId?: string;
+  isPinned?: boolean;
+  visibility?: 'internal' | 'shared';
 };
 
 export type MileageEntry = {

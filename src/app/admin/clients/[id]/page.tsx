@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc } from 'firebase/firestore';
-import type { Technician, Site, Project, WorkOrder, Invoice, SiteRequest, Quote, ClientDocument } from '@/lib/types';
+import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc } from 'firebase/firestore';
+import type { Technician, Site, Project, WorkOrder, Invoice, Quote, ClientDocument, ClientContact, SiteAccessInfo, ClientNote } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -14,19 +14,20 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import {
-    ArrowLeft, Building2, Mail, Phone, MapPin, Briefcase, ClipboardList,
-    Receipt, Users, FileText, Clock, CheckCircle, AlertTriangle, Plus, DollarSign,
-    Ticket, Upload, Settings2, StickyNote,
+    ArrowLeft, Building2, Mail, Phone, MapPin, Briefcase,
+    Receipt, Users, FileText, CheckCircle, AlertTriangle, Plus, DollarSign,
+    Upload, Key, Shield, Lock, PenLine, User, ChevronRight, StickyNote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 
 const ACCOUNT_STATUS_OPTIONS = [
-    { value: 'active', label: 'Active' },
     { value: 'lead', label: 'Lead' },
     { value: 'prospect', label: 'Prospect' },
+    { value: 'active', label: 'Active' },
     { value: 'vip', label: 'VIP' },
     { value: 'inactive', label: 'Inactive' },
     { value: 'on_hold', label: 'On Hold' },
@@ -53,56 +54,81 @@ const CDOC_TYPE_LABELS: Record<string, string> = {
     permit: 'Permit', other: 'Other',
 };
 
+const CONTACT_TYPE_LABELS: Record<string, string> = {
+    main: 'Main', billing: 'Billing', site: 'Site', emergency: 'Emergency',
+    decision_maker: 'Decision Maker', accounts_payable: 'Accounts Payable',
+    store_manager: 'Store Manager', regional_manager: 'Regional Manager',
+};
+
 export default function ClientWorkspacePage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
 
     const [client, setClient] = useState<Technician | null>(null);
     const [sites, setSites] = useState<Site[]>([]);
-    const [contacts, setContacts] = useState<Technician[]>([]);
+    const [contacts, setContacts] = useState<ClientContact[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>([]);
-    const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
-    const [noteInput, setNoteInput] = useState('');
+    const [clientNotes, setClientNotes] = useState<ClientNote[]>([]);
+    const [accessInfo, setAccessInfo] = useState<Partial<SiteAccessInfo>>({});
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
 
-    // Client document upload
+    // Note form
+    const [noteText, setNoteText] = useState('');
+    const [noteType, setNoteType] = useState<'client' | 'site'>('client');
+    const [noteSiteId, setNoteSiteId] = useState('');
+    const [addingNote, setAddingNote] = useState(false);
+
+    // Contact form
+    const [contactOpen, setContactOpen] = useState(false);
+    const [contactForm, setContactForm] = useState({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '' });
+    const [contactSaving, setContactSaving] = useState(false);
+    const [contactFilter, setContactFilter] = useState<string>('all');
+
+    // Document upload
     const [cdocOpen, setCdocOpen] = useState(false);
     const [cdocForm, setCdocForm] = useState({ name: '', documentType: 'other', expirationDate: '', notes: '' });
     const [cdocSaving, setCdocSaving] = useState(false);
 
-    // Account settings save state
-    const [settingsSaving, setSettingsSaving] = useState(false);
-    const [accountStatus, setAccountStatus] = useState('active');
+    // Access info editing
+    const [editingAccess, setEditingAccess] = useState(false);
+    const [accessForm, setAccessForm] = useState<Partial<SiteAccessInfo>>({});
+    const [accessSaving, setAccessSaving] = useState(false);
+
+    // Jobs filter
+    const [jobsStatusFilter, setJobsStatusFilter] = useState<string>('all');
 
     useEffect(() => {
         if (!id) return;
+
         getDoc(doc(db, 'users', id)).then(snap => {
-            if (snap.exists()) {
-                const data = { ...snap.data(), id: snap.id } as Technician;
-                setClient(data);
-                setAccountStatus((data as any).accountStatus || 'active');
-            }
+            if (snap.exists()) setClient({ ...snap.data(), id: snap.id } as Technician);
             setLoading(false);
         });
 
         const unsubNotes = onSnapshot(collection(db, `users/${id}/clientNotes`), snap => {
-            setNotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as { id: string; text: string; createdAt: string }))
-                .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
+            const notes = snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientNote));
+            setClientNotes(notes.sort((a, b) => {
+                if (a.isPinned && !b.isPinned) return -1;
+                if (!a.isPinned && b.isPinned) return 1;
+                return (b.createdAt || '').localeCompare(a.createdAt || '');
+            }));
         });
         const unsubCDocs = onSnapshot(collection(db, `users/${id}/clientDocuments`), snap => {
             setClientDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientDocument)));
         });
+        const unsubContacts = onSnapshot(collection(db, `users/${id}/contacts`), snap => {
+            setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientContact)));
+        });
+        const unsubAccess = onSnapshot(doc(db, `users/${id}/accessInfo/main`), snap => {
+            if (snap.exists()) setAccessInfo(snap.data() as Partial<SiteAccessInfo>);
+        });
         const unsubSites = onSnapshot(collection(db, 'sites'), snap => {
             setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
-        });
-        const unsubContacts = onSnapshot(collection(db, 'users'), snap => {
-            setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
         const unsubProjects = onSnapshot(collection(db, 'projects'), snap => {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
@@ -113,41 +139,76 @@ export default function ClientWorkspacePage() {
         const unsubInv = onSnapshot(collection(db, 'invoices'), snap => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubSR = onSnapshot(collection(db, 'siteRequests'), snap => {
-            setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
-        });
         const unsubQ = onSnapshot(collection(db, 'quotes'), snap => {
             setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
         });
 
-        return () => { unsubNotes(); unsubCDocs(); unsubSites(); unsubContacts(); unsubProjects(); unsubWO(); unsubInv(); unsubSR(); unsubQ(); };
+        return () => { unsubNotes(); unsubCDocs(); unsubContacts(); unsubAccess(); unsubSites(); unsubProjects(); unsubWO(); unsubInv(); unsubQ(); };
     }, [id]);
 
     const clientName = client?.clientCompany || client?.name || '';
 
-    const clientSites = useMemo(() => sites.filter(s => s.clientName === clientName), [sites, clientName]);
-    const clientContacts = useMemo(() => contacts.filter(c => c.clientCompany === clientName || c.id === id), [contacts, clientName, id]);
+    const clientSites = useMemo(() => sites.filter(s => s.clientName === clientName || s.clientId === id), [sites, clientName, id]);
     const clientProjects = useMemo(() => projects.filter(p => p.client === clientName), [projects, clientName]);
     const clientWOs = useMemo(() => workOrders.filter(wo => wo.clientName === clientName), [workOrders, clientName]);
     const clientInvoices = useMemo(() => invoices.filter(inv => inv.clientName === clientName || inv.clientId === id), [invoices, clientName, id]);
-    const clientSiteReqs = useMemo(() => siteRequests.filter(r => r.clientId === id || r.clientName === clientName), [siteRequests, id, clientName]);
     const clientQuotes = useMemo(() => quotes.filter(q => q.clientName === clientName || q.clientId === id), [quotes, clientName, id]);
+
+    const filteredContacts = useMemo(() => {
+        if (contactFilter === 'all') return contacts;
+        return contacts.filter(c => c.contactType === contactFilter);
+    }, [contacts, contactFilter]);
+
+    const filteredJobs = useMemo(() => {
+        if (jobsStatusFilter === 'all') return clientWOs;
+        if (jobsStatusFilter === 'open') return clientWOs.filter(wo => wo.status !== 'completed');
+        if (jobsStatusFilter === 'completed') return clientWOs.filter(wo => wo.status === 'completed');
+        return clientWOs.filter(wo => wo.status === jobsStatusFilter);
+    }, [clientWOs, jobsStatusFilter]);
 
     const stats = useMemo(() => ({
         openWOs: clientWOs.filter(wo => wo.status !== 'completed').length,
         completedWOs: clientWOs.filter(wo => wo.status === 'completed').length,
-        activeProjects: clientProjects.filter(p => p.status === 'active').length,
         outstandingBalance: clientInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((s, inv) => s + inv.total, 0),
         totalRevenue: clientInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + inv.total, 0),
-    }), [clientWOs, clientProjects, clientInvoices]);
+        lastJobDate: clientWOs.filter(wo => wo.status === 'completed' && wo.scheduleDate).sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))[0]?.scheduleDate || null,
+    }), [clientWOs, clientInvoices]);
 
     const handleAddNote = async () => {
-        if (!noteInput.trim() || !id) return;
-        await addDoc(collection(db, `users/${id}/clientNotes`), {
-            text: noteInput.trim(),
-            createdAt: new Date().toISOString(),
-        });
-        setNoteInput('');
+        if (!noteText.trim() || !id) return;
+        setAddingNote(true);
+        try {
+            await addDoc(collection(db, `users/${id}/clientNotes`), {
+                text: noteText.trim(),
+                createdBy: 'Admin',
+                createdAt: new Date().toISOString(),
+                noteType,
+                relatedSiteId: noteType === 'site' ? noteSiteId : null,
+                isPinned: false,
+                visibility: 'internal',
+            });
+            setNoteText('');
+            setNoteType('client');
+            setNoteSiteId('');
+        } finally {
+            setAddingNote(false);
+        }
+    };
+
+    const handleAddContact = async () => {
+        if (!contactForm.name || !id) return;
+        setContactSaving(true);
+        try {
+            await addDoc(collection(db, `users/${id}/contacts`), {
+                ...contactForm,
+                clientId: id,
+                createdAt: new Date().toISOString(),
+            });
+            setContactOpen(false);
+            setContactForm({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '' });
+        } finally {
+            setContactSaving(false);
+        }
     };
 
     const handleUploadCDoc = async () => {
@@ -170,30 +231,20 @@ export default function ClientWorkspacePage() {
         }
     };
 
-    const handleSaveSettings = async () => {
+    const handleSaveAccess = async () => {
         if (!id) return;
-        setSettingsSaving(true);
+        setAccessSaving(true);
         try {
-            await updateDoc(doc(db, 'users', id), { accountStatus });
-            setClient(prev => prev ? { ...prev, accountStatus } as any : prev);
+            await setDoc(doc(db, `users/${id}/accessInfo/main`), {
+                ...accessForm,
+                clientId: id,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+            setEditingAccess(false);
         } finally {
-            setSettingsSaving(false);
+            setAccessSaving(false);
         }
     };
-
-    const history = useMemo(() => {
-        const events: { id: string; time: string; label: string; detail: string; color: string }[] = [];
-        clientWOs.filter(wo => wo.status === 'completed').forEach(wo => {
-            events.push({ id: `wo-${wo.id}`, time: wo.scheduleDate || '', label: 'Job Completed', detail: wo.title || wo.id, color: 'text-text-green' });
-        });
-        clientInvoices.filter(inv => inv.status === 'paid').forEach(inv => {
-            events.push({ id: `inv-${inv.id}`, time: inv.issueDate || '', label: 'Invoice Paid', detail: `${inv.invoiceNumber} · $${inv.total}`, color: 'text-blue-400' });
-        });
-        clientSiteReqs.forEach(r => {
-            events.push({ id: `sr-${r.id}`, time: r.submittedDate || '', label: 'Site Request', detail: r.siteName, color: 'text-text-amber' });
-        });
-        return events.filter(e => e.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 40);
-    }, [clientWOs, clientInvoices, clientSiteReqs]);
 
     if (loading) {
         return (
@@ -219,8 +270,7 @@ export default function ClientWorkspacePage() {
     }
 
     const tabTriggerClass = "px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[10px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all";
-
-    const currentAccountStatus = (client as any).accountStatus || 'active';
+    const currentAccountStatus = client.accountStatus || 'active';
 
     return (
         <div className="space-y-5">
@@ -239,7 +289,7 @@ export default function ClientWorkspacePage() {
                     <div>
                         <div className="flex items-center gap-3 flex-wrap">
                             <h1 className="text-2xl font-black uppercase tracking-tight text-text-primary">{clientName || 'Unnamed Client'}</h1>
-                            <Badge className={`text-[8px] uppercase border h-5 ${ACCOUNT_STATUS_COLORS[currentAccountStatus] || ACCOUNT_STATUS_COLORS.active}`}>
+                            <Badge className={cn('text-[8px] uppercase border h-5', ACCOUNT_STATUS_COLORS[currentAccountStatus] || ACCOUNT_STATUS_COLORS.active)}>
                                 {currentAccountStatus.replace(/_/g, ' ')}
                             </Badge>
                         </div>
@@ -257,16 +307,21 @@ export default function ClientWorkspacePage() {
                             </a>
                         )}
                     </div>
+                    {client.billingDetails && (
+                        <p className="text-[9px] text-text-muted uppercase">
+                            Billing: {client.billingDetails.terms} · {client.billingDetails.deliveryMethod}
+                        </p>
+                    )}
                 </div>
                 <div className="flex flex-wrap md:flex-col gap-2 md:w-48 shrink-0">
                     {[
                         { label: 'Open Jobs', value: stats.openWOs, color: 'text-text-amber' },
-                        { label: 'Active Projects', value: stats.activeProjects, color: 'text-blue-400' },
+                        { label: 'Sites', value: clientSites.length, color: 'text-text-secondary' },
                         { label: 'Outstanding', value: `$${stats.outstandingBalance.toFixed(0)}`, color: 'text-text-red' },
                         { label: 'Revenue', value: `$${stats.totalRevenue.toFixed(0)}`, color: 'text-text-green' },
                     ].map(kpi => (
                         <div key={kpi.label} className="flex-1 p-2.5 rounded-lg bg-bg-primary border border-border-sub text-center">
-                            <p className={cn("text-[14px] font-bold font-mono", kpi.color)}>{kpi.value}</p>
+                            <p className={cn('text-[14px] font-bold font-mono', kpi.color)}>{kpi.value}</p>
                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{kpi.label}</p>
                         </div>
                     ))}
@@ -280,15 +335,13 @@ export default function ClientWorkspacePage() {
                         {[
                             { value: 'overview', label: 'Overview' },
                             { value: 'sites', label: `Sites (${clientSites.length})` },
-                            { value: 'contacts', label: `Contacts (${clientContacts.length})` },
-                            { value: 'projects', label: `Projects (${clientProjects.length})` },
-                            { value: 'workorders', label: `Work Orders (${clientWOs.length})` },
-                            { value: 'billing', label: `Billing (${clientInvoices.length + clientQuotes.length})` },
-                            { value: 'tickets', label: `Tickets (${clientSiteReqs.length})` },
+                            { value: 'contacts', label: `Contacts (${contacts.length})` },
+                            { value: 'jobs', label: `Jobs (${clientWOs.length})` },
+                            { value: 'quotes', label: `Quotes (${clientQuotes.length})` },
+                            { value: 'invoices', label: `Invoices (${clientInvoices.length})` },
+                            { value: 'notes', label: `Notes (${clientNotes.length})` },
                             { value: 'documents', label: `Documents (${clientDocuments.length})` },
-                            { value: 'notes', label: 'Notes' },
-                            { value: 'history', label: 'History' },
-                            { value: 'settings', label: 'Settings' },
+                            { value: 'accessInfo', label: 'Access Info' },
                         ].map(tab => (
                             <TabsTrigger key={tab.value} value={tab.value} className={tabTriggerClass}>{tab.label}</TabsTrigger>
                         ))}
@@ -300,9 +353,10 @@ export default function ClientWorkspacePage() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                         <div className="lg:col-span-2 space-y-5">
                             <div>
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3">Recent Work Orders</h3>
-                                {clientWOs.length === 0 ? <p className="text-[10px] text-text-muted uppercase py-3">No work orders</p> :
-                                    clientWOs.slice(0, 5).map(wo => (
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3">Recent Jobs</h3>
+                                {clientWOs.length === 0
+                                    ? <p className="text-[10px] text-text-muted uppercase py-3">No work orders</p>
+                                    : clientWOs.slice(0, 5).map(wo => (
                                         <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red/30 transition-colors mb-2 group">
                                             <div className="min-w-0">
                                                 <p className="text-[11px] font-bold text-text-primary uppercase truncate group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
@@ -330,8 +384,8 @@ export default function ClientWorkspacePage() {
                         <div className="space-y-5">
                             <div>
                                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3">Sites ({clientSites.length})</h3>
-                                {clientSites.slice(0, 4).map(s => (
-                                    <Link key={s.id} href={`/admin/sites/${s.id}`} className="flex items-center gap-2 p-2 rounded-lg hover:bg-bg-secondary transition-colors mb-1 group">
+                                {clientSites.slice(0, 5).map(s => (
+                                    <Link key={s.id} href={`/admin/clients/${id}/sites/${s.id}`} className="flex items-center gap-2 p-2 rounded-lg hover:bg-bg-secondary transition-colors mb-1 group">
                                         <MapPin size={10} className="text-brand-red shrink-0" />
                                         <p className="text-[10px] font-bold text-text-primary uppercase group-hover:text-brand-red transition-colors truncate">{s.name}</p>
                                     </Link>
@@ -354,6 +408,12 @@ export default function ClientWorkspacePage() {
                                 {clientInvoices.filter(i => i.status !== 'paid' && i.status !== 'void').length === 0 &&
                                     <p className="text-[10px] text-text-muted uppercase py-2">No outstanding invoices</p>}
                             </div>
+                            {stats.lastJobDate && (
+                                <div className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
+                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Last Job Date</p>
+                                    <p className="text-[11px] font-bold text-text-primary mt-0.5">{stats.lastJobDate}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </TabsContent>
@@ -363,67 +423,121 @@ export default function ClientWorkspacePage() {
                     {clientSites.length === 0
                         ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No sites registered for this client</p>
                         : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {clientSites.map(s => (
-                                <Link key={s.id} href={`/admin/sites/${s.id}`} className="p-4 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red transition-colors group">
-                                    <p className="text-[12px] font-black uppercase text-text-primary group-hover:text-brand-red transition-colors">{s.name}</p>
-                                    {s.location && <p className="flex items-center gap-1.5 text-[9px] text-text-muted mt-1"><MapPin size={9} />{s.location}</p>}
-                                    {s.managerName && <p className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5"><Users size={9} />{s.managerName}</p>}
-                                    <Badge variant={s.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-4 mt-2">{s.status || 'active'}</Badge>
-                                </Link>
-                            ))}
+                            {clientSites.map(s => {
+                                const siteJobs = clientWOs.filter(wo => wo.location === s.location || wo.location === s.name);
+                                const openSiteJobs = siteJobs.filter(wo => wo.status !== 'completed').length;
+                                const lastService = siteJobs.filter(wo => wo.status === 'completed').sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))[0]?.scheduleDate;
+                                return (
+                                    <Link key={s.id} href={`/admin/clients/${id}/sites/${s.id}`} className="p-4 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red transition-colors group flex flex-col gap-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-[12px] font-black uppercase text-text-primary group-hover:text-brand-red transition-colors truncate">{s.name}</p>
+                                                {s.location && <p className="flex items-center gap-1 text-[9px] text-text-muted mt-0.5"><MapPin size={9} />{s.location}</p>}
+                                            </div>
+                                            <Badge variant={s.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-4 shrink-0">{s.status || 'active'}</Badge>
+                                        </div>
+                                        {s.managerName && <p className="flex items-center gap-1 text-[9px] text-text-muted"><User size={9} />{s.managerName}</p>}
+                                        <div className="flex items-center gap-4 pt-1 border-t border-border-sub">
+                                            <div className="text-center">
+                                                <p className={cn('text-[13px] font-black font-mono', openSiteJobs > 0 ? 'text-text-amber' : 'text-text-muted')}>{openSiteJobs}</p>
+                                                <p className="text-[7px] font-bold text-text-muted uppercase">Open Jobs</p>
+                                            </div>
+                                            {lastService && (
+                                                <div>
+                                                    <p className="text-[9px] font-bold text-text-muted uppercase">Last service</p>
+                                                    <p className="text-[9px] text-text-secondary">{lastService}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Link>
+                                );
+                            })}
                         </div>}
                 </TabsContent>
 
                 {/* Contacts */}
                 <TabsContent value="contacts" className="m-0">
-                    {clientContacts.length === 0
+                    <div className="flex items-center justify-between mb-4 gap-3">
+                        <div className="flex items-center gap-2 overflow-x-auto">
+                            {['all', 'main', 'billing', 'site', 'emergency', 'decision_maker'].map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => setContactFilter(f)}
+                                    className={cn('text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
+                                        contactFilter === f
+                                            ? 'bg-brand-red text-white border-brand-red'
+                                            : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
+                                    )}
+                                >
+                                    {f === 'all' ? 'All' : CONTACT_TYPE_LABELS[f] || f}
+                                </button>
+                            ))}
+                        </div>
+                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white shrink-0" onClick={() => setContactOpen(true)}>
+                            <Plus size={11} className="mr-1.5" /> Add Contact
+                        </Button>
+                    </div>
+                    {filteredContacts.length === 0
                         ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No contacts found</p>
-                        : <div className="space-y-2">
-                            {clientContacts.map(c => (
-                                <div key={c.id} className="flex items-center gap-4 p-3 rounded-xl border border-border-sub bg-bg-secondary">
-                                    <Avatar className="h-10 w-10 border border-border-sub shrink-0">
-                                        <AvatarImage src={c.avatarUrl} />
-                                        <AvatarFallback className="text-[10px]">{(c.name || 'U')[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[12px] font-bold text-text-primary uppercase">{c.name}</p>
-                                        <div className="flex gap-3 mt-0.5">
-                                            {c.email && <span className="flex items-center gap-1 text-[9px] text-text-muted"><Mail size={9} />{c.email}</span>}
-                                            {c.phone && <span className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={9} />{c.phone}</span>}
-                                        </div>
-                                    </div>
-                                    <Badge variant="scheduled" className="text-[7px] uppercase h-4 shrink-0">{c.role || 'Client'}</Badge>
-                                </div>
-                            ))}
+                        : <div className="rounded-xl border border-border-sub overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-border-sub">
+                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Type</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Site</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredContacts.map(c => (
+                                        <TableRow key={c.id} className="border-border-sub">
+                                            <TableCell>
+                                                <p className="text-[10px] font-bold text-text-primary uppercase">{c.name}</p>
+                                                {c.title && <p className="text-[9px] text-text-muted">{c.title}</p>}
+                                            </TableCell>
+                                            <TableCell className="text-[10px] text-text-secondary">{c.phone || '—'}</TableCell>
+                                            <TableCell className="text-[10px] text-text-secondary">{c.email || '—'}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="scheduled" className="text-[7px] uppercase h-4">{CONTACT_TYPE_LABELS[c.contactType] || c.contactType}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-[9px] text-text-muted">
+                                                {c.siteId ? clientSites.find(s => s.id === c.siteId)?.name || c.siteId : '—'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>}
                 </TabsContent>
 
-                {/* Projects */}
-                <TabsContent value="projects" className="m-0">
-                    {clientProjects.length === 0
-                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No projects for this client</p>
+                {/* Jobs */}
+                <TabsContent value="jobs" className="m-0">
+                    <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+                        {[
+                            { value: 'all', label: 'All' },
+                            { value: 'open', label: 'Open' },
+                            { value: 'completed', label: 'Completed' },
+                            { value: 'unassigned', label: 'Unassigned' },
+                        ].map(f => (
+                            <button
+                                key={f.value}
+                                onClick={() => setJobsStatusFilter(f.value)}
+                                className={cn('text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
+                                    jobsStatusFilter === f.value
+                                        ? 'bg-brand-red text-white border-brand-red'
+                                        : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
+                                )}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                    {filteredJobs.length === 0
+                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No jobs match filter</p>
                         : <div className="space-y-2">
-                            {clientProjects.map(p => (
-                                <div key={p.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
-                                    <div className="min-w-0">
-                                        <p className="text-[12px] font-bold text-text-primary uppercase">{p.name}</p>
-                                        <p className="text-[9px] text-text-muted uppercase">{p.location} · Started {p.startDate}</p>
-                                    </div>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <span className="text-[9px] text-text-muted">{p.phases?.length || 0} phases</span>
-                                        <Badge variant={p.status === 'active' ? 'active' : p.status === 'on-hold' ? 'onhold' : 'completed'} className="text-[7px] uppercase h-4">{p.status}</Badge>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>}
-                </TabsContent>
-
-                {/* Work Orders */}
-                <TabsContent value="workorders" className="m-0">
-                    {clientWOs.length === 0
-                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No work orders for this client</p>
-                        : <div className="space-y-2">
-                            {clientWOs.map(wo => (
+                            {filteredJobs.map(wo => (
                                 <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red/30 transition-colors group">
                                     <div className="min-w-0">
                                         <p className="text-[12px] font-bold text-text-primary uppercase group-hover:text-brand-red transition-colors truncate">{wo.title || wo.description}</p>
@@ -432,106 +546,128 @@ export default function ClientWorkspacePage() {
                                     <div className="flex items-center gap-2 shrink-0">
                                         <span className="text-[10px] font-bold font-mono text-text-primary">${wo.pay}</span>
                                         <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'unassigned' ? 'destructive' : 'scheduled'} className="text-[7px] uppercase h-4">{wo.status}</Badge>
+                                        <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary" />
                                     </div>
                                 </Link>
                             ))}
                         </div>}
                 </TabsContent>
 
-                {/* Billing — Quotes & Invoices */}
-                <TabsContent value="billing" className="m-0">
-                    <div className="space-y-6">
-                        {/* Quotes section */}
-                        <div>
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                                <FileText size={11} /> Quotes ({clientQuotes.length})
-                            </h3>
-                            {clientQuotes.length === 0
-                                ? <p className="text-[10px] text-text-muted uppercase py-3 text-center">No quotes on file</p>
-                                : (
-                                    <div className="rounded-xl border border-border-sub overflow-hidden">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="border-border-sub">
-                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title</TableHead>
-                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Total</TableHead>
-                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires</TableHead>
-                                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {clientQuotes.map(q => (
-                                                    <TableRow key={q.id} className="border-border-sub">
-                                                        <TableCell className="font-bold text-[10px] text-text-primary">{q.title}</TableCell>
-                                                        <TableCell className="text-[10px] font-mono text-text-primary text-right">${q.total}</TableCell>
-                                                        <TableCell className="text-[10px] text-text-muted">{q.expiresAt || '—'}</TableCell>
-                                                        <TableCell>
-                                                            <Badge className={`text-[7px] uppercase h-4 border ${
-                                                                q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                                                                q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
-                                                                'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                                                            }`}>{q.status}</Badge>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                )}
-                        </div>
-                        {/* Invoices section */}
-                        <div>
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                                <Receipt size={11} /> Invoices ({clientInvoices.length})
-                            </h3>
-                            {clientInvoices.length === 0
-                                ? <p className="text-[10px] text-text-muted uppercase py-3 text-center">No invoices on file</p>
-                                : (
-                                    <div className="space-y-2">
-                                        {clientInvoices.map(inv => (
-                                            <div key={inv.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
-                                                <div className="min-w-0">
-                                                    <p className="text-[12px] font-bold text-text-primary uppercase">{inv.invoiceNumber}</p>
-                                                    <p className="text-[9px] text-text-muted uppercase">Issued {inv.issueDate} · Due {inv.dueDate}</p>
-                                                </div>
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <p className={cn("text-[13px] font-bold font-mono", inv.status === 'paid' ? 'text-text-green' : inv.status === 'overdue' ? 'text-text-red' : 'text-text-primary')}>${inv.total}</p>
-                                                    <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'overdue' ? 'destructive' : 'onhold'} className="text-[7px] uppercase h-4">{inv.status}</Badge>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                        </div>
-                    </div>
-                </TabsContent>
-
-                {/* Tickets */}
-                <TabsContent value="tickets" className="m-0">
-                    {clientSiteReqs.length === 0
-                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No service tickets or site requests</p>
+                {/* Quotes */}
+                <TabsContent value="quotes" className="m-0">
+                    {clientQuotes.length === 0
+                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No quotes on file</p>
                         : (
-                            <div className="space-y-2">
-                                {clientSiteReqs.map(r => (
-                                    <div key={r.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
-                                        <div className="min-w-0 flex items-start gap-3">
-                                            <div className="p-2 rounded-lg bg-bg-primary border border-border-sub shrink-0 mt-0.5">
-                                                <Ticket size={13} className="text-text-muted" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[12px] font-bold text-text-primary uppercase truncate">{r.siteName || 'Site Request'}</p>
-                                                <p className="text-[9px] text-text-muted uppercase">{r.submittedDate} · {r.location}</p>
-                                                {r.managerName && <p className="text-[9px] text-text-muted mt-0.5">Contact: {r.managerName}</p>}
-                                            </div>
-                                        </div>
-                                        <Badge
-                                            variant={r.status === 'approved' ? 'active' : r.status === 'pending' ? 'scheduled' : 'onhold'}
-                                            className="text-[7px] uppercase h-4 shrink-0 ml-3"
-                                        >{r.status}</Badge>
-                                    </div>
-                                ))}
+                            <div className="rounded-xl border border-border-sub overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-border-sub">
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Scope</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Total</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {clientQuotes.map(q => (
+                                            <TableRow key={q.id} className="border-border-sub">
+                                                <TableCell className="font-bold text-[10px] text-text-primary">{q.title}</TableCell>
+                                                <TableCell className="text-[9px] text-text-muted max-w-[200px] truncate">{q.scopeOfWork}</TableCell>
+                                                <TableCell className="text-[10px] font-mono text-text-primary text-right">${q.total}</TableCell>
+                                                <TableCell className="text-[10px] text-text-muted">{q.expiresAt || '—'}</TableCell>
+                                                <TableCell>
+                                                    <Badge className={cn('text-[7px] uppercase h-4 border',
+                                                        q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                                        q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                                                        'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                                                    )}>{q.status}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
+                </TabsContent>
+
+                {/* Invoices */}
+                <TabsContent value="invoices" className="m-0">
+                    {clientInvoices.length === 0
+                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No invoices on file</p>
+                        : <div className="space-y-2">
+                            {clientInvoices.map(inv => (
+                                <div key={inv.id} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary">
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] font-bold text-text-primary uppercase">{inv.invoiceNumber}</p>
+                                        <p className="text-[9px] text-text-muted uppercase">Issued {inv.issueDate} · Due {inv.dueDate}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <p className={cn('text-[13px] font-bold font-mono', inv.status === 'paid' ? 'text-text-green' : inv.status === 'overdue' ? 'text-text-red' : 'text-text-primary')}>${inv.total}</p>
+                                        <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'overdue' ? 'destructive' : 'onhold'} className="text-[7px] uppercase h-4">{inv.status}</Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>}
+                </TabsContent>
+
+                {/* Notes */}
+                <TabsContent value="notes" className="m-0">
+                    <div className="space-y-4 max-w-2xl">
+                        <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Add Note</p>
+                            <Textarea
+                                className="text-[11px] bg-bg-primary border-border-main min-h-[80px]"
+                                placeholder="Add a note about this client..."
+                                value={noteText}
+                                onChange={e => setNoteText(e.target.value)}
+                            />
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted whitespace-nowrap">Type:</Label>
+                                    <Select value={noteType} onValueChange={v => setNoteType(v as 'client' | 'site')}>
+                                        <SelectTrigger className="h-7 w-24 text-[10px] bg-bg-primary border-border-main">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-bg-elevated border-border-main">
+                                            <SelectItem value="client" className="text-[10px]">Client</SelectItem>
+                                            <SelectItem value="site" className="text-[10px]">Site</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {noteType === 'site' && clientSites.length > 0 && (
+                                    <Select value={noteSiteId} onValueChange={setNoteSiteId}>
+                                        <SelectTrigger className="h-7 w-40 text-[10px] bg-bg-primary border-border-main">
+                                            <SelectValue placeholder="Select site" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-bg-elevated border-border-main">
+                                            {clientSites.map(s => (
+                                                <SelectItem key={s.id} value={s.id} className="text-[10px]">{s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                                <Button size="sm" onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="h-7 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase ml-auto">
+                                    <Plus size={11} className="mr-1" /> Add
+                                </Button>
+                            </div>
+                        </div>
+                        {clientNotes.length === 0
+                            ? <p className="text-[10px] text-text-muted uppercase py-4 text-center">No notes yet</p>
+                            : clientNotes.map(note => (
+                                <div key={note.id} className={cn('p-3 rounded-lg border bg-bg-secondary', note.isPinned ? 'border-brand-red/30' : 'border-border-sub')}>
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <Badge variant={note.noteType === 'site' ? 'scheduled' : 'onhold'} className="text-[7px] uppercase h-4">{note.noteType}</Badge>
+                                        {note.relatedSiteId && <span className="text-[8px] text-text-muted">{clientSites.find(s => s.id === note.relatedSiteId)?.name}</span>}
+                                        {note.isPinned && <span className="text-[8px] text-brand-red font-bold uppercase">Pinned</span>}
+                                    </div>
+                                    <p className="text-[11px] text-text-primary">{note.text}</p>
+                                    <p className="text-[8px] text-text-muted mt-1.5 font-mono">
+                                        {note.createdBy} · {note.createdAt ? format(parseISO(note.createdAt), 'MMM d, yyyy h:mm a') : ''}
+                                    </p>
+                                </div>
+                            ))}
+                    </div>
                 </TabsContent>
 
                 {/* Documents */}
@@ -591,102 +727,183 @@ export default function ClientWorkspacePage() {
                         )}
                 </TabsContent>
 
-                {/* Notes */}
-                <TabsContent value="notes" className="m-0">
-                    <div className="space-y-4 max-w-2xl">
-                        <div className="flex gap-2">
-                            <Input
-                                className="flex-1 h-9 text-[11px] bg-bg-secondary border-border-main"
-                                placeholder="Add a note about this client..."
-                                value={noteInput}
-                                onChange={e => setNoteInput(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                            />
-                            <Button size="sm" onClick={handleAddNote} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
-                                <Plus size={12} className="mr-1" /> Add
-                            </Button>
-                        </div>
-                        {notes.length === 0
-                            ? <p className="text-[10px] text-text-muted uppercase py-4 text-center">No notes yet</p>
-                            : notes.map(note => (
-                                <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
-                                    <p className="text-[11px] text-text-primary">{note.text}</p>
-                                    <p className="text-[8px] text-text-muted mt-1.5 font-mono">{note.createdAt ? format(parseISO(note.createdAt), 'MMM d, yyyy h:mm a') : ''}</p>
+                {/* Access Info */}
+                <TabsContent value="accessInfo" className="m-0">
+                    <div className="space-y-5 max-w-2xl">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+                                <Key size={11} /> Client-Wide Access Info
+                            </p>
+                            {!editingAccess ? (
+                                <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => { setAccessForm(accessInfo); setEditingAccess(true); }}>
+                                    <PenLine size={10} className="mr-1.5" /> Edit
+                                </Button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setEditingAccess(false)}>Cancel</Button>
+                                    <Button size="sm" className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={handleSaveAccess} disabled={accessSaving}>
+                                        {accessSaving ? 'Saving...' : 'Save'}
+                                    </Button>
                                 </div>
-                            ))}
-                    </div>
-                </TabsContent>
-
-                {/* History */}
-                <TabsContent value="history" className="m-0">
-                    {history.length === 0
-                        ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No history events found</p>
-                        : <div className="space-y-1 border-l border-border-sub pl-4 max-w-2xl">
-                            {history.map(event => (
-                                <div key={event.id} className="relative flex gap-4 py-2">
-                                    <div className="absolute -left-[18px] top-3 h-2 w-2 rounded-full bg-border-sub" />
-                                    <span className="text-[9px] font-mono text-text-muted w-20 shrink-0 mt-0.5">{event.time}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <span className={cn("text-[9px] font-black uppercase tracking-widest", event.color)}>{event.label}</span>
-                                        <p className="text-[10px] text-text-primary truncate">{event.detail}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>}
-                </TabsContent>
-
-                {/* Settings */}
-                <TabsContent value="settings" className="m-0">
-                    <div className="space-y-6 max-w-lg">
-                        <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                                <Settings2 size={11} /> Account Status
-                            </h3>
-                            <div className="space-y-1">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Status</Label>
-                                <Select value={accountStatus} onValueChange={setAccountStatus}>
-                                    <SelectTrigger className="h-9 text-[11px] bg-bg-primary border-border-main">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-bg-elevated border-border-main">
-                                        {ACCOUNT_STATUS_OPTIONS.map(opt => (
-                                            <SelectItem key={opt.value} value={opt.value} className="text-[11px]">{opt.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button
-                                size="sm"
-                                onClick={handleSaveSettings}
-                                disabled={settingsSaving || accountStatus === currentAccountStatus}
-                                className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40"
-                            >
-                                {settingsSaving ? 'Saving...' : 'Save Changes'}
-                            </Button>
+                            )}
                         </div>
-                        {client.billingDetails && (
-                            <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                                    <Receipt size={11} /> Billing Details
-                                </h3>
-                                <div className="space-y-2">
+
+                        <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+                            {editingAccess ? (
+                                <div className="grid grid-cols-1 gap-3">
                                     {[
-                                        { label: 'Contact', value: client.billingDetails.contactName },
-                                        { label: 'Email', value: client.billingDetails.email },
-                                        { label: 'Terms', value: client.billingDetails.terms },
-                                        { label: 'Delivery', value: client.billingDetails.deliveryMethod },
-                                    ].map(row => row.value && (
-                                        <div key={row.label} className="flex justify-between text-[10px]">
-                                            <span className="text-text-muted uppercase font-bold">{row.label}</span>
-                                            <span className="text-text-primary">{row.value}</span>
+                                        { key: 'checkInProcess', label: 'Check-In Process' },
+                                        { key: 'securityDesk', label: 'Security Desk' },
+                                        { key: 'gateCode', label: 'Gate Code' },
+                                        { key: 'lockboxCode', label: 'Lockbox Code' },
+                                        { key: 'alarmInstructions', label: 'Alarm Instructions' },
+                                        { key: 'parkingInstructions', label: 'Parking Instructions' },
+                                        { key: 'afterHoursAccess', label: 'After-Hours Access' },
+                                        { key: 'emergencyContact', label: 'Emergency Contact' },
+                                        { key: 'specialSafetyRequirements', label: 'Special Safety Requirements' },
+                                    ].map(field => (
+                                        <div key={field.key} className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">{field.label}</Label>
+                                            <Input
+                                                className="h-9 text-[11px] bg-bg-primary border-border-main"
+                                                value={(accessForm as any)[field.key] || ''}
+                                                onChange={e => setAccessForm(f => ({ ...f, [field.key]: e.target.value }))}
+                                            />
                                         </div>
                                     ))}
+                                    <div className="flex gap-4">
+                                        {[
+                                            { key: 'badgeRequired', label: 'Badge Required' },
+                                            { key: 'escortRequired', label: 'Escort Required' },
+                                        ].map(toggle => (
+                                            <label key={toggle.key} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(accessForm as any)[toggle.key] || false}
+                                                    onChange={e => setAccessForm(f => ({ ...f, [toggle.key]: e.target.checked }))}
+                                                    className="accent-brand-red"
+                                                />
+                                                <span className="text-[10px] font-bold uppercase text-text-muted">{toggle.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
+                            ) : Object.keys(accessInfo).filter(k => k !== 'clientId' && k !== 'updatedAt' && k !== 'id').length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No access info on file. Click Edit to add.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {[
+                                        { key: 'checkInProcess', label: 'Check-In', icon: CheckCircle },
+                                        { key: 'securityDesk', label: 'Security Desk', icon: Shield },
+                                        { key: 'gateCode', label: 'Gate Code', icon: Lock },
+                                        { key: 'lockboxCode', label: 'Lockbox Code', icon: Key },
+                                        { key: 'alarmInstructions', label: 'Alarm', icon: AlertTriangle },
+                                        { key: 'parkingInstructions', label: 'Parking', icon: MapPin },
+                                        { key: 'afterHoursAccess', label: 'After Hours', icon: Key },
+                                        { key: 'emergencyContact', label: 'Emergency Contact', icon: Phone },
+                                        { key: 'specialSafetyRequirements', label: 'Safety', icon: Shield },
+                                    ].filter(f => (accessInfo as any)[f.key]).map(f => (
+                                        <div key={f.key} className="flex items-start gap-3">
+                                            <f.icon size={11} className="text-text-muted shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">{f.label}</p>
+                                                <p className="text-[11px] text-text-primary">{(accessInfo as any)[f.key]}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(accessInfo.badgeRequired || accessInfo.escortRequired) && (
+                                        <div className="flex gap-3 pt-1">
+                                            {accessInfo.badgeRequired && <Badge variant="destructive" className="text-[7px] uppercase h-4">Badge Required</Badge>}
+                                            {accessInfo.escortRequired && <Badge variant="destructive" className="text-[7px] uppercase h-4">Escort Required</Badge>}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Per-site access */}
+                        {clientSites.some(s => s.gateCode || s.lockboxCode || s.accessInstructions) && (
+                            <div>
+                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2 mb-3 border-t border-border-sub pt-4">
+                                    <MapPin size={11} /> Site-Specific Access
+                                </p>
+                                {clientSites.filter(s => s.gateCode || s.lockboxCode || s.accessInstructions).map(s => (
+                                    <div key={s.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2 mb-3">
+                                        <p className="text-[11px] font-black uppercase text-text-primary">{s.name}</p>
+                                        {s.gateCode && <p className="text-[10px] text-text-secondary"><span className="font-bold text-text-muted">Gate: </span>{s.gateCode}</p>}
+                                        {s.lockboxCode && <p className="text-[10px] text-text-secondary"><span className="font-bold text-text-muted">Lockbox: </span>{s.lockboxCode}</p>}
+                                        {s.accessInstructions && <p className="text-[10px] text-text-secondary"><span className="font-bold text-text-muted">Instructions: </span>{s.accessInstructions}</p>}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Add Contact Dialog */}
+            <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+                <DialogContent className="bg-bg-elevated border-border-main max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <User size={14} className="text-brand-red" /> Add Contact
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name *</Label>
+                                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Full name" value={contactForm.name} onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title / Role</Label>
+                                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Site Manager" value={contactForm.title} onChange={e => setContactForm(f => ({ ...f, title: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+                                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="email@co.com" value={contactForm.email} onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Type</Label>
+                                <Select value={contactForm.contactType} onValueChange={v => setContactForm(f => ({ ...f, contactType: v }))}>
+                                    <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        {Object.entries(CONTACT_TYPE_LABELS).map(([k, v]) => (
+                                            <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Site (optional)</Label>
+                                <Select value={contactForm.siteId} onValueChange={v => setContactForm(f => ({ ...f, siteId: v }))}>
+                                    <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="None" /></SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        <SelectItem value="" className="text-[11px]">None (client-level)</SelectItem>
+                                        {clientSites.map(s => (
+                                            <SelectItem key={s.id} value={s.id} className="text-[11px]">{s.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" size="sm" onClick={() => setContactOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
+                        <Button size="sm" onClick={handleAddContact} disabled={contactSaving || !contactForm.name} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                            {contactSaving ? 'Saving...' : 'Add Contact'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Upload Client Document Dialog */}
             <Dialog open={cdocOpen} onOpenChange={setCdocOpen}>

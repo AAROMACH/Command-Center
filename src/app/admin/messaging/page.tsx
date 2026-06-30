@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
 import { uploadFile } from '@/lib/upload';
@@ -108,9 +108,15 @@ export default function AdminMessagingPage() {
     setUrl: (u: string | null) => void,
     inputRef: React.RefObject<HTMLInputElement | null>
   ) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: 'You must be signed in to upload images.' });
+      return;
+    }
     setImageUploading(true);
     try {
-      const { url } = await uploadFile(`messageImages/${Date.now()}-${file.name}`, file);
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const { url } = await uploadFile(`messageImages/${uid}/${Date.now()}-${sanitizedName}`, file);
       setUrl(url);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Upload failed', description: err.message });

@@ -16,15 +16,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
-  DollarSign, Calendar, FileText, Upload, Shield, CheckSquare, Square,
-  Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench, ScrollText,
-  PhoneCall, UserCheck, BarChart2, ListChecks,
+  Calendar, FileText, Upload, Shield, CheckSquare, Square,
+  Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
+  PhoneCall, UserCheck, BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import type { Technician, WorkOrder, WeeklyLog, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
+import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -54,7 +54,6 @@ export default function DirectoryPersonPage() {
 
   const [person, setPerson] = useState<Technician | null>(null);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
-  const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
@@ -83,20 +82,8 @@ export default function DirectoryPersonPage() {
       setLoading(false);
     });
 
-    const unsubA = onSnapshot(collection(db, 'assignments'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
-      setAssignments(all.filter(wo => wo.assignedTechnicianId === id || wo.techId === id));
-    });
-    const unsubL = onSnapshot(collection(db, 'weeklyLogs'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog));
-      setWeeklyLogs(all.filter(l => l.techId === id).sort((a, b) => b.weekOf?.localeCompare(a.weekOf || '') || 0));
-    });
     const unsubDocs = onSnapshot(collection(db, 'users', id, 'documents'), snap => {
       setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
-    });
-    const unsubProjects = onSnapshot(collection(db, 'projects'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as Project));
-      setProjects(all.filter(p => p.assignedTechnicianIds?.includes(id)));
     });
     const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), snap => {
       const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
@@ -108,13 +95,11 @@ export default function DirectoryPersonPage() {
           .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
       );
     });
-    return () => { unsubA(); unsubL(); unsubDocs(); unsubProjects(); unsubPenalty(); unsubNotes(); };
+    return () => { unsubDocs(); unsubPenalty(); unsubNotes(); };
   }, [id]);
 
   const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed'), [assignments]);
   const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
-  const pendingPay = useMemo(() => weeklyLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + (l.totalPayout || 0), 0), [weeklyLogs]);
-  const totalEarned = useMemo(() => weeklyLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + (l.totalPayout || 0), 0), [weeklyLogs]);
   const reliabilityScore = person?.reliabilityScore ?? 0;
   const tier = getReliabilityTier(reliabilityScore);
 
@@ -237,9 +222,6 @@ export default function DirectoryPersonPage() {
     { value: 'contact', label: 'Contact' },
     { value: 'skills', label: 'Skills', badge: (person.skills?.length || 0) + certDocuments.length || undefined },
     { value: 'availability', label: 'Availability' },
-    { value: 'assignments', label: 'Assignments', badge: assignments.length || undefined },
-    { value: 'projects', label: 'Projects', badge: projects.length || undefined },
-    { value: 'payroll', label: 'Payroll', badge: weeklyLogs.length || undefined },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'permissions', label: 'Permissions' },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
@@ -251,11 +233,8 @@ export default function DirectoryPersonPage() {
     { value: 'contact', label: 'Contact' },
     { value: 'role', label: 'Role & Duties' },
     { value: 'permissions', label: 'Permissions' },
-    { value: 'work', label: 'Assigned Work', badge: assignments.length || undefined },
-    { value: 'projects', label: 'Projects', badge: projects.length || undefined },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
-    { value: 'payroll', label: 'Payroll' },
   ];
 
   const activeTabs = isTech ? techTabs : staffTabs;
@@ -309,10 +288,8 @@ export default function DirectoryPersonPage() {
         </div>
         <div className="md:w-48 shrink-0 grid grid-cols-2 md:grid-cols-1 gap-3">
           {[
-            { label: 'Active Jobs', value: activeJobs.length, icon: Clock, color: 'text-text-amber' },
-            { label: 'Completed', value: completedJobs.length, icon: CheckCircle, color: 'text-text-green' },
-            { label: 'Pending Pay', value: `$${pendingPay.toFixed(0)}`, icon: DollarSign, color: 'text-text-amber' },
-            { label: 'Total Earned', value: `$${totalEarned.toFixed(0)}`, icon: DollarSign, color: 'text-text-green' },
+            { label: 'Active Jobs', value: activeJobs.length, color: 'text-text-amber' },
+            { label: 'Completed', value: completedJobs.length, color: 'text-text-green' },
           ].map(stat => (
             <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
               <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
@@ -391,10 +368,6 @@ export default function DirectoryPersonPage() {
                 <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
                   <p className="text-2xl font-black font-mono text-text-primary">{projects.length}</p>
                   <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Projects</p>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
-                  <p className="text-2xl font-black font-mono text-text-primary">{weeklyLogs.length}</p>
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Pay Logs</p>
                 </div>
               </div>
             </div>
@@ -630,182 +603,6 @@ export default function DirectoryPersonPage() {
           </TabsContent>
         )}
 
-        {/* ── ASSIGNMENTS (tech) ── */}
-        {isTech && (
-          <TabsContent value="assignments" className="m-0 pt-5">
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                  <Clock size={11} className="text-text-amber" /> Active ({activeJobs.length})
-                </h3>
-                {activeJobs.length === 0 ? (
-                  <p className="text-[10px] text-text-muted uppercase py-4 text-center">No active assignments</p>
-                ) : activeJobs.map(wo => (
-                  <div key={wo.id} className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
-                      <p className="text-[9px] text-text-muted uppercase">{wo.clientName} — {wo.scheduleDate ? formatDate(wo.scheduleDate) : 'TBD'}</p>
-                    </div>
-                    <Badge variant={wo.status === 'in-progress' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4 shrink-0 ml-2">{wo.status}</Badge>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                  <CheckCircle size={11} className="text-text-green" /> Completed ({completedJobs.length})
-                </h3>
-                {completedJobs.length === 0 ? (
-                  <p className="text-[10px] text-text-muted uppercase py-4 text-center">No completed assignments</p>
-                ) : (
-                  <div className="rounded-xl border border-border-sub overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border-sub">
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Job</TableHead>
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Pay</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {completedJobs.slice(0, 30).map(wo => (
-                          <TableRow key={wo.id} className="border-border-sub">
-                            <TableCell className="font-bold text-[10px] text-text-primary">{wo.title || wo.description || wo.id}</TableCell>
-                            <TableCell className="text-[10px] text-text-muted">{wo.clientName}</TableCell>
-                            <TableCell className="text-[10px] text-text-primary font-mono text-right">${wo.pay || 0}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        )}
-
-        {/* ── ASSIGNED WORK (staff) ── */}
-        {!isTech && (
-          <TabsContent value="work" className="m-0 pt-5">
-            <div className="space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <ListChecks size={11} /> Assigned Work Orders ({assignments.length})
-              </h3>
-              {assignments.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-6 text-center">No assigned work orders</p>
-              ) : (
-                <div className="rounded-xl border border-border-sub overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border-sub">
-                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Job</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Date</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {assignments.map(wo => (
-                        <TableRow key={wo.id} className="border-border-sub">
-                          <TableCell className="font-bold text-[10px] text-text-primary">{wo.title || wo.description || wo.id}</TableCell>
-                          <TableCell className="text-[10px] text-text-muted">{wo.clientName}</TableCell>
-                          <TableCell className="text-[10px] text-text-muted font-mono">{wo.scheduleDate || '—'}</TableCell>
-                          <TableCell>
-                            <Badge variant={wo.status === 'completed' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4">{wo.status}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        )}
-
-        {/* ── PROJECTS ── */}
-        <TabsContent value="projects" className="m-0 pt-5">
-          {projects.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-[10px] text-text-muted uppercase tracking-widest">No projects assigned</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border-sub overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border-sub">
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Project</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Location</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Start</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projects.map(p => (
-                    <TableRow key={p.id} className="border-border-sub">
-                      <TableCell className="font-bold text-[10px] text-text-primary">{p.name}</TableCell>
-                      <TableCell className="text-[10px] text-text-muted">{p.client}</TableCell>
-                      <TableCell className="text-[10px] text-text-muted truncate max-w-[140px]">{p.location}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === 'active' ? 'active' : p.status === 'completed' ? 'active' : 'onhold'} className="text-[7px] uppercase h-4">{p.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-[10px] text-text-muted font-mono">{p.startDate}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ── PAYROLL ── */}
-        <TabsContent value="payroll" className="m-0 pt-5">
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Total Earned', value: `$${totalEarned.toFixed(2)}`, color: 'text-text-green' },
-                { label: 'Pending', value: `$${pendingPay.toFixed(2)}`, color: 'text-text-amber' },
-                { label: 'Log Count', value: weeklyLogs.length, color: 'text-text-primary' },
-              ].map(s => (
-                <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{s.label}</p>
-                  <p className={cn('text-xl font-black font-mono mt-1', s.color)}>{s.value}</p>
-                </div>
-              ))}
-            </div>
-            {weeklyLogs.length === 0 ? (
-              <p className="text-[10px] text-text-muted uppercase py-6 text-center">No weekly logs on file</p>
-            ) : (
-              <div className="rounded-xl border border-border-sub overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border-sub">
-                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Week Of</TableHead>
-                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Jobs</TableHead>
-                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Payout</TableHead>
-                      <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {weeklyLogs.map(log => (
-                      <TableRow key={log.id} className="border-border-sub">
-                        <TableCell className="font-mono text-[10px] text-text-primary">{log.weekOf}</TableCell>
-                        <TableCell className="text-[10px] text-text-muted font-mono text-right">{log.items?.length || 0}</TableCell>
-                        <TableCell className="text-[10px] font-mono text-text-primary text-right">${(log.totalPayout || 0).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'}
-                            className="text-[7px] uppercase h-4"
-                          >{log.status}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
         {/* ── DOCUMENTS ── */}
         <TabsContent value="documents" className="m-0 pt-5">

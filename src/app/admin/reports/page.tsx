@@ -82,7 +82,7 @@ import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
-import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, SiteRequest, AdminMessage, Invoice, Project } from '@/lib/types';
+import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -116,7 +116,6 @@ export default function ActivityAuditPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "timeline");
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
-    const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     // Registry states
@@ -127,15 +126,11 @@ export default function ActivityAuditPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
-    const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
 
     // Timeline filter state
     const [timelineTechFilter, setTimelineTechFilter] = useState<string>('all');
     const [timelineTypeFilter, setTimelineTypeFilter] = useState<string>('all');
     const [timelineClientFilter, setTimelineClientFilter] = useState('');
-
-    // App Activity filter
-    const [activityFilter, setActivityFilter] = useState<'all' | 'admin' | 'tech' | 'client'>('all');
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -189,12 +184,9 @@ export default function ActivityAuditPage() {
         const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
-        const unsubSiteReqs = onSnapshot(collection(db, 'siteRequests'), (snap) => {
-            setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
-        });
 
         return () => {
-            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR(); unsubSiteReqs();
+            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
         };
     }, []);
 
@@ -338,22 +330,6 @@ export default function ActivityAuditPage() {
         return Array.from(uniqueSites.values());
     }, [technicians]);
 
-    const activeSite = useMemo(() => siteList.find(s => s.id === selectedSiteId), [selectedSiteId, siteList]);
-
-    const siteAuditData = useMemo(() => {
-        if (!activeSite) return null;
-        
-        const siteVisits = assignments.filter(wo => wo.location === activeSite.location);
-        const clientProjects = projects.filter(p => p.client === activeSite.client || p.location === activeSite.location);
-        const clientInvoices = invoices.filter(inv => inv.clientName === activeSite.client);
-        
-        return {
-            visits: siteVisits,
-            projects: clientProjects,
-            invoices: clientInvoices
-        };
-    }, [activeSite, assignments, projects, invoices]);
-
     const getFilteredVisits = useCallback((visits: WorkOrder[]) => {
         let results = [...visits];
         const now = startOfDay(new Date());
@@ -401,11 +377,6 @@ export default function ActivityAuditPage() {
         });
     }, [auditRange, customVisitRange, visitSortDir]);
 
-    const sortedAllSiteVisits = useMemo(() => {
-        if (!siteAuditData) return [];
-        return getFilteredVisits(siteAuditData.visits);
-    }, [siteAuditData, getFilteredVisits]);
-
     const sortedTechVisits = useMemo(() => {
         if (!techStats) return [];
         return getFilteredVisits(techStats.myJobs);
@@ -428,19 +399,6 @@ export default function ActivityAuditPage() {
                 ]);
             });
             filename = `Tech_Audit_${activeTech?.name.replace(/\s+/g, '_')}`;
-        } else if (activeTab === 'sites' && selectedSiteId && activeSite && siteAuditData) {
-            rows.push(['DATE', 'MISSION ID', 'TITLE', 'STATUS', 'AUDIT REGISTRY']);
-            sortedAllSiteVisits.forEach(wo => {
-                const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
-                rows.push([
-                    wo.scheduleDate,
-                    wo.id.toUpperCase(),
-                    wo.title || wo.description,
-                    wo.status,
-                    linkedLog ? `WK: ${linkedLog.weekOf}` : 'Pending'
-                ]);
-            });
-            filename = `Site_Audit_${activeSite.name.replace(/\s+/g, '_')}`;
         }
 
         if (rows.length === 0) return;
@@ -465,7 +423,6 @@ export default function ActivityAuditPage() {
     const handleTabChange = (val: string) => {
         setActiveTab(val);
         setSelectedTechId(null);
-        setSelectedSiteId(null);
     };
 
     const handleJobUpdate = (woId: string, updates: Partial<WorkOrder>) => {
@@ -604,26 +561,10 @@ export default function ActivityAuditPage() {
             }
         });
 
-        siteRequests.forEach(req => {
-            const ts = req.submittedDate || (req as any).createdAt;
-            if (ts) {
-                events.push({
-                    id: `site-req-${req.id}`,
-                    timestamp: ts,
-                    type: 'site_request',
-                    eventLabel: 'Site Request Submitted',
-                    entity: `${req.siteName} — ${req.clientName}`,
-                    clientName: req.clientName,
-                    color: 'text-text-muted',
-                    icon: 'MapPin',
-                });
-            }
-        });
-
         return events
             .filter(e => !!e.timestamp)
             .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-    }, [assignments, workOrders, weeklyLogs, invoices, siteRequests, technicians]);
+    }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
 
     const filteredTimelineEvents = useMemo(() => {
         return timelineEvents.filter(e => {
@@ -690,10 +631,6 @@ export default function ActivityAuditPage() {
             setSelectedTechId(result.id);
             setActiveTab('tech');
             setSearchQuery("");
-        } else if (result.cat === 'site') {
-            setSelectedSiteId(result.id);
-            setActiveTab('sites');
-            setSearchQuery("");
         } else if (result.cat === 'job') {
             setSelectedJob(result.data);
             setIsJobOpen(true);
@@ -704,7 +641,7 @@ export default function ActivityAuditPage() {
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !t.roles?.includes('client')).length} Technicians</p>
-                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); setSelectedSiteId(null); }}>
+                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh
                 </Button>
             </div>
@@ -950,243 +887,6 @@ export default function ActivityAuditPage() {
         </div>
     );
 
-    const renderSiteActivity = () => {
-        if (selectedSiteId && activeSite && siteAuditData) {
-            return (
-                <div className="space-y-8 animate-in fade-in duration-300 text-left">
-                    <div className="flex items-center justify-between text-left">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedSiteId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted text-left">
-                            <ArrowLeft size={14} className="mr-1.5"/> Back to Site Index
-                        </Button>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-left mb-4">
-                        <div className="p-3 bg-bg-secondary rounded-lg border border-border-sub shadow-sm text-left">
-                            <Building2 size={28} className="text-brand-red" />
-                        </div>
-                        <div className="space-y-1 text-left">
-                            <h2 className="text-2xl font-bold uppercase tracking-wide text-text-primary text-left">{activeSite.name}</h2>
-                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
-                                <MapPin size={12} className="text-brand-red"/> {activeSite.location}
-                            </p>
-                        </div>
-                    </div>
-
-                    <Tabs defaultValue="overview" className="w-full text-left">
-                        <TabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-6 h-10 text-left">
-                            <TabsTrigger value="overview" className="tab !px-8 h-full data-[state=active]:bg-brand-red">TACTICAL OVERVIEW</TabsTrigger>
-                            <TabsTrigger value="visits" className="tab !px-8 h-full data-[state=active]:bg-brand-red">ASSIGNMENT HISTORY ({siteAuditData.visits.length})</TabsTrigger>
-                            <TabsTrigger value="projects" className="tab !px-8 h-full data-[state=active]:bg-brand-red">PROJECT FOLDERS ({siteAuditData.projects.length})</TabsTrigger>
-                            <TabsTrigger value="billing" className="tab !px-8 h-full data-[state=active]:bg-brand-red">FINANCIAL AUDIT</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="overview" className="m-0 space-y-6 text-left">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Integrity</p>
-                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                    <Badge variant="active" className="h-4 text-[7px] uppercase">Compliant</Badge>
-                                </Card>
-                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
-                                    <p className="text-2xl font-bold text-text-primary">{siteAuditData.visits.filter(wo => wo.status !== 'completed').length}</p>
-                                    <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? "text-accent-gold" : "text-text-green")}>
-                                        {siteAuditData.visits.filter(wo => wo.status !== 'completed').length > 0 ? 'Active Queue' : 'Clean'}
-                                    </p>
-                                </Card>
-                                <Card className="bg-bg-secondary border-border-main text-center p-3 space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Strategic Value</p>
-                                    <p className="text-2xl font-mono font-bold text-text-green">${siteAuditData.invoices.reduce((a, b) => a + b.total, 0).toLocaleString()}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold">settled invoices</p>
-                                </Card>
-                            </div>
-                            
-                            <div className="p-4 rounded-lg border border-border-sub bg-bg-secondary/50 text-left space-y-3">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 text-left">Client Briefing</h3>
-                                <div className="grid grid-cols-2 gap-8 text-left">
-                                    <div className="space-y-3 text-left">
-                                        <div className="space-y-0.5 text-left">
-                                            <p className="text-[8px] font-bold text-text-muted uppercase text-left">Affiliated Entity</p>
-                                            <p className="text-xs font-bold text-text-primary uppercase text-left">{activeSite.client}</p>
-                                        </div>
-                                        <div className="space-y-0.5 text-left">
-                                            <p className="text-[8px] font-bold text-text-muted uppercase text-left">Site Access Instructions</p>
-                                            <p className="text-xs text-text-secondary leading-relaxed text-left">Check in at security desk. Badge verification required. Loading dock access via rear gate code 5592.</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3 text-left">
-                                        <div className="space-y-0.5 text-left">
-                                            <p className="text-[8px] font-bold text-text-muted uppercase text-left">Primary On-Site Point</p>
-                                            <p className="text-xs font-bold text-text-primary uppercase text-left">MGR. Robert House</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="visits" className="m-0 space-y-4 text-left">
-                             {renderAuditHeader("Site Deployment Manifest", sortedAllSiteVisits.length)}
-                             <div className="table-wrap p-0 text-left">
-                                <Table>
-                                    <TableHeader className="bg-bg-tertiary">
-                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission Identification</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
-                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedAllSiteVisits.map(wo => {
-                                            const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
-                                            return (
-                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                    <TableCell className="text-left py-4 pl-6 text-left">
-                                                        <div className="flex flex-col gap-0.5 text-left">
-                                                            <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none text-left">{(wo.id || '').toUpperCase()}</span>
-                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>
-                                                            <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5 text-left">{wo.clientName}</p>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase text-left">
-                                                        {formatDateDisplay(wo.scheduleDate)}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
-                                                            {wo.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {linkedLog ? (
-                                                            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub uppercase tracking-tighter">
-                                                                <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right pr-6">
-                                                        <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                                            {wo.isAudited ? (
-                                                                <Badge variant="active" className="h-7 text-[8px] uppercase tracking-widest px-2 bg-green-dim border-green-border text-text-green">
-                                                                    <ShieldCheck size={10} className="mr-1"/> Verified
-                                                                </Badge>
-                                                            ) : (
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm" 
-                                                                    className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim"
-                                                                    onClick={() => handleVerifyAssignment(wo.id)}
-                                                                >
-                                                                    <Check size={12} className="mr-1"/> Verify
-                                                                </Button>
-                                                            )}
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                className="h-7 w-7 text-text-muted hover:text-text-red"
-                                                                onClick={() => handleDeleteAssignment(wo.id)}
-                                                            >
-                                                                <Trash2 size={14}/>
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })}
-                                    </TableBody>
-                                </Table>
-                             </div>
-                        </TabsContent>
-
-                        <TabsContent value="projects" className="m-0 space-y-4 text-left">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                                {siteAuditData.projects.map(p => (
-                                    <Card key={p.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer group text-left" onClick={() => router.push(`/admin/projects/${p.id}`)}>
-                                        <CardContent className="p-4 flex items-center justify-between text-left">
-                                            <div className="flex items-center gap-4 text-left">
-                                                <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted group-hover:bg-brand-red-dim group-hover:text-brand-red transition-all">
-                                                    <Briefcase size={20} />
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{p.name}</p>
-                                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5 text-left">Started: {p.startDate} · {p.status}</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                                {siteAuditData.projects.length === 0 && (
-                                    <div className="col-span-full py-12 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 text-left">
-                                        <Briefcase size={32} className="mx-auto text-text-muted mb-2" />
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-center">No site-linked project folders found</p>
-                                    </div>
-                                )}
-                             </div>
-                        </TabsContent>
-
-                        <TabsContent value="billing" className="m-0 space-y-4 text-left">
-                            <div className="table-wrap p-0 text-left">
-                                <Table>
-                                    <TableHeader className="bg-bg-tertiary">
-                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Invoice #</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Target Project/WO</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Due Date</TableHead>
-                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
-                                            <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Settlement</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {siteAuditData.invoices.map(inv => (
-                                            <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                                <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">INV-{inv.invoiceNumber}</TableCell>
-                                                <TableCell className="text-xs uppercase font-bold text-text-primary text-left">
-                                                    {inv.projectId ? `Project: ${inv.projectId.toUpperCase()}` : inv.workOrderId ? `Job: ${inv.workOrderId.toUpperCase()}` : 'General Settlement'}
-                                                </TableCell>
-                                                <TableCell className="text-xs text-text-muted text-left">{inv.dueDate}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'sent' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
-                                                        {inv.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${inv.total.toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-2 text-left">
-                <div className="flex justify-between items-center px-1 mb-4 text-left">
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{siteList.length} Managed Site Coordinates</p>
-                </div>
-                {siteList.map(site => (
-                    <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className="p-2 bg-bg-primary rounded border border-border-sub text-text-muted group-hover:text-brand-red transition-colors text-left">
-                                <Building2 size={16} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{site.name}</p>
-                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5 text-left">{site.client} · {site.location}</p>
-                            </div>
-                        </div>
-                        <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                ))}
-            </div>
-        );
-    };
-
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
             <header className="space-y-1 text-center text-left">
@@ -1210,20 +910,10 @@ export default function ActivityAuditPage() {
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
-                                <TabsTrigger value="timeline" className="tab-trigger-activity">Timeline</TabsTrigger>
+                                <TabsTrigger value="timeline" className="tab-trigger-activity">App Activity</TabsTrigger>
                                 <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
                                 <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
                                 <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
-                                <TabsTrigger
-                                    value="sites"
-                                    className="tab-trigger-activity"
-                                    onClick={() => setSelectedSiteId(null)}
-                                >
-                                    Site Activity
-                                </TabsTrigger>
-                                <TabsTrigger value="app_activity" className="tab-trigger-activity">
-                                    App Activity
-                                </TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -1254,7 +944,6 @@ export default function ActivityAuditPage() {
                                                 <SelectItem value="work_order" className="text-[10px] uppercase font-bold">Work Orders</SelectItem>
                                                 <SelectItem value="log" className="text-[10px] uppercase font-bold">Weekly Logs</SelectItem>
                                                 <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
-                                                <SelectItem value="site_request" className="text-[10px] uppercase font-bold">Site Requests</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <Input
@@ -1543,10 +1232,6 @@ export default function ActivityAuditPage() {
                                 ) : renderTechnicianRoster()}
                             </TabsContent>
 
-                            <TabsContent value="sites" className="m-0 text-left">
-                                {renderSiteActivity()}
-                            </TabsContent>
-
                             <TabsContent value="assignments_history" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
@@ -1712,77 +1397,6 @@ export default function ActivityAuditPage() {
                                                     </Table>
                                                 </div>
                                             </>
-                                        );
-                                    })()}
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="app_activity" className="m-0 text-left">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        {(['all', 'admin', 'tech', 'client'] as const).map(f => (
-                                            <button
-                                                key={f}
-                                                onClick={() => setActivityFilter(f)}
-                                                className={cn(
-                                                    'h-7 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border transition-colors',
-                                                    activityFilter === f
-                                                        ? 'bg-brand-red text-white border-brand-red'
-                                                        : 'border-border-sub text-text-muted hover:text-text-primary bg-bg-secondary'
-                                                )}
-                                            >{f}</button>
-                                        ))}
-                                    </div>
-                                    {(() => {
-                                        const events: { id: string; time: string; actor: string; role: 'admin' | 'tech' | 'client'; action: string; detail: string }[] = [];
-                                        // Completed assignments
-                                        [...workOrders, ...assignments].filter(wo => wo.status === 'completed' && wo.scheduleDate).slice(0, 30).forEach(wo => {
-                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                            if (tech && !tech.roles?.includes('client')) {
-                                                events.push({ id: `wo-${wo.id}`, time: wo.scheduleDate || '', actor: tech.name || 'Field Tech', role: 'tech', action: 'Completed assignment', detail: wo.title || wo.description || wo.id });
-                                            }
-                                        });
-                                        // Submitted/Approved weekly logs
-                                        weeklyLogs.filter(wl => wl.status === 'Submitted' || wl.status === 'Approved').slice(0, 20).forEach(wl => {
-                                            const tech = technicians.find(t => t.id === wl.techId);
-                                            events.push({ id: `wl-${wl.id}`, time: wl.submittedAt || wl.weekOf || '', actor: tech?.name || 'Field Tech', role: 'tech', action: wl.status === 'Approved' ? 'Log approved' : 'Submitted weekly log', detail: `Week of ${wl.weekOf}` });
-                                        });
-                                        // Site requests
-                                        siteRequests.filter(r => r.status === 'pending' || r.status === 'approved').slice(0, 15).forEach(r => {
-                                            events.push({ id: `sr-${r.id}`, time: r.submittedDate || '', actor: (r as any).requestorName || 'Client', role: 'client', action: `Site request — ${r.status}`, detail: r.siteName || '' });
-                                        });
-                                        // Completed projects
-                                        projects.filter(p => p.status === 'completed').slice(0, 10).forEach(p => {
-                                            events.push({ id: `pr-${p.id}`, time: (p as any).endDate || (p as any).updatedAt || '', actor: 'Admin', role: 'admin', action: 'Project completed', detail: p.name });
-                                        });
-
-                                        const allEvents = events.filter(e => e.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 60);
-                                        const filtered = activityFilter === 'all' ? allEvents : allEvents.filter(e => e.role === activityFilter);
-                                        const roleColors: Record<string, string> = {
-                                            admin: 'text-brand-red bg-brand-red/10 border-brand-red/20',
-                                            tech: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-                                            client: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-                                        };
-                                        return filtered.length === 0 ? (
-                                            <div className="py-16 text-center">
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No activity recorded yet</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-1.5">
-                                                {filtered.map(item => (
-                                                    <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                        <span className={cn('shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border mt-0.5', roleColors[item.role])}>{item.role}</span>
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-baseline gap-2 flex-wrap">
-                                                                <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{item.actor}</span>
-                                                                <span className="text-[10px] text-text-muted">{item.action}</span>
-                                                            </div>
-                                                            {item.detail && <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5 truncate">{item.detail}</p>}
-                                                        </div>
-                                                        <span className="text-[8px] text-text-muted font-mono shrink-0 mt-0.5">{item.time.slice(0, 10)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
                                         );
                                     })()}
                                 </div>

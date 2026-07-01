@@ -585,14 +585,20 @@ export type ProjectPayout = {
   technicianName?: string;
   role: 'lead' | 'crew';
   payType: 'fixed' | 'hourly' | 'percentage';
+  payoutSource?: 'timesheet' | 'manual';
   amount: number;
   hoursWorked?: number;
+  hourlyRate?: number;
+  timesheetLogIds?: string[];
   totalPayout?: number;
   status: 'pending' | 'approved' | 'paid';
   weeklyLogId?: string;
   notes: string;
   createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
   paidAt?: string;
+  paidBy?: string;
 };
 
 export type Quote = {

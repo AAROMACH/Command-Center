@@ -273,18 +273,6 @@ export default function DashboardPage() {
 
             {/* Quick status chips */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
-                <Link href="/admin/dispatch">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-red/10 border border-brand-red/30 text-brand-red text-[10px] font-black uppercase tracking-widest hover:bg-brand-red/20 transition-colors cursor-pointer">
-                        <AlertCircle size={10} />
-                        {unassignedJobs.length} unassigned {unassignedJobs.length === 1 ? 'job' : 'jobs'}
-                    </span>
-                </Link>
-                <Link href="/admin/financials?tab=payroll">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent-gold/10 border border-accent-gold/30 text-accent-gold text-[10px] font-black uppercase tracking-widest hover:bg-accent-gold/20 transition-colors cursor-pointer">
-                        <ClipboardList size={10} />
-                        {pendingLogs.length} log{pendingLogs.length !== 1 ? 's' : ''} pending
-                    </span>
-                </Link>
                 {slaAlerts.length > 0 && (
                     <button
                         onClick={() => slaRef.current?.scrollIntoView({ behavior: 'smooth' })}

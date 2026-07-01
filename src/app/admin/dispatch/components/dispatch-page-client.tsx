@@ -386,7 +386,7 @@ export function DispatchPageClient() {
                         )}
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl z-[1000]" align="end">
                     <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
                   </PopoverContent>
               </Popover>

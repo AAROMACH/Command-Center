@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import type { Route, WorkOrder, Technician } from '@/lib/types';
+
+const RoutesMapView = dynamic(() => import('./routes-map-view'), { ssr: false });
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -127,23 +130,27 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
 }
 
 // --- DROPPABLE ROUTE CONTAINER ---
-function DroppableRoute({ 
-    route, 
-    routeJobs, 
-    totalPay, 
-    onDelete, 
-    onTechChange, 
-    onRemoveJob, 
+function DroppableRoute({
+    route,
+    routeJobs,
+    totalPay,
+    onDelete,
+    onTechChange,
+    onRemoveJob,
     onAssignClick,
+    onSelect,
+    isSelected,
     technicians
-}: { 
-    route: Route, 
-    routeJobs: WorkOrder[], 
-    totalPay: number, 
-    onDelete: (id: string) => void, 
+}: {
+    route: Route,
+    routeJobs: WorkOrder[],
+    totalPay: number,
+    onDelete: (id: string) => void,
     onTechChange: (id: string, name: string) => void,
     onRemoveJob: (jobId: string, routeId: string) => void,
     onAssignClick: (routeId: string) => void,
+    onSelect: (id: string) => void,
+    isSelected: boolean,
     technicians: Technician[]
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -151,11 +158,13 @@ function DroppableRoute({
   });
 
   return (
-    <Card 
+    <Card
         ref={setNodeRef}
+        onClick={() => onSelect(route.id)}
         className={cn(
-            "bg-bg-secondary border-border-main flex flex-col overflow-hidden shadow-2xl transition-all h-full",
-            isOver && "border-brand-red ring-1 ring-brand-red bg-bg-tertiary scale-[1.02]"
+            "bg-bg-secondary border-border-main flex flex-col overflow-hidden shadow-2xl transition-all h-full cursor-pointer",
+            isOver && "border-brand-red ring-1 ring-brand-red bg-bg-tertiary scale-[1.02]",
+            isSelected && "border-brand-red ring-1 ring-brand-red"
         )}
     >
         <CardHeader className="bg-bg-tertiary/50 border-b border-border-sub p-3">
@@ -241,6 +250,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
+    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
     const { toast } = useToast();
 
@@ -506,7 +516,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         const routeJobs = allWorkOrders.filter(wo => route.workOrderIds.includes(wo.id));
                         const totalPay = getRouteTotalPay(route);
                         return (
-                            <DroppableRoute 
+                            <DroppableRoute
                                 key={route.id}
                                 route={route}
                                 routeJobs={routeJobs}
@@ -518,6 +528,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                     setActiveRouteId(id);
                                     setIsAddJobsOpen(true);
                                 }}
+                                onSelect={(id) => setSelectedRouteId(prev => prev === id ? null : id)}
+                                isSelected={selectedRouteId === route.id}
                                 technicians={technicians}
                             />
                         )
@@ -530,6 +542,35 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     )}
                 </div>
             </DndContext>
+
+            {/* Route Map */}
+            {routes.length > 0 && (
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                            <MapPin size={11} className="text-brand-red" />
+                            Route Map
+                            {selectedRouteId && (
+                                <span className="text-brand-red">— {routes.find(r => r.id === selectedRouteId)?.name}</span>
+                            )}
+                        </p>
+                        {selectedRouteId && (
+                            <button
+                                onClick={() => setSelectedRouteId(null)}
+                                className="text-[9px] font-bold text-text-muted hover:text-text-primary uppercase tracking-widest flex items-center gap-1"
+                            >
+                                <X size={10} /> Show All
+                            </button>
+                        )}
+                    </div>
+                    <RoutesMapView
+                        routes={routes}
+                        allWorkOrders={allWorkOrders}
+                        selectedRouteId={selectedRouteId}
+                        onSelectRoute={(id) => setSelectedRouteId(prev => prev === id ? null : id)}
+                    />
+                </div>
+            )}
 
             {/* NEW ROUTE DIALOG */}
             <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>

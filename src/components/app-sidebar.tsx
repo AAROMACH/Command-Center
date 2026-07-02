@@ -48,6 +48,7 @@ import {
   Receipt,
   Package,
   Flag,
+  Inbox,
 } from "lucide-react";
 
 type NavItem = {
@@ -67,6 +68,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
+      { href: "/admin/requests", label: "Requests", icon: Inbox, permission: "manage_assignments" },
       { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
       { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
     ],

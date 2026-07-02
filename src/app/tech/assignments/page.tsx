@@ -49,9 +49,8 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
-import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
@@ -80,6 +79,7 @@ const formatDateStr = (dateStr: string) => {
 
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
@@ -87,9 +87,7 @@ export default function TechAssignmentsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
-    
-    const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
@@ -353,8 +351,7 @@ export default function TechAssignmentsPage() {
     };
 
     const handleOpenDetail = (wo: WorkOrder) => {
-        setSelectedJob(wo);
-        setIsDetailOpen(true);
+        router.push('/tech/assignments/' + wo.id);
     };
 
     if (!mounted || !currentTechId) {
@@ -433,7 +430,7 @@ export default function TechAssignmentsPage() {
                         selectedJob={mapSelectedJob}
                         onSelectJob={(j) => {
                             setMapSelectedJob(j);
-                            if (j) { setSelectedJob(j); setIsDetailOpen(true); }
+                            if (j) router.push('/tech/assignments/' + j.id);
                         }}
                     />
                 </div>
@@ -705,11 +702,6 @@ export default function TechAssignmentsPage() {
                 </TabsContent>
             </Tabs>}
 
-            <JobDetailDialog 
-                isOpen={isDetailOpen} 
-                setIsOpen={setIsDetailOpen} 
-                mission={selectedJob} 
-            />
         </div>
     );
 }

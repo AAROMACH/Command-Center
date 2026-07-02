@@ -58,8 +58,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
+import { auditEvent } from '@/lib/audit';
 import { uploadFile } from '@/lib/upload';
 import { Switch } from '@/components/ui/switch';
 import type { Permission } from '@/lib/permissions';
@@ -178,6 +179,13 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     }
     try {
       await updateDoc(doc(db, 'users', person.id), { permissionOverrides: overrides });
+      const enabled = overrides[permission] !== false;
+      const adminId = auth.currentUser?.uid || '';
+      const adminName = auth.currentUser?.displayName || 'Admin';
+      await auditEvent('users', person.id, adminId, adminName,
+        `permission_${enabled ? 'granted' : 'revoked'}`,
+        `Permission "${permission}" ${enabled ? 'granted to' : 'revoked from'} ${person.name}`
+      );
       toast({ title: 'Permission Updated' });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });

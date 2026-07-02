@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { auditFieldChange } from '@/lib/audit';
 
 export default function TechProfilePage() {
     const searchParams = useSearchParams();
@@ -53,6 +54,7 @@ export default function TechProfilePage() {
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const savedSnapshotRef = useRef<Record<string, unknown>>({});
     const [predefinedSkills, setPredefinedSkills] = useState<string[]>([]);
     const [selectedSkill, setSelectedSkill] = useState('');
 
@@ -98,6 +100,12 @@ export default function TechProfilePage() {
                     setEcName(data.emergencyContact?.name || '');
                     setEcRelation(data.emergencyContact?.relation || '');
                     setEcPhone(data.emergencyContact?.phone || '');
+                    savedSnapshotRef.current = {
+                        name: data.name || '', email: data.email || '',
+                        phone: data.phone || '', currentLocation: data.currentLocation || '',
+                        address: data.address || '',
+                        emergencyContact: data.emergencyContact || null,
+                    };
                 }
             });
             return () => unsubUser();
@@ -155,7 +163,9 @@ export default function TechProfilePage() {
             if (tech?.emergencyContact) {
                 updates.emergencyContact = { name: ecName, relation: ecRelation, phone: ecPhone };
             }
+            await auditFieldChange('users', currentTechId, currentTechId, name || currentTechId, savedSnapshotRef.current, updates);
             await updateDoc(doc(db, 'users', currentTechId), updates);
+            savedSnapshotRef.current = { ...updates };
             toast({ title: 'Profile Saved', description: 'Your information has been updated.' });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });

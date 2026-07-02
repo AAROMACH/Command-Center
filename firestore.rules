@@ -282,5 +282,12 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isAdmin() || isTech());
       allow write: if isAdmin();
     }
+
+    match /auditLog/{entityId} {
+      match /events/{eventId} {
+        allow read: if isAdmin();
+        allow create: if isSignedIn();
+      }
+    }
   }
 }

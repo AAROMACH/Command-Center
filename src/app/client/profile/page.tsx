@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { auditFieldChange } from '@/lib/audit';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -45,6 +46,7 @@ export default function ClientProfilePage() {
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const savedSnapshotRef = useRef<Record<string, unknown>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -64,6 +66,10 @@ export default function ClientProfilePage() {
                     setBillingEmail(data.billingDetails?.email || '');
                     setBillingTerms(data.billingDetails?.terms || 'Net 30');
                     setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
+                    savedSnapshotRef.current = {
+                        phone: data.phone || '',
+                        billingDetails: data.billingDetails || {},
+                    };
                 }
             });
             return () => unsubUser();
@@ -96,7 +102,7 @@ export default function ClientProfilePage() {
         if (!currentUser?.id) return;
         setIsSaving(true);
         try {
-            await updateDoc(doc(db, 'users', currentUser.id), {
+            const updates = {
                 phone,
                 billingDetails: {
                     contactName: billingContactName,
@@ -104,7 +110,10 @@ export default function ClientProfilePage() {
                     terms: billingTerms,
                     deliveryMethod: billingDelivery,
                 },
-            });
+            };
+            await auditFieldChange('users', currentUser.id, currentUser.id, currentUser.name || currentUser.id, savedSnapshotRef.current, updates);
+            await updateDoc(doc(db, 'users', currentUser.id), updates);
+            savedSnapshotRef.current = { ...updates };
             toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });

@@ -147,19 +147,25 @@ service cloud.firestore {
     }
 
     match /clientRequests/{id} {
-      allow read: if isSignedIn() && (
-          isAdmin()
-          || (isClient() && (
+      allow read: if isAdmin()
+          || (isSignedIn() && isClient() && (
               resource.data.clientId == request.auth.uid
               || resource.data.clientName == userData().clientCompany
-          ))
-      );
-      allow create: if isSignedIn() && (isClient() || isAdmin());
+          ));
+      // Public client intake form (unauthenticated) OR existing clients/admins
+      allow create: if request.auth == null || isClient() || isAdmin();
       allow update: if isAdmin()
-          || (isClient() && (
+          || (isSignedIn() && isClient() && (
               resource.data.clientId == request.auth.uid
               || resource.data.clientName == userData().clientCompany
           ) && resource.data.status == 'pending');
+      allow delete: if isAdmin();
+    }
+
+    match /serviceRequests/{id} {
+      // Public service request form — unauthenticated create allowed
+      allow create: if true;
+      allow read, update: if isAdmin();
       allow delete: if isAdmin();
     }
 

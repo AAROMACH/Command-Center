@@ -344,6 +344,92 @@ export type ServiceRequest = {
   conversionType?: 'assignment' | 'project';
 };
 
+// New service request form (public-facing, saves to `serviceRequests` collection)
+export type NewServiceRequest = {
+  id: string;
+  serviceRequestId: string;
+  source: 'public_service_request' | 'app_service_request' | 'client_portal';
+  status: 'pending_review' | 'contacted' | 'needs_more_info' | 'approved' | 'rejected' | 'converted_to_work_order' | 'converted_to_project' | 'closed';
+  customerType: 'first_time' | 'returning_customer';
+  clientId?: string | null;
+  submittedByUserId?: string | null;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  companyName?: string;
+  preferredContactMethod?: 'email' | 'phone_call' | 'sms' | null;
+  serviceTypes: string[];
+  otherServiceDetails?: string | null;
+  priorityLevel: 'low' | 'medium' | 'high' | 'critical';
+  serviceLocation?: string;
+  serviceMode?: 'onsite' | 'remote' | 'either';
+  detailedDescription: string;
+  hasSupportingDocuments: boolean;
+  supportingFiles?: Array<{
+    fileName: string;
+    storagePath: string;
+    downloadUrl: string | null;
+    contentType: string | null;
+    sizeBytes: number | null;
+  }>;
+  desiredStartDate?: string | null;
+  desiredDeadlineTime?: string | null;
+  bestAvailability?: string | null;
+  formEaseRating?: number | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  internalNotes?: string | null;
+  rejectionReason?: string | null;
+  convertedWorkOrderId?: string | null;
+  convertedProjectId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Client intake form (public-facing, saves to `clientRequests` collection)
+export type ClientIntakeRequest = {
+  id: string;
+  clientRequestId: string;
+  source: 'app_client_intake' | 'public_client_intake';
+  status: 'pending_review' | 'contacted' | 'needs_more_info' | 'approved' | 'rejected' | 'converted_to_client';
+  // Section 1: Company Info
+  email: string;
+  companyName: string;
+  primaryContactName: string;
+  jobTitle: string;
+  phoneNumber: string;
+  companyWebsiteUrl?: string | null;
+  // Section 2: Business Profile
+  industryType: string;
+  numberOfLocations: '1' | '2-5' | '6-15' | '16-50' | '50+';
+  totalEmployeeCount?: '1-10' | '11-50' | '51-200' | '201-500' | '500+' | null;
+  primaryOperatingRegion: string;
+  existingItProviderOrInternalTeam?: string | null;
+  currentPainPoints: string;
+  // Section 3: Service Interests
+  serviceInterests: string[];
+  otherServiceInterest?: string | null;
+  subscriptionTier: 'essential' | 'professional' | 'enterprise' | 'not_sure';
+  typicalServiceNeeds?: string | null;
+  // Section 4: Additional Details
+  estimatedMonthlyServiceVolume?: 'under_500' | '500_2500' | '2501_7500' | '7501_15000' | '15000_plus' | null;
+  emergencyResponseMandatory?: boolean | null;
+  preferredCommunicationMethod?: 'email' | 'phone_call' | null;
+  additionalNotes?: string | null;
+  consentConfirmed: boolean;
+  // Admin fields
+  contactedAt?: string | null;
+  contactedBy?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  approvedClientId?: string | null;
+  convertedClientId?: string | null;
+  rejectionReason?: string | null;
+  internalNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AssignmentTimeLog = {
   id: string;
   workOrderId: string;

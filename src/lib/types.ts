@@ -200,6 +200,8 @@ export type Technician = {
   };
   notificationPreferences?: NotificationPreferences;
   permissionOverrides?: Record<string, boolean>;
+  portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
+  primaryPortal?: 'admin' | 'tech' | 'client';
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
   approvalStatus?: 'pending' | 'approved' | 'denied';

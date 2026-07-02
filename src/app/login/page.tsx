@@ -11,7 +11,7 @@ import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { isAdmin, isTech, isClient } from "@/lib/permissions";
+import { isAdmin, isTech, isClient, getPortalAccess, getAvailablePortals } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -142,15 +142,24 @@ export default function LoginPage() {
         return;
       }
 
-      // Approved user: set session
+      // Approved user: set session + portals cookie
+      const typedUser = userData as any;
+      const access = getPortalAccess(typedUser);
+      const portals = getAvailablePortals(typedUser);
       sessionStorage.setItem('currentUserId', firebaseUser.uid);
       document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=86400; SameSite=Strict`;
+      document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
 
-      if (isAdmin(userData as any)) {
+      if (portals.length > 1 && typedUser.primaryPortal) {
+        const primary = portals.find(p => p.id === typedUser.primaryPortal);
+        router.push(primary ? primary.path : portals[0].path);
+      } else if (portals.length > 1) {
+        router.push("/portal-select");
+      } else if (isAdmin(typedUser)) {
         router.push("/admin/dashboard");
-      } else if (isTech(userData as any)) {
+      } else if (isTech(typedUser)) {
         router.push("/tech/dashboard");
-      } else if (isClient(userData as any)) {
+      } else if (isClient(typedUser)) {
         router.push("/client/dashboard");
       } else {
         router.push("/admin/dashboard");

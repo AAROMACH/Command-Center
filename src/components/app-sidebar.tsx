@@ -13,6 +13,7 @@ import { technicians as fallbackTechs } from "@/lib/data";
 import type { Technician } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { UserNav } from "@/components/user-nav";
+import { PortalSwitcher } from "@/components/portal-switcher";
 import {
   Sidebar,
   SidebarContent,
@@ -287,7 +288,10 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border-sub p-3">
+      <SidebarFooter className="border-t border-border-sub p-3 space-y-2">
+        <div className="group-data-[collapsible=icon]:hidden">
+          <PortalSwitcher />
+        </div>
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
           <div className="group-data-[collapsible=icon]:hidden">
             <UserNav />

@@ -62,15 +62,21 @@ export default function LoginPage() {
 
       const snap = await getDoc(doc(db, "users", firebaseUser.uid));
       if (!snap.exists()) {
-        // First Google sign-in: create a provisional field_technician record
+        // First Google sign-in: create a pending-approval record — no roles assigned
         await setDoc(doc(db, "users", firebaseUser.uid), {
           id: firebaseUser.uid,
+          userId: firebaseUser.uid,
+          authUid: firebaseUser.uid,
           name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "New User",
           email: firebaseUser.email || "",
           phone: "",
+          phoneNumber: firebaseUser.phoneNumber || "",
           avatarUrl: firebaseUser.photoURL || "",
-          role: "field_technician",
-          roles: ["field_technician"],
+          photoURL: firebaseUser.photoURL || "",
+          roles: [],
+          primaryRole: null,
+          approvalStatus: 'pending',
+          status: 'inactive',
           reliabilityScore: 100,
           currentWorkload: 0,
           skills: [],
@@ -78,10 +84,11 @@ export default function LoginPage() {
           availability: {},
           workPreferences: { preferredRadius: 25, maxTravelDistance: 50, preferredJobTypes: [], availabilityOverride: false },
           notificationPreferences: { email: true, sms: false, push: true },
+          requestedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           createdVia: "google_sso",
         });
-        toast({ title: "Account Registered", description: "Contact an admin to activate your role and permissions." });
       } else {
         // Sync Google profile fields if they changed
         const existing = snap.data();
@@ -123,9 +130,22 @@ export default function LoginPage() {
     try {
       const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
       const userData = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+
+      // Gate: no doc, pending, denied, or no roles → do not set cookie, send to pending screen
+      const isPending = !userData
+        || (userData as any).approvalStatus === 'pending'
+        || (userData as any).approvalStatus === 'denied'
+        || (!(userData as any).roles?.length && !(userData as any).role);
+
+      if (isPending) {
+        router.push("/pending-approval");
+        return;
+      }
+
+      // Approved user: set session
       sessionStorage.setItem('currentUserId', firebaseUser.uid);
-      // Set session cookie so middleware can protect routes server-side
       document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=86400; SameSite=Strict`;
+
       if (isAdmin(userData as any)) {
         router.push("/admin/dashboard");
       } else if (isTech(userData as any)) {

@@ -41,11 +41,18 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAdmin();
+      allow create: if isAdmin()
+          || (request.auth != null
+              && request.auth.uid == userId
+              && request.resource.data.approvalStatus == 'pending'
+              && !request.resource.data.keys().hasAny(['role'])
+              && (!request.resource.data.keys().hasAny(['roles'])
+                  || request.resource.data.roles.size() == 0));
       allow update: if isAdmin()
           || (isSignedIn() && request.auth.uid == userId
               && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'payoutPreferences']));
+                  .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'payoutPreferences',
+                            'approvalStatus', 'approvedAt', 'approvedBy', 'deniedAt', 'deniedBy', 'denialReason']));
       allow delete: if isSuperAdmin();
     }
 
@@ -242,7 +249,9 @@ service cloud.firestore {
 
     match /messages/{id} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isSignedIn()
+          && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     match /planTiers/{id} {

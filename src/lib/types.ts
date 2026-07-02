@@ -202,6 +202,15 @@ export type Technician = {
   permissionOverrides?: Record<string, boolean>;
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
+  approvalStatus?: 'pending' | 'approved' | 'denied';
+  requestedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  deniedAt?: string;
+  deniedBy?: string;
+  denialReason?: string;
+  photoURL?: string;
+  createdVia?: string;
 };
 
 export type Recommendation = {

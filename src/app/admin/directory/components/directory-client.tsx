@@ -13,17 +13,17 @@ import {
     CardTitle, 
     CardDescription 
 } from "@/components/ui/card";
-import { 
-    Search, 
-    Mail, 
-    Phone, 
-    Plus, 
-    Map as MapIcon, 
+import {
+    Search,
+    Mail,
+    Phone,
+    Plus,
+    Map as MapIcon,
     ChevronLeft,
     ChevronRight,
-    Building2, 
-    Rows3, 
-    LayoutGrid, 
+    Building2,
+    Rows3,
+    LayoutGrid,
     ArrowUpDown,
     MapPin,
     Check,
@@ -40,7 +40,10 @@ import {
     Activity,
     Lock,
     UserCheck,
-    Gauge
+    Gauge,
+    UserPlus,
+    UserX,
+    Clock
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -61,8 +64,11 @@ import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { useSearchParams } from 'next/navigation';
 import { assignmentTimeLogs } from '@/lib/data';
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { makeSiteId } from '@/lib/doc-ids';
 
 declare global {
@@ -74,17 +80,31 @@ declare global {
 
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+const ALL_ROLES = [
+    { value: 'super_admin', label: 'Super Admin' },
+    { value: 'dispatch_admin', label: 'Dispatch Admin' },
+    { value: 'payroll_admin', label: 'Payroll Admin' },
+    { value: 'project_manager', label: 'Project Manager' },
+    { value: 'project_lead', label: 'Project Lead' },
+    { value: 'field_technician', label: 'Field Technician' },
+    { value: 'client', label: 'Client' },
+    { value: 'sales', label: 'Sales' },
+    { value: 'safety_officer', label: 'Safety Officer' },
+    { value: 'training_coordinator', label: 'Training Coordinator' },
+];
+
 type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
     workOrders: WorkOrder[];
     siteRequests: SiteRequest[];
+    pendingUsers: Technician[];
 };
 
 type ViewMode = 'rows' | 'grid';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
-export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, siteRequests }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, siteRequests, pendingUsers }: DirectoryClientProps) {
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
@@ -101,7 +121,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    
+
+    const [approveOpen, setApproveOpen] = useState(false);
+    const [denyOpen, setDenyOpen] = useState(false);
+    const [selectedPendingUser, setSelectedPendingUser] = useState<Technician | null>(null);
+    const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+    const [primaryRole, setPrimaryRole] = useState('');
+    const [denyReason, setDenyReason] = useState('');
+    const [approving, setApproving] = useState(false);
+    const [denying, setDenying] = useState(false);
+
     const { toast } = useToast();
     const router = useRouter();
 
@@ -153,6 +182,57 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
+    };
+
+    const handleApproveUser = async () => {
+        if (!selectedPendingUser || selectedRoles.length === 0 || !primaryRole) return;
+        setApproving(true);
+        try {
+            const adminUid = auth.currentUser?.uid || '';
+            await updateDoc(doc(db, 'users', selectedPendingUser.id), {
+                roles: selectedRoles,
+                role: primaryRole,
+                primaryRole,
+                approvalStatus: 'approved',
+                status: 'active',
+                approvedAt: new Date().toISOString(),
+                approvedBy: adminUid,
+                updatedAt: new Date().toISOString(),
+            });
+            toast({ title: 'Access Granted', description: `${selectedPendingUser.name} has been approved.` });
+            setApproveOpen(false);
+            setSelectedPendingUser(null);
+            setSelectedRoles([]);
+            setPrimaryRole('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Approval Failed', description: e.message });
+        } finally {
+            setApproving(false);
+        }
+    };
+
+    const handleDenyUser = async () => {
+        if (!selectedPendingUser) return;
+        setDenying(true);
+        try {
+            const adminUid = auth.currentUser?.uid || '';
+            await updateDoc(doc(db, 'users', selectedPendingUser.id), {
+                approvalStatus: 'denied',
+                status: 'inactive',
+                deniedAt: new Date().toISOString(),
+                deniedBy: adminUid,
+                denialReason: denyReason.trim(),
+                updatedAt: new Date().toISOString(),
+            });
+            toast({ title: 'Access Denied', description: `${selectedPendingUser.name}'s request has been denied.` });
+            setDenyOpen(false);
+            setSelectedPendingUser(null);
+            setDenyReason('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Denial Failed', description: e.message });
+        } finally {
+            setDenying(false);
         }
     };
 
@@ -281,7 +361,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         siteRequests.filter(r => r.status === 'pending').length, 
     [siteRequests]);
 
-    const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount;
+    const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount + pendingUsers.length;
 
     const isTechOnSite = (location: string) => {
         return assignmentTimeLogs.some(log => 
@@ -674,6 +754,12 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{clientRequestsCount}</Badge>
                                     )}
                                 </TabsTrigger>
+                                <TabsTrigger value="users" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
+                                    USER REQUESTS
+                                    {pendingUsers.length > 0 && (
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{pendingUsers.length}</Badge>
+                                    )}
+                                </TabsTrigger>
                             </TabsList>
                             
                             <TabsContent value="personnel" className="mt-0">
@@ -786,6 +872,73 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <MapPin size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending site verifications</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="users" className="mt-0">
+                                <div className="max-w-3xl space-y-4">
+                                    <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
+                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <Clock size={14} className="text-[#f59e0b]"/>
+                                            Pending Access Requests
+                                        </h3>
+                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{pendingUsers.length} Pending</Badge>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {pendingUsers.map(user => (
+                                            <Card key={user.id} className="bg-bg-secondary border-border-sub shadow-sm">
+                                                <CardContent className="p-4 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="h-8 w-8 border border-border-sub">
+                                                                <AvatarImage src={user.avatarUrl || user.photoURL} />
+                                                                <AvatarFallback>{(user.name || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="text-left min-w-0">
+                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{user.name || 'Unknown User'}</p>
+                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest truncate">{user.email}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#f59e0b]/40 bg-[#f59e0b]/10 text-[#f59e0b] text-[8px] font-black uppercase tracking-widest shrink-0">
+                                                            <Clock size={8} /> Pending
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest">
+                                                        <span className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub">
+                                                            {user.createdVia === 'google_sso' ? 'Google SSO' : 'Email'}
+                                                        </span>
+                                                        {user.requestedAt && (
+                                                            <span>Requested {(() => { try { return format(parseISO(user.requestedAt), 'MMM d, yyyy'); } catch { return user.requestedAt; } })()}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim"
+                                                            onClick={() => { setSelectedPendingUser(user); setDenyReason(''); setDenyOpen(true); }}
+                                                        >
+                                                            <UserX size={10} className="mr-1"/> Deny
+                                                        </Button>
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90"
+                                                            onClick={() => { setSelectedPendingUser(user); setSelectedRoles([]); setPrimaryRole(''); setApproveOpen(true); }}
+                                                        >
+                                                            <UserPlus size={10} className="mr-1"/> Approve
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                    {pendingUsers.length === 0 && (
+                                        <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
+                                            <UserCheck size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending access requests</p>
                                         </div>
                                     )}
                                 </div>
@@ -1028,14 +1181,119 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 />
             )}
             
-            <PersonnelDetailDialog 
-                isOpen={isDetailOpen} 
-                setIsOpen={setIsDetailOpen} 
+            <PersonnelDetailDialog
+                isOpen={isDetailOpen}
+                setIsOpen={setIsDetailOpen}
                 person={selectedPerson}
                 workOrders={workOrders}
                 onEdit={() => handleEditClick(selectedPerson!)}
                 timeOffRequests={timeOffRequests}
             />
+
+            {/* Approve User Dialog */}
+            <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
+                <DialogContent className="bg-bg-secondary border-border-main max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                            <UserPlus size={16} className="text-text-green" />
+                            Grant Access — {selectedPendingUser?.name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div>
+                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">Assign Roles</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {ALL_ROLES.map(r => (
+                                    <label key={r.value} className="flex items-center gap-2 cursor-pointer group">
+                                        <Checkbox
+                                            checked={selectedRoles.includes(r.value)}
+                                            onCheckedChange={(checked) => {
+                                                setSelectedRoles(prev =>
+                                                    checked ? [...prev, r.value] : prev.filter(v => v !== r.value)
+                                                );
+                                                if (!checked && primaryRole === r.value) setPrimaryRole('');
+                                            }}
+                                            className="border-border-main data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red"
+                                        />
+                                        <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary group-hover:text-text-primary transition-colors">{r.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                        {selectedRoles.length > 0 && (
+                            <div>
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">Primary Role</p>
+                                <div className="space-y-1.5">
+                                    {selectedRoles.map(rv => {
+                                        const label = ALL_ROLES.find(r => r.value === rv)?.label || rv;
+                                        return (
+                                            <label key={rv} className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="primaryRole"
+                                                    value={rv}
+                                                    checked={primaryRole === rv}
+                                                    onChange={() => setPrimaryRole(rv)}
+                                                    className="accent-brand-red"
+                                                />
+                                                <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary group-hover:text-text-primary transition-colors">{label}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setApproveOpen(false)} className="text-[9px] uppercase font-bold">Cancel</Button>
+                        <Button
+                            size="sm"
+                            disabled={selectedRoles.length === 0 || !primaryRole || approving}
+                            onClick={handleApproveUser}
+                            className="text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90"
+                        >
+                            {approving ? 'Approving...' : 'Grant Access'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Deny User Dialog */}
+            <Dialog open={denyOpen} onOpenChange={setDenyOpen}>
+                <DialogContent className="bg-bg-secondary border-border-main max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                            <UserX size={16} className="text-brand-red" />
+                            Deny Access — {selectedPendingUser?.name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <p className="text-[11px] text-text-secondary leading-relaxed">
+                            The user will see a denied message on their pending screen. You may optionally provide a reason.
+                        </p>
+                        <div>
+                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Reason (optional)</p>
+                            <Input
+                                value={denyReason}
+                                onChange={e => setDenyReason(e.target.value)}
+                                placeholder="e.g. Not an authorized contractor"
+                                className="bg-bg-primary border-border-sub text-xs h-9"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setDenyOpen(false)} className="text-[9px] uppercase font-bold">Cancel</Button>
+                        <Button
+                            size="sm"
+                            disabled={denying}
+                            onClick={handleDenyUser}
+                            className="text-[9px] uppercase font-bold bg-brand-red hover:bg-brand-red-hover"
+                        >
+                            {denying ? 'Denying...' : 'Deny Access'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </>
     );

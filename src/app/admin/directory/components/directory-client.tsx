@@ -66,6 +66,7 @@ import { useSearchParams } from 'next/navigation';
 import { assignmentTimeLogs } from '@/lib/data';
 import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { auditFieldChange } from '@/lib/audit';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -175,6 +176,12 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const handleSavePersonnel = async (updatedPerson: Technician) => {
         try {
             const { id, ...data } = updatedPerson;
+            const oldPerson = personnel.find(p => p.id === id);
+            const adminId = auth.currentUser?.uid || '';
+            const adminName = auth.currentUser?.displayName || 'Admin';
+            if (oldPerson) {
+                await auditFieldChange('users', id, adminId, adminName, oldPerson as Record<string, unknown>, data as Record<string, unknown>);
+            }
             await updateDoc(doc(db, 'users', id), data);
             toast({
                 title: "Operative Updated",

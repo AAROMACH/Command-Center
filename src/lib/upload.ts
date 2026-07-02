@@ -24,13 +24,15 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
 
 export async function uploadFile(
     path: string,
-    file: File
-): Promise<{ url: string; name: string; size: string }> {
+    file: File,
+    metadata?: { contentType?: string }
+): Promise<{ url: string; storagePath: string; name: string; size: string }> {
     const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, file, metadata);
     const url = await getDownloadURL(storageRef);
     return {
         url,
+        storagePath: path,
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
     };

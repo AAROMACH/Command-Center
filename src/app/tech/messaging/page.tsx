@@ -8,7 +8,7 @@ import type { Technician, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, User, Briefcase, Image as ImageIcon, X } from 'lucide-react';
+import { MessageSquare, Send, User, Briefcase, Paperclip, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -139,7 +139,11 @@ export default function TechMessagingPage() {
     setImageUploading(true);
     try {
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const { url } = await uploadFile(`messageImages/${uid}/${Date.now()}-${sanitizedName}`, file);
+      const path = `messageImages/${uid}/${Date.now()}-${sanitizedName}`;
+      console.debug('[MessageUpload] uid:', uid);
+      console.debug('[MessageUpload] path:', path);
+      console.debug('[MessageUpload] file:', file.name, file.type, `${(file.size / 1024).toFixed(1)}KB`);
+      const { url } = await uploadFile(path, file, { contentType: file.type });
       setUrl(url);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Upload failed', description: err.message });
@@ -321,7 +325,7 @@ export default function TechMessagingPage() {
               <div className="flex items-center gap-2">
                 <input type="file" ref={dmFileRef} accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, setDmImageUrl, dmFileRef); }} />
                 <button onClick={() => dmFileRef.current?.click()} disabled={imageUploading} className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-secondary hover:border-brand-red/60 transition-colors">
-                  <ImageIcon size={14} className="text-text-muted" />
+                  <Paperclip size={14} className="text-text-muted" />
                 </button>
                 <Input
                   className="flex-1 h-9 text-[11px] bg-bg-secondary border-border-main"
@@ -436,7 +440,7 @@ export default function TechMessagingPage() {
                   <div className="flex items-center gap-2">
                     <input type="file" ref={projFileRef} accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, setProjectImageUrl, projFileRef); }} />
                     <button onClick={() => projFileRef.current?.click()} disabled={imageUploading} className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-secondary hover:border-brand-red/60 transition-colors">
-                      <ImageIcon size={14} className="text-text-muted" />
+                      <Paperclip size={14} className="text-text-muted" />
                     </button>
                     <Input
                       className="flex-1 h-9 text-[11px] bg-bg-secondary border-border-main"

@@ -35,6 +35,8 @@ export default function DirectoryPage() {
     };
   }, []);
 
+  const pendingUsers = technicians.filter(t => t.approvalStatus === 'pending');
+
   return (
     <div>
       <header className="page-header">
@@ -49,13 +51,14 @@ export default function DirectoryPage() {
       </header>
 
       <Suspense fallback={<div className="p-8 text-center text-text-muted text-[10px] uppercase tracking-widest">Loading Registry...</div>}>
-  <DirectoryClient 
-    technicians={technicians} 
-    timeOffRequests={timeOffRequests} 
-    workOrders={workOrders} 
-    siteRequests={siteRequests}
-  />
-</Suspense>
+        <DirectoryClient
+          technicians={technicians}
+          timeOffRequests={timeOffRequests}
+          workOrders={workOrders}
+          siteRequests={siteRequests}
+          pendingUsers={pendingUsers}
+        />
+      </Suspense>
     </div>
   );
 }

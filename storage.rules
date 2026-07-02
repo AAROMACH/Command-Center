@@ -55,6 +55,19 @@ service firebase.storage {
                    && request.resource.size < 10 * 1024 * 1024;
     }
 
+    // Service request attachments: public form uploads (no auth required)
+    match /serviceRequests/{requestId}/attachments/{filename} {
+      allow read: if isSignedIn() && isAdmin();
+      allow create: if request.resource.size < 10 * 1024 * 1024
+                    && (request.resource.contentType.matches('image/.*')
+                        || request.resource.contentType == 'application/pdf'
+                        || request.resource.contentType == 'application/msword'
+                        || request.resource.contentType.matches('application/vnd.openxmlformats.*')
+                        || request.resource.contentType == 'text/plain'
+                        || request.resource.contentType == 'text/csv');
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
     // Message image attachments: each user writes only to their own folder
     match /messageImages/{userId}/{fileName} {
       allow read: if request.auth != null;

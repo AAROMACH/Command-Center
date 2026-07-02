@@ -173,6 +173,8 @@ export const ID_PREFIXES = {
   ROUTE:             'route',
   SITE:              'site',
   SITE_REQUEST:      'sreq',
+  SERVICE_REQUEST:   'svc',
+  CLIENT_INTAKE:     'cint',
   TIME_OFF_REQUEST:  'pto',
   TRIP_LOG:          'tlog',
   USER:              'uID',

@@ -18,12 +18,14 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   Inbox, Plus, Clock, MapPin, Building2, User, Calendar,
   CheckCircle2, XCircle, AlertTriangle, Loader2, UserCheck,
-  ShieldCheck, Briefcase, Search,
+  ShieldCheck, Briefcase, Search, ExternalLink, Phone, Mail,
+  FileText, Globe, ChevronDown,
 } from 'lucide-react';
-import type { ServiceRequest, WorkOrder, TimeOffRequest, SiteRequest, Technician } from '@/lib/types';
+import type { ServiceRequest, WorkOrder, TimeOffRequest, SiteRequest, Technician, NewServiceRequest, ClientIntakeRequest } from '@/lib/types';
 import type { AppRole } from '@/lib/types';
 
 const PRIORITY_ORDER: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
@@ -465,6 +467,494 @@ function AccountAccessTab({ pendingUsers }: { pendingUsers: Technician[] }) {
   );
 }
 
+// ── New Service Requests tab ─────────────────────────────────────────────────
+function NewServiceTab({ requests }: { requests: NewServiceRequest[] }) {
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<NewServiceRequest | null>(null);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const pending = requests.filter(r => r.status === 'pending_review' || r.status === 'contacted' || r.status === 'needs_more_info');
+  const resolved = requests.filter(r => !['pending_review', 'contacted', 'needs_more_info'].includes(r.status));
+
+  const updateStatus = async (id: string, status: string, extra?: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'serviceRequests', id), {
+        status,
+        reviewedBy: auth.currentUser?.uid || null,
+        reviewedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...extra,
+      });
+      toast({ title: 'Updated' });
+      setSelected(null);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'serviceRequests', selected.id), {
+        internalNotes: notes,
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: 'Notes Saved' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const priorityCls2 = (p: string) => {
+    if (p === 'critical') return 'bg-brand-red/10 text-brand-red border-brand-red/30';
+    if (p === 'high') return 'bg-orange-400/10 text-orange-400 border-orange-400/30';
+    if (p === 'medium') return 'bg-amber-400/10 text-amber-400 border-amber-400/30';
+    return 'bg-bg-tertiary text-text-muted border-border-sub';
+  };
+
+  const card = (req: NewServiceRequest) => (
+    <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
+      className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-bold text-text-primary truncate">{req.fullName}</p>
+          {req.companyName && <p className="text-[10px] text-text-muted truncate">{req.companyName}</p>}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', priorityCls2(req.priorityLevel))}>
+            {req.priorityLevel}
+          </span>
+          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>
+            {req.status.replace(/_/g, ' ')}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {req.serviceTypes.slice(0, 3).map(t => (
+          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted font-medium">{t}</span>
+        ))}
+        {req.serviceTypes.length > 3 && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{req.serviceTypes.length - 3}</span>
+        )}
+      </div>
+      <p className="text-[10px] text-text-muted">
+        {req.email} · {req.customerType === 'returning_customer' ? 'Returning' : 'First-Time'}
+      </p>
+    </button>
+  );
+
+  return (
+    <>
+      <div className="space-y-6">
+        {pending.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Pending Review ({pending.length})</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{pending.map(r => card(r))}</div>
+          </div>
+        )}
+        {resolved.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Resolved ({resolved.length})</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{resolved.map(r => card(r))}</div>
+          </div>
+        )}
+        {requests.length === 0 && (
+          <div className="py-16 text-center text-text-muted">
+            <FileText size={28} className="mx-auto mb-3 opacity-20" />
+            <p className="text-[11px]">No service requests</p>
+          </div>
+        )}
+      </div>
+
+      <Sheet open={!!selected} onOpenChange={v => !v && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-lg bg-bg-secondary border-border-main overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader className="pb-4 border-b border-border-sub">
+                <SheetTitle className="text-[13px] font-black uppercase tracking-widest text-text-primary">
+                  Service Request
+                </SheetTitle>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', priorityCls2(selected.priorityLevel))}>
+                    {selected.priorityLevel}
+                  </span>
+                  <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(selected.status))}>
+                    {selected.status.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-[9px] text-text-muted">
+                    {selected.customerType === 'returning_customer' ? 'Returning Customer' : 'First-Time Customer'}
+                  </span>
+                </div>
+              </SheetHeader>
+
+              <div className="py-4 space-y-5">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Contact</p>
+                  <p className="text-[13px] font-bold text-text-primary">{selected.fullName}</p>
+                  {selected.companyName && <p className="text-[11px] text-text-secondary">{selected.companyName}</p>}
+                  <p className="text-[11px] text-text-muted flex items-center gap-1"><Mail size={10} />{selected.email}</p>
+                  <p className="text-[11px] text-text-muted flex items-center gap-1"><Phone size={10} />{selected.phoneNumber}</p>
+                  {selected.preferredContactMethod && (
+                    <p className="text-[10px] text-text-muted">Prefers: {selected.preferredContactMethod}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Services Requested</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selected.serviceTypes.map(t => (
+                      <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
+                    ))}
+                  </div>
+                  {selected.otherServiceDetails && (
+                    <p className="text-[11px] text-text-secondary italic mt-1">{selected.otherServiceDetails}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Description</p>
+                  <p className="text-[12px] text-text-primary leading-relaxed whitespace-pre-wrap">{selected.detailedDescription}</p>
+                </div>
+
+                {(selected.serviceLocation || selected.serviceMode) && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Location & Mode</p>
+                    {selected.serviceLocation && (
+                      <p className="text-[11px] text-text-secondary flex items-center gap-1"><MapPin size={10} />{selected.serviceLocation}</p>
+                    )}
+                    {selected.serviceMode && (
+                      <p className="text-[11px] text-text-muted capitalize">Mode: {selected.serviceMode}</p>
+                    )}
+                  </div>
+                )}
+
+                {(selected.desiredStartDate || selected.bestAvailability) && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Timeline</p>
+                    {selected.desiredStartDate && <p className="text-[11px] text-text-secondary">Start: {selected.desiredStartDate}</p>}
+                    {selected.bestAvailability && <p className="text-[11px] text-text-muted">Availability: {selected.bestAvailability}</p>}
+                  </div>
+                )}
+
+                {selected.supportingFiles && selected.supportingFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Attachments ({selected.supportingFiles.length})</p>
+                    {selected.supportingFiles.map((f, i) => (
+                      <a key={i} href={f.downloadUrl || '#'} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary border border-border-sub hover:border-border-main text-[11px] text-text-primary transition-colors">
+                        <FileText size={12} className="text-text-muted" />
+                        <span className="flex-1 truncate">{f.fileName}</span>
+                        <ExternalLink size={10} className="text-text-muted shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Internal Notes</p>
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Add internal notes visible only to admins..."
+                    className="w-full text-[11px] bg-bg-tertiary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40" />
+                  <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={saveNotes} disabled={saving}>
+                    Save Notes
+                  </Button>
+                </div>
+
+                <div className="border-t border-border-sub pt-4 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Actions</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
+                      onClick={() => updateStatus(selected.id, 'contacted')} disabled={saving}>
+                      Mark Contacted
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
+                      onClick={() => updateStatus(selected.id, 'needs_more_info')} disabled={saving}>
+                      Request Info
+                    </Button>
+                    <Button size="sm" className="text-[10px] font-bold h-8 bg-text-green hover:bg-text-green/90 text-white col-span-2"
+                      onClick={() => updateStatus(selected.id, 'approved')} disabled={saving}>
+                      <CheckCircle2 size={12} className="mr-1.5" />Approve Request
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5 col-span-2"
+                      onClick={() => updateStatus(selected.id, 'rejected')} disabled={saving}>
+                      <XCircle size={12} className="mr-1.5" />Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+// ── Client Intake tab ────────────────────────────────────────────────────────
+function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest[]; siteReqs: SiteRequest[] }) {
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<ClientIntakeRequest | null>(null);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showSiteReqs, setShowSiteReqs] = useState(false);
+
+  const pendingIntake = requests.filter(r => r.status === 'pending_review' || r.status === 'contacted');
+  const resolvedIntake = requests.filter(r => !['pending_review', 'contacted'].includes(r.status));
+
+  const updateStatus = async (id: string, status: string, extra?: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'clientRequests', id), {
+        status,
+        reviewedBy: auth.currentUser?.uid || null,
+        reviewedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...extra,
+      });
+      toast({ title: 'Updated' });
+      setSelected(null);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'clientRequests', selected.id), {
+        internalNotes: notes,
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: 'Notes Saved' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const tierCls = (t: string) => {
+    if (t === 'enterprise') return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+    if (t === 'professional') return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+    if (t === 'essential') return 'bg-text-green/10 text-text-green border-text-green/30';
+    return 'bg-bg-tertiary text-text-muted border-border-sub';
+  };
+
+  const card = (req: ClientIntakeRequest) => (
+    <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
+      className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-bold text-text-primary truncate">{req.companyName}</p>
+          <p className="text-[10px] text-text-muted truncate">{req.primaryContactName} · {req.jobTitle}</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(req.subscriptionTier))}>
+            {req.subscriptionTier === 'not_sure' ? 'TBD' : req.subscriptionTier}
+          </span>
+          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>
+            {req.status.replace(/_/g, ' ')}
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] text-text-muted">{req.industryType} · {req.numberOfLocations} location{req.numberOfLocations !== '1' ? 's' : ''}</p>
+      <div className="flex flex-wrap gap-1">
+        {req.serviceInterests.slice(0, 3).map(t => (
+          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">{t}</span>
+        ))}
+        {req.serviceInterests.length > 3 && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{req.serviceInterests.length - 3}</span>
+        )}
+      </div>
+    </button>
+  );
+
+  return (
+    <>
+      <div className="space-y-6">
+        {pendingIntake.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Partnership Applications ({pendingIntake.length})</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{pendingIntake.map(r => card(r))}</div>
+          </div>
+        )}
+        {resolvedIntake.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Resolved ({resolvedIntake.length})</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{resolvedIntake.map(r => card(r))}</div>
+          </div>
+        )}
+        {requests.length === 0 && (
+          <div className="py-10 text-center text-text-muted">
+            <Building2 size={28} className="mx-auto mb-3 opacity-20" />
+            <p className="text-[11px]">No client intake applications</p>
+          </div>
+        )}
+
+        {/* Site Requests sub-section */}
+        {siteReqs.length > 0 && (
+          <div className="border-t border-border-sub pt-4">
+            <button type="button" onClick={() => setShowSiteReqs(v => !v)}
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors mb-3">
+              <ChevronDown size={12} className={cn('transition-transform', showSiteReqs && 'rotate-180')} />
+              Site Requests from Existing Clients ({siteReqs.length})
+            </button>
+            {showSiteReqs && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {siteReqs.map(req => (
+                  <div key={req.id} className="rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[12px] font-bold text-text-primary">{req.siteName}</p>
+                        <p className="text-[10px] text-text-muted">{req.clientName}</p>
+                      </div>
+                      <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest shrink-0', statusCls(req.status))}>
+                        {req.status}
+                      </span>
+                    </div>
+                    {req.location && (
+                      <p className="text-[10px] text-text-muted flex items-center gap-1"><MapPin size={9} />{req.location}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Sheet open={!!selected} onOpenChange={v => !v && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-lg bg-bg-secondary border-border-main overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader className="pb-4 border-b border-border-sub">
+                <SheetTitle className="text-[13px] font-black uppercase tracking-widest text-text-primary">
+                  Partnership Application
+                </SheetTitle>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(selected.subscriptionTier))}>
+                    {selected.subscriptionTier === 'not_sure' ? 'Tier TBD' : `${selected.subscriptionTier} tier`}
+                  </span>
+                  <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(selected.status))}>
+                    {selected.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              </SheetHeader>
+
+              <div className="py-4 space-y-5">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Company</p>
+                  <p className="text-[14px] font-bold text-text-primary">{selected.companyName}</p>
+                  <p className="text-[11px] text-text-secondary">{selected.primaryContactName} · {selected.jobTitle}</p>
+                  <p className="text-[11px] text-text-muted flex items-center gap-1"><Mail size={10} />{selected.email}</p>
+                  <p className="text-[11px] text-text-muted flex items-center gap-1"><Phone size={10} />{selected.phoneNumber}</p>
+                  {selected.companyWebsiteUrl && (
+                    <a href={selected.companyWebsiteUrl} target="_blank" rel="noreferrer"
+                      className="text-[11px] text-text-muted flex items-center gap-1 hover:text-text-primary transition-colors">
+                      <Globe size={10} />{selected.companyWebsiteUrl}
+                    </a>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Business Profile</p>
+                  <p className="text-[11px] text-text-secondary">{selected.industryType} · {selected.numberOfLocations} location{selected.numberOfLocations !== '1' ? 's' : ''}</p>
+                  {selected.totalEmployeeCount && <p className="text-[11px] text-text-muted">{selected.totalEmployeeCount} employees</p>}
+                  <p className="text-[11px] text-text-muted flex items-center gap-1"><MapPin size={10} />{selected.primaryOperatingRegion}</p>
+                  {selected.existingItProviderOrInternalTeam && (
+                    <p className="text-[11px] text-text-muted">Current: {selected.existingItProviderOrInternalTeam}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Pain Points</p>
+                  <p className="text-[12px] text-text-primary leading-relaxed whitespace-pre-wrap">{selected.currentPainPoints}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Service Interests</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selected.serviceInterests.map(t => (
+                      <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
+                    ))}
+                  </div>
+                  {selected.typicalServiceNeeds && (
+                    <p className="text-[11px] text-text-muted mt-1">{selected.typicalServiceNeeds}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {selected.estimatedMonthlyServiceVolume && (
+                    <div>
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-0.5">Est. Budget</p>
+                      <p className="text-[11px] text-text-secondary">{selected.estimatedMonthlyServiceVolume.replace(/_/g, '–').replace('plus', '+')}</p>
+                    </div>
+                  )}
+                  {selected.emergencyResponseMandatory !== null && selected.emergencyResponseMandatory !== undefined && (
+                    <div>
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-0.5">Emergency Response</p>
+                      <p className="text-[11px] text-text-secondary">{selected.emergencyResponseMandatory ? '24/7 Required' : 'Standard Hours'}</p>
+                    </div>
+                  )}
+                </div>
+
+                {selected.additionalNotes && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Additional Notes</p>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">{selected.additionalNotes}</p>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Internal Notes</p>
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Add internal notes visible only to admins..."
+                    className="w-full text-[11px] bg-bg-tertiary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40" />
+                  <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={saveNotes} disabled={saving}>
+                    Save Notes
+                  </Button>
+                </div>
+
+                <div className="border-t border-border-sub pt-4 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Actions</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
+                      onClick={() => updateStatus(selected.id, 'contacted')} disabled={saving}>
+                      Mark Contacted
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
+                      onClick={() => updateStatus(selected.id, 'needs_more_info')} disabled={saving}>
+                      Request Info
+                    </Button>
+                    <Button size="sm" className="text-[10px] font-bold h-8 bg-text-green hover:bg-text-green/90 text-white col-span-2"
+                      onClick={() => updateStatus(selected.id, 'approved')} disabled={saving}>
+                      <CheckCircle2 size={12} className="mr-1.5" />Approve Application
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] font-bold h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5 col-span-2"
+                      onClick={() => updateStatus(selected.id, 'rejected')} disabled={saving}>
+                      <XCircle size={12} className="mr-1.5" />Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
 // ── Subscription placeholder ─────────────────────────────────────────────────
 function SubscriptionTab() {
   return (
@@ -481,7 +971,8 @@ function SubscriptionTab() {
 export default function RequestsPage() {
   const { toast } = useToast();
 
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<NewServiceRequest[]>([]);
+  const [clientIntakeRequests, setClientIntakeRequests] = useState<ClientIntakeRequest[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [pendingUsers, setPendingUsers] = useState<Technician[]>([]);
@@ -492,8 +983,8 @@ export default function RequestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const u1 = onSnapshot(collection(db, 'clientRequests'), snap => {
-      setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)));
+    const u1 = onSnapshot(collection(db, 'serviceRequests'), snap => {
+      setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as NewServiceRequest)));
       setLoading(false);
     }, () => setLoading(false));
 
@@ -515,7 +1006,11 @@ export default function RequestsPage() {
       setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
     });
 
-    return () => { u1(); u2(); u3(); u4(); u5(); };
+    const u6 = onSnapshot(collection(db, 'clientRequests'), snap => {
+      setClientIntakeRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest)));
+    });
+
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); };
   }, []);
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
@@ -528,41 +1023,47 @@ export default function RequestsPage() {
   };
 
   // Counts for tab badges
-  const servicePending = serviceRequests.filter(r => r.status === 'new' || r.status === 'reviewed').length;
-  const clientPending  = siteRequests.filter(r => r.status === 'pending').length;
-  const personnelPending = timeOffRequests.filter(r => r.status === 'pending').length;
-  const accessPending  = pendingUsers.length;
-  const totalPending   = servicePending + clientPending + personnelPending + accessPending;
+  const servicePending    = serviceRequests.filter(r => r.status === 'pending_review' || r.status === 'contacted' || r.status === 'needs_more_info').length;
+  const clientPending     = clientIntakeRequests.filter(r => r.status === 'pending_review' || r.status === 'contacted').length
+                          + siteRequests.filter(r => r.status === 'pending').length;
+  const personnelPending  = timeOffRequests.filter(r => r.status === 'pending').length;
+  const accessPending     = pendingUsers.length;
+  const totalPending      = servicePending + clientPending + personnelPending + accessPending;
 
-  // Service tab: filtered for RequestsClient
+  // Service tab: filtered
   const filteredServiceRequests = useMemo(() => {
     const q = searchQuery.toLowerCase();
     if (!q) return serviceRequests;
     return serviceRequests.filter(r =>
       (r.id || '').toLowerCase().includes(q) ||
-      (r.clientName || '').toLowerCase().includes(q) ||
-      (r.description || '').toLowerCase().includes(q) ||
-      (r.location || '').toLowerCase().includes(q)
+      (r.fullName || '').toLowerCase().includes(q) ||
+      (r.email || '').toLowerCase().includes(q) ||
+      (r.companyName || '').toLowerCase().includes(q)
     );
   }, [serviceRequests, searchQuery]);
 
-  const serviceRequested = filteredServiceRequests
-    .filter(r => r.status === 'new' || r.status === 'reviewed')
-    .sort((a, b) => (PRIORITY_ORDER[b.priority] || 0) - (PRIORITY_ORDER[a.priority] || 0));
-  const serviceApproved  = filteredServiceRequests.filter(r => r.status === 'approved');
-  const serviceArchived  = filteredServiceRequests.filter(r => r.status === 'closed' || r.status === 'rejected');
 
   // All tab: normalized across types, pending only
   const allNormalized = useMemo<NormalizedItem[]>(() => {
     const items: NormalizedItem[] = [];
-    serviceRequests.filter(r => r.status === 'new' || r.status === 'reviewed').forEach(r => {
+    serviceRequests.filter(r => r.status === 'pending_review' || r.status === 'contacted' || r.status === 'needs_more_info').forEach(r => {
       items.push({
         id: r.id, kind: 'service',
-        title: r.clientName || r.id,
-        subtitle: r.requestType || 'Service Request',
-        meta: r.location || '',
-        status: r.status, priority: r.priority,
-        date: r.submittedDate || '',
+        title: r.fullName || r.id,
+        subtitle: r.serviceTypes.join(', ') || 'Service Request',
+        meta: r.serviceLocation || '',
+        status: r.status, priority: r.priorityLevel,
+        date: typeof r.createdAt === 'string' ? r.createdAt : '',
+      });
+    });
+    clientIntakeRequests.filter(r => r.status === 'pending_review' || r.status === 'contacted').forEach(r => {
+      items.push({
+        id: r.id, kind: 'client',
+        title: r.companyName || r.id,
+        subtitle: `Partnership Application — ${r.primaryContactName}`,
+        meta: r.industryType || '',
+        status: r.status,
+        date: typeof r.createdAt === 'string' ? r.createdAt : '',
       });
     });
     siteRequests.filter(r => r.status === 'pending').forEach(r => {
@@ -607,10 +1108,11 @@ export default function RequestsPage() {
   };
 
   // Archived: closed from all types
-  const archivedService  = serviceRequests.filter(r => r.status === 'closed' || r.status === 'rejected');
-  const archivedClient   = siteRequests.filter(r => r.status !== 'pending');
+  const archivedService   = serviceRequests.filter(r => ['rejected', 'closed', 'converted_to_work_order', 'converted_to_project'].includes(r.status));
+  const archivedIntake    = clientIntakeRequests.filter(r => ['rejected', 'approved', 'converted_to_client'].includes(r.status));
+  const archivedSiteReqs  = siteRequests.filter(r => r.status !== 'pending');
   const archivedPersonnel = timeOffRequests.filter(r => r.status === 'approved' || r.status === 'denied');
-  const archivedTotalCount = archivedService.length + archivedClient.length + archivedPersonnel.length;
+  const archivedTotalCount = archivedService.length + archivedIntake.length + archivedSiteReqs.length + archivedPersonnel.length;
 
   return (
     <div className="space-y-6">
@@ -708,39 +1210,18 @@ export default function RequestsPage() {
               <Search className="h-4 w-4 text-text-muted" />
               <input
                 className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary"
-                placeholder="Search by ID, client, or scope..."
+                placeholder="Search by name, email, or company..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
-          <Tabs defaultValue="requested" className="w-full">
-            <TabsList className="tabs">
-              <TabsTrigger value="requested" className="tab">
-                Requested <span className="tab-count">({serviceRequested.length})</span>
-              </TabsTrigger>
-              <TabsTrigger value="approved" className="tab">
-                Approved <span className="tab-count">({serviceApproved.length})</span>
-              </TabsTrigger>
-              <TabsTrigger value="closed" className="tab">
-                Resolved/Closed <span className="tab-count">({serviceArchived.length})</span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="requested" className="mt-0">
-              <RequestsClient requests={serviceRequested} workOrders={allWorkOrders} />
-            </TabsContent>
-            <TabsContent value="approved" className="mt-0">
-              <RequestsClient requests={serviceApproved} workOrders={allWorkOrders} />
-            </TabsContent>
-            <TabsContent value="closed" className="mt-0">
-              <RequestsClient requests={serviceArchived} workOrders={allWorkOrders} isHistory />
-            </TabsContent>
-          </Tabs>
+          <NewServiceTab requests={filteredServiceRequests} />
         </TabsContent>
 
         {/* ── Client ── */}
         <TabsContent value="client" className="mt-0">
-          <ClientTab requests={siteRequests} />
+          <ClientIntakeTab requests={clientIntakeRequests} siteReqs={siteRequests} />
         </TabsContent>
 
         {/* ── Personnel ── */}
@@ -764,17 +1245,25 @@ export default function RequestsPage() {
             {archivedService.length > 0 && (
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">
-                  Service ({archivedService.length})
+                  Service Requests ({archivedService.length})
                 </p>
-                <RequestsClient requests={archivedService} workOrders={allWorkOrders} isHistory />
+                <NewServiceTab requests={archivedService} />
               </div>
             )}
-            {archivedClient.length > 0 && (
+            {archivedIntake.length > 0 && (
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">
-                  Client / Site ({archivedClient.length})
+                  Client Applications ({archivedIntake.length})
                 </p>
-                <ClientTab requests={archivedClient} />
+                <ClientIntakeTab requests={archivedIntake} siteReqs={[]} />
+              </div>
+            )}
+            {archivedSiteReqs.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">
+                  Site Requests ({archivedSiteReqs.length})
+                </p>
+                <ClientTab requests={archivedSiteReqs} />
               </div>
             )}
             {archivedPersonnel.length > 0 && (

@@ -169,8 +169,25 @@ function DroppableRoute({
     >
         <CardHeader className="bg-bg-tertiary/50 border-b border-border-sub p-3">
             <div className="flex justify-between items-start mb-1.5">
-                <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">ROUTE ID: {route.id.split('-').pop()?.toUpperCase()}</Badge>
-                <button onClick={() => onDelete(route.id)} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">
+                        ID: {route.id.split('-').pop()?.toUpperCase()}
+                    </Badge>
+                    {route.status && (
+                        <Badge variant="outline" className={cn(
+                            "text-[8px] uppercase font-bold tracking-widest h-4",
+                            route.status === 'draft' && "text-text-muted border-border-sub",
+                            route.status === 'ready' && "text-accent-gold border-accent-gold/30",
+                            route.status === 'dispatched' && "text-blue-400 border-blue-400/30",
+                            route.status === 'in_progress' && "text-green-400 border-green-400/30",
+                            route.status === 'completed' && "text-text-muted border-border-sub opacity-60",
+                            route.status === 'cancelled' && "text-text-muted border-border-sub line-through opacity-50",
+                        )}>
+                            {route.status.replace('_', ' ')}
+                        </Badge>
+                    )}
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); onDelete(route.id); }} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
             </div>
             <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none text-left">{route.name}</CardTitle>
         </CardHeader>
@@ -185,7 +202,7 @@ function DroppableRoute({
                         </div>
                     </SelectTrigger>
                     <SelectContent>
-                        {technicians.filter(t => !t.roles?.includes('client') && !t.role.toLowerCase().includes('client')).map(tech => (
+                        {technicians.filter(t => !t.roles?.includes('client') && !t.role?.toLowerCase()?.includes('client')).map(tech => (
                             <SelectItem key={tech.id} value={tech.name} className="text-[10px] font-bold uppercase">
                                 {tech.name}
                             </SelectItem>
@@ -269,7 +286,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             id: await makeRouteId(),
             name,
             workOrderIds: [],
-            technicianName: ""
+            technicianName: "",
+            status: 'draft',
+            createdAt: new Date().toISOString(),
         };
         onRoutesChange([...routes, newRoute]);
         setNewRouteName("");
@@ -481,14 +500,19 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button 
-                        onClick={handleTacticalOptimization} 
-                        disabled={isOptimizing || unassignedJobs.length === 0}
-                        className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.1)]"
-                    >
-                        {isOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Zap size={14} className="mr-2" />}
-                        Optimize ({targetRouteCount} Areas)
-                    </Button>
+                    <div className="flex flex-col items-end gap-0.5">
+                        <Button
+                            onClick={handleTacticalOptimization}
+                            disabled={isOptimizing || unassignedJobs.length === 0}
+                            className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover shadow-[0_0_15px_rgba(204,34,0,0.1)]"
+                        >
+                            {isOptimizing ? <Loader2 size={14} className="mr-2 animate-spin"/> : <Zap size={14} className="mr-2" />}
+                            Optimize ({targetRouteCount} Areas)
+                        </Button>
+                        {!isOptimizing && unassignedJobs.length === 0 && (
+                            <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Add unassigned jobs to enable</p>
+                        )}
+                    </div>
                     <Separator orientation="vertical" className="h-9 bg-border-sub hidden md:block" />
                     <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">
                         <Plus size={14} className="mr-2"/> New Route
@@ -535,9 +559,15 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         )
                     })}
                     {routes.length === 0 && (
-                        <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                            <Layers size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic text-center">No active areas. Establish a new route or execute area optimization to begin grouping jobs.</p>
+                        <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 flex flex-col items-center gap-4">
+                            <Layers size={48} className="text-text-muted opacity-20" />
+                            <div className="space-y-1">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted text-center">No routes created yet</p>
+                                <p className="text-[9px] text-text-muted text-center max-w-xs">Create a route to group jobs by technician, date, and location for dispatching.</p>
+                            </div>
+                            <Button onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] bg-brand-red hover:bg-brand-red-hover">
+                                <Plus size={14} className="mr-2" /> Create Route
+                            </Button>
                         </div>
                     )}
                 </div>

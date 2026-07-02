@@ -475,9 +475,10 @@ export function DispatchPageClient() {
         </TabsContent>
 
         <TabsContent value="dispatch" className="mt-0">
-           <DispatchTabs 
-              workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)} 
-              technicians={technicians} 
+           <DispatchTabs
+              workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)}
+              allJobPool={allWorkOrders}
+              technicians={technicians}
               onWorkOrdersChange={async (updated) => {
                 // Find and process assignments
                 const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
@@ -522,19 +523,28 @@ export function DispatchPageClient() {
               }}
               routes={routes}
               onRoutesChange={async (updated) => {
+                // Optimistic update: show immediately without waiting for Firestore round-trip
+                setRoutes(updated);
+
                 const currentIds = routes.map(r => r.id);
                 const newIds = updated.map(r => r.id);
-                
-                // Identification and removal of dissolved routes
+
+                // Remove dissolved routes from Firestore
                 const toDelete = currentIds.filter(id => !newIds.includes(id));
                 for (const id of toDelete) {
-                  await deleteDoc(doc(db, 'routes', id)).catch(e => console.error("Route delete error", e));
+                  await deleteDoc(doc(db, 'routes', id)).catch(e => {
+                    console.error("Route delete error", e);
+                    toast({ variant: "destructive", title: "Route Sync Error", description: "Failed to remove route. Check your connection." });
+                  });
                 }
 
-                // Upsert of active tactical formations
+                // Upsert active routes to Firestore
                 for (const r of updated) {
                   const docRef = doc(db, 'routes', r.id);
-                  await setDoc(docRef, sanitize(r), { merge: true }).catch(e => console.error("Route update error", e));
+                  await setDoc(docRef, sanitize(r), { merge: true }).catch(e => {
+                    console.error("Route save error", e);
+                    toast({ variant: "destructive", title: "Route Not Saved", description: `Route "${r.name}" could not be saved to the server.` });
+                  });
                 }
               }}
            />

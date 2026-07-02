@@ -147,6 +147,11 @@ export type Route = {
   name: string;
   technicianName?: string;
   workOrderIds: string[];
+  status?: 'draft' | 'ready' | 'dispatched' | 'in_progress' | 'completed' | 'cancelled';
+  routeDate?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Technician = {

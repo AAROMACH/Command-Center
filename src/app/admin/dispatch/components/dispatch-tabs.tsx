@@ -10,18 +10,20 @@ import { useState, useEffect } from 'react';
 
 type DispatchTabsProps = {
   workOrders: WorkOrder[];
+  allJobPool: WorkOrder[];
   technicians: Technician[];
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
   routes: Route[];
   onRoutesChange: (routes: Route[]) => void;
 };
 
-export function DispatchTabs({ 
-  workOrders, 
-  technicians, 
-  onWorkOrdersChange, 
-  routes, 
-  onRoutesChange 
+export function DispatchTabs({
+  workOrders,
+  allJobPool,
+  technicians,
+  onWorkOrdersChange,
+  routes,
+  onRoutesChange
 }: DispatchTabsProps) {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('subtab') || 'unassigned');
@@ -58,10 +60,10 @@ export function DispatchTabs({
       </TabsContent>
 
       <TabsContent value="routes" className="mt-0">
-          <RoutesView 
+          <RoutesView
             routes={routes}
             onRoutesChange={onRoutesChange}
-            allWorkOrders={workOrders}
+            allWorkOrders={allJobPool}
             onWorkOrdersChange={onWorkOrdersChange}
             technicians={technicians}
           />

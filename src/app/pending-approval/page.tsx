@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { isAdmin, isTech, isClient } from '@/lib/permissions';
+import { isAdmin, isTech, isClient, getPortalAccess, getAvailablePortals } from '@/lib/permissions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,25 @@ export default function PendingApprovalPage() {
 
   // Set cookie + session and route to the correct portal for approved users
   const redirectApprovedUser = (uid: string, userData: Technician) => {
+    const access = getPortalAccess(userData);
+    const portals = getAvailablePortals(userData);
     sessionStorage.setItem('currentUserId', uid);
     document.cookie = `aaromach_session=${uid}; path=/; max-age=86400; SameSite=Strict`;
-    if (isAdmin(userData)) router.push('/admin/dashboard');
-    else if (isTech(userData)) router.push('/tech/dashboard');
-    else if (isClient(userData)) router.push('/client/dashboard');
-    else router.push('/admin/dashboard');
+    document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
+    if (portals.length > 1 && userData.primaryPortal) {
+      const primary = portals.find(p => p.id === userData.primaryPortal);
+      router.push(primary ? primary.path : portals[0].path);
+    } else if (portals.length > 1) {
+      router.push('/portal-select');
+    } else if (isAdmin(userData)) {
+      router.push('/admin/dashboard');
+    } else if (isTech(userData)) {
+      router.push('/tech/dashboard');
+    } else if (isClient(userData)) {
+      router.push('/client/dashboard');
+    } else {
+      router.push('/admin/dashboard');
+    }
   };
 
   const checkStatus = async (uid: string) => {
@@ -101,6 +114,7 @@ export default function PendingApprovalPage() {
   const handleSignOut = async () => {
     await signOut(auth);
     document.cookie = 'aaromach_session=; path=/; max-age=0';
+    document.cookie = 'aaromach_portals=; path=/; max-age=0';
     sessionStorage.removeItem('currentUserId');
     router.push('/login');
   };

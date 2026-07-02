@@ -64,6 +64,7 @@ import { auditEvent } from '@/lib/audit';
 import { uploadFile } from '@/lib/upload';
 import { Switch } from '@/components/ui/switch';
 import type { Permission } from '@/lib/permissions';
+import { PermissionEditorDialog } from './permission-editor-dialog';
 
 type PersonnelDocument = {
     id: string;
@@ -113,6 +114,7 @@ const ALL_PERMISSIONS: { key: Permission; label: string }[] = [
 
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
+  const [isPermEditorOpen, setIsPermEditorOpen] = useState(false);
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -685,7 +687,17 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                       <TabsContent value="permissions" className="m-0 space-y-4">
                           <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
                               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Access & Permissions</h3>
-                              <p className="text-[9px] text-text-muted uppercase">Overrides take precedence over role defaults</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[9px] text-text-muted uppercase">Overrides take precedence over role defaults</p>
+                                <Button
+                                  size="sm"
+                                  onClick={() => setIsPermEditorOpen(true)}
+                                  className="h-6 px-3 text-[9px] font-black uppercase tracking-widest bg-brand-red/10 text-brand-red hover:bg-brand-red/20 border border-brand-red/30"
+                                  variant="ghost"
+                                >
+                                  <Settings size={10} className="mr-1" /> Full Editor
+                                </Button>
+                              </div>
                           </div>
                           <div className="space-y-1">
                               {ALL_PERMISSIONS.map(({ key, label }) => {
@@ -727,7 +739,15 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
         </DialogContent>
       </Dialog>
 
-      <LogReliabilityEventDialog 
+      {person && (
+        <PermissionEditorDialog
+          open={isPermEditorOpen}
+          onClose={() => setIsPermEditorOpen(false)}
+          person={person}
+        />
+      )}
+
+      <LogReliabilityEventDialog
           isOpen={isLogEventOpen}
           setIsOpen={setIsLogEventOpen}
           person={person}

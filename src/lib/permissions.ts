@@ -255,11 +255,24 @@ export function isClient(user: Technician | null | undefined): boolean {
   return user.roles?.includes('client') || currentRole.includes('client');
 }
 
+export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean } {
+  if (!user) return { admin: false, tech: false, client: false };
+  const adminByRole = isAdmin(user);
+  const techByRole = isTech(user);
+  const clientByRole = isClient(user);
+  return {
+    admin: user.portalAccess?.admin !== undefined ? user.portalAccess.admin : adminByRole,
+    tech: user.portalAccess?.tech !== undefined ? user.portalAccess.tech : techByRole,
+    client: user.portalAccess?.client !== undefined ? user.portalAccess.client : clientByRole,
+  };
+}
+
 export function getAvailablePortals(user: Technician | null | undefined): Portal[] {
   if (!user) return [];
+  const access = getPortalAccess(user);
   const portals: Portal[] = [];
-  if (isAdmin(user)) portals.push({ id: 'admin', label: TERMINOLOGY.PORTAL.ADMIN, path: '/admin/dashboard' });
-  if (isTech(user)) portals.push({ id: 'tech', label: TERMINOLOGY.PORTAL.TECH, path: '/tech/dashboard' });
-  if (isClient(user)) portals.push({ id: 'client', label: TERMINOLOGY.PORTAL.CLIENT, path: '/client/dashboard' });
+  if (access.admin) portals.push({ id: 'admin', label: TERMINOLOGY.PORTAL.ADMIN, path: '/admin/dashboard' });
+  if (access.tech) portals.push({ id: 'tech', label: TERMINOLOGY.PORTAL.TECH, path: '/tech/dashboard' });
+  if (access.client) portals.push({ id: 'client', label: TERMINOLOGY.PORTAL.CLIENT, path: '/client/dashboard' });
   return portals;
 }

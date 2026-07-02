@@ -64,38 +64,48 @@ type NavGroup = {
 
 const adminNavGroups: NavGroup[] = [
   {
-    label: "Operations",
+    label: "Overview",
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
-      { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
-      { href: "/admin/dispatch", label: "Dispatch", icon: Wrench, permission: "manage_assignments" },
-      { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
-      { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
-      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "manage_assignments" },
-      { href: "/admin/assets", label: "Assets", icon: Package, permission: "manage_assignments" },
-      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
+      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
+      { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
     ],
   },
   {
-    label: "Scheduling",
+    label: "Dispatch",
     items: [
+      { href: "/admin/dispatch", label: "Dispatch Hub", icon: Wrench, permission: "manage_assignments" },
       { href: "/admin/calendar", label: "Schedule", icon: CalendarDays, permission: "view_assignments" },
+      { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
     ],
   },
   {
-    label: "Business",
+    label: "CRM & Sales",
     items: [
       { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
-      { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
       { href: "/admin/plans", label: "Service Plans", icon: BookOpen, permission: "view_reports" },
       { href: "/admin/company-planning", label: "Company Planning", icon: Flag, permission: "view_reports" },
     ],
   },
   {
-    label: "Insights",
+    label: "Clients & Projects",
     items: [
-      { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
-      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
+      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "manage_assignments" },
+      { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
+      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
+    ],
+  },
+  {
+    label: "Directory",
+    items: [
+      { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
+    ],
+  },
+  {
+    label: "Financials",
+    items: [
+      { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
+      { href: "/admin/assets", label: "Assets", icon: Package, permission: "manage_assignments" },
     ],
   },
 ];
@@ -209,15 +219,15 @@ export function AppSidebar() {
           <div className="space-y-1">
             {filteredGroups.map((group, gi) => (
               <div key={gi}>
-                {gi > 0 && group.label && (
-                  <div className="px-2 pt-3 pb-1">
+                {group.label && (
+                  <div className={cn("px-2 pb-1", gi > 0 ? "pt-4" : "pt-1")}>
                     <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555] group-data-[collapsible=icon]:hidden">
                       {group.label}
                     </p>
                     <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
                   </div>
                 )}
-                {gi > 0 && !group.label && <div className="h-2" />}
+                {!group.label && gi > 0 && <div className="h-2" />}
                 <SidebarMenu>
                   {group.items.map((item) => {
                     const active = isActive(item.href);

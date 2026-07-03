@@ -2,69 +2,57 @@
 
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import {
   ChevronRight, ChevronLeft, Check, Loader2, AlertTriangle,
-  Building2, Users, Briefcase, FileText,
+  Building2, Briefcase, FileText,
 } from 'lucide-react';
 
-const INDUSTRY_TYPES = [
-  'Healthcare',
-  'Education',
-  'Government / Public Sector',
-  'Commercial Real Estate',
-  'Retail',
-  'Financial Services',
-  'Hospitality',
-  'Manufacturing / Industrial',
-  'Technology',
+const SERVICE_INTERESTS = [
+  'Managed IT (Desktops, Servers, Helpdesk)',
+  'Low Voltage Cabling & Infrastructure',
+  'Networking (Switches, Routers)',
+  'WiFi & Wireless Solutions',
+  'Security Cameras (CCTV)',
+  'Multi-Site Support/Rollouts',
+  'Routine Maintenance Agreements',
+  '24/7 Emergency Support',
+  'Specific Project Support (Non-Subscription)',
   'Other',
 ];
 
 const LOCATION_OPTIONS = [
-  { value: '1', label: '1 location' },
-  { value: '2-5', label: '2–5 locations' },
-  { value: '6-15', label: '6–15 locations' },
-  { value: '16-50', label: '16–50 locations' },
-  { value: '50+', label: '50+ locations' },
+  { value: '1', label: '1 (Single Site)' },
+  { value: '2-5', label: '2–5 Sites' },
+  { value: '6-15', label: '6–15 Sites' },
+  { value: '16-50', label: '16–50 Sites' },
+  { value: '50+', label: '50+ Sites' },
 ];
 
 const EMPLOYEE_OPTIONS = [
-  { value: '1-10', label: '1–10 employees' },
-  { value: '11-50', label: '11–50 employees' },
-  { value: '51-200', label: '51–200 employees' },
-  { value: '201-500', label: '201–500 employees' },
-  { value: '500+', label: '500+ employees' },
-];
-
-const SERVICE_INTERESTS = [
-  'Structured Cabling / Low-Voltage',
-  'Network Infrastructure',
-  'AV Systems',
-  'Security Cameras (CCTV / IP)',
-  'Access Control Systems',
-  'Fiber Optic Installation',
-  'WiFi / Wireless Infrastructure',
-  'Server Room / Data Center',
-  'Managed IT Services',
-  'Intercom / PA Systems',
-  'Other',
+  { value: '1-10', label: '1–10 Employees' },
+  { value: '11-50', label: '11–50 Employees' },
+  { value: '51-200', label: '51–200 Employees' },
+  { value: '201-500', label: '201–500 Employees' },
+  { value: '500+', label: '500+ Employees' },
 ];
 
 const SUBSCRIPTION_TIERS = [
-  { value: 'essential', label: 'Essential', desc: 'Small business, basic service needs' },
-  { value: 'professional', label: 'Professional', desc: 'Multi-site, SLA-backed response' },
-  { value: 'enterprise', label: 'Enterprise', desc: 'Full-service, dedicated support team' },
-  { value: 'not_sure', label: 'Not Sure Yet', desc: 'Advise me during the review' },
+  { value: 'essential', label: 'Essential', desc: 'Foundational support, basic monitoring' },
+  { value: 'professional', label: 'Professional', desc: 'Comprehensive support, proactive maintenance, enhanced SLA' },
+  { value: 'enterprise', label: 'Enterprise', desc: 'Fully managed services, dedicated resources, rapid response' },
+  { value: 'not_sure', label: "I'm not sure yet", desc: 'Advise me during the review' },
 ];
 
 const VOLUME_OPTIONS = [
-  { value: 'under_500', label: 'Under $500/mo' },
-  { value: '500_2500', label: '$500–$2,500/mo' },
-  { value: '2501_7500', label: '$2,501–$7,500/mo' },
-  { value: '7501_15000', label: '$7,501–$15,000/mo' },
-  { value: '15000_plus', label: '$15,000+/mo' },
+  { value: 'under_500', label: 'Under $500' },
+  { value: '500_2500', label: '$500 – $2,500' },
+  { value: '2501_7500', label: '$2,501 – $7,500' },
+  { value: '7501_15000', label: '$7,501 – $15,000' },
+  { value: '15000_plus', label: '$15,000+' },
 ];
 
 const STEPS = ['Company Info', 'Business Profile', 'Service Interests', 'Final Details'];
@@ -83,23 +71,24 @@ type FormState = {
   existingItProviderOrInternalTeam: string;
   currentPainPoints: string;
   serviceInterests: string[];
-  otherServiceInterest: string;
   subscriptionTier: string;
   typicalServiceNeeds: string;
   estimatedMonthlyServiceVolume: string;
-  emergencyResponseMandatory: boolean | null;
+  emergencyResponseRequired: boolean | null;
   preferredCommunicationMethod: string;
-  additionalNotes: string;
-  consentConfirmed: boolean;
+  additionalNotesOrQuestions: string;
+  informationAccuracyConfirmed: boolean;
+  termsConsent: boolean;
 };
 
 const EMPTY: FormState = {
   email: '', companyName: '', primaryContactName: '', jobTitle: '', phoneNumber: '', companyWebsiteUrl: '',
   industryType: '', numberOfLocations: '', totalEmployeeCount: '', primaryOperatingRegion: '',
   existingItProviderOrInternalTeam: '', currentPainPoints: '',
-  serviceInterests: [], otherServiceInterest: '', subscriptionTier: '', typicalServiceNeeds: '',
-  estimatedMonthlyServiceVolume: '', emergencyResponseMandatory: null,
-  preferredCommunicationMethod: '', additionalNotes: '', consentConfirmed: false,
+  serviceInterests: [], subscriptionTier: '', typicalServiceNeeds: '',
+  estimatedMonthlyServiceVolume: '', emergencyResponseRequired: null,
+  preferredCommunicationMethod: '', additionalNotesOrQuestions: '',
+  informationAccuracyConfirmed: false, termsConsent: false,
 };
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
@@ -110,7 +99,7 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
-function Input({ value, onChange, type = 'text', placeholder, className }: any) {
+function FInput({ value, onChange, type = 'text', placeholder, className }: any) {
   return (
     <input
       type={type}
@@ -126,7 +115,7 @@ function Input({ value, onChange, type = 'text', placeholder, className }: any) 
   );
 }
 
-function Textarea({ value, onChange, placeholder, rows = 4 }: any) {
+function FTextarea({ value, onChange, placeholder, rows = 4 }: any) {
   return (
     <textarea
       value={value}
@@ -143,6 +132,7 @@ export default function PublicClientIntakePage() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedCode, setSubmittedCode] = useState('');
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -163,16 +153,16 @@ export default function PublicClientIntakePage() {
       if (!form.jobTitle.trim()) e.jobTitle = 'Job title required';
       if (!form.phoneNumber.trim() || form.phoneNumber.replace(/\D/g, '').length < 7) e.phoneNumber = 'Valid phone required';
     } else if (s === 2) {
-      if (!form.industryType) e.industryType = 'Industry required';
+      if (!form.industryType.trim()) e.industryType = 'Industry required';
       if (!form.numberOfLocations) e.numberOfLocations = 'Number of locations required';
       if (!form.primaryOperatingRegion.trim()) e.primaryOperatingRegion = 'Operating region required';
       if (!form.currentPainPoints.trim()) e.currentPainPoints = 'Please describe your current challenges';
     } else if (s === 3) {
       if (form.serviceInterests.length === 0) e.serviceInterests = 'Select at least one service area';
-      if (form.serviceInterests.includes('Other') && !form.otherServiceInterest.trim()) e.otherServiceInterest = 'Please describe the other service';
       if (!form.subscriptionTier) e.subscriptionTier = 'Please select a plan tier';
     } else if (s === 4) {
-      if (!form.consentConfirmed) e.consentConfirmed = 'You must agree to the terms to submit';
+      if (!form.informationAccuracyConfirmed) e.informationAccuracyConfirmed = 'You must confirm your information is accurate';
+      if (!form.termsConsent) e.termsConsent = 'You must consent to the Terms of Service and Privacy Policy';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -192,41 +182,56 @@ export default function PublicClientIntakePage() {
     setError('');
 
     try {
-      const docRef = await addDoc(collection(db, 'clientRequests'), {
-        clientRequestId: '',
-        source: 'public_client_intake',
+      const requestCode = await createDocId(ID_PREFIXES.CLIENT_REQUEST);
+      const docId = requestCode;
+
+      await setDoc(doc(db, 'clientRequests', docId), {
+        requestCode,
+        clientRequestId: docId,
+        requestType: 'client_partnership_request',
+        source: 'client_intake_form',
         status: 'pending_review',
+        // Section 1
         email: form.email,
         companyName: form.companyName,
         primaryContactName: form.primaryContactName,
         jobTitle: form.jobTitle,
         phoneNumber: form.phoneNumber,
         companyWebsiteUrl: form.companyWebsiteUrl || null,
+        // Section 2
         industryType: form.industryType,
         numberOfLocations: form.numberOfLocations,
         totalEmployeeCount: form.totalEmployeeCount || null,
         primaryOperatingRegion: form.primaryOperatingRegion,
         existingItProviderOrInternalTeam: form.existingItProviderOrInternalTeam || null,
         currentPainPoints: form.currentPainPoints,
+        // Section 3
         serviceInterests: form.serviceInterests,
-        otherServiceInterest: form.otherServiceInterest || null,
         subscriptionTier: form.subscriptionTier,
         typicalServiceNeeds: form.typicalServiceNeeds || null,
+        // Section 4
         estimatedMonthlyServiceVolume: form.estimatedMonthlyServiceVolume || null,
-        emergencyResponseMandatory: form.emergencyResponseMandatory,
+        emergencyResponseRequired: form.emergencyResponseRequired,
         preferredCommunicationMethod: form.preferredCommunicationMethod || null,
-        additionalNotes: form.additionalNotes || null,
-        consentConfirmed: form.consentConfirmed,
-        contactedAt: null, contactedBy: null,
-        reviewedBy: null, reviewedAt: null,
-        approvedClientId: null, convertedClientId: null,
-        rejectionReason: null, internalNotes: null,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        additionalNotesOrQuestions: form.additionalNotesOrQuestions || null,
+        // Consent
+        informationAccuracyConfirmed: form.informationAccuracyConfirmed,
+        contactAuthorizationConfirmed: form.informationAccuracyConfirmed,
+        termsConsent: form.termsConsent,
+        consentConfirmed: form.informationAccuracyConfirmed && form.termsConsent,
+        // Admin defaults
+        assignedAdminId: null,
+        adminNotes: null,
+        internalNotes: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        convertedClientId: null,
+        rejectionReason: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
-      const { updateDoc, doc } = await import('firebase/firestore');
-      await updateDoc(doc(db, 'clientRequests', docRef.id), { clientRequestId: docRef.id });
-
+      setSubmittedCode(requestCode);
       setSubmitted(true);
     } catch (e: any) {
       setError('Submission failed. Please try again or contact us directly.');
@@ -246,19 +251,19 @@ export default function PublicClientIntakePage() {
           <div>
             <h1 className="text-[20px] font-black text-text-primary mb-2">Application Received</h1>
             <p className="text-[13px] text-text-secondary leading-relaxed">
-              Your partnership request has been submitted. The Aaromach team will review your information and contact you with next steps.
+              Thank you. Your client partnership request has been submitted. Aaromach will review your information and contact you regarding next steps.
             </p>
           </div>
           <div className="rounded-xl border border-border-sub bg-bg-secondary p-4 text-left space-y-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Your submission</p>
             <p className="text-[12px] font-bold text-text-primary">{form.companyName}</p>
             <p className="text-[11px] text-text-muted">{form.primaryContactName} · {form.email}</p>
-            <p className="text-[11px] text-text-muted">
-              {form.serviceInterests.length} service area{form.serviceInterests.length !== 1 ? 's' : ''} selected
-            </p>
+            {submittedCode && (
+              <p className="text-[10px] font-mono text-text-muted">Reference: {submittedCode}</p>
+            )}
           </div>
           <button
-            onClick={() => { setForm(EMPTY); setStep(1); setSubmitted(false); }}
+            onClick={() => { setForm(EMPTY); setStep(1); setSubmitted(false); setSubmittedCode(''); }}
             className="text-[11px] text-text-muted hover:text-text-primary underline transition-colors"
           >
             Submit another application
@@ -277,7 +282,7 @@ export default function PublicClientIntakePage() {
           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-red">Aaromach</p>
           <h1 className="text-[28px] font-black text-text-primary">Partner With Aaromach</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
-            Tell us about your organization and service needs. We'll review your application and reach out within 1–2 business days.
+            This is the initial vetting application for businesses seeking ongoing managed IT and low-voltage support subscriptions.
           </p>
         </div>
 
@@ -302,35 +307,38 @@ export default function PublicClientIntakePage() {
           })}
         </div>
 
-        {/* Step 1: Company Information */}
+        {/* ── Step 1: Company Information ── */}
         {step === 1 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Building2 size={16} className="text-brand-red" />
-              <h2 className="text-[15px] font-black text-text-primary">Company Information</h2>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-red">Section 1 of 4</p>
+                <h2 className="text-[15px] font-black text-text-primary">Company Information</h2>
+              </div>
             </div>
 
             <div>
               <FieldLabel label="Business Email" required />
-              <Input type="email" value={form.email} onChange={(e: any) => set('email', e.target.value)} placeholder="contact@yourcompany.com" />
+              <FInput type="email" value={form.email} onChange={(e: any) => set('email', e.target.value)} placeholder="contact@yourcompany.com" />
               {errors.email && <p className="text-[11px] text-brand-red mt-1">{errors.email}</p>}
             </div>
 
             <div>
               <FieldLabel label="Company / Organization Name" required />
-              <Input value={form.companyName} onChange={(e: any) => set('companyName', e.target.value)} placeholder="Acme Corp" />
+              <FInput value={form.companyName} onChange={(e: any) => set('companyName', e.target.value)} placeholder="Acme Corp" />
               {errors.companyName && <p className="text-[11px] text-brand-red mt-1">{errors.companyName}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FieldLabel label="Primary Contact Name" required />
-                <Input value={form.primaryContactName} onChange={(e: any) => set('primaryContactName', e.target.value)} placeholder="Jane Smith" />
+                <FInput value={form.primaryContactName} onChange={(e: any) => set('primaryContactName', e.target.value)} placeholder="Jane Smith" />
                 {errors.primaryContactName && <p className="text-[11px] text-brand-red mt-1">{errors.primaryContactName}</p>}
               </div>
               <div>
                 <FieldLabel label="Job Title" required />
-                <Input value={form.jobTitle} onChange={(e: any) => set('jobTitle', e.target.value)} placeholder="IT Director" />
+                <FInput value={form.jobTitle} onChange={(e: any) => set('jobTitle', e.target.value)} placeholder="IT Director" />
                 {errors.jobTitle && <p className="text-[11px] text-brand-red mt-1">{errors.jobTitle}</p>}
               </div>
             </div>
@@ -338,12 +346,12 @@ export default function PublicClientIntakePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FieldLabel label="Phone Number" required />
-                <Input type="tel" value={form.phoneNumber} onChange={(e: any) => set('phoneNumber', e.target.value)} placeholder="+1 (555) 000-0000" />
+                <FInput type="tel" value={form.phoneNumber} onChange={(e: any) => set('phoneNumber', e.target.value)} placeholder="+1 (555) 000-0000" />
                 {errors.phoneNumber && <p className="text-[11px] text-brand-red mt-1">{errors.phoneNumber}</p>}
               </div>
               <div>
-                <FieldLabel label="Company Website" />
-                <Input type="url" value={form.companyWebsiteUrl} onChange={(e: any) => set('companyWebsiteUrl', e.target.value)} placeholder="https://yourcompany.com" />
+                <FieldLabel label="Company Website URL" />
+                <FInput type="url" value={form.companyWebsiteUrl} onChange={(e: any) => set('companyWebsiteUrl', e.target.value)} placeholder="https://yourcompany.com" />
               </div>
             </div>
 
@@ -354,34 +362,27 @@ export default function PublicClientIntakePage() {
           </div>
         )}
 
-        {/* Step 2: Business Profile */}
+        {/* ── Step 2: Business Profile ── */}
         {step === 2 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Briefcase size={16} className="text-brand-red" />
-              <h2 className="text-[15px] font-black text-text-primary">Business Profile</h2>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-red">Section 2 of 4</p>
+                <h2 className="text-[15px] font-black text-text-primary">Business Profile</h2>
+              </div>
             </div>
 
             <div>
-              <FieldLabel label="Industry" required />
-              <div className="grid grid-cols-2 gap-2">
-                {INDUSTRY_TYPES.map(ind => (
-                  <button key={ind} type="button" onClick={() => set('industryType', ind)}
-                    className={cn(
-                      'px-3 py-2 rounded-lg border text-[11px] font-bold text-left transition-all',
-                      form.industryType === ind
-                        ? 'border-brand-red bg-brand-red/10 text-brand-red'
-                        : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
-                    )}
-                  >{ind}</button>
-                ))}
-              </div>
+              <FieldLabel label="Industry Type" required />
+              <FInput value={form.industryType} onChange={(e: any) => set('industryType', e.target.value)}
+                placeholder="e.g. Finance, Retail, Healthcare, Manufacturing" />
               {errors.industryType && <p className="text-[11px] text-brand-red mt-1">{errors.industryType}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Number of Locations" required />
+                <FieldLabel label="Number of Locations Requiring Support" required />
                 <div className="space-y-1.5">
                   {LOCATION_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => set('numberOfLocations', opt.value)}
@@ -397,7 +398,7 @@ export default function PublicClientIntakePage() {
                 {errors.numberOfLocations && <p className="text-[11px] text-brand-red mt-1">{errors.numberOfLocations}</p>}
               </div>
               <div>
-                <FieldLabel label="Employee Count" />
+                <FieldLabel label="Total Employee Count" />
                 <div className="space-y-1.5">
                   {EMPLOYEE_OPTIONS.map(opt => (
                     <button key={opt.value} type="button"
@@ -415,21 +416,21 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Primary Operating Region" required />
-              <Input value={form.primaryOperatingRegion} onChange={(e: any) => set('primaryOperatingRegion', e.target.value)}
+              <FieldLabel label="Primary Operating Region (State/Province or Country)" required />
+              <FInput value={form.primaryOperatingRegion} onChange={(e: any) => set('primaryOperatingRegion', e.target.value)}
                 placeholder="e.g. Greater Los Angeles, CA or Pacific Northwest" />
               {errors.primaryOperatingRegion && <p className="text-[11px] text-brand-red mt-1">{errors.primaryOperatingRegion}</p>}
             </div>
 
             <div>
               <FieldLabel label="Existing IT Provider or Internal Team" />
-              <Input value={form.existingItProviderOrInternalTeam} onChange={(e: any) => set('existingItProviderOrInternalTeam', e.target.value)}
+              <FInput value={form.existingItProviderOrInternalTeam} onChange={(e: any) => set('existingItProviderOrInternalTeam', e.target.value)}
                 placeholder="e.g. Internal IT team of 3, or Company XYZ manages our network" />
             </div>
 
             <div>
-              <FieldLabel label="Current Challenges & Pain Points" required />
-              <Textarea value={form.currentPainPoints} onChange={(e: any) => set('currentPainPoints', e.target.value)}
+              <FieldLabel label="What are your current IT or low-voltage pain points?" required />
+              <FTextarea value={form.currentPainPoints} onChange={(e: any) => set('currentPainPoints', e.target.value)}
                 placeholder="What challenges are you facing today? What's not working well with your current setup?" rows={4} />
               {errors.currentPainPoints && <p className="text-[11px] text-brand-red mt-1">{errors.currentPainPoints}</p>}
             </div>
@@ -447,42 +448,36 @@ export default function PublicClientIntakePage() {
           </div>
         )}
 
-        {/* Step 3: Service Interests */}
+        {/* ── Step 3: Service Interests ── */}
         {step === 3 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Briefcase size={16} className="text-brand-red" />
-              <h2 className="text-[15px] font-black text-text-primary">Service Interests</h2>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-red">Section 3 of 4</p>
+                <h2 className="text-[15px] font-black text-text-primary">Service Interests</h2>
+              </div>
             </div>
 
             <div>
-              <FieldLabel label="Areas of Service Interest" required />
+              <FieldLabel label="Select all services your company is currently interested in" required />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SERVICE_INTERESTS.map(type => (
-                  <label key={type} className="flex items-center gap-2.5 cursor-pointer">
+                  <label key={type} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-bg-tertiary transition-colors">
                     <input type="checkbox" checked={form.serviceInterests.includes(type)} onChange={() => toggleInterest(type)}
-                      className="w-4 h-4 rounded accent-brand-red" />
-                    <span className={cn('text-[12px] font-medium', form.serviceInterests.includes(type) ? 'text-text-primary' : 'text-text-secondary')}>
+                      className="w-4 h-4 rounded accent-brand-red shrink-0" />
+                    <span className={cn('text-[12px] font-medium leading-tight', form.serviceInterests.includes(type) ? 'text-text-primary' : 'text-text-secondary')}>
                       {type}
                     </span>
                   </label>
                 ))}
               </div>
               {errors.serviceInterests && <p className="text-[11px] text-brand-red mt-1">{errors.serviceInterests}</p>}
-
-              {form.serviceInterests.includes('Other') && (
-                <div className="mt-3">
-                  <FieldLabel label="Describe other service need" required />
-                  <Textarea value={form.otherServiceInterest} onChange={(e: any) => set('otherServiceInterest', e.target.value)}
-                    placeholder="Please describe..." rows={2} />
-                  {errors.otherServiceInterest && <p className="text-[11px] text-brand-red mt-1">{errors.otherServiceInterest}</p>}
-                </div>
-              )}
             </div>
 
             <div>
-              <FieldLabel label="Service Plan Tier" required />
-              <div className="grid grid-cols-2 gap-2">
+              <FieldLabel label="Which Subscription Tier best fits your needs?" required />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SUBSCRIPTION_TIERS.map(opt => (
                   <button key={opt.value} type="button" onClick={() => set('subscriptionTier', opt.value)}
                     className={cn(
@@ -493,7 +488,7 @@ export default function PublicClientIntakePage() {
                     )}>
                     <span className={cn('block text-[11px] font-black uppercase tracking-widest mb-0.5',
                       form.subscriptionTier === opt.value ? 'text-brand-red' : 'text-text-primary')}>{opt.label}</span>
-                    <span className="text-[10px] text-text-muted">{opt.desc}</span>
+                    <span className="text-[10px] text-text-muted leading-tight">{opt.desc}</span>
                   </button>
                 ))}
               </div>
@@ -501,9 +496,9 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Typical Service Needs / Volume" />
-              <Textarea value={form.typicalServiceNeeds} onChange={(e: any) => set('typicalServiceNeeds', e.target.value)}
-                placeholder="e.g. 5–10 technician visits/month across 3 sites, cabling projects quarterly..." rows={3} />
+              <FieldLabel label="Describe your typical service needs" />
+              <FTextarea value={form.typicalServiceNeeds} onChange={(e: any) => set('typicalServiceNeeds', e.target.value)}
+                placeholder="Number of monthly support tickets, expected low-voltage projects per year, recurring maintenance needs, rollout volume, etc." rows={3} />
             </div>
 
             <div className="flex gap-3">
@@ -519,16 +514,19 @@ export default function PublicClientIntakePage() {
           </div>
         )}
 
-        {/* Step 4: Additional Details */}
+        {/* ── Step 4: Additional Details & Requirements ── */}
         {step === 4 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <FileText size={16} className="text-brand-red" />
-              <h2 className="text-[15px] font-black text-text-primary">Additional Details</h2>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-red">Section 4 of 4</p>
+                <h2 className="text-[15px] font-black text-text-primary">Additional Details & Requirements</h2>
+              </div>
             </div>
 
             <div>
-              <FieldLabel label="Estimated Monthly Service Budget" />
+              <FieldLabel label="Estimated Monthly Service Volume / Budget Range" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {VOLUME_OPTIONS.map(opt => (
                   <button key={opt.value} type="button"
@@ -545,17 +543,17 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Emergency Response Requirement" />
+              <FieldLabel label="Is 24/7 Emergency Response a mandatory requirement?" />
               <div className="flex gap-2">
                 {[
-                  { v: true, label: 'Yes — 24/7 response required' },
-                  { v: false, label: 'No — Standard business hours' },
+                  { v: true, label: 'Yes' },
+                  { v: false, label: 'No' },
                 ].map(opt => (
                   <button key={String(opt.v)} type="button"
-                    onClick={() => set('emergencyResponseMandatory', form.emergencyResponseMandatory === opt.v ? null : opt.v)}
+                    onClick={() => set('emergencyResponseRequired', form.emergencyResponseRequired === opt.v ? null : opt.v)}
                     className={cn(
-                      'flex-1 px-3 py-2.5 rounded-lg border text-[11px] font-bold text-left transition-all',
-                      form.emergencyResponseMandatory === opt.v
+                      'flex-1 px-3 py-2.5 rounded-lg border text-[11px] font-bold text-center transition-all',
+                      form.emergencyResponseRequired === opt.v
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
                     )}
@@ -565,7 +563,7 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Preferred Communication Method" />
+              <FieldLabel label="Preferred Communication Method for follow-up" />
               <div className="flex gap-2">
                 {[{ v: 'email', label: 'Email' }, { v: 'phone_call', label: 'Phone Call' }].map(opt => (
                   <button key={opt.v} type="button"
@@ -582,21 +580,41 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Additional Notes or Requests" />
-              <Textarea value={form.additionalNotes} onChange={(e: any) => set('additionalNotes', e.target.value)}
+              <FieldLabel label="Additional Notes or Questions for the Aaromach Team" />
+              <FTextarea value={form.additionalNotesOrQuestions} onChange={(e: any) => set('additionalNotesOrQuestions', e.target.value)}
                 placeholder="Anything else we should know about your organization or requirements?" rows={4} />
             </div>
 
-            <div>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.consentConfirmed} onChange={e => set('consentConfirmed', e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded accent-brand-red" />
-                <span className="text-[12px] text-text-secondary leading-relaxed">
-                  I confirm that the information I have provided is accurate to the best of my knowledge. I consent to Aaromach using this
-                  information to evaluate my application and contact me about our services.
-                </span>
-              </label>
-              {errors.consentConfirmed && <p className="text-[11px] text-brand-red mt-1">{errors.consentConfirmed}</p>}
+            {/* Consent checkboxes */}
+            <div className="space-y-3 pt-2 border-t border-border-sub">
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.informationAccuracyConfirmed}
+                    onChange={e => set('informationAccuracyConfirmed', e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded accent-brand-red shrink-0" />
+                  <span className="text-[12px] text-text-secondary leading-relaxed">
+                    I confirm that the information provided is accurate and I authorize Aaromach to contact me regarding this partnership request.
+                    <span className="text-brand-red ml-0.5">*</span>
+                  </span>
+                </label>
+                {errors.informationAccuracyConfirmed && <p className="text-[11px] text-brand-red mt-1 ml-7">{errors.informationAccuracyConfirmed}</p>}
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.termsConsent}
+                    onChange={e => set('termsConsent', e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded accent-brand-red shrink-0" />
+                  <span className="text-[12px] text-text-secondary leading-relaxed">
+                    I consent to the{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Privacy Policy</a>.
+                    <span className="text-brand-red ml-0.5">*</span>
+                  </span>
+                </label>
+                {errors.termsConsent && <p className="text-[11px] text-brand-red mt-1 ml-7">{errors.termsConsent}</p>}
+              </div>
             </div>
 
             {error && (
@@ -619,7 +637,7 @@ export default function PublicClientIntakePage() {
           </div>
         )}
 
-        <p className="text-center text-[10px] text-text-muted">
+        <p className="text-center text-[10px] text-text-muted pb-4">
           Aaromach · Managed IT & Low-Voltage Services · This form is secure and confidential.
         </p>
       </div>

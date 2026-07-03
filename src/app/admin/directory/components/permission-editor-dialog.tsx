@@ -8,7 +8,9 @@ import type { Technician, AppRole } from '@/lib/types';
 import type { Permission } from '@/lib/permissions';
 import {
   ALL_PERMISSIONS,
+  PERMISSION_TREE,
   hasPermission,
+  permissionLabel,
   getPortalAccess,
   getAvailablePortals,
 } from '@/lib/permissions';
@@ -22,11 +24,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ShieldCheck, Wrench, Building2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, ShieldCheck, Wrench, Building2, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ALL_ROLES: AppRole[] = [
@@ -47,73 +47,11 @@ const ROLE_LABELS: Record<AppRole, string> = {
   training_coordinator: 'Training Coordinator',
 };
 
-const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] = [
-  {
-    label: 'Core Access',
-    permissions: [
-      'view_dashboard', 'view_requests', 'manage_requests', 'view_assignments', 'manage_assignments',
-      'view_projects', 'manage_projects', 'view_directory', 'manage_personnel', 'view_financials',
-      'manage_payroll', 'view_settings', 'manage_settings', 'field_checkin', 'field_logs', 'client_portal',
-      'view_assigned_projects_only', 'view_assigned_work_only', 'approve_pay_changes',
-      'view_reports', 'view_leads', 'manage_leads', 'view_crm', 'manage_safety_events', 'manage_certifications',
-    ],
-  },
-  {
-    label: 'Dispatch',
-    permissions: [
-      'assign_technician', 'swap_technician', 'remove_technician', 'add_technician', 'assign_helper',
-      'create_route', 'edit_route', 'delete_route', 'optimize_routes', 'dispatch_route',
-      'reschedule_job', 'cancel_assignment', 'override_scheduling_conflicts',
-    ],
-  },
-  {
-    label: 'Projects',
-    permissions: [
-      'create_project', 'edit_project', 'archive_project', 'create_phase', 'create_task',
-      'assign_task', 'complete_task', 'reopen_task', 'close_project',
-    ],
-  },
-  {
-    label: 'CRM',
-    permissions: [
-      'create_lead', 'create_opportunity', 'create_quote', 'edit_quote', 'send_quote',
-      'approve_quote', 'convert_quote', 'mark_won', 'mark_lost',
-    ],
-  },
-  {
-    label: 'Financials',
-    permissions: [
-      'view_profit', 'create_invoice', 'edit_invoice', 'void_invoice',
-      'approve_reimbursements', 'process_payroll', 'export_financial_data',
-    ],
-  },
-  {
-    label: 'Directory',
-    permissions: [
-      'assign_roles', 'edit_permissions', 'upload_documents', 'approve_documents', 'reset_password', 'disable_user',
-    ],
-  },
-  {
-    label: 'Messages',
-    permissions: ['broadcast_messages', 'group_chat', 'delete_messages', 'pin_messages', 'upload_files'],
-  },
-  {
-    label: 'Reports',
-    permissions: ['generate_reports', 'export_reports', 'schedule_reports'],
-  },
-  {
-    label: 'Administration',
-    permissions: ['company_settings', 'integrations', 'api_keys', 'audit_logs', 'automation_rules'],
-  },
-  {
-    label: 'Overrides',
-    permissions: [
-      'edit_completed_assignments', 'edit_closed_projects', 'override_payroll_locks',
-      'override_scheduling_locks', 'delete_historical_records', 'force_complete_assignment',
-      'force_close_project', 'bypass_approval_workflow',
-    ],
-  },
-];
+const PORTAL_META = {
+  admin: { icon: ShieldCheck, label: 'Admin Portal', color: 'text-brand-red', border: 'border-brand-red/30', bg: 'bg-brand-red/5' },
+  tech:  { icon: Wrench,      label: 'Tech Portal',  color: 'text-[#3b82f6]', border: 'border-[#3b82f6]/30', bg: 'bg-[#3b82f6]/5' },
+  client:{ icon: Building2,   label: 'Client Portal',color: 'text-[#10b981]', border: 'border-[#10b981]/30', bg: 'bg-[#10b981]/5' },
+};
 
 type Props = {
   open: boolean;
@@ -124,6 +62,7 @@ type Props = {
 export function PermissionEditorDialog({ open, onClose, person }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [activePortal, setActivePortal] = useState<'admin' | 'tech' | 'client'>('admin');
 
   const [roles, setRoles] = useState<AppRole[]>(person.roles ?? []);
   const [primaryPortal, setPrimaryPortal] = useState<'admin' | 'tech' | 'client' | null>(person.primaryPortal ?? null);
@@ -132,7 +71,6 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
   );
   const [overrides, setOverrides] = useState<Record<string, boolean>>(person.permissionOverrides ?? {});
 
-  // Build a preview user for computing effective permissions
   const previewUser: Technician = useMemo(() => ({
     ...person,
     roles,
@@ -141,11 +79,9 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
     permissionOverrides: overrides,
   }), [person, roles, primaryPortal, portalOverrides, overrides]);
 
-  const effectivePortals = getAvailablePortals(previewUser);
   const effectivePortalAccess = getPortalAccess(previewUser);
-
   const effectivePermissions = useMemo(
-    () => ALL_PERMISSIONS.filter(p => hasPermission(previewUser, p)),
+    () => new Set(ALL_PERMISSIONS.filter(p => hasPermission(previewUser, p))),
     [previewUser]
   );
 
@@ -162,7 +98,7 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
     });
   };
 
-  const setPermissionOverride = (perm: string, value: boolean | undefined) => {
+  const setPermOverride = (perm: string, value: boolean | undefined) => {
     setOverrides(prev => {
       const next = { ...prev };
       if (value === undefined) delete next[perm];
@@ -174,14 +110,13 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const adminId = auth.currentUser?.uid ?? '';
       await updateDoc(doc(db, 'users', person.id), {
         roles,
         primaryPortal: primaryPortal ?? null,
         portalAccess: portalOverrides,
         permissionOverrides: overrides,
         updatedAt: new Date().toISOString(),
-        updatedBy: adminId,
+        updatedBy: auth.currentUser?.uid ?? '',
       });
       toast({ title: 'Permissions updated', description: `${person.name}'s permissions have been saved.` });
       onClose();
@@ -192,27 +127,36 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
     }
   };
 
+  const portalPages = PERMISSION_TREE[activePortal] ?? {};
+  const portals = Object.keys(PERMISSION_TREE) as ('admin' | 'tech' | 'client')[];
+
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-bg-secondary border-border-sub">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col bg-bg-secondary border-border-sub p-0">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border-sub">
           <DialogTitle className="text-sm font-black uppercase tracking-widest text-text-primary">
             Permission Editor — {person.name}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="roles" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="shrink-0 bg-bg-primary border border-border-sub h-8 px-1 gap-1 w-full justify-start">
-            {(['roles', 'portals', 'overrides', 'preview'] as const).map(tab => (
-              <TabsTrigger key={tab} value={tab} className="text-[9px] font-black uppercase tracking-widest h-6 px-2">
-                {tab === 'roles' ? 'Roles' : tab === 'portals' ? 'Portal Access' : tab === 'overrides' ? 'Permission Overrides' : 'Preview'}
+          <TabsList className="shrink-0 bg-bg-primary border-b border-border-sub h-9 px-5 gap-0 rounded-none justify-start">
+            {(['roles', 'portals', 'permissions', 'preview'] as const).map(tab => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="text-[9px] font-black uppercase tracking-widest h-9 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-brand-red data-[state=active]:text-brand-red data-[state=active]:bg-transparent bg-transparent"
+              >
+                {tab === 'roles' ? 'Roles' : tab === 'portals' ? 'Portal Access' : tab === 'permissions' ? 'Permission Overrides' : 'Preview'}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {/* Roles tab */}
-          <TabsContent value="roles" className="flex-1 overflow-auto mt-3">
-            <p className="text-[10px] text-text-muted uppercase tracking-widest mb-3 font-bold">Assign one or more roles</p>
+          {/* ── Roles ──────────────────────────────────────────────── */}
+          <TabsContent value="roles" className="flex-1 overflow-auto p-5 mt-0">
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] mb-3 font-bold">
+              Assign one or more roles — role determines default portal access and permissions
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {ALL_ROLES.map(role => (
                 <label key={role} className={cn(
@@ -230,125 +174,127 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
             </div>
           </TabsContent>
 
-          {/* Portal access tab */}
-          <TabsContent value="portals" className="flex-1 overflow-auto mt-3 space-y-4">
-            <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold">
-              Override portal access (leave unset to use role defaults)
+          {/* ── Portal Access ──────────────────────────────────────── */}
+          <TabsContent value="portals" className="flex-1 overflow-auto p-5 mt-0 space-y-5">
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] font-bold">
+              Override portal access — leave unset to inherit from role defaults
             </p>
-            {(['admin', 'tech', 'client'] as const).map(portal => {
-              const icons = { admin: ShieldCheck, tech: Wrench, client: Building2 };
-              const Icon = icons[portal];
-              const roleDefault = portal === 'admin'
-                ? roles.some(r => ['super_admin','dispatch_admin','payroll_admin','project_manager','sales','safety_officer','training_coordinator'].includes(r))
-                : portal === 'tech'
-                ? roles.some(r => ['project_lead','field_technician'].includes(r))
-                : roles.includes('client');
-              const explicit = portalOverrides[portal];
-              const effective = explicit !== undefined ? explicit : roleDefault;
-
-              return (
-                <div key={portal} className="flex items-center justify-between rounded-lg border border-border-sub bg-bg-primary p-3">
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-text-muted" />
-                    <div>
-                      <p className="text-xs font-bold text-text-primary capitalize">{portal} Portal</p>
-                      <p className="text-[10px] text-text-muted">
-                        Role default: {roleDefault ? 'enabled' : 'disabled'}
-                        {explicit !== undefined && ` · Override: ${explicit ? 'enabled' : 'disabled'}`}
-                      </p>
+            <div className="space-y-2">
+              {portals.map(portal => {
+                const meta = PORTAL_META[portal];
+                const Icon = meta.icon;
+                const roleDefault = effectivePortalAccess[portal];
+                const explicit = portalOverrides[portal];
+                return (
+                  <div key={portal} className={cn('flex items-center justify-between rounded-lg border p-3', meta.border, meta.bg)}>
+                    <div className="flex items-center gap-2.5">
+                      <Icon className={cn('h-4 w-4', meta.color)} />
+                      <div>
+                        <p className={cn('text-xs font-bold', meta.color)}>{meta.label}</p>
+                        <p className="text-[9px] text-text-muted">
+                          Role default: {roleDefault ? 'enabled' : 'disabled'}
+                          {explicit !== undefined && ` · Override: ${explicit ? 'enabled' : 'disabled'}`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={effective ? 'default' : 'secondary'} className="text-[9px]">
-                      {effective ? 'Enabled' : 'Disabled'}
-                    </Badge>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant={explicit === true ? 'default' : 'outline'}
-                        className="h-6 px-2 text-[9px] font-bold"
+                    <div className="flex items-center gap-1.5">
+                      <button
                         onClick={() => setPortalOverride(portal, true)}
-                      >Allow</Button>
-                      <Button
-                        size="sm"
-                        variant={explicit === false ? 'destructive' : 'outline'}
-                        className="h-6 px-2 text-[9px] font-bold"
+                        className={cn('h-6 px-2.5 rounded text-[9px] font-bold border transition-colors', explicit === true ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-border-sub text-text-muted hover:border-border-main')}
+                      >Allow</button>
+                      <button
                         onClick={() => setPortalOverride(portal, false)}
-                      >Deny</Button>
+                        className={cn('h-6 px-2.5 rounded text-[9px] font-bold border transition-colors', explicit === false ? 'border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]' : 'border-border-sub text-text-muted hover:border-border-main')}
+                      >Deny</button>
                       {explicit !== undefined && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-[9px] font-bold text-text-muted"
-                          onClick={() => setPortalOverride(portal, undefined)}
-                        >Reset</Button>
+                        <button onClick={() => setPortalOverride(portal, undefined)} className="h-6 px-2 rounded text-[9px] font-bold border border-border-sub text-text-muted hover:border-border-main">Reset</button>
                       )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold">Primary Portal</p>
+              <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] font-bold">Primary Portal (default landing on login)</p>
               <div className="flex gap-2">
-                {(['admin', 'tech', 'client', null] as const).map(p => (
+                {([...portals, null] as const).map(p => (
                   <button
                     key={String(p)}
                     onClick={() => setPrimaryPortal(p)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-colors',
-                      primaryPortal === p
-                        ? 'border-brand-red bg-brand-red/10 text-brand-red'
-                        : 'border-border-sub bg-bg-primary text-text-muted hover:border-border-main'
+                    className={cn('px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-colors',
+                      primaryPortal === p ? 'border-brand-red bg-brand-red/10 text-brand-red' : 'border-border-sub bg-bg-primary text-text-muted hover:border-border-main'
                     )}
-                  >
-                    {p ?? 'None'}
-                  </button>
+                  >{p ?? 'None'}</button>
                 ))}
               </div>
             </div>
           </TabsContent>
 
-          {/* Permission overrides tab */}
-          <TabsContent value="overrides" className="flex-1 overflow-hidden mt-3">
-            <ScrollArea className="h-[420px] pr-2">
-              <div className="space-y-6">
-                {PERMISSION_GROUPS.map(group => (
-                  <div key={group.label}>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">{group.label}</p>
-                    <div className="space-y-1">
-                      {group.permissions.map(perm => {
+          {/* ── Permission Overrides — Portal › Page › Action ──────── */}
+          <TabsContent value="permissions" className="flex-1 overflow-hidden mt-0 flex">
+            {/* Portal selector sidebar */}
+            <div className="w-32 shrink-0 border-r border-border-sub flex flex-col gap-1 p-2">
+              {portals.map(portal => {
+                const meta = PORTAL_META[portal];
+                const Icon = meta.icon;
+                return (
+                  <button
+                    key={portal}
+                    onClick={() => setActivePortal(portal)}
+                    className={cn(
+                      'flex items-center gap-2 px-2.5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest text-left transition-colors',
+                      activePortal === portal ? cn('text-white', meta.color.replace('text-', 'bg-').replace('[', '[').replace(']', ']'), meta.bg) : 'text-text-muted hover:bg-bg-primary'
+                    )}
+                  >
+                    <Icon className={cn('h-3.5 w-3.5 shrink-0', activePortal === portal ? meta.color : '')} />
+                    {portal}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Page > Actions */}
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-5">
+                {Object.entries(portalPages).map(([page, perms]) => (
+                  <div key={page}>
+                    {/* Page header */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <ChevronRight className="h-3 w-3 text-text-muted" />
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{page}</p>
+                    </div>
+                    <div className="space-y-1 ml-4">
+                      {(perms as Permission[]).map(perm => {
                         const override = overrides[perm];
                         const fromRole = hasPermission({ ...previewUser, permissionOverrides: {} }, perm);
+                        const effective = override !== undefined ? override : fromRole;
                         return (
-                          <div key={perm} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-bg-primary">
+                          <div key={perm} className={cn('flex items-center justify-between py-1.5 px-2.5 rounded-md border transition-colors',
+                            effective ? 'border-[#10b981]/20 bg-[#10b981]/5' : 'border-border-sub bg-bg-primary'
+                          )}>
                             <div className="min-w-0">
-                              <p className="text-xs font-mono text-text-primary truncate">{perm}</p>
-                              <p className="text-[9px] text-text-muted">Role default: {fromRole ? 'allowed' : 'denied'}</p>
+                              <p className="text-xs font-bold text-text-primary">{permissionLabel(perm)}</p>
+                              {override !== undefined && (
+                                <p className="text-[9px] text-text-muted font-mono">{perm}</p>
+                              )}
                             </div>
-                            <div className="flex gap-1 shrink-0 ml-2">
+                            <div className="flex gap-1 shrink-0 ml-3">
                               <button
-                                onClick={() => setPermissionOverride(perm, true)}
-                                className={cn(
-                                  'h-6 px-2 rounded text-[9px] font-bold border transition-colors',
-                                  override === true
-                                    ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]'
-                                    : 'border-border-sub text-text-muted hover:border-border-main'
+                                onClick={() => setPermOverride(perm, true)}
+                                className={cn('h-6 px-2 rounded text-[9px] font-bold border transition-colors',
+                                  override === true ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-border-sub text-text-muted hover:border-border-main'
                                 )}
                               >Allow</button>
                               <button
-                                onClick={() => setPermissionOverride(perm, false)}
-                                className={cn(
-                                  'h-6 px-2 rounded text-[9px] font-bold border transition-colors',
-                                  override === false
-                                    ? 'border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]'
-                                    : 'border-border-sub text-text-muted hover:border-border-main'
+                                onClick={() => setPermOverride(perm, false)}
+                                className={cn('h-6 px-2 rounded text-[9px] font-bold border transition-colors',
+                                  override === false ? 'border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]' : 'border-border-sub text-text-muted hover:border-border-main'
                                 )}
                               >Deny</button>
                               {override !== undefined && (
                                 <button
-                                  onClick={() => setPermissionOverride(perm, undefined)}
+                                  onClick={() => setPermOverride(perm, undefined)}
                                   className="h-6 px-2 rounded text-[9px] font-bold border border-border-sub text-text-muted hover:border-border-main"
                                 >Reset</button>
                               )}
@@ -363,22 +309,20 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
             </ScrollArea>
           </TabsContent>
 
-          {/* Preview tab */}
-          <TabsContent value="preview" className="flex-1 overflow-hidden mt-3">
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {(['admin', 'tech', 'client'] as const).map(p => {
-                const icons = { admin: ShieldCheck, tech: Wrench, client: Building2 };
-                const Icon = icons[p];
-                const enabled = effectivePortalAccess[p];
+          {/* ── Preview ────────────────────────────────────────────── */}
+          <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 p-5 flex flex-col gap-4">
+            {/* Portal access summary */}
+            <div className="grid grid-cols-3 gap-2 shrink-0">
+              {portals.map(portal => {
+                const meta = PORTAL_META[portal];
+                const Icon = meta.icon;
+                const enabled = effectivePortalAccess[portal];
                 return (
-                  <div key={p} className={cn(
-                    'rounded-lg border p-3 flex items-center gap-2',
-                    enabled ? 'border-[#10b981]/30 bg-[#10b981]/5' : 'border-border-sub bg-bg-primary opacity-50'
-                  )}>
-                    <Icon className={cn('h-4 w-4', enabled ? 'text-[#10b981]' : 'text-text-muted')} />
+                  <div key={portal} className={cn('rounded-lg border p-3 flex items-center gap-2', enabled ? cn(meta.border, meta.bg) : 'border-border-sub bg-bg-primary opacity-40')}>
+                    <Icon className={cn('h-4 w-4', enabled ? meta.color : 'text-text-muted')} />
                     <div>
-                      <p className="text-[10px] font-bold text-text-primary capitalize">{p} Portal</p>
-                      <p className={cn('text-[9px] font-bold', enabled ? 'text-[#10b981]' : 'text-text-muted')}>
+                      <p className="text-[10px] font-bold text-text-primary">{meta.label}</p>
+                      <p className={cn('text-[9px] font-bold', enabled ? meta.color : 'text-text-muted')}>
                         {enabled ? 'Accessible' : 'No Access'}
                       </p>
                     </div>
@@ -386,26 +330,43 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                 );
               })}
             </div>
-            <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold mb-2">
-              Effective Permissions ({effectivePermissions.length}/{ALL_PERMISSIONS.length})
-            </p>
-            <ScrollArea className="h-[320px]">
-              <div className="flex flex-wrap gap-1">
-                {ALL_PERMISSIONS.map(p => {
-                  const allowed = effectivePermissions.includes(p);
+
+            {/* Effective permissions by portal › page */}
+            <ScrollArea className="flex-1">
+              <div className="space-y-5">
+                {portals.map(portal => {
+                  const pages = PERMISSION_TREE[portal] ?? {};
                   return (
-                    <span
-                      key={p}
-                      className={cn(
-                        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border',
-                        allowed
-                          ? 'border-[#10b981]/30 bg-[#10b981]/5 text-[#10b981]'
-                          : 'border-border-sub bg-bg-primary text-text-muted opacity-40'
-                      )}
-                    >
-                      {allowed ? <CheckCircle2 className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
-                      {p}
-                    </span>
+                    <div key={portal}>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">
+                        {PORTAL_META[portal].label}
+                      </p>
+                      <div className="space-y-2 ml-2">
+                        {Object.entries(pages).map(([page, perms]) => {
+                          const granted = (perms as Permission[]).filter(p => effectivePermissions.has(p));
+                          if (granted.length === 0) return null;
+                          return (
+                            <div key={page}>
+                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">{page}</p>
+                              <div className="flex flex-wrap gap-1 ml-2">
+                                {(perms as Permission[]).map(p => {
+                                  const allowed = effectivePermissions.has(p);
+                                  return (
+                                    <span key={p} className={cn(
+                                      'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border',
+                                      allowed ? 'border-[#10b981]/30 bg-[#10b981]/5 text-[#10b981]' : 'border-border-sub bg-bg-primary text-text-muted opacity-30'
+                                    )}>
+                                      {allowed ? <CheckCircle2 className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
+                                      {permissionLabel(p)}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -413,13 +374,16 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="shrink-0 border-t border-border-sub pt-3 mt-3">
-          <Button variant="outline" onClick={onClose} className="h-8 text-[10px] font-bold uppercase tracking-widest border-border-sub">
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="h-8 text-[10px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover text-white">
-            {saving ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Saving...</> : 'Save Permissions'}
-          </Button>
+        <DialogFooter className="shrink-0 border-t border-border-sub px-5 py-3 flex items-center justify-between">
+          <p className="text-[9px] text-text-muted">
+            {effectivePermissions.size} / {ALL_PERMISSIONS.length} permissions effective
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="h-8 text-[10px] font-bold uppercase tracking-widest border-border-sub">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="h-8 text-[10px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover text-white">
+              {saving ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Saving...</> : 'Save Permissions'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

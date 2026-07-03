@@ -38,6 +38,7 @@ export default function ClientProfilePage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
+    const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [billingContactName, setBillingContactName] = useState("");
     const [billingEmail, setBillingEmail] = useState("");
@@ -60,6 +61,7 @@ export default function ClientProfilePage() {
                 if (snap.exists()) {
                     const data = snap.data();
                     setCurrentUser({ ...data, id: snap.id });
+                    setName(data.name || '');
                     setPhone(data.phone || '');
                     setAvatarUrl(data.avatarUrl);
                     setBillingContactName(data.billingDetails?.contactName || '');
@@ -67,6 +69,7 @@ export default function ClientProfilePage() {
                     setBillingTerms(data.billingDetails?.terms || 'Net 30');
                     setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
+                        name: data.name || '',
                         phone: data.phone || '',
                         billingDetails: data.billingDetails || {},
                     };
@@ -103,6 +106,7 @@ export default function ClientProfilePage() {
         setIsSaving(true);
         try {
             const updates = {
+                name,
                 phone,
                 billingDetails: {
                     contactName: billingContactName,
@@ -235,6 +239,10 @@ export default function ClientProfilePage() {
                                     <CardDescription>Direct lines of communication for portal notifications.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] uppercase font-bold text-text-muted">Full Name</Label>
+                                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="bg-bg-primary h-11 text-xs" />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Email</Label>

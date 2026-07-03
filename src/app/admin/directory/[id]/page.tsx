@@ -45,6 +45,11 @@ const DOC_TYPE_COLORS: Record<string, string> = {
 };
 
 function permissionLabel(perm: string): string {
+  const parts = perm.split('.');
+  if (parts.length === 3) {
+    const [, page, action] = parts;
+    return `${page}: ${action}`.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
   return perm.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 

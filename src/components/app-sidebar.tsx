@@ -68,70 +68,70 @@ const adminNavGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
-      { href: "/admin/requests", label: "Requests", icon: Inbox, permission: "manage_assignments" },
-      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "view_reports" },
-      { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "view_reports" },
+      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin.dashboard.view" },
+      { href: "/admin/requests", label: "Requests", icon: Inbox, permission: "admin.requests.view" },
+      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "admin.reports.view" },
+      { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "admin.reports.view" },
     ],
   },
   {
     label: "Dispatch",
     items: [
-      { href: "/admin/dispatch", label: "Dispatch Hub", icon: Wrench, permission: "manage_assignments" },
-      { href: "/admin/calendar", label: "Schedule", icon: CalendarDays, permission: "view_assignments" },
-      { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "manage_assignments" },
+      { href: "/admin/dispatch", label: "Dispatch Hub", icon: Wrench, permission: "admin.dispatch.view" },
+      { href: "/admin/calendar", label: "Schedule", icon: CalendarDays, permission: "admin.schedule.view" },
+      { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "admin.assignments.view" },
     ],
   },
   {
     label: "CRM & Sales",
     items: [
-      { href: "/admin/crm", label: "CRM", icon: Target, permission: "view_crm" },
-      { href: "/admin/plans", label: "Service Plans", icon: BookOpen, permission: "view_reports" },
-      { href: "/admin/company-planning", label: "Company Planning", icon: Flag, permission: "view_reports" },
+      { href: "/admin/crm", label: "CRM", icon: Target, permission: "admin.crm.view" },
+      { href: "/admin/plans", label: "Service Plans", icon: BookOpen, permission: "admin.reports.view" },
+      { href: "/admin/company-planning", label: "Company Planning", icon: Flag, permission: "admin.reports.view" },
     ],
   },
   {
     label: "Clients & Projects",
     items: [
-      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "manage_assignments" },
-      { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "view_projects" },
-      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "manage_assignments" },
+      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "admin.clients.view" },
+      { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "admin.projects.view" },
+      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "admin.messages.view" },
     ],
   },
   {
     label: "Directory",
     items: [
-      { href: "/admin/directory", label: "Directory", icon: Users, permission: "view_directory" },
+      { href: "/admin/directory", label: "Directory", icon: Users, permission: "admin.directory.view" },
     ],
   },
   {
     label: "Financials",
     items: [
-      { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "view_financials" },
-      { href: "/admin/assets", label: "Assets", icon: Package, permission: "manage_assignments" },
+      { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "admin.financials.view" },
+      { href: "/admin/assets", label: "Assets", icon: Package, permission: "admin.assignments.view" },
     ],
   },
 ];
 
 const techNavItems: NavItem[] = [
-  { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
-  { href: "/tech/assignments", label: "Assignments", icon: Calendar, permission: "view_assigned_work_only" },
-  { href: "/tech/calendar", label: "Schedule", icon: CalendarDays, permission: "view_assigned_work_only" },
-  { href: "/tech/projects", label: "Projects", icon: FolderKanban, permission: "view_projects" },
-  { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "field_logs" },
-  { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "field_logs" },
-  { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "view_assigned_work_only" },
+  { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "tech.dashboard.view" },
+  { href: "/tech/assignments", label: "Assignments", icon: Calendar, permission: "tech.assignments.view" },
+  { href: "/tech/calendar", label: "Schedule", icon: CalendarDays, permission: "tech.schedule.view" },
+  { href: "/tech/projects", label: "Projects", icon: FolderKanban, permission: "tech.projects.view" },
+  { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "tech.logs.view" },
+  { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "tech.earnings.view" },
+  { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "tech.messages.view" },
 ];
 
 const clientNavItems: NavItem[] = [
-  { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "client_portal" },
-  { href: "/client/tickets", label: "Support", icon: ClipboardList, permission: "client_portal" },
-  { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client_portal" },
-  { href: "/client/sites", label: "Sites", icon: MapPin, permission: "client_portal" },
-  { href: "/client/quotes", label: "Quotes", icon: Receipt, permission: "client_portal" },
-  { href: "/client/financials", label: "Financials", icon: FileText, permission: "client_portal" },
-  { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client_portal" },
-  { href: "/client/profile", label: "Profile", icon: Users, permission: "client_portal" },
+  { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "client.dashboard.view" },
+  { href: "/client/tickets", label: "Support", icon: ClipboardList, permission: "client.tickets.view" },
+  { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client.projects.view" },
+  { href: "/client/sites", label: "Sites", icon: MapPin, permission: "client.sites.view" },
+  { href: "/client/quotes", label: "Quotes", icon: Receipt, permission: "client.quotes.view" },
+  { href: "/client/financials", label: "Financials", icon: FileText, permission: "client.financials.view" },
+  { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client.messages.view" },
+  { href: "/client/profile", label: "Profile", icon: Users, permission: "client.profile.view" },
 ];
 
 export function AppSidebar() {

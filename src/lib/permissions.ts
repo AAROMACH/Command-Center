@@ -3,131 +3,305 @@
 import type { AppRole, Technician } from './types';
 import { TERMINOLOGY } from './constants';
 
+// Permission format: portal.page.action
 export type Permission =
-  // Core access
-  | 'view_dashboard'
-  | 'view_requests'
-  | 'manage_requests'
-  | 'view_assignments'
-  | 'manage_assignments'
-  | 'view_projects'
-  | 'manage_projects'
-  | 'view_directory'
-  | 'manage_personnel'
-  | 'view_financials'
-  | 'manage_payroll'
-  | 'view_settings'
-  | 'manage_settings'
-  | 'field_checkin'
-  | 'field_logs'
-  | 'client_portal'
-  | 'view_assigned_projects_only'
-  | 'view_assigned_work_only'
-  | 'approve_pay_changes'
-  | 'view_reports'
-  | 'view_leads'
-  | 'manage_leads'
-  | 'view_crm'
-  | 'manage_safety_events'
-  | 'manage_certifications'
+  // ── Admin portal ──────────────────────────────────────────────────
+  | 'admin.dashboard.view'
+  // Requests
+  | 'admin.requests.view'
+  | 'admin.requests.manage'
   // Dispatch
-  | 'assign_technician'
-  | 'swap_technician'
-  | 'remove_technician'
-  | 'add_technician'
-  | 'assign_helper'
-  | 'create_route'
-  | 'edit_route'
-  | 'delete_route'
-  | 'optimize_routes'
-  | 'dispatch_route'
-  | 'reschedule_job'
-  | 'cancel_assignment'
-  | 'override_scheduling_conflicts'
+  | 'admin.dispatch.view'
+  | 'admin.dispatch.assign_technician'
+  | 'admin.dispatch.swap_technician'
+  | 'admin.dispatch.remove_technician'
+  | 'admin.dispatch.add_technician'
+  | 'admin.dispatch.assign_helper'
+  | 'admin.dispatch.create_route'
+  | 'admin.dispatch.edit_route'
+  | 'admin.dispatch.delete_route'
+  | 'admin.dispatch.optimize_routes'
+  | 'admin.dispatch.dispatch_route'
+  | 'admin.dispatch.reschedule_job'
+  | 'admin.dispatch.cancel_assignment'
+  | 'admin.dispatch.override_conflicts'
+  // Schedule
+  | 'admin.schedule.view'
+  // Assignments
+  | 'admin.assignments.view'
+  | 'admin.assignments.manage'
   // Projects
-  | 'create_project'
-  | 'edit_project'
-  | 'archive_project'
-  | 'create_phase'
-  | 'create_task'
-  | 'assign_task'
-  | 'complete_task'
-  | 'reopen_task'
-  | 'close_project'
+  | 'admin.projects.view'
+  | 'admin.projects.manage'
+  | 'admin.projects.create'
+  | 'admin.projects.edit'
+  | 'admin.projects.archive'
+  | 'admin.projects.create_phase'
+  | 'admin.projects.create_task'
+  | 'admin.projects.assign_task'
+  | 'admin.projects.complete_task'
+  | 'admin.projects.reopen_task'
+  | 'admin.projects.close'
   // CRM
-  | 'create_lead'
-  | 'create_opportunity'
-  | 'create_quote'
-  | 'edit_quote'
-  | 'send_quote'
-  | 'approve_quote'
-  | 'convert_quote'
-  | 'mark_won'
-  | 'mark_lost'
-  // Financials
-  | 'view_profit'
-  | 'create_invoice'
-  | 'edit_invoice'
-  | 'void_invoice'
-  | 'approve_reimbursements'
-  | 'process_payroll'
-  | 'export_financial_data'
+  | 'admin.crm.view'
+  | 'admin.crm.view_leads'
+  | 'admin.crm.manage_leads'
+  | 'admin.crm.create_lead'
+  | 'admin.crm.create_opportunity'
+  | 'admin.crm.create_quote'
+  | 'admin.crm.edit_quote'
+  | 'admin.crm.send_quote'
+  | 'admin.crm.approve_quote'
+  | 'admin.crm.convert_quote'
+  | 'admin.crm.mark_won'
+  | 'admin.crm.mark_lost'
+  // Clients
+  | 'admin.clients.view'
+  | 'admin.clients.manage'
   // Directory
-  | 'assign_roles'
-  | 'edit_permissions'
-  | 'upload_documents'
-  | 'approve_documents'
-  | 'reset_password'
-  | 'disable_user'
-  // Messages
-  | 'broadcast_messages'
-  | 'group_chat'
-  | 'delete_messages'
-  | 'pin_messages'
-  | 'upload_files'
+  | 'admin.directory.view'
+  | 'admin.directory.manage'
+  | 'admin.directory.assign_roles'
+  | 'admin.directory.edit_permissions'
+  | 'admin.directory.upload_documents'
+  | 'admin.directory.approve_documents'
+  | 'admin.directory.reset_password'
+  | 'admin.directory.disable_user'
+  // Financials
+  | 'admin.financials.view'
+  | 'admin.financials.view_profit'
+  | 'admin.financials.create_invoice'
+  | 'admin.financials.edit_invoice'
+  | 'admin.financials.void_invoice'
+  | 'admin.financials.approve_reimbursements'
+  | 'admin.financials.process_payroll'
+  | 'admin.financials.export'
+  | 'admin.financials.approve_pay_changes'
   // Reports
-  | 'generate_reports'
-  | 'export_reports'
-  | 'schedule_reports'
-  // Administration
-  | 'company_settings'
-  | 'integrations'
-  | 'api_keys'
-  | 'audit_logs'
-  | 'automation_rules'
-  // Override permissions
-  | 'edit_completed_assignments'
-  | 'edit_closed_projects'
-  | 'override_payroll_locks'
-  | 'override_scheduling_locks'
-  | 'delete_historical_records'
-  | 'force_complete_assignment'
-  | 'force_close_project'
-  | 'bypass_approval_workflow';
+  | 'admin.reports.view'
+  | 'admin.reports.generate'
+  | 'admin.reports.export'
+  | 'admin.reports.schedule'
+  // Messages
+  | 'admin.messages.view'
+  | 'admin.messages.broadcast'
+  | 'admin.messages.group_chat'
+  | 'admin.messages.delete'
+  | 'admin.messages.pin'
+  | 'admin.messages.upload_files'
+  // Settings
+  | 'admin.settings.view'
+  | 'admin.settings.manage'
+  | 'admin.settings.company'
+  | 'admin.settings.integrations'
+  | 'admin.settings.api_keys'
+  | 'admin.settings.audit_logs'
+  | 'admin.settings.automation_rules'
+  // Safety & Training
+  | 'admin.safety.manage_events'
+  | 'admin.training.manage_certifications'
+  // Admin overrides
+  | 'admin.overrides.edit_completed_assignments'
+  | 'admin.overrides.edit_closed_projects'
+  | 'admin.overrides.override_payroll_locks'
+  | 'admin.overrides.override_scheduling_locks'
+  | 'admin.overrides.delete_historical_records'
+  | 'admin.overrides.force_complete_assignment'
+  | 'admin.overrides.force_close_project'
+  | 'admin.overrides.bypass_approval_workflow'
+
+  // ── Tech portal ───────────────────────────────────────────────────
+  | 'tech.dashboard.view'
+  | 'tech.assignments.view'
+  | 'tech.assignments.confirm'
+  | 'tech.assignments.start_trip'
+  | 'tech.assignments.check_in'
+  | 'tech.assignments.check_out'
+  | 'tech.assignments.complete'
+  | 'tech.assignments.report_issue'
+  | 'tech.schedule.view'
+  | 'tech.projects.view'
+  | 'tech.projects.create_task'
+  | 'tech.projects.assign_task'
+  | 'tech.projects.complete_task'
+  | 'tech.logs.view'
+  | 'tech.logs.create'
+  | 'tech.earnings.view'
+  | 'tech.messages.view'
+  | 'tech.messages.send'
+  | 'tech.profile.view'
+  | 'tech.profile.edit'
+
+  // ── Client portal ─────────────────────────────────────────────────
+  | 'client.dashboard.view'
+  | 'client.tickets.view'
+  | 'client.tickets.create'
+  | 'client.projects.view'
+  | 'client.sites.view'
+  | 'client.quotes.view'
+  | 'client.financials.view'
+  | 'client.messages.view'
+  | 'client.messages.send'
+  | 'client.profile.view'
+  | 'client.profile.edit';
 
 export const ALL_PERMISSIONS: Permission[] = [
-  'view_dashboard', 'view_requests', 'manage_requests', 'view_assignments', 'manage_assignments',
-  'view_projects', 'manage_projects', 'view_directory', 'manage_personnel', 'view_financials',
-  'manage_payroll', 'view_settings', 'manage_settings', 'field_checkin', 'field_logs',
-  'client_portal', 'view_assigned_projects_only', 'view_assigned_work_only', 'approve_pay_changes',
-  'view_reports', 'view_leads', 'manage_leads', 'view_crm', 'manage_safety_events', 'manage_certifications',
-  'assign_technician', 'swap_technician', 'remove_technician', 'add_technician', 'assign_helper',
-  'create_route', 'edit_route', 'delete_route', 'optimize_routes', 'dispatch_route',
-  'reschedule_job', 'cancel_assignment', 'override_scheduling_conflicts',
-  'create_project', 'edit_project', 'archive_project', 'create_phase', 'create_task',
-  'assign_task', 'complete_task', 'reopen_task', 'close_project',
-  'create_lead', 'create_opportunity', 'create_quote', 'edit_quote', 'send_quote',
-  'approve_quote', 'convert_quote', 'mark_won', 'mark_lost',
-  'view_profit', 'create_invoice', 'edit_invoice', 'void_invoice', 'approve_reimbursements',
-  'process_payroll', 'export_financial_data',
-  'assign_roles', 'edit_permissions', 'upload_documents', 'approve_documents', 'reset_password', 'disable_user',
-  'broadcast_messages', 'group_chat', 'delete_messages', 'pin_messages', 'upload_files',
-  'generate_reports', 'export_reports', 'schedule_reports',
-  'company_settings', 'integrations', 'api_keys', 'audit_logs', 'automation_rules',
-  'edit_completed_assignments', 'edit_closed_projects', 'override_payroll_locks',
-  'override_scheduling_locks', 'delete_historical_records', 'force_complete_assignment',
-  'force_close_project', 'bypass_approval_workflow',
+  // Admin - dashboard
+  'admin.dashboard.view',
+  // Admin - requests
+  'admin.requests.view', 'admin.requests.manage',
+  // Admin - dispatch
+  'admin.dispatch.view', 'admin.dispatch.assign_technician', 'admin.dispatch.swap_technician',
+  'admin.dispatch.remove_technician', 'admin.dispatch.add_technician', 'admin.dispatch.assign_helper',
+  'admin.dispatch.create_route', 'admin.dispatch.edit_route', 'admin.dispatch.delete_route',
+  'admin.dispatch.optimize_routes', 'admin.dispatch.dispatch_route', 'admin.dispatch.reschedule_job',
+  'admin.dispatch.cancel_assignment', 'admin.dispatch.override_conflicts',
+  // Admin - schedule
+  'admin.schedule.view',
+  // Admin - assignments
+  'admin.assignments.view', 'admin.assignments.manage',
+  // Admin - projects
+  'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
+  'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
+  'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
+  // Admin - crm
+  'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
+  'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
+  'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+  // Admin - clients
+  'admin.clients.view', 'admin.clients.manage',
+  // Admin - directory
+  'admin.directory.view', 'admin.directory.manage', 'admin.directory.assign_roles',
+  'admin.directory.edit_permissions', 'admin.directory.upload_documents', 'admin.directory.approve_documents',
+  'admin.directory.reset_password', 'admin.directory.disable_user',
+  // Admin - financials
+  'admin.financials.view', 'admin.financials.view_profit', 'admin.financials.create_invoice',
+  'admin.financials.edit_invoice', 'admin.financials.void_invoice', 'admin.financials.approve_reimbursements',
+  'admin.financials.process_payroll', 'admin.financials.export', 'admin.financials.approve_pay_changes',
+  // Admin - reports
+  'admin.reports.view', 'admin.reports.generate', 'admin.reports.export', 'admin.reports.schedule',
+  // Admin - messages
+  'admin.messages.view', 'admin.messages.broadcast', 'admin.messages.group_chat',
+  'admin.messages.delete', 'admin.messages.pin', 'admin.messages.upload_files',
+  // Admin - settings
+  'admin.settings.view', 'admin.settings.manage', 'admin.settings.company',
+  'admin.settings.integrations', 'admin.settings.api_keys', 'admin.settings.audit_logs',
+  'admin.settings.automation_rules',
+  // Admin - safety & training
+  'admin.safety.manage_events', 'admin.training.manage_certifications',
+  // Admin - overrides
+  'admin.overrides.edit_completed_assignments', 'admin.overrides.edit_closed_projects',
+  'admin.overrides.override_payroll_locks', 'admin.overrides.override_scheduling_locks',
+  'admin.overrides.delete_historical_records', 'admin.overrides.force_complete_assignment',
+  'admin.overrides.force_close_project', 'admin.overrides.bypass_approval_workflow',
+  // Tech
+  'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
+  'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
+  'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
+  'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
+  'tech.logs.view', 'tech.logs.create', 'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
+  'tech.profile.view', 'tech.profile.edit',
+  // Client
+  'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
+  'client.sites.view', 'client.quotes.view', 'client.financials.view', 'client.messages.view',
+  'client.messages.send', 'client.profile.view', 'client.profile.edit',
 ];
+
+// Hierarchical tree for UI rendering (portal → page → actions)
+export type PermissionTree = {
+  [portal: string]: {
+    [page: string]: Permission[];
+  };
+};
+
+export const PERMISSION_TREE: PermissionTree = {
+  admin: {
+    dashboard: ['admin.dashboard.view'],
+    requests: ['admin.requests.view', 'admin.requests.manage'],
+    dispatch: [
+      'admin.dispatch.view', 'admin.dispatch.assign_technician', 'admin.dispatch.swap_technician',
+      'admin.dispatch.remove_technician', 'admin.dispatch.add_technician', 'admin.dispatch.assign_helper',
+      'admin.dispatch.create_route', 'admin.dispatch.edit_route', 'admin.dispatch.delete_route',
+      'admin.dispatch.optimize_routes', 'admin.dispatch.dispatch_route', 'admin.dispatch.reschedule_job',
+      'admin.dispatch.cancel_assignment', 'admin.dispatch.override_conflicts',
+    ],
+    schedule: ['admin.schedule.view'],
+    assignments: ['admin.assignments.view', 'admin.assignments.manage'],
+    projects: [
+      'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
+      'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
+      'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
+    ],
+    crm: [
+      'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
+      'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
+      'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+    ],
+    clients: ['admin.clients.view', 'admin.clients.manage'],
+    directory: [
+      'admin.directory.view', 'admin.directory.manage', 'admin.directory.assign_roles',
+      'admin.directory.edit_permissions', 'admin.directory.upload_documents',
+      'admin.directory.approve_documents', 'admin.directory.reset_password', 'admin.directory.disable_user',
+    ],
+    financials: [
+      'admin.financials.view', 'admin.financials.view_profit', 'admin.financials.create_invoice',
+      'admin.financials.edit_invoice', 'admin.financials.void_invoice', 'admin.financials.approve_reimbursements',
+      'admin.financials.process_payroll', 'admin.financials.export', 'admin.financials.approve_pay_changes',
+    ],
+    reports: ['admin.reports.view', 'admin.reports.generate', 'admin.reports.export', 'admin.reports.schedule'],
+    messages: [
+      'admin.messages.view', 'admin.messages.broadcast', 'admin.messages.group_chat',
+      'admin.messages.delete', 'admin.messages.pin', 'admin.messages.upload_files',
+    ],
+    settings: [
+      'admin.settings.view', 'admin.settings.manage', 'admin.settings.company',
+      'admin.settings.integrations', 'admin.settings.api_keys', 'admin.settings.audit_logs',
+      'admin.settings.automation_rules',
+    ],
+    safety: ['admin.safety.manage_events'],
+    training: ['admin.training.manage_certifications'],
+    overrides: [
+      'admin.overrides.edit_completed_assignments', 'admin.overrides.edit_closed_projects',
+      'admin.overrides.override_payroll_locks', 'admin.overrides.override_scheduling_locks',
+      'admin.overrides.delete_historical_records', 'admin.overrides.force_complete_assignment',
+      'admin.overrides.force_close_project', 'admin.overrides.bypass_approval_workflow',
+    ],
+  },
+  tech: {
+    dashboard: ['tech.dashboard.view'],
+    assignments: [
+      'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
+      'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
+      'tech.assignments.report_issue',
+    ],
+    schedule: ['tech.schedule.view'],
+    projects: ['tech.projects.view', 'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task'],
+    logs: ['tech.logs.view', 'tech.logs.create'],
+    earnings: ['tech.earnings.view'],
+    messages: ['tech.messages.view', 'tech.messages.send'],
+    profile: ['tech.profile.view', 'tech.profile.edit'],
+  },
+  client: {
+    dashboard: ['client.dashboard.view'],
+    tickets: ['client.tickets.view', 'client.tickets.create'],
+    projects: ['client.projects.view'],
+    sites: ['client.sites.view'],
+    quotes: ['client.quotes.view'],
+    financials: ['client.financials.view'],
+    messages: ['client.messages.view', 'client.messages.send'],
+    profile: ['client.profile.view', 'client.profile.edit'],
+  },
+};
+
+// Derive a human-readable label from a portal.page.action permission string
+export function permissionLabel(perm: Permission | string): string {
+  const parts = perm.split('.');
+  if (parts.length === 3) {
+    const action = parts[2].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return action;
+  }
+  return perm.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 export type Portal = {
   id: 'admin' | 'tech' | 'client';
@@ -138,54 +312,71 @@ export type Portal = {
 const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   super_admin: ALL_PERMISSIONS,
   dispatch_admin: [
-    'view_dashboard', 'view_requests', 'view_assignments', 'manage_assignments', 'view_projects',
-    'view_directory', 'view_reports', 'assign_technician', 'swap_technician', 'remove_technician',
-    'add_technician', 'assign_helper', 'create_route', 'edit_route', 'delete_route',
-    'optimize_routes', 'dispatch_route', 'reschedule_job', 'cancel_assignment',
-    'override_scheduling_conflicts', 'broadcast_messages', 'group_chat',
+    'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.assignments.manage',
+    'admin.dispatch.view', 'admin.dispatch.assign_technician', 'admin.dispatch.swap_technician',
+    'admin.dispatch.remove_technician', 'admin.dispatch.add_technician', 'admin.dispatch.assign_helper',
+    'admin.dispatch.create_route', 'admin.dispatch.edit_route', 'admin.dispatch.delete_route',
+    'admin.dispatch.optimize_routes', 'admin.dispatch.dispatch_route', 'admin.dispatch.reschedule_job',
+    'admin.dispatch.cancel_assignment', 'admin.dispatch.override_conflicts',
+    'admin.schedule.view', 'admin.projects.view', 'admin.directory.view',
+    'admin.reports.view', 'admin.messages.view', 'admin.messages.group_chat', 'admin.messages.broadcast',
   ],
   payroll_admin: [
-    'view_dashboard', 'view_assignments', 'view_financials', 'manage_payroll', 'view_directory',
-    'approve_pay_changes', 'view_reports', 'view_profit', 'create_invoice', 'edit_invoice',
-    'void_invoice', 'approve_reimbursements', 'process_payroll', 'export_financial_data',
-    'generate_reports', 'export_reports',
+    'admin.dashboard.view', 'admin.assignments.view', 'admin.directory.view',
+    'admin.financials.view', 'admin.financials.view_profit', 'admin.financials.create_invoice',
+    'admin.financials.edit_invoice', 'admin.financials.void_invoice', 'admin.financials.approve_reimbursements',
+    'admin.financials.process_payroll', 'admin.financials.export', 'admin.financials.approve_pay_changes',
+    'admin.reports.view', 'admin.reports.generate', 'admin.reports.export',
   ],
   project_manager: [
-    'view_dashboard', 'view_requests', 'view_projects', 'manage_projects', 'view_assignments',
-    'view_reports', 'create_project', 'edit_project', 'archive_project', 'create_phase',
-    'create_task', 'assign_task', 'complete_task', 'reopen_task', 'close_project',
-    'view_directory', 'generate_reports',
+    'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.schedule.view',
+    'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
+    'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
+    'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
+    'admin.directory.view', 'admin.reports.view', 'admin.reports.generate',
   ],
   project_lead: [
-    'view_dashboard', 'view_assigned_projects_only', 'manage_projects', 'field_checkin', 'field_logs',
-    'create_task', 'assign_task', 'complete_task',
+    'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
+    'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
+    'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
+    'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
+    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
+    'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
   ],
   field_technician: [
-    'view_dashboard', 'view_assigned_work_only', 'view_assigned_projects_only',
-    'field_checkin', 'field_logs',
+    'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
+    'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
+    'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
+    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
+    'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
   ],
   client: [
-    'view_dashboard', 'client_portal',
+    'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
+    'client.sites.view', 'client.quotes.view', 'client.financials.view',
+    'client.messages.view', 'client.messages.send', 'client.profile.view', 'client.profile.edit',
   ],
   sales: [
-    'view_dashboard', 'view_leads', 'manage_leads', 'view_crm', 'view_projects', 'view_directory',
-    'view_reports', 'create_lead', 'create_opportunity', 'create_quote', 'edit_quote', 'send_quote',
-    'mark_won', 'mark_lost', 'generate_reports',
+    'admin.dashboard.view', 'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
+    'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
+    'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+    'admin.projects.view', 'admin.clients.view', 'admin.directory.view',
+    'admin.reports.view', 'admin.reports.generate',
   ],
   safety_officer: [
-    'view_dashboard', 'view_assignments', 'view_projects', 'view_directory',
-    'manage_safety_events', 'view_reports', 'upload_documents', 'generate_reports',
+    'admin.dashboard.view', 'admin.assignments.view', 'admin.projects.view', 'admin.directory.view',
+    'admin.directory.upload_documents', 'admin.safety.manage_events',
+    'admin.reports.view', 'admin.reports.generate',
   ],
   training_coordinator: [
-    'view_dashboard', 'view_directory', 'manage_certifications', 'view_reports',
-    'upload_documents', 'approve_documents', 'generate_reports',
+    'admin.dashboard.view', 'admin.directory.view', 'admin.directory.upload_documents',
+    'admin.directory.approve_documents', 'admin.training.manage_certifications',
+    'admin.reports.view', 'admin.reports.generate',
   ],
 };
 
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
   if (!user) return false;
 
-  // Per-user overrides take precedence over role defaults
   if (user.permissionOverrides) {
     if (user.permissionOverrides[permission] === true) return true;
     if (user.permissionOverrides[permission] === false) return false;
@@ -237,7 +428,7 @@ export function isDispatchAdmin(user: Technician | null | undefined): boolean {
 
 export function isPayAdmin(user: Technician | null | undefined): boolean {
   if (!user) return false;
-  return hasPermission(user, 'approve_pay_changes');
+  return hasPermission(user, 'admin.financials.approve_pay_changes');
 }
 
 export function isTech(user: Technician | null | undefined): boolean {

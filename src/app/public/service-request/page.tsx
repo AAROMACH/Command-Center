@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '@/lib/utils';
 import {
@@ -170,13 +170,28 @@ export default function PublicServiceRequestPage() {
     setError('');
 
     try {
-      const docRef = await addDoc(collection(db, 'serviceRequests'), {
-        serviceRequestId: '',
+      // Pre-generate a doc ref so we can use its ID for Storage paths and include it in the single write
+      const newDocRef = doc(collection(db, 'serviceRequests'));
+      const docId = newDocRef.id;
+
+      // Upload files before the Firestore write so URLs are available in the initial create
+      let supportingFiles: any[] = [];
+      if (files.length > 0) {
+        supportingFiles = await Promise.all(files.map(async file => {
+          const path = `serviceRequests/${docId}/attachments/${file.name}`;
+          const sRef = storageRef(storage, path);
+          await uploadBytes(sRef, file, { contentType: file.type });
+          const url = await getDownloadURL(sRef);
+          return { fileName: file.name, storagePath: path, downloadUrl: url, contentType: file.type, sizeBytes: file.size };
+        }));
+      }
+
+      // Single Firestore write — no updateDoc needed (avoids admin-only update rule)
+      await setDoc(newDocRef, {
+        serviceRequestId: docId,
         source: 'public_service_request',
         status: 'pending_review',
         customerType: form.customerType,
-        clientId: null,
-        submittedByUserId: null,
         fullName: form.fullName,
         email: form.email,
         phoneNumber: form.phoneNumber,
@@ -193,30 +208,10 @@ export default function PublicServiceRequestPage() {
         desiredDeadlineTime: form.desiredDeadlineTime || null,
         bestAvailability: form.bestAvailability || null,
         formEaseRating: form.formEaseRating || null,
-        supportingFiles: [],
-        reviewedBy: null, reviewedAt: null, internalNotes: null,
-        rejectionReason: null, convertedWorkOrderId: null, convertedProjectId: null,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        supportingFiles,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
-
-      // Upload files after doc created
-      if (files.length > 0) {
-        const uploaded = await Promise.all(files.map(async file => {
-          const path = `serviceRequests/${docRef.id}/attachments/${file.name}`;
-          const sRef = storageRef(storage, path);
-          await uploadBytes(sRef, file, { contentType: file.type });
-          const url = await getDownloadURL(sRef);
-          return { fileName: file.name, storagePath: path, downloadUrl: url, contentType: file.type, sizeBytes: file.size };
-        }));
-        const { updateDoc, doc } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'serviceRequests', docRef.id), {
-          serviceRequestId: docRef.id,
-          supportingFiles: uploaded,
-        });
-      } else {
-        const { updateDoc, doc } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'serviceRequests', docRef.id), { serviceRequestId: docRef.id });
-      }
 
       setSubmitted(true);
     } catch (e: any) {

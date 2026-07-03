@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -219,14 +219,6 @@ export default function PublicClientIntakePage() {
         contactAuthorizationConfirmed: form.informationAccuracyConfirmed,
         termsConsent: form.termsConsent,
         consentConfirmed: form.informationAccuracyConfirmed && form.termsConsent,
-        // Admin defaults
-        assignedAdminId: null,
-        adminNotes: null,
-        internalNotes: null,
-        reviewedBy: null,
-        reviewedAt: null,
-        convertedClientId: null,
-        rejectionReason: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

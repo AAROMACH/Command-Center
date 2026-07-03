@@ -556,7 +556,7 @@ function NewServiceTab({ requests }: { requests: NewServiceRequest[] }) {
         <p className="text-[10px] text-text-muted uppercase tracking-wider">Inbound service requests from the public form</p>
         <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider">
-            <ExternalLink size={12} className="mr-1.5" /> Go to Form
+            <ExternalLink size={12} className="mr-1.5" /> View Service Form
           </Button>
         </a>
       </div>
@@ -803,7 +803,7 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
         <p className="text-[10px] text-text-muted uppercase tracking-wider">Client partnership applications and site requests</p>
         <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider">
-            <ExternalLink size={12} className="mr-1.5" /> Go to Form
+            <ExternalLink size={12} className="mr-1.5" /> View Client Form
           </Button>
         </a>
       </div>
@@ -1155,13 +1155,7 @@ export default function RequestsPage() {
           <h1 className="page-title">Requests</h1>
           <p className="page-subtitle">Triage, approve, and route all incoming requests across operations.</p>
         </div>
-        <div className="page-header-right items-center gap-3">
-          <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="default">
-              <ExternalLink size={15} className="mr-2" />
-              Public Form
-            </Button>
-          </a>
+        <div className="page-header-right items-center">
           <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
             <Plus size={16} className="mr-2" />
             New Service Request

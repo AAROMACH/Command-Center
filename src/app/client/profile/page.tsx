@@ -39,6 +39,7 @@ export default function ClientProfilePage() {
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
     const [name, setName] = useState("");
+    const [preferredName, setPreferredName] = useState("");
     const [phone, setPhone] = useState("");
     const [billingContactName, setBillingContactName] = useState("");
     const [billingEmail, setBillingEmail] = useState("");
@@ -62,6 +63,7 @@ export default function ClientProfilePage() {
                     const data = snap.data();
                     setCurrentUser({ ...data, id: snap.id });
                     setName(data.name || '');
+                    setPreferredName(data.preferredName || '');
                     setPhone(data.phone || '');
                     setAvatarUrl(data.avatarUrl);
                     setBillingContactName(data.billingDetails?.contactName || '');
@@ -70,6 +72,7 @@ export default function ClientProfilePage() {
                     setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
                         name: data.name || '',
+                        preferredName: data.preferredName || '',
                         phone: data.phone || '',
                         billingDetails: data.billingDetails || {},
                     };
@@ -107,6 +110,7 @@ export default function ClientProfilePage() {
         try {
             const updates = {
                 name,
+                preferredName,
                 phone,
                 billingDetails: {
                     contactName: billingContactName,
@@ -239,9 +243,15 @@ export default function ClientProfilePage() {
                                     <CardDescription>Direct lines of communication for portal notifications.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted">Full Name</Label>
-                                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="bg-bg-primary h-11 text-xs" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Full Name</Label>
+                                            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="bg-bg-primary h-11 text-xs" />
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Preferred Name</Label>
+                                            <Input value={preferredName} onChange={(e) => setPreferredName(e.target.value)} placeholder="Goes by..." className="bg-bg-primary h-11 text-xs" />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">

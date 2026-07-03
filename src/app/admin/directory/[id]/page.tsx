@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,9 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   Calendar, FileText, Upload, Shield, CheckSquare, Square,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
-  PhoneCall, UserCheck, BarChart2,
+  PhoneCall, UserCheck, BarChart2, Pencil,
 } from 'lucide-react';
+import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, type Permission } from '@/lib/permissions';
@@ -65,6 +66,7 @@ export default function DirectoryPersonPage() {
   const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', type: 'other', expiryDate: '', url: '' });
   const [uploadSaving, setUploadSaving] = useState(false);
@@ -78,7 +80,8 @@ export default function DirectoryPersonPage() {
 
   useEffect(() => {
     if (!id) return;
-    getDoc(doc(db, 'users', id)).then(snap => {
+
+    const unsubUser = onSnapshot(doc(db, 'users', id), snap => {
       if (snap.exists()) {
         const data = { ...snap.data(), id: snap.id } as Technician;
         setPerson(data);
@@ -100,7 +103,7 @@ export default function DirectoryPersonPage() {
           .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
       );
     });
-    return () => { unsubDocs(); unsubPenalty(); unsubNotes(); };
+    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); };
   }, [id]);
 
   const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed'), [assignments]);
@@ -246,9 +249,16 @@ export default function DirectoryPersonPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => router.push('/admin/directory')} className="h-8 text-[10px] uppercase font-bold text-text-muted">
           <ArrowLeft size={14} className="mr-2" /> Directory
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => setIsEditOpen(true)}
+          className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
+        >
+          <Pencil size={11} className="mr-1.5" /> Edit Profile
         </Button>
       </div>
 
@@ -859,6 +869,15 @@ export default function DirectoryPersonPage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Edit Profile Dialog */}
+      {person && (
+        <EditProfileDialog
+          open={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          person={person}
+        />
+      )}
 
       {/* Upload Document Dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>

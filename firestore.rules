@@ -51,8 +51,11 @@ service cloud.firestore {
       allow update: if isAdmin()
           || (isSignedIn() && request.auth.uid == userId
               && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'payoutPreferences',
-                            'approvalStatus', 'approvedAt', 'approvedBy', 'deniedAt', 'deniedBy', 'denialReason']));
+                  .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'accountStatus',
+                            'payoutPreferences', 'hourlyRate', 'adminNotes', 'updatedBy',
+                            'approvalStatus', 'approvedAt', 'approvedBy', 'deniedAt', 'deniedBy', 'denialReason',
+                            'portalAccess', 'primaryPortal', 'permissionOverrides',
+                            'jobTitle', 'department', 'certifications', 'serviceArea']));
       allow delete: if isSuperAdmin();
     }
 

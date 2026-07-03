@@ -299,7 +299,7 @@ export const WorkOrdersTable = React.memo(({
           <thead>
             <tr className="bg-bg-tertiary">
               <th className="text-center w-[160px] pl-0">Status & ID</th>
-              <th className="text-left pl-0">Assignment Identification</th>
+              <th className="text-left pl-0 min-w-[260px]">Assignment Title</th>
               <th className="text-center w-[160px]">Schedule</th>
               <th className="text-left pl-0 w-[250px]">Site Coordinates</th>
               <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Labor Rate'}</th>
@@ -339,8 +339,8 @@ export const WorkOrdersTable = React.memo(({
                     </div>
                   </td>
                   <td className="!py-4 text-left pl-0">
-                    <div className="flex flex-col min-w-0 text-left">
-                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal text-left">{order.title || order.description}</div>
+                    <div className="flex flex-col text-left">
+                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors text-left">{order.title || order.description}</div>
                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1 text-left">{order.clientName}</div>
                     </div>
                   </td>

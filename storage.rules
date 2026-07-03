@@ -39,11 +39,11 @@ service firebase.storage {
                    && request.resource.size < 10 * 1024 * 1024;
     }
 
-    // Personnel documents: admin upload; admin + tech read
+    // Personnel documents: admin upload + tech self-upload; admin + tech read
     match /personnelDocuments/{personId}/{filename} {
       allow read: if isSignedIn() && (isAdmin() || isTech());
       allow write: if isSignedIn()
-                   && isAdmin()
+                   && (isAdmin() || (isTech() && request.auth.uid == personId))
                    && request.resource.size < 10 * 1024 * 1024;
     }
 

@@ -269,7 +269,7 @@ export default function ClientsPage() {
                 </div>
                 <DialogFooter className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setSelectedClient(null)} className="text-[10px] font-black uppercase">Close</Button>
-                  <Link href={`/admin/crm/clients/${selectedClient.id}`}>
+                  <Link href={`/admin/clients/${selectedClient.id}`}>
                     <Button size="sm" className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
                       <ExternalLink size={11} className="mr-1.5" /> View Full Profile
                     </Button>

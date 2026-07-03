@@ -720,19 +720,78 @@ export type ProjectPayout = {
   paidBy?: string;
 };
 
+export type QuoteLineItem = {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  taxable: boolean;
+  category: 'labor' | 'materials' | 'travel' | 'equipment' | 'service' | 'other';
+  required: boolean;
+};
+
+export type QuoteOptionItem = {
+  id: string;
+  label: string;
+  priceAdjustment: number;
+  selected: boolean;
+};
+
+export type QuoteOptionalGroup = {
+  id: string;
+  title: string;
+  description: string;
+  options: QuoteOptionItem[];
+  requiredSelection: boolean;
+};
+
+export type QuoteStatus =
+  | 'draft' | 'sent' | 'viewed' | 'changes_requested'
+  | 'approved' | 'rejected' | 'expired' | 'superseded'
+  | 'converted_to_work_order' | 'converted_to_project'
+  | 'converted_to_invoice' | 'archived';
+
 export type Quote = {
   id: string;
-  clientId: string;
-  clientName: string;
+  quoteNumber: string;
+  customerType: 'in_app_client' | 'external_customer';
+  clientId: string | null;
+  customerName: string;
+  customerCompany: string | null;
+  customerEmail: string;
+  customerPhone: string | null;
   title: string;
-  scopeOfWork: string;
-  lineItems: { description: string; qty: number; unitPrice: number }[];
+  description: string;
+  scopeSummary: string;
+  lineItems: QuoteLineItem[];
+  optionalChoices: QuoteOptionalGroup[];
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
   total: number;
-  expiresAt: string;
-  status: 'pending' | 'accepted' | 'declined';
-  declineReason?: string;
+  terms: string;
+  expirationDate: string | null;
+  publicToken: string | null;
+  status: QuoteStatus;
+  sentAt: string | null;
+  viewedAt: string | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  approvedByName: string | null;
+  approvedByEmail: string | null;
+  approvalNote: string | null;
+  rejectionReason: string | null;
+  createdBy: string;
   createdAt: string;
-  sentAt: string;
+  updatedAt: string;
+  originalQuoteId: string | null;
+  revisionNumber: number;
+  supersededByQuoteId: string | null;
+  convertedToWorkOrderId: string | null;
+  convertedToProjectId: string | null;
+  convertedToInvoiceId: string | null;
 };
 
 export type AssetCategory = 'vehicle' | 'tool' | 'electronic' | 'inventory' | 'safety';

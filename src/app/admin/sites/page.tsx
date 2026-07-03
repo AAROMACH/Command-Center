@@ -101,7 +101,7 @@ export default function AdminClientsPage() {
             const clientSites = sites.filter(s => s.clientName === company || s.clientId === client.id);
             const clientWOs = workOrders.filter(wo => wo.clientName === company);
             const openJobs = clientWOs.filter(wo => wo.status !== 'completed').length;
-            const activeQuotes = quotes.filter(q => q.clientName === company || q.clientId === client.id).filter(q => q.status === 'pending').length;
+            const activeQuotes = quotes.filter(q => q.customerName === company || q.clientId === client.id).filter(q => q.status === 'sent' || q.status === 'viewed').length;
             const openInvoices = invoices.filter(inv => inv.clientName === company || inv.clientId === client.id).filter(inv => inv.status !== 'paid' && inv.status !== 'void').length;
             const lastJob = clientWOs
                 .filter(wo => wo.status === 'completed' && wo.scheduleDate)

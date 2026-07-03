@@ -109,7 +109,7 @@ export default function SiteDetailPage() {
     const openJobs = useMemo(() => siteWOs.filter(wo => wo.status !== 'completed'), [siteWOs]);
     const completedJobs = useMemo(() => siteWOs.filter(wo => wo.status === 'completed'), [siteWOs]);
     const siteInvoices = useMemo(() => invoices.filter(inv => inv.clientName === clientName), [invoices, clientName]);
-    const siteQuotes = useMemo(() => quotes.filter(q => q.clientName === clientName), [quotes, clientName]);
+    const siteQuotes = useMemo(() => quotes.filter(q => q.customerName === clientName), [quotes, clientName]);
 
     const handleSaveAccess = async () => {
         if (!siteId) return;
@@ -403,8 +403,8 @@ export default function SiteDetailPage() {
                                         <p className="text-[8px] text-text-muted">${q.total}</p>
                                     </div>
                                     <Badge className={cn('text-[7px] uppercase h-4 border shrink-0',
-                                        q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                                        q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                                        q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                        q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                                         'bg-amber-400/10 text-amber-400 border-amber-400/20'
                                     )}>{q.status}</Badge>
                                 </div>

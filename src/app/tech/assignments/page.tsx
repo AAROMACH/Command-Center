@@ -91,6 +91,7 @@ export default function TechAssignmentsPage() {
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
+    const [newSinceLastVisit, setNewSinceLastVisit] = useState(0);
 
     const { toast } = useToast();
 
@@ -100,10 +101,30 @@ export default function TechAssignmentsPage() {
         setCurrentTechId(userId);
 
         if (userId) {
+            const key = `lastAssignmentSeen_${userId}`;
+            const lastSeen = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+
             const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
-                setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+                const orders = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+                setAllWorkOrders(orders);
+                if (lastSeen) {
+                    const count = orders.filter(o => {
+                        const ts = (o as any).updatedAt || (o as any).createdAt || '';
+                        return ts > lastSeen;
+                    }).length;
+                    setNewSinceLastVisit(count);
+                }
             });
-            return () => unsubAsmt();
+
+            // Record visit timestamp after first load
+            const timer = setTimeout(() => {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(key, new Date().toISOString());
+                }
+                setNewSinceLastVisit(0);
+            }, 4000);
+
+            return () => { unsubAsmt(); clearTimeout(timer); };
         }
     }, []);
 
@@ -360,6 +381,14 @@ export default function TechAssignmentsPage() {
 
     return (
         <div className="space-y-6">
+            {newSinceLastVisit > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-brand-red/5 border border-brand-red/20">
+                    <AlertCircle size={13} className="text-brand-red shrink-0" />
+                    <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest">
+                        {newSinceLastVisit} assignment{newSinceLastVisit > 1 ? 's' : ''} updated since your last visit
+                    </p>
+                </div>
+            )}
             <header className="page-header text-left">
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">

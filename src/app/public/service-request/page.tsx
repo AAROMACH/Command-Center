@@ -591,7 +591,10 @@ export default function PublicServiceRequestPage() {
         )}
 
         <p className="text-center text-[10px] text-text-muted">
-          Aaromach · Managed IT & Low-Voltage Services · This form is secure and confidential.
+          Aaromach · Managed IT &amp; Low-Voltage Services · This form is secure and confidential. ·{' '}
+          <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy Policy</a>
+          {' '}·{' '}
+          <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of Service</a>
         </p>
       </div>
     </div>

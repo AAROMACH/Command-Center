@@ -3,11 +3,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -219,12 +219,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="p-0 gap-0 max-w-2xl w-full bg-bg-elevated border-[#252525] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetContent
+        side="right"
+        className="sm:max-w-[680px] w-full p-0 gap-0 bg-bg-elevated border-l border-[#252525] shadow-2xl overflow-hidden flex flex-col [&>button]:top-5 [&>button]:right-5 [&>button]:text-text-muted [&>button]:hover:text-text-primary"
+      >
 
         {/* a11y */}
-        <DialogTitle className="sr-only">{mission.title || mission.description}</DialogTitle>
-        <DialogDescription className="sr-only">Assignment detail and audit view.</DialogDescription>
+        <SheetTitle className="sr-only">{mission.title || mission.description}</SheetTitle>
+        <SheetDescription className="sr-only">Assignment detail and audit view.</SheetDescription>
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="shrink-0 px-6 pt-5 pb-0">
@@ -560,7 +563,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </div>
         </div>
 
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -39,28 +39,28 @@ type NavItem = {
 };
 
 const adminNavItems: NavItem[] = [
-  { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'manage_assignments' },
-  { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'view_projects' },
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-  { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'view_reports' },
-  { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'view_directory' },
-  { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'view_financials' },
+  { href: '/admin/dispatch', label: 'Dispatch', icon: Wrench, permission: 'admin.dispatch.view' },
+  { href: '/admin/projects', label: 'Projects', icon: Briefcase, permission: 'admin.projects.view' },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'admin.dashboard.view' },
+  { href: '/admin/reports', label: 'Activity', icon: Activity, permission: 'admin.reports.view' },
+  { href: '/admin/directory', label: 'Directory', icon: Users, permission: 'admin.directory.view' },
+  { href: '/admin/financials', label: 'Financials', icon: Banknote, permission: 'admin.financials.view' },
 ];
 
 const techNavItems: NavItem[] = [
-  { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'view_assigned_work_only' },
-  { href: '/tech/projects', label: 'Projects', icon: FolderKanban, permission: 'view_projects' },
-  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-  { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'field_logs' },
-  { href: '/tech/earnings', label: 'Earnings', icon: Coins, permission: 'field_logs' },
+  { href: '/tech/assignments', label: 'Assignments', icon: Calendar, permission: 'tech.assignments.view' },
+  { href: '/tech/projects', label: 'Projects', icon: FolderKanban, permission: 'tech.projects.view' },
+  { href: '/tech/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'tech.dashboard.view' },
+  { href: '/tech/logs', label: 'Logs', icon: ScrollText, permission: 'tech.logs.view' },
+  { href: '/tech/earnings', label: 'Earnings', icon: Coins, permission: 'tech.earnings.view' },
 ];
 
 const clientNavItems: NavItem[] = [
-  { href: '/client/tickets', label: 'Tickets', icon: ClipboardList, permission: 'client_portal' },
-  { href: '/client/projects', label: 'Projects', icon: Briefcase, permission: 'client_portal' },
-  { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'client_portal' },
-  { href: '/client/sites', label: 'Sites', icon: MapPin, permission: 'client_portal' },
-  { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client_portal' },
+  { href: '/client/tickets', label: 'Tickets', icon: ClipboardList, permission: 'client.tickets.view' },
+  { href: '/client/projects', label: 'Projects', icon: Briefcase, permission: 'client.projects.view' },
+  { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'client.dashboard.view' },
+  { href: '/client/sites', label: 'Sites', icon: MapPin, permission: 'client.sites.view' },
+  { href: '/client/financials', label: 'Financials', icon: FileText, permission: 'client.financials.view' },
 ];
 
 export function Navbar() {

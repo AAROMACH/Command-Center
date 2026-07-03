@@ -92,24 +92,23 @@ type PersonnelNote = {
   createdAt: string;
 };
 
-const ALL_PERMISSIONS: { key: Permission; label: string }[] = [
-  { key: 'view_dashboard', label: 'View Dashboard' },
-  { key: 'view_assignments', label: 'View Assignments' },
-  { key: 'manage_assignments', label: 'Manage Assignments' },
-  { key: 'view_projects', label: 'View Projects' },
-  { key: 'manage_projects', label: 'Manage Projects' },
-  { key: 'view_directory', label: 'View Directory' },
-  { key: 'manage_personnel', label: 'Manage Personnel' },
-  { key: 'view_financials', label: 'View Financials' },
-  { key: 'manage_payroll', label: 'Manage Payroll' },
-  { key: 'view_reports', label: 'View Reports' },
-  { key: 'view_crm', label: 'View CRM' },
-  { key: 'manage_leads', label: 'Manage Leads' },
-  { key: 'approve_pay_changes', label: 'Approve Pay Changes' },
-  { key: 'field_checkin', label: 'Field Check-In' },
-  { key: 'field_logs', label: 'Field Logs' },
-  { key: 'manage_safety_events', label: 'Manage Safety Events' },
-  { key: 'manage_certifications', label: 'Manage Certifications' },
+// Quick-access overrides shown in the dialog — full editor is in PermissionEditorDialog
+const QUICK_PERMISSIONS: { key: Permission; label: string }[] = [
+  { key: 'admin.dashboard.view', label: 'Admin Dashboard' },
+  { key: 'admin.dispatch.view', label: 'Dispatch Hub' },
+  { key: 'admin.assignments.manage', label: 'Manage Assignments' },
+  { key: 'admin.projects.manage', label: 'Manage Projects' },
+  { key: 'admin.directory.manage', label: 'Manage Directory' },
+  { key: 'admin.financials.view', label: 'View Financials' },
+  { key: 'admin.financials.process_payroll', label: 'Process Payroll' },
+  { key: 'admin.financials.approve_pay_changes', label: 'Approve Pay Changes' },
+  { key: 'admin.reports.view', label: 'View Reports' },
+  { key: 'admin.crm.view', label: 'CRM Access' },
+  { key: 'admin.safety.manage_events', label: 'Safety Events' },
+  { key: 'admin.training.manage_certifications', label: 'Certifications' },
+  { key: 'tech.assignments.check_in', label: 'Tech Check-In' },
+  { key: 'tech.logs.create', label: 'Field Logs' },
+  { key: 'client.profile.edit', label: 'Edit Client Profile' },
 ];
 
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
@@ -700,7 +699,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                               </div>
                           </div>
                           <div className="space-y-1">
-                              {ALL_PERMISSIONS.map(({ key, label }) => {
+                              {QUICK_PERMISSIONS.map(({ key, label }) => {
                                   const override = person?.permissionOverrides?.[key];
                                   const isOn = override === true ? true : override === false ? false : undefined;
                                   return (

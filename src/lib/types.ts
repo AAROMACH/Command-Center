@@ -213,6 +213,13 @@ export type Technician = {
   denialReason?: string;
   photoURL?: string;
   createdVia?: string;
+  // Extended profile fields
+  preferredName?: string;
+  jobTitle?: string;
+  department?: string;
+  certifications?: string[];
+  adminNotes?: string;
+  serviceArea?: string;
 };
 
 export type Recommendation = {

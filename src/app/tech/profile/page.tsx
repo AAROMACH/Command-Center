@@ -44,6 +44,7 @@ export default function TechProfilePage() {
 
     // Controlled form state
     const [name, setName] = useState('');
+    const [preferredName, setPreferredName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [location, setLocation] = useState('');
@@ -92,6 +93,7 @@ export default function TechProfilePage() {
                     const data = snap.data();
                     setTech({ ...data, id: snap.id } as Technician);
                     setName(data.name || '');
+                    setPreferredName(data.preferredName || '');
                     setEmail(data.email || '');
                     setPhone(data.phone || '');
                     setLocation(data.currentLocation || '');
@@ -101,7 +103,8 @@ export default function TechProfilePage() {
                     setEcRelation(data.emergencyContact?.relation || '');
                     setEcPhone(data.emergencyContact?.phone || '');
                     savedSnapshotRef.current = {
-                        name: data.name || '', email: data.email || '',
+                        name: data.name || '', preferredName: data.preferredName || '',
+                        email: data.email || '',
                         phone: data.phone || '', currentLocation: data.currentLocation || '',
                         address: data.address || '',
                         emergencyContact: data.emergencyContact || null,
@@ -159,8 +162,8 @@ export default function TechProfilePage() {
         if (!currentTechId) return;
         setIsSaving(true);
         try {
-            const updates: Record<string, any> = { name, email, phone, currentLocation: location, address };
-            if (tech?.emergencyContact) {
+            const updates: Record<string, any> = { name, preferredName, email, phone, currentLocation: location, address };
+            if (ecName.trim() || ecRelation.trim() || ecPhone.trim()) {
                 updates.emergencyContact = { name: ecName, relation: ecRelation, phone: ecPhone };
             }
             await auditFieldChange('users', currentTechId, currentTechId, name || currentTechId, savedSnapshotRef.current, updates);
@@ -325,6 +328,10 @@ export default function TechProfilePage() {
                                             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><User size={10} /> Preferred Name</Label>
+                                            <Input value={preferredName} onChange={(e) => setPreferredName(e.target.value)} className="h-11 text-xs" placeholder="Goes by..." />
+                                        </div>
+                                        <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
                                             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-xs" />
                                         </div>
@@ -337,10 +344,9 @@ export default function TechProfilePage() {
                                             <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-11 text-xs" placeholder="e.g. Detroit, MI" />
                                             <p className="text-[9px] text-text-muted">Your city/region for job dispatching</p>
                                         </div>
-                                        <div className="space-y-2 md:col-span-2">
+                                        <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Mailing Address</Label>
                                             <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-11 text-xs" placeholder="Full street address" />
-                                            <p className="text-[9px] text-text-muted">Where documents and mail are sent</p>
                                         </div>
                                     </div>
                                     <div className="flex justify-end pt-2">
@@ -352,29 +358,28 @@ export default function TechProfilePage() {
                                 </CardContent>
                             </Card>
 
-                            {tech?.emergencyContact && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Emergency Contact</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Name</Label>
-                                                <Input value={ecName} onChange={(e) => setEcName(e.target.value)} className="h-11 text-xs" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Relation</Label>
-                                                <Input value={ecRelation} onChange={(e) => setEcRelation(e.target.value)} className="h-11 text-xs" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
-                                                <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" />
-                                            </div>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Emergency Contact</CardTitle>
+                                    <CardDescription>Provided in case of on-site emergency.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Name</Label>
+                                            <Input value={ecName} onChange={(e) => setEcName(e.target.value)} className="h-11 text-xs" placeholder="Contact name" />
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Relation</Label>
+                                            <Input value={ecRelation} onChange={(e) => setEcRelation(e.target.value)} className="h-11 text-xs" placeholder="e.g. Spouse" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
+                                            <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" placeholder="+1 (555) 000-0000" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                             <Card>
                                 <CardHeader>

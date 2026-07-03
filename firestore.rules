@@ -155,14 +155,17 @@ service cloud.firestore {
               resource.data.clientId == request.auth.uid
               || resource.data.clientName == userData().clientCompany
           ));
-      // Public client intake form (unauthenticated) OR existing clients — restricted to pending_review + no admin fields
-      // Admins can create freely
-      allow create: if isAdmin()
-          || (
-              (request.auth == null || isClient())
+      // Check request.auth == null FIRST so isAdmin()/isClient() are never called for unauthenticated users
+      // (calling those functions when auth is null would error on request.auth.uid and deny the request)
+      allow create: if (request.auth == null
               && request.resource.data.status == 'pending_review'
-              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId'])
-          );
+              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
+          || (request.auth != null && (
+              isAdmin()
+              || (isClient()
+                  && request.resource.data.status == 'pending_review'
+                  && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
+          ));
       allow update: if isAdmin()
           || (isSignedIn() && isClient() && (
               resource.data.clientId == request.auth.uid

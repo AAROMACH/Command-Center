@@ -53,6 +53,10 @@ import {
   DialogClose
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -447,16 +451,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 </table>
             </div>
 
-            <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
-                    <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex justify-between items-start">
+            <Sheet open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+                <SheetContent
+                    side="right"
+                    className="sm:max-w-[760px] w-full bg-bg-elevated border-l border-border-default p-0 flex flex-col h-full overflow-hidden [&>button]:top-5 [&>button]:right-5 [&>button]:text-text-muted [&>button]:hover:text-text-primary"
+                >
+                    <div className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0">
+                        <div className="flex justify-between items-start pr-8">
                             <div className="space-y-1 text-left">
                                 <div className="flex items-center gap-2 mb-1 text-left">
                                     <ClipboardList className="text-brand-red h-5 w-5" />
-                                    <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Terminal</DialogTitle>
+                                    <h2 className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Terminal</h2>
                                 </div>
-                                <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Audit and verification terminal for client service requests.</DialogDescription>
+                                <p className="text-xs uppercase font-bold text-text-muted text-left">Audit and verification terminal for client service requests.</p>
                             </div>
                             <div className="text-right space-y-1">
                                 <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{(selectedRequest?.id || '').toUpperCase()}</p>
@@ -465,10 +472,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 </Badge>
                             </div>
                         </div>
-                    </DialogHeader>
+                    </div>
 
                     {selectedRequest && (
-                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 min-h-0">
                             {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
                                 <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between mb-6 shadow-sm">
                                     <div className="flex items-center gap-4">
@@ -646,7 +653,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         </div>
                     )}
 
-                    <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
+                    <div className="bg-bg-tertiary/30 p-6 border-t border-border-default shrink-0">
                         {selectedRequest?.status === 'new' && (
                             <div className="flex flex-col items-center gap-4 w-full">
                                 <div className="flex items-center justify-between w-full">
@@ -737,7 +744,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         Close
                                     </Button>
                                     {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
-                                        <Button 
+                                        <Button
                                             className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
                                             onClick={() => handleViewMissionCard(selectedRequest)}
                                         >
@@ -747,9 +754,9 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 </div>
                             </div>
                         )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             {/* REJECTION BRIEFING POPUP */}
             <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>

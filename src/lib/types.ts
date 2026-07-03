@@ -399,8 +399,10 @@ export type NewServiceRequest = {
 export type ClientIntakeRequest = {
   id: string;
   clientRequestId: string;
-  source: 'app_client_intake' | 'public_client_intake';
-  status: 'pending_review' | 'contacted' | 'needs_more_info' | 'approved' | 'rejected' | 'converted_to_client';
+  requestCode?: string;
+  requestType?: 'client_partnership_request';
+  source: 'app_client_intake' | 'public_client_intake' | 'client_intake_form';
+  status: 'pending_review' | 'contacted' | 'needs_more_info' | 'approved' | 'rejected' | 'denied' | 'converted_to_client' | 'archived';
   // Section 1: Company Info
   email: string;
   companyName: string;
@@ -423,9 +425,15 @@ export type ClientIntakeRequest = {
   // Section 4: Additional Details
   estimatedMonthlyServiceVolume?: 'under_500' | '500_2500' | '2501_7500' | '7501_15000' | '15000_plus' | null;
   emergencyResponseMandatory?: boolean | null;
+  emergencyResponseRequired?: boolean | null;
   preferredCommunicationMethod?: 'email' | 'phone_call' | null;
   additionalNotes?: string | null;
-  consentConfirmed: boolean;
+  additionalNotesOrQuestions?: string | null;
+  // Consent
+  consentConfirmed?: boolean;
+  informationAccuracyConfirmed?: boolean;
+  contactAuthorizationConfirmed?: boolean;
+  termsConsent?: boolean;
   // Admin fields
   contactedAt?: string | null;
   contactedBy?: string | null;
@@ -435,6 +443,8 @@ export type ClientIntakeRequest = {
   convertedClientId?: string | null;
   rejectionReason?: string | null;
   internalNotes?: string | null;
+  adminNotes?: string | null;
+  assignedAdminId?: string | null;
   createdAt: string;
   updatedAt: string;
 };

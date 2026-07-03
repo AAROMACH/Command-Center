@@ -45,7 +45,9 @@ function priorityCls(p: string) {
 
 function statusCls(s: string) {
   if (s === 'approved') return 'bg-text-green/10 text-text-green border-text-green/30';
+  if (s === 'converted_to_client') return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
   if (s === 'denied' || s === 'rejected') return 'bg-brand-red/10 text-brand-red border-brand-red/30';
+  if (s === 'archived') return 'bg-bg-tertiary text-text-muted border-border-sub';
   if (s === 'reviewed') return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
   return 'bg-amber-400/10 text-amber-400 border-amber-400/30';
 }
@@ -710,6 +712,7 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
   const { toast } = useToast();
   const [selected, setSelected] = useState<ClientIntakeRequest | null>(null);
   const [notes, setNotes] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [showSiteReqs, setShowSiteReqs] = useState(false);
 
@@ -741,9 +744,51 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
     try {
       await updateDoc(doc(db, 'clientRequests', selected.id), {
         internalNotes: notes,
+        adminNotes,
         updatedAt: new Date().toISOString(),
       });
       toast({ title: 'Notes Saved' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const convertToClient = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const clientId = await createDocId(ID_PREFIXES.CLIENT);
+      await setDoc(doc(db, 'clients', clientId), {
+        companyName: selected.companyName,
+        primaryContactName: selected.primaryContactName,
+        email: selected.email,
+        phoneNumber: selected.phoneNumber,
+        companyWebsiteUrl: selected.companyWebsiteUrl || null,
+        industryType: selected.industryType || null,
+        numberOfLocations: selected.numberOfLocations || null,
+        totalEmployeeCount: selected.totalEmployeeCount || null,
+        primaryOperatingRegion: selected.primaryOperatingRegion || null,
+        serviceInterests: selected.serviceInterests || [],
+        subscriptionTier: selected.subscriptionTier || null,
+        preferredCommunicationMethod: selected.preferredCommunicationMethod || null,
+        sourceClientRequestId: selected.id,
+        sourceClientRequestCode: selected.requestCode || selected.clientRequestId || null,
+        status: 'active',
+        portalAccessStatus: 'pending_user_setup',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      await updateDoc(doc(db, 'clientRequests', selected.id), {
+        status: 'converted_to_client',
+        convertedClientId: clientId,
+        reviewedBy: auth.currentUser?.uid || null,
+        reviewedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: 'Converted to Client', description: `Client record created: ${clientId}` });
+      setSelected(null);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally {
@@ -762,12 +807,15 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
     const interests = req.serviceInterests || [];
     const statusStr = (req.status || '').replace(/_/g, ' ');
     return (
-      <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
+      <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); setAdminNotes((req as any).adminNotes || ''); }}
         className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-bold text-text-primary truncate">{req.companyName || req.email || 'Unknown'}</p>
-            <p className="text-[10px] text-text-muted truncate">{[req.primaryContactName, req.jobTitle].filter(Boolean).join(' · ')}</p>
+            <p className="text-[10px] text-text-muted truncate">
+              {req.requestCode && <span className="font-mono mr-1">{req.requestCode} ·</span>}
+              {[req.primaryContactName, req.jobTitle].filter(Boolean).join(' · ')}
+            </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {req.subscriptionTier && (
@@ -801,7 +849,7 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-[10px] text-text-muted uppercase tracking-wider">Client partnership applications and site requests</p>
-        <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
+        <a href="/public/client-intake" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider">
             <ExternalLink size={12} className="mr-1.5" /> View Client Form
           </Button>
@@ -868,6 +916,11 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
                   Partnership Application
                 </SheetTitle>
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  {selected.requestCode && (
+                    <span className="text-[9px] px-2 py-0.5 rounded border font-bold font-mono tracking-wider bg-bg-tertiary text-text-muted border-border-sub">
+                      {selected.requestCode}
+                    </span>
+                  )}
                   <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(selected.subscriptionTier))}>
                     {selected.subscriptionTier === 'not_sure' ? 'Tier TBD' : `${selected.subscriptionTier} tier`}
                   </span>
@@ -926,25 +979,29 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
                       <p className="text-[11px] text-text-secondary">{selected.estimatedMonthlyServiceVolume.replace(/_/g, '–').replace('plus', '+')}</p>
                     </div>
                   )}
-                  {selected.emergencyResponseMandatory !== null && selected.emergencyResponseMandatory !== undefined && (
+                  {((selected as any).emergencyResponseRequired ?? selected.emergencyResponseMandatory) !== null && ((selected as any).emergencyResponseRequired ?? selected.emergencyResponseMandatory) !== undefined && (
                     <div>
                       <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-0.5">Emergency Response</p>
-                      <p className="text-[11px] text-text-secondary">{selected.emergencyResponseMandatory ? '24/7 Required' : 'Standard Hours'}</p>
+                      <p className="text-[11px] text-text-secondary">{((selected as any).emergencyResponseRequired ?? selected.emergencyResponseMandatory) ? '24/7 Required' : 'Standard Hours'}</p>
                     </div>
                   )}
                 </div>
 
-                {selected.additionalNotes && (
+                {(selected.additionalNotes || (selected as any).additionalNotesOrQuestions) && (
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Additional Notes</p>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">{selected.additionalNotes}</p>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">{(selected as any).additionalNotesOrQuestions || selected.additionalNotes}</p>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Internal Notes</p>
-                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
-                    placeholder="Add internal notes visible only to admins..."
+                  <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Internal notes (visible only to admins)..."
+                    className="w-full text-[11px] bg-bg-tertiary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Admin Notes</p>
+                  <textarea rows={2} value={adminNotes} onChange={e => setAdminNotes(e.target.value)}
+                    placeholder="Admin decision notes (may be referenced in follow-up)..."
                     className="w-full text-[11px] bg-bg-tertiary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40" />
                   <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={saveNotes} disabled={saving}>
                     Save Notes
@@ -955,20 +1012,24 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Actions</p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
-                      onClick={() => updateStatus(selected.id, 'contacted')} disabled={saving}>
+                      onClick={() => updateStatus(selected.id, 'contacted')} disabled={saving || selected.status === 'contacted'}>
                       Mark Contacted
                     </Button>
                     <Button size="sm" variant="outline" className="text-[10px] font-bold h-8"
-                      onClick={() => updateStatus(selected.id, 'needs_more_info')} disabled={saving}>
-                      Request Info
+                      onClick={() => updateStatus(selected.id, 'archived')} disabled={saving || selected.status === 'archived'}>
+                      Archive
                     </Button>
                     <Button size="sm" className="text-[10px] font-bold h-8 bg-text-green hover:bg-text-green/90 text-white col-span-2"
-                      onClick={() => updateStatus(selected.id, 'approved')} disabled={saving}>
+                      onClick={() => updateStatus(selected.id, 'approved')} disabled={saving || selected.status === 'approved' || selected.status === 'converted_to_client'}>
                       <CheckCircle2 size={12} className="mr-1.5" />Approve Application
                     </Button>
+                    <Button size="sm" className="text-[10px] font-bold h-8 bg-blue-600 hover:bg-blue-600/90 text-white col-span-2"
+                      onClick={convertToClient} disabled={saving || selected.status === 'converted_to_client'}>
+                      <UserCheck size={12} className="mr-1.5" />Convert to Client
+                    </Button>
                     <Button size="sm" variant="outline" className="text-[10px] font-bold h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5 col-span-2"
-                      onClick={() => updateStatus(selected.id, 'rejected')} disabled={saving}>
-                      <XCircle size={12} className="mr-1.5" />Reject
+                      onClick={() => updateStatus(selected.id, 'denied')} disabled={saving || selected.status === 'denied'}>
+                      <XCircle size={12} className="mr-1.5" />Deny Application
                     </Button>
                   </div>
                 </div>
@@ -1036,7 +1097,7 @@ export default function RequestsPage() {
       setClientIntakeRequests(
         snap.docs
           .map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest))
-          .filter(r => r.source === 'app_client_intake' || r.source === 'public_client_intake' || !!r.companyName)
+          .filter(r => r.source === 'app_client_intake' || r.source === 'public_client_intake' || r.source === 'client_intake_form' || !!r.companyName)
       );
     });
 

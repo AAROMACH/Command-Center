@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, AdminMessage, Project } from '@/lib/types';
@@ -34,6 +34,7 @@ type DirectMessage = {
   timestamp: string;
   createdAt?: string;
   read: boolean;
+  readBy?: string[];
 };
 
 export default function AdminMessagingPage() {
@@ -102,6 +103,26 @@ export default function AdminMessagingPage() {
 
   const getProjectUnread = (projectId: string) =>
     directMessages.filter(m => m.projectId === projectId && !m.read && m.senderId !== currentUser?.id).length;
+
+  const markDMsRead = useCallback(async (contactId: string) => {
+    const myId = auth.currentUser?.uid || currentUser?.id;
+    if (!myId) return;
+    const unread = directMessages.filter(m =>
+      m.senderId === contactId && m.receiverId === myId &&
+      !(m.readBy as string[] | undefined || []).includes(myId)
+    );
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+  }, [directMessages, currentUser]);
+
+  const markProjectRead = useCallback(async (projectId: string) => {
+    const myId = auth.currentUser?.uid || currentUser?.id;
+    if (!myId) return;
+    const unread = directMessages.filter(m =>
+      m.projectId === projectId && m.senderId !== myId &&
+      !(m.readBy as string[] | undefined || []).includes(myId)
+    );
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+  }, [directMessages, currentUser]);
 
   const handleImageUpload = async (
     file: File,
@@ -357,7 +378,7 @@ export default function AdminMessagingPage() {
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setSelectedUserId(t.id)}
+                      onClick={() => { setSelectedUserId(t.id); markDMsRead(t.id); }}
                       className={cn(
                         'w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2.5',
                         selectedUserId === t.id
@@ -477,7 +498,7 @@ export default function AdminMessagingPage() {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
-                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                            <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
@@ -496,7 +517,7 @@ export default function AdminMessagingPage() {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
-                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                            <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
@@ -515,7 +536,7 @@ export default function AdminMessagingPage() {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
-                            <button key={p.id} onClick={() => setSelectedProjectId(p.id)} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
+                            <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}

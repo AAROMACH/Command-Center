@@ -595,12 +595,12 @@ export default function CRMPage() {
                 {quotes.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')).map(q => (
                   <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer">
                     <TableCell className="font-bold text-[11px] uppercase text-text-primary">{q.title}</TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{q.clientName}</TableCell>
+                    <TableCell className="text-[10px] text-text-muted">{q.customerName}</TableCell>
                     <TableCell className="text-[11px] font-black font-mono text-text-green">${(q.total||0).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge className={`text-[8px] h-5 uppercase border ${
-                        q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                        q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                        q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                        q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                         'bg-amber-400/10 text-amber-400 border-amber-400/20'
                       }`}>
                         {q.status}
@@ -610,7 +610,7 @@ export default function CRMPage() {
                       {q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '—'}
                     </TableCell>
                     <TableCell className="text-[10px] text-text-muted">
-                      {q.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : '—'}
+                      {q.expirationDate ? new Date(q.expirationDate).toLocaleDateString() : '—'}
                     </TableCell>
                   </TableRow>
                 ))}

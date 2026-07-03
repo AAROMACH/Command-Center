@@ -152,7 +152,7 @@ export default function ClientWorkspacePage() {
     const clientProjects = useMemo(() => projects.filter(p => p.client === clientName), [projects, clientName]);
     const clientWOs = useMemo(() => workOrders.filter(wo => wo.clientName === clientName), [workOrders, clientName]);
     const clientInvoices = useMemo(() => invoices.filter(inv => inv.clientName === clientName || inv.clientId === id), [invoices, clientName, id]);
-    const clientQuotes = useMemo(() => quotes.filter(q => q.clientName === clientName || q.clientId === id), [quotes, clientName, id]);
+    const clientQuotes = useMemo(() => quotes.filter(q => q.customerName === clientName || q.clientId === id), [quotes, clientName, id]);
 
     const filteredContacts = useMemo(() => {
         if (contactFilter === 'all') return contacts;
@@ -573,13 +573,13 @@ export default function ClientWorkspacePage() {
                                         {clientQuotes.map(q => (
                                             <TableRow key={q.id} className="border-border-sub">
                                                 <TableCell className="font-bold text-[10px] text-text-primary">{q.title}</TableCell>
-                                                <TableCell className="text-[9px] text-text-muted max-w-[200px] truncate">{q.scopeOfWork}</TableCell>
+                                                <TableCell className="text-[9px] text-text-muted max-w-[200px] truncate">{q.scopeSummary}</TableCell>
                                                 <TableCell className="text-[10px] font-mono text-text-primary text-right">${q.total}</TableCell>
-                                                <TableCell className="text-[10px] text-text-muted">{q.expiresAt || '—'}</TableCell>
+                                                <TableCell className="text-[10px] text-text-muted">{q.expirationDate || '—'}</TableCell>
                                                 <TableCell>
                                                     <Badge className={cn('text-[7px] uppercase h-4 border',
-                                                        q.status === 'accepted' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                                                        q.status === 'declined' ? 'bg-text-red/10 text-text-red border-text-red/20' :
+                                                        q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                                        q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                                                         'bg-amber-400/10 text-amber-400 border-amber-400/20'
                                                     )}>{q.status}</Badge>
                                                 </TableCell>

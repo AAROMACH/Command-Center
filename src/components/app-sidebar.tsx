@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import { technicians as fallbackTechs } from "@/lib/data";
 import type { Technician } from "@/lib/types";
@@ -50,6 +50,7 @@ import {
   Package,
   Flag,
   Inbox,
+  FileSearch,
 } from "lucide-react";
 
 type NavItem = {
@@ -95,6 +96,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/sites", label: "Clients", icon: Building2, permission: "admin.clients.view" },
       { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "admin.projects.view" },
+      { href: "/admin/quotes", label: "Quotes", icon: FileSearch, permission: "admin.crm.view" },
       { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "admin.messages.view" },
     ],
   },
@@ -138,12 +140,16 @@ export function AppSidebar() {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Technician | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
+  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [newAssignments, setNewAssignments] = useState(0);
   const logo = PlaceHolderImages.find(img => img.id === "app-logo");
 
   useEffect(() => {
     setMounted(true);
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
+        setFirebaseUid(fbUser.uid);
         const unsubUser = onSnapshot(doc(db, "users", fbUser.uid), (snap) => {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
@@ -155,6 +161,7 @@ export function AppSidebar() {
         });
         return () => unsubUser();
       } else {
+        setFirebaseUid(null);
         const storedId = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("currentUserId") : null;
         if (storedId) {
           const registryUser = fallbackTechs.find(t => t.id === storedId);
@@ -164,6 +171,36 @@ export function AppSidebar() {
     });
     return () => unsubAuth();
   }, []);
+
+  // Unread DM badge
+  useEffect(() => {
+    if (!firebaseUid) return;
+    const q = query(collection(db, "messages"), where("receiverId", "==", firebaseUid));
+    return onSnapshot(q, (snap) => {
+      const count = snap.docs.filter(d => {
+        const rb = (d.data().readBy || []) as string[];
+        return !rb.includes(firebaseUid);
+      }).length;
+      setUnreadMessages(count);
+    });
+  }, [firebaseUid]);
+
+  // New assignment badge for techs
+  useEffect(() => {
+    if (!firebaseUid) return;
+    const key = `lastAssignmentSeen_${firebaseUid}`;
+    const lastSeen = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+    if (!lastSeen) return;
+    const q = query(collection(db, "assignments"), where("techId", "==", firebaseUid));
+    return onSnapshot(q, (snap) => {
+      const count = snap.docs.filter(d => {
+        const data = d.data();
+        const updated = data.updatedAt || data.createdAt || "";
+        return updated > lastSeen;
+      }).length;
+      setNewAssignments(count);
+    });
+  }, [firebaseUid]);
 
   const isTechPortal = pathname.startsWith("/tech");
   const isClientPortal = pathname.startsWith("/client");
@@ -234,6 +271,8 @@ export function AppSidebar() {
                 <SidebarMenu>
                   {group.items.map((item) => {
                     const active = isActive(item.href);
+                    const isMessages = item.href.endsWith("/messaging");
+                    const badge = isMessages && unreadMessages > 0 ? unreadMessages : 0;
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
@@ -249,7 +288,12 @@ export function AppSidebar() {
                         >
                           <Link href={item.href}>
                             <item.icon className="h-4 w-4 shrink-0" />
-                            <span>{item.label}</span>
+                            <span className="flex-1">{item.label}</span>
+                            {badge > 0 && (
+                              <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
+                                {badge > 99 ? "99+" : badge}
+                              </span>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -263,6 +307,13 @@ export function AppSidebar() {
           <SidebarMenu>
             {navItems.map((item) => {
               const active = isActive(item.href);
+              const isMessages = item.href.endsWith("/messaging");
+              const isAssignments = item.href.endsWith("/assignments");
+              const badge = isMessages && unreadMessages > 0
+                ? unreadMessages
+                : isAssignments && newAssignments > 0
+                ? newAssignments
+                : 0;
               return (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -278,7 +329,12 @@ export function AppSidebar() {
                   >
                     <Link href={item.href}>
                       <item.icon className="h-4 w-4 shrink-0" />
-                      <span>{item.label}</span>
+                      <span className="flex-1">{item.label}</span>
+                      {badge > 0 && (
+                        <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

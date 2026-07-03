@@ -1155,6 +1155,7 @@ export default function RequestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'serviceRequests'), snap => {
@@ -1336,14 +1337,16 @@ export default function RequestsPage() {
           <p className="page-subtitle">Triage, approve, and route all incoming requests across operations.</p>
         </div>
         <div className="page-header-right items-center">
-          <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
-            <Plus size={16} className="mr-2" />
-            New Service Request
-          </Button>
+          {activeTab === 'service' && (
+            <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
+              <Plus size={16} className="mr-2" />
+              New Service Request
+            </Button>
+          )}
         </div>
       </header>
 
-      <Tabs defaultValue="all" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex items-center justify-between gap-3 mb-4">
           <TabsList className="tabs flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="all" className="tab">

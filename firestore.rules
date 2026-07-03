@@ -207,6 +207,20 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /quotes/{quoteId} {
+      allow read: if isAdmin()
+          || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid)
+          || resource.data.publicToken != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+          || (resource.data.publicToken != null
+              && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'approvedByName', 'approvedByEmail', 'approvalNote',
+                           'rejectionReason', 'approvedAt', 'rejectedAt', 'viewedAt',
+                           'optionalChoices']));
+      allow delete: if isSuperAdmin();
+    }
+
     match /invoices/{id} {
       allow read: if isSignedIn() && (
           isAdmin()

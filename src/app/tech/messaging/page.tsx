@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ type DirectMessage = {
   timestamp: string;
   createdAt?: string;
   read: boolean;
+  readBy?: string[];
 };
 
 export default function TechMessagingPage() {
@@ -83,6 +84,27 @@ export default function TechMessagingPage() {
   }, [messages, selectedProjectId]);
 
   const myId = currentUser?.id || '';
+
+  const markDMsRead = async (contactId: string) => {
+    if (!myId) return;
+    const unread = messages.filter(m =>
+      !m.projectId &&
+      m.senderId === contactId &&
+      m.receiverId === myId &&
+      !(m.readBy || []).includes(myId)
+    );
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+  };
+
+  const markProjectRead = async (projectId: string) => {
+    if (!myId) return;
+    const unread = messages.filter(m =>
+      m.projectId === projectId &&
+      m.senderId !== myId &&
+      !(m.readBy || []).includes(myId)
+    );
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+  };
 
   // Projects this tech is assigned to, grouped by status
   const myActiveProjects = allProjects.filter(p => p.status === 'active' && myId && p.assignedTechnicianIds?.includes(myId));
@@ -204,7 +226,7 @@ export default function TechMessagingPage() {
         return (
           <button
             key={p.id}
-            onClick={() => setSelectedProjectId(p.id)}
+            onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }}
             className={cn(
               'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
               selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
@@ -260,7 +282,7 @@ export default function TechMessagingPage() {
             {conversationPartners.map(id => (
               <button
                 key={id}
-                onClick={() => setSelectedContactId(id)}
+                onClick={() => { setSelectedContactId(id); markDMsRead(id); }}
                 className={cn(
                   'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors w-full',
                   selectedContactId === id

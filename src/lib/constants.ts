@@ -180,5 +180,6 @@ export const ID_PREFIXES = {
   USER:              'uID',
   WEEKLY_LOG:        'wlog',
   WEEKLY_LOG_ITEM:   'wli',
+  QUOTE:             'qt',
   WORK_ORDER:        'wo',
 } as const;

@@ -1154,6 +1154,7 @@ export default function RequestsPage() {
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'serviceRequests'), snap => {
@@ -1207,7 +1208,7 @@ export default function RequestsPage() {
   const accessPending     = pendingUsers.length;
   const totalPending      = servicePending + clientPending + personnelPending + accessPending;
 
-  // Service tab: filtered
+  // Service tab: search-filtered
   const filteredServiceRequests = useMemo(() => {
     const q = searchQuery.toLowerCase();
     if (!q) return serviceRequests;
@@ -1218,6 +1219,38 @@ export default function RequestsPage() {
       (r.companyName || '').toLowerCase().includes(q)
     );
   }, [serviceRequests, searchQuery]);
+
+  // Status filter helper
+  const applyStatusFilter = <T extends { status: string }>(
+    items: T[],
+    pendingStatuses: string[],
+    approvedStatuses: string[],
+    rejectedStatuses: string[],
+  ): T[] => {
+    if (statusFilter === 'all') return items;
+    if (statusFilter === 'pending') return items.filter(r => pendingStatuses.includes(r.status));
+    if (statusFilter === 'approved') return items.filter(r => approvedStatuses.includes(r.status));
+    return items.filter(r => rejectedStatuses.includes(r.status));
+  };
+
+  const displayServiceRequests = applyStatusFilter(
+    filteredServiceRequests,
+    ['pending_review', 'contacted', 'needs_more_info'],
+    ['approved', 'converted_to_work_order', 'converted_to_project'],
+    ['rejected', 'closed'],
+  );
+  const displayClientRequests = applyStatusFilter(
+    clientIntakeRequests,
+    ['pending_review', 'contacted'],
+    ['approved', 'converted_to_client'],
+    ['denied', 'rejected', 'archived'],
+  );
+  const displayTimeOffRequests = applyStatusFilter(
+    timeOffRequests,
+    ['pending'],
+    ['approved'],
+    ['denied'],
+  );
 
 
   // All tab: normalized across types, pending only
@@ -1347,6 +1380,29 @@ export default function RequestsPage() {
           </div>
         </div>
 
+        {/* Status filter chips */}
+        <div className="flex items-center gap-1.5 mb-4">
+          {([
+            { value: 'all',      label: 'All' },
+            { value: 'pending',  label: 'Pending' },
+            { value: 'approved', label: 'Approved' },
+            { value: 'rejected', label: 'Rejected' },
+          ] as const).map(({ value, label }) => (
+            <button key={value} type="button" onClick={() => setStatusFilter(value)}
+              className={cn(
+                'text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded border transition-colors',
+                statusFilter === value
+                  ? value === 'all'      ? 'bg-bg-tertiary text-text-primary border-border-main'
+                  : value === 'pending'  ? 'bg-amber-400/15 text-amber-400 border-amber-400/40'
+                  : value === 'approved' ? 'bg-text-green/15 text-text-green border-text-green/40'
+                  :                        'bg-brand-red/15 text-brand-red border-brand-red/40'
+                  : 'text-text-muted border-border-sub hover:border-border-main hover:text-text-primary'
+              )}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── All ── */}
         <TabsContent value="all" className="mt-0">
           {allNormalized.length === 0 ? (
@@ -1403,17 +1459,17 @@ export default function RequestsPage() {
               />
             </div>
           </div>
-          <NewServiceTab requests={filteredServiceRequests} viewMode={viewMode} />
+          <NewServiceTab requests={displayServiceRequests} viewMode={viewMode} />
         </TabsContent>
 
         {/* ── Client ── */}
         <TabsContent value="client" className="mt-0">
-          <ClientIntakeTab requests={clientIntakeRequests} siteReqs={siteRequests} viewMode={viewMode} />
+          <ClientIntakeTab requests={displayClientRequests} siteReqs={siteRequests} viewMode={viewMode} />
         </TabsContent>
 
         {/* ── Personnel ── */}
         <TabsContent value="personnel" className="mt-0">
-          <PersonnelTab requests={timeOffRequests} technicians={technicians} viewMode={viewMode} />
+          <PersonnelTab requests={displayTimeOffRequests} technicians={technicians} viewMode={viewMode} />
         </TabsContent>
 
         {/* ── Account Access ── */}

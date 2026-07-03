@@ -202,6 +202,7 @@ export type Technician = {
   permissionOverrides?: Record<string, boolean>;
   portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
   primaryPortal?: 'admin' | 'tech' | 'client';
+  messagingBlockedClientIds?: string[];
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
   approvalStatus?: 'pending' | 'approved' | 'denied';

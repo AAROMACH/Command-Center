@@ -107,6 +107,22 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
     });
   };
 
+  const allowAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
+    const perms = Object.values(PERMISSION_TREE[portal]).flat() as string[];
+    setOverrides(prev => ({ ...prev, ...Object.fromEntries(perms.map(p => [p, true])) }));
+  };
+  const resetAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
+    const permSet = new Set(Object.values(PERMISSION_TREE[portal]).flat() as string[]);
+    setOverrides(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !permSet.has(k))));
+  };
+  const allowAllForPage = (perms: Permission[]) => {
+    setOverrides(prev => ({ ...prev, ...Object.fromEntries(perms.map(p => [p, true])) }));
+  };
+  const resetAllForPage = (perms: Permission[]) => {
+    const permSet = new Set<string>(perms);
+    setOverrides(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !permSet.has(k))));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -257,12 +273,34 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
             {/* Page > Actions */}
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-5">
+                <div className="flex items-center gap-2 pb-3 border-b border-border-sub">
+                  <button
+                    onClick={() => allowAllForPortal(activePortal)}
+                    className="h-6 px-2.5 rounded text-[9px] font-bold border border-[#10b981]/40 text-[#10b981] hover:bg-[#10b981]/10 transition-colors"
+                  >Allow All</button>
+                  <button
+                    onClick={() => resetAllForPortal(activePortal)}
+                    className="h-6 px-2.5 rounded text-[9px] font-bold border border-border-sub text-text-muted hover:border-border-main transition-colors"
+                  >Reset All</button>
+                </div>
                 {Object.entries(portalPages).map(([page, perms]) => (
                   <div key={page}>
                     {/* Page header */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <ChevronRight className="h-3 w-3 text-text-muted" />
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{page}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <ChevronRight className="h-3 w-3 text-text-muted" />
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{page}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => allowAllForPage(perms as Permission[])}
+                          className="h-5 px-1.5 rounded text-[8px] font-bold border border-[#10b981]/30 text-[#10b981] hover:bg-[#10b981]/10 transition-colors"
+                        >All</button>
+                        <button
+                          onClick={() => resetAllForPage(perms as Permission[])}
+                          className="h-5 px-1.5 rounded text-[8px] font-bold border border-border-sub text-text-muted hover:border-border-main transition-colors"
+                        >Clear</button>
+                      </div>
                     </div>
                     <div className="space-y-1 ml-4">
                       {(perms as Permission[]).map(perm => {

@@ -24,12 +24,10 @@ import {
   Zap,
   LogOut,
   ChevronDown,
-  MonitorUp,
-  Check
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
-import { isAdmin, isTech, isClient, getAvailablePortals } from '@/lib/permissions';
+import { isAdmin, isTech, isClient } from '@/lib/permissions';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -81,7 +79,6 @@ export function UserNav() {
   const userAvatarUrl = firebaseUser?.photoURL || currentUser?.avatarUrl;
   const userFallback = displayName.split(' ').map(n => n[0]).join('') || 'U';
   
-  const availablePortals = getAvailablePortals(currentUser);
   const activePortalId = pathname.startsWith('/admin') ? 'admin' : pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : '';
 
   // PORTAL SENSITIVE ROUTING
@@ -125,23 +122,6 @@ export function UserNav() {
           </div>
         </DropdownMenuLabel>
         
-        {availablePortals.length > 1 && (
-            <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-[0.2em] text-text-muted flex items-center gap-2">
-                    <MonitorUp size={12}/> Switch Portal
-                </DropdownMenuLabel>
-                <DropdownMenuGroup>
-                    {availablePortals.map(portal => (
-                        <DropdownMenuItem key={portal.id} onSelect={() => router.push(portal.path)} className="flex items-center justify-between">
-                            <span>{portal.label}</span>
-                            {activePortalId === portal.id && <Check size={14} className="text-text-green" />}
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-            </>
-        )}
-
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={() => router.push(profilePath)}>

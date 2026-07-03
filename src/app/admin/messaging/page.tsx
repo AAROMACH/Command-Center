@@ -269,6 +269,7 @@ export default function AdminMessagingPage() {
   };
 
   const adminTechs = technicians.filter(t => !t.roles?.includes('client') && t.id !== currentUser?.id);
+  const clientContacts = technicians.filter(t => t.roles?.includes('client'));
 
   return (
     <div className="space-y-5">
@@ -368,32 +369,67 @@ export default function AdminMessagingPage() {
         <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
           {/* User list */}
           <div className="w-56 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
-            <div className="px-3 py-2.5 border-b border-border-sub">
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Team</p>
-            </div>
             <ScrollArea className="flex-1">
-              <div className="p-1.5 space-y-0.5">
-                {adminTechs.map(t => {
-                  const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => { setSelectedUserId(t.id); markDMsRead(t.id); }}
-                      className={cn(
-                        'w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2.5',
-                        selectedUserId === t.id
-                          ? 'bg-brand-red/10 text-brand-red'
-                          : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary'
-                      )}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
-                        <span className="text-[8px] font-black">{(t.name || 'T').charAt(0)}</span>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
-                      {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
-                    </button>
-                  );
-                })}
+              <div className="p-1.5">
+                {/* Team group */}
+                <div className="px-2 py-1.5">
+                  <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Team</p>
+                </div>
+                <div className="space-y-0.5 mb-2">
+                  {adminTechs.map(t => {
+                    const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => { setSelectedUserId(t.id); markDMsRead(t.id); }}
+                        className={cn(
+                          'w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2.5',
+                          selectedUserId === t.id
+                            ? 'bg-brand-red/10 text-brand-red'
+                            : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary'
+                        )}
+                      >
+                        <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
+                          <span className="text-[8px] font-black">{(t.name || 'T').charAt(0)}</span>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
+                        {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Clients group */}
+                {clientContacts.length > 0 && (
+                  <>
+                    <div className="h-px bg-border-sub mx-2 mb-2" />
+                    <div className="px-2 py-1.5">
+                      <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Clients</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      {clientContacts.map(t => {
+                        const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => { setSelectedUserId(t.id); markDMsRead(t.id); }}
+                            className={cn(
+                              'w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2.5',
+                              selectedUserId === t.id
+                                ? 'bg-brand-red/10 text-brand-red'
+                                : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary'
+                            )}
+                          >
+                            <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
+                              <span className="text-[8px] font-black">{(t.name || 'C').charAt(0)}</span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
+                            {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -404,14 +440,14 @@ export default function AdminMessagingPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Users size={32} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a team member to message</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a contact to message</p>
                 </div>
               </div>
             ) : (
               <>
                 <div className="px-4 py-3 border-b border-border-sub shrink-0">
                   <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">
-                    {adminTechs.find(t => t.id === selectedUserId)?.name || 'Unknown'}
+                    {[...adminTechs, ...clientContacts].find(t => t.id === selectedUserId)?.name || 'Unknown'}
                   </p>
                 </div>
                 <ScrollArea className="flex-1 p-4">

@@ -165,7 +165,7 @@ export default function TechMessagingPage() {
       console.debug('[MessageUpload] uid:', uid);
       console.debug('[MessageUpload] path:', path);
       console.debug('[MessageUpload] file:', file.name, file.type, `${(file.size / 1024).toFixed(1)}KB`);
-      const { url } = await uploadFile(path, file, { contentType: file.type });
+      const { url } = await uploadFile(path, file, { contentType: file.type || 'image/jpeg' });
       setUrl(url);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Upload failed', description: err.message });

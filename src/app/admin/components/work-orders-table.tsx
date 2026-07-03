@@ -366,7 +366,8 @@ export const WorkOrdersTable = React.memo(({
                     <div className="flex flex-col items-center justify-center">
                         {mode === 'scheduled' || mode === 'assigned' || order.status === 'assigned' || order.status === 'completed' || order.status === 'in-progress' ? (
                         technician ? (
-                            <div className="flex items-center gap-3 text-left">
+                            <div className="flex flex-col items-center gap-1.5">
+                              <div className="flex items-center gap-2.5 text-left">
                                 <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
                                     <AvatarImage src={technician.avatarUrl} />
                                     <AvatarFallback className="text-[10px]">{(technician.name || 'U').charAt(0)}</AvatarFallback>
@@ -374,6 +375,28 @@ export const WorkOrdersTable = React.memo(({
                                 <div className="text-left">
                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-tight leading-tight">{technician.name}</span>
                                 </div>
+                              </div>
+                              {(order.additionalTechnicianIds || []).length > 0 && (
+                                <div className="flex items-center gap-1">
+                                  {(order.additionalTechnicianIds || []).slice(0, 3).map((hId: string) => {
+                                    const ht = technicians.find(t => t.id === hId);
+                                    return (
+                                      <Avatar key={hId} className="h-5 w-5 border border-border-sub shadow-sm -ml-1 first:ml-0">
+                                        <AvatarImage src={ht?.avatarUrl} />
+                                        <AvatarFallback className="text-[7px]">{(ht?.name || '?').charAt(0)}</AvatarFallback>
+                                      </Avatar>
+                                    );
+                                  })}
+                                  {(order.additionalTechnicianIds || []).length > 3 && (
+                                    <div className="h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub -ml-1 flex items-center justify-center">
+                                      <span className="text-[7px] font-bold text-text-muted">+{(order.additionalTechnicianIds || []).length - 3}</span>
+                                    </div>
+                                  )}
+                                  <span className="text-[7px] font-bold text-text-muted uppercase tracking-widest ml-1">
+                                    +{(order.additionalTechnicianIds || []).length} helper{(order.additionalTechnicianIds || []).length > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                         ) : (
                           <Button 
